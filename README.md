@@ -81,6 +81,9 @@ npm install
    roster (Black, Blue I, Stump Grinding, PHC), and deactivates Crane Operators.
 9. Paste the contents of `supabase/migrations/006_expand_crew_roster.sql`, click Run.
    Splits Green into Green 1 + Green 2, and seeds the remaining crew member rosters.
+10. Paste the contents of `supabase/migrations/007_phc_stump_unassigned.sql`, click Run.
+    Renames "Douglas & Karenna" to PHC, adds the 'stump' and 'unassigned' crew
+    kinds, and creates the Unassigned holding bucket.
 
 ### 4. Wire the app to Supabase
 

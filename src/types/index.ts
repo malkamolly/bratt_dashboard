@@ -7,10 +7,12 @@ export type Salesperson = {
   is_active: boolean;
 };
 
+export type CrewKind = 'production' | 'phc' | 'stump' | 'unassigned';
+
 export type Crew = {
   id: string;
   name: string;
-  kind: 'production' | 'phc';
+  kind: CrewKind;
   display_order: number;
   is_active: boolean;
 };

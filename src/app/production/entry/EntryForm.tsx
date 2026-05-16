@@ -209,7 +209,9 @@ export function EntryForm({
 
   // Build crew sections in display_order. Production first, then PHC.
   const productionCrews = crews.filter((c) => c.kind === 'production');
+  const stumpCrews = crews.filter((c) => c.kind === 'stump');
   const phcCrews = crews.filter((c) => c.kind === 'phc');
+  const unassignedCrews = crews.filter((c) => c.kind === 'unassigned');
 
   return (
     <form action={formAction} className="space-y-8">
@@ -243,42 +245,32 @@ export function EntryForm({
         </div>
       )}
 
-      <CrewSectionGroup
-        title="Production Crews"
-        crews={productionCrews}
-        allCrewsForReassignment={crews}
-        memberByCrew={memberByCrew}
-        memberJobs={memberJobs}
-        setMemberJobs={setMemberJobs}
-        memberRevenue={memberRevenue}
-        setMemberRevenue={setMemberRevenue}
-        memberAssignment={memberAssignment}
-        setMemberAssignment={setMemberAssignment}
-        crewJobs={crewJobs}
-        setCrewJobs={setCrewJobs}
-        crewRevenue={crewRevenue}
-        setCrewRevenue={setCrewRevenue}
-        crewTotals={crewTotals}
-      />
-
-      {phcCrews.length > 0 && (
-        <CrewSectionGroup
-          title="Plant Healthcare"
-          crews={phcCrews}
-          allCrewsForReassignment={crews}
-          memberByCrew={memberByCrew}
-          memberJobs={memberJobs}
-          setMemberJobs={setMemberJobs}
-          memberRevenue={memberRevenue}
-          setMemberRevenue={setMemberRevenue}
-          memberAssignment={memberAssignment}
-          setMemberAssignment={setMemberAssignment}
-          crewJobs={crewJobs}
-          setCrewJobs={setCrewJobs}
-          crewRevenue={crewRevenue}
-          setCrewRevenue={setCrewRevenue}
-          crewTotals={crewTotals}
-        />
+      {[
+        { title: 'Production Crews', list: productionCrews },
+        { title: 'Stump Grinding', list: stumpCrews },
+        { title: 'Plant Healthcare', list: phcCrews },
+        { title: 'Unassigned', list: unassignedCrews },
+      ].map((g) =>
+        g.list.length === 0 ? null : (
+          <CrewSectionGroup
+            key={g.title}
+            title={g.title}
+            crews={g.list}
+            allCrewsForReassignment={crews}
+            memberByCrew={memberByCrew}
+            memberJobs={memberJobs}
+            setMemberJobs={setMemberJobs}
+            memberRevenue={memberRevenue}
+            setMemberRevenue={setMemberRevenue}
+            memberAssignment={memberAssignment}
+            setMemberAssignment={setMemberAssignment}
+            crewJobs={crewJobs}
+            setCrewJobs={setCrewJobs}
+            crewRevenue={crewRevenue}
+            setCrewRevenue={setCrewRevenue}
+            crewTotals={crewTotals}
+          />
+        ),
       )}
 
       <div className="bt-card flex items-baseline justify-between !py-4">
@@ -342,64 +334,68 @@ function CrewSectionGroup({
   crewTotals: Map<string, { jobs: number; revenue: number }>;
 }) {
   return (
-    <div className="space-y-5">
-      <h2 className="font-headline text-sm font-extrabold uppercase tracking-ribbon text-fg-2">
+    <div>
+      <h2 className="mb-3 font-headline text-sm font-extrabold uppercase tracking-ribbon text-fg-2">
         {title}
       </h2>
-      {crews.map((c) => {
-        const members = memberByCrew.get(c.id) ?? [];
-        const totals = crewTotals.get(c.id) ?? { jobs: 0, revenue: 0 };
-        const hasMembers = members.length > 0;
-        return (
-          <div key={c.id} className="bt-card !p-0 overflow-hidden">
-            {/* Crew header with rollup totals */}
-            <div className="flex items-center justify-between bg-bark px-5 py-3 text-cream">
-              <h3 className="font-headline text-base font-extrabold uppercase tracking-ribbon">
-                {c.name}
-              </h3>
-              <div className="flex items-baseline gap-4 text-right">
-                <div>
-                  <p className="text-[10px] font-extrabold uppercase tracking-ribbon text-lime">
-                    Jobs
-                  </p>
-                  <p className="font-headline text-lg font-black">{totals.jobs}</p>
-                </div>
-                <div>
-                  <p className="text-[10px] font-extrabold uppercase tracking-ribbon text-lime">
-                    Revenue
-                  </p>
-                  <p className="font-headline text-lg font-black">
-                    {fmtCurrency.format(totals.revenue)}
-                  </p>
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+        {crews.map((c) => {
+          const members = memberByCrew.get(c.id) ?? [];
+          const totals = crewTotals.get(c.id) ?? { jobs: 0, revenue: 0 };
+          const hasMembers = members.length > 0;
+          return (
+            <div key={c.id} className="bt-card !p-0 overflow-hidden">
+              <div className="flex items-center justify-between bg-bark px-4 py-2.5 text-cream">
+                <h3 className="font-headline text-sm font-extrabold uppercase tracking-ribbon">
+                  {c.name}
+                </h3>
+                <div className="flex items-baseline gap-3 text-right">
+                  <div>
+                    <p className="text-[9px] font-extrabold uppercase tracking-ribbon text-lime">
+                      Jobs
+                    </p>
+                    <p className="font-headline text-base font-black leading-none">
+                      {totals.jobs}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-[9px] font-extrabold uppercase tracking-ribbon text-lime">
+                      Revenue
+                    </p>
+                    <p className="font-headline text-base font-black leading-none">
+                      {fmtCurrency.format(totals.revenue)}
+                    </p>
+                  </div>
                 </div>
               </div>
-            </div>
 
-            {/* Members or direct crew-level entry */}
-            {hasMembers ? (
-              <div>
-                {members.map((mb, idx) => (
-                  <div
-                    key={mb.id}
-                    className={`flex flex-wrap items-center gap-2 px-5 py-2 sm:flex-nowrap ${
-                      idx % 2 === 0 ? 'bg-white/60' : 'bg-transparent'
-                    }`}
-                  >
-                    <input type="hidden" name={`crew__member_${mb.id}`} value={memberAssignment[mb.id] ?? ''} />
-                    <div className="flex flex-1 items-center gap-2">
-                      <span className="font-headline text-sm font-bold text-ink">
-                        {mb.name}
-                      </span>
-                      {mb.is_foreman && (
-                        <span className="rounded-full bg-orange/15 px-1.5 py-0.5 font-headline text-[9px] font-extrabold uppercase tracking-ribbon text-orange-press">
-                          Foreman
+              {hasMembers ? (
+                <div>
+                  {members.map((mb, idx) => (
+                    <div
+                      key={mb.id}
+                      className={`grid grid-cols-[1fr_auto_auto_auto] items-center gap-1.5 px-3 py-1.5 ${
+                        idx % 2 === 0 ? 'bg-white/60' : 'bg-transparent'
+                      }`}
+                    >
+                      <input
+                        type="hidden"
+                        name={`crew__member_${mb.id}`}
+                        value={memberAssignment[mb.id] ?? ''}
+                      />
+                      <div className="flex min-w-0 items-center gap-1.5">
+                        <span className="truncate font-headline text-sm font-bold text-ink">
+                          {mb.name}
                         </span>
-                      )}
-                    </div>
-                    <div className="flex items-center gap-1.5">
-                      <span className="text-[10px] font-bold uppercase text-fg-3">
-                        Jobs
-                      </span>
+                        {mb.is_foreman && (
+                          <span
+                            title="Foreman"
+                            className="shrink-0 rounded-full bg-orange/20 px-1 py-0.5 font-headline text-[8px] font-extrabold uppercase tracking-ribbon text-orange-press"
+                          >
+                            F
+                          </span>
+                        )}
+                      </div>
                       <input
                         type="text"
                         inputMode="numeric"
@@ -409,54 +405,51 @@ function CrewSectionGroup({
                           setMemberJobs((m) => ({ ...m, [mb.id]: e.target.value }))
                         }
                         placeholder="0"
-                        className="w-16 rounded-2 border-2 border-paper-edge bg-white px-2 py-1.5 text-right font-headline focus:border-orange focus:outline-none"
+                        title="Jobs"
+                        className="w-12 rounded-1 border border-paper-edge bg-white px-1.5 py-1 text-right font-headline text-sm focus:border-orange focus:outline-none"
                       />
-                    </div>
-                    <div className="flex items-center gap-1.5">
-                      <span className="text-[10px] font-bold uppercase text-fg-3">
-                        $
-                      </span>
-                      <input
-                        type="text"
-                        inputMode="decimal"
-                        name={`revenue__member_${mb.id}`}
-                        value={memberRevenue[mb.id] ?? ''}
+                      <div className="flex items-center">
+                        <span className="pr-0.5 text-[10px] font-bold text-fg-3">$</span>
+                        <input
+                          type="text"
+                          inputMode="decimal"
+                          name={`revenue__member_${mb.id}`}
+                          value={memberRevenue[mb.id] ?? ''}
+                          onChange={(e) =>
+                            setMemberRevenue((m) => ({
+                              ...m,
+                              [mb.id]: e.target.value,
+                            }))
+                          }
+                          placeholder="0"
+                          title="Revenue"
+                          className="w-20 rounded-1 border border-paper-edge bg-white px-1.5 py-1 text-right font-headline text-sm focus:border-orange focus:outline-none"
+                        />
+                      </div>
+                      <select
+                        value={memberAssignment[mb.id] ?? ''}
                         onChange={(e) =>
-                          setMemberRevenue((m) => ({ ...m, [mb.id]: e.target.value }))
+                          setMemberAssignment((m) => ({
+                            ...m,
+                            [mb.id]: e.target.value,
+                          }))
                         }
-                        placeholder="0"
-                        className="w-28 rounded-2 border-2 border-paper-edge bg-white px-2 py-1.5 text-right font-headline focus:border-orange focus:outline-none"
-                      />
+                        title="Move to a different crew for this day"
+                        className="max-w-[7rem] truncate rounded-1 border border-paper-edge bg-white py-1 pl-1 pr-1 font-headline text-[10px] font-extrabold uppercase tracking-ribbon text-ink focus:border-orange focus:outline-none"
+                      >
+                        {allCrewsForReassignment.map((cr) => (
+                          <option key={cr.id} value={cr.id}>
+                            {cr.name}
+                          </option>
+                        ))}
+                      </select>
                     </div>
-                    <select
-                      value={memberAssignment[mb.id] ?? ''}
-                      onChange={(e) =>
-                        setMemberAssignment((m) => ({
-                          ...m,
-                          [mb.id]: e.target.value,
-                        }))
-                      }
-                      className="rounded-2 border-2 border-paper-edge bg-white px-2 py-1.5 font-headline text-xs font-extrabold uppercase tracking-ribbon text-ink focus:border-orange focus:outline-none"
-                      title="Move to a different crew for this day"
-                    >
-                      {allCrewsForReassignment.map((cr) => (
-                        <option key={cr.id} value={cr.id}>
-                          {cr.name}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              // Crew-level direct entry (no members configured)
-              <div className="flex flex-wrap items-center gap-3 px-5 py-3">
-                <span className="text-xs italic text-fg-3 sm:flex-1">
-                  No crew members configured. Enter crew totals directly.
-                </span>
-                <div className="flex items-center gap-1.5">
-                  <span className="text-[10px] font-bold uppercase text-fg-3">
-                    Jobs
+                  ))}
+                </div>
+              ) : (
+                <div className="flex flex-wrap items-center gap-2 px-3 py-2">
+                  <span className="flex-1 text-xs italic text-fg-3">
+                    No crew members. Enter crew totals directly.
                   </span>
                   <input
                     type="text"
@@ -466,31 +459,31 @@ function CrewSectionGroup({
                     onChange={(e) =>
                       setCrewJobs((m) => ({ ...m, [c.id]: e.target.value }))
                     }
-                    placeholder="0"
-                    className="w-16 rounded-2 border-2 border-paper-edge bg-white px-2 py-1.5 text-right font-headline focus:border-orange focus:outline-none"
+                    placeholder="Jobs"
+                    title="Jobs"
+                    className="w-14 rounded-1 border border-paper-edge bg-white px-1.5 py-1 text-right font-headline text-sm focus:border-orange focus:outline-none"
                   />
+                  <div className="flex items-center">
+                    <span className="pr-0.5 text-[10px] font-bold text-fg-3">$</span>
+                    <input
+                      type="text"
+                      inputMode="decimal"
+                      name={`revenue__crew_${c.id}`}
+                      value={crewRevenue[c.id] ?? ''}
+                      onChange={(e) =>
+                        setCrewRevenue((m) => ({ ...m, [c.id]: e.target.value }))
+                      }
+                      placeholder="Revenue"
+                      title="Revenue"
+                      className="w-24 rounded-1 border border-paper-edge bg-white px-1.5 py-1 text-right font-headline text-sm focus:border-orange focus:outline-none"
+                    />
+                  </div>
                 </div>
-                <div className="flex items-center gap-1.5">
-                  <span className="text-[10px] font-bold uppercase text-fg-3">
-                    $
-                  </span>
-                  <input
-                    type="text"
-                    inputMode="decimal"
-                    name={`revenue__crew_${c.id}`}
-                    value={crewRevenue[c.id] ?? ''}
-                    onChange={(e) =>
-                      setCrewRevenue((m) => ({ ...m, [c.id]: e.target.value }))
-                    }
-                    placeholder="0"
-                    className="w-28 rounded-2 border-2 border-paper-edge bg-white px-2 py-1.5 text-right font-headline focus:border-orange focus:outline-none"
-                  />
-                </div>
-              </div>
-            )}
-          </div>
-        );
-      })}
+              )}
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 }

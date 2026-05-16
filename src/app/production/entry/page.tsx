@@ -38,7 +38,7 @@ export default async function ProductionEntryPage({
   const weekend = isWeekend(d);
 
   return (
-    <main className="mx-auto max-w-4xl px-6 py-10">
+    <main className="mx-auto max-w-6xl px-6 py-10">
       <p className="bt-eyebrow">Production</p>
       <h1 className="mt-2 font-display text-5xl uppercase tracking-wider text-ink">
         Daily Entry
