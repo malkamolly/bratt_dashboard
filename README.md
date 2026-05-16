@@ -90,6 +90,8 @@ npm install
 12. Paste the contents of `supabase/migrations/009_annual_production_goal.sql`,
     click Run. Adds an annual_production_goal column to yearly_targets so the
     Production PACE YTD progress bar can fill in once a goal is set.
+13. Paste the contents of `supabase/migrations/010_clam_team.sql`, click Run.
+    Adds the Clam crew (kind='clam') and seeds three members onto it.
 
 ### 4. Wire the app to Supabase
 

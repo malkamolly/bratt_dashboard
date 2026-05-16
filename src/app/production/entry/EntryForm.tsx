@@ -24,7 +24,7 @@ type Props = {
 // collapses to one card per row.
 // ----------------------------------------------------------------------------
 const ROW_LAYOUT: (string | null)[][] = [
-  ['PHC', 'Stump Grinding', null],
+  ['PHC', 'Stump Grinding', 'Clam'],
   ['Black', 'Red', null],
   ['Blue I', 'Blue II', 'Blue III'],
   ['Green 1', 'Green 2', null],
