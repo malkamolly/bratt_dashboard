@@ -115,6 +115,43 @@ The KickCharge brand kit is integrated:
 - Logo, mascot, and watermark PNGs in `public/brand/`
 - Branded components: `BrandHeader`, `TrustRibbon`, `.bt-card`, `.bt-btn-*`, `.bt-status-*`
 
+## Adding people to the allowlist
+
+The dashboard is private by default. Only emails in `allowed_emails` can sign in.
+
+**To add a person** (until the admin panel UI lands), open the Supabase
+**SQL Editor** and run:
+
+```sql
+insert into allowed_emails (email, role) values
+  ('newperson@bratttree.com', 'user')
+on conflict (email) do nothing;
+
+-- Make someone an admin (can edit budgets, names, etc.):
+update allowed_emails set role = 'admin' where email = 'connor@bratttree.com';
+```
+
+**To remove a person:**
+
+```sql
+delete from allowed_emails where email = 'someone@bratttree.com';
+```
+
+Removed users get bounced to /access-denied on their next request.
+
+## How sign-in works (one-time setup per team member)
+
+1. User visits any page on the dashboard.
+2. They get redirected to `/login`.
+3. They type their email and hit "Send Sign-In Link."
+4. Supabase emails them a one-click sign-in link (good for 1 hour).
+5. They click it. The dashboard verifies the link, sets a 30-day session
+   cookie, and confirms the email is on the allowlist.
+6. They&apos;re in.
+
+Customize the magic-link email template in your Supabase project under
+**Authentication -> Email Templates -> Magic Link**.
+
 ## What's NOT in this commit yet
 
 - Sales dashboard UI (`/sales`)
@@ -122,7 +159,6 @@ The KickCharge brand kit is integrated:
 - Production dashboard UI (`/production`)
 - Production entry form (`/production/entry`)
 - Admin panel actual controls (`/admin` is a stub)
-- Login page (`/login`) and middleware to enforce the allowlist
 - ServiceTitan integration (Phase 2 - not built intentionally)
 
 ## Phase 2 hooks

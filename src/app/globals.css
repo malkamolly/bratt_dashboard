@@ -30,7 +30,11 @@ body {
     @apply rounded-card border-[3px] border-lime p-6;
     background: linear-gradient(180deg, #FFFFFF 0%, #FBF5C8 100%);
   }
-  .bt-card-accent { border-color: theme('colors.orange.DEFAULT'); }
+  /* Accent variant of bt-card: swap the lime keyline for orange. */
+  .bt-card-orange {
+    @apply rounded-card border-[3px] border-orange p-6;
+    background: linear-gradient(180deg, #FFFFFF 0%, #FBF5C8 100%);
+  }
 
   /* Pill buttons */
   .bt-btn {
