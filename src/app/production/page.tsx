@@ -517,6 +517,8 @@ function HistoricalMonthView({
         rows={productionRows}
         nameById={nameById}
         totalRev={totalRev}
+        year={year}
+        month={month}
       />
       {stumpRows.length > 0 && (
         <HistoricalCrewTable
@@ -524,6 +526,8 @@ function HistoricalMonthView({
           rows={stumpRows}
           nameById={nameById}
           totalRev={totalRev}
+          year={year}
+          month={month}
         />
       )}
       {phcRows.length > 0 && (
@@ -532,6 +536,8 @@ function HistoricalMonthView({
           rows={phcRows}
           nameById={nameById}
           totalRev={totalRev}
+          year={year}
+          month={month}
         />
       )}
     </main>
@@ -543,11 +549,15 @@ function HistoricalCrewTable({
   rows,
   nameById,
   totalRev,
+  year,
+  month,
 }: {
   title: string;
   rows: Array<{ crew: Crew; jobs: number; revenue: number; budget: number }>;
   nameById: Map<string, string>;
   totalRev: number;
+  year: number;
+  month: number;
 }) {
   return (
     <section className="mt-10">
@@ -578,8 +588,13 @@ function HistoricalCrewTable({
                 key={r.crew.id}
                 className={idx % 2 === 0 ? 'bg-white' : 'bg-paper/40'}
               >
-                <Td className="font-headline font-bold text-ink">
-                  {nameById.get(r.crew.id) ?? r.crew.name}
+                <Td className="font-headline font-bold">
+                  <Link
+                    href={`/production/${r.crew.id}?year=${year}&month=${month}`}
+                    className="text-orange underline decoration-orange/40 underline-offset-2 hover:decoration-orange"
+                  >
+                    {nameById.get(r.crew.id) ?? r.crew.name}
+                  </Link>
                 </Td>
                 <Td align="right">{r.jobs}</Td>
                 <Td align="right">{fmtUsd(r.revenue)}</Td>
