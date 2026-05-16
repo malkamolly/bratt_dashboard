@@ -58,7 +58,6 @@ You'll do these steps once, in order, on your laptop.
 ```bash
 git clone https://github.com/BrattTreeService/bratt_dashboard.git
 cd bratt_dashboard
-git checkout claude/project-brief-questions-xGuGq
 npm install
 ```
 
