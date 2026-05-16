@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { getAllowedUser } from '@/lib/auth';
-import { loadSalesMonth } from '@/lib/sales-data';
+import { loadSalesMonth, loadYearToDate, type YearToDateData } from '@/lib/sales-data';
 import {
   calculateSalesPace,
   paceStatus,
@@ -64,7 +64,10 @@ export default async function SalesDashboardPage({
   const year = parseIntInRange(sp.year, 2000, 2100) ?? now.getFullYear();
   const month = parseIntInRange(sp.month, 1, 12) ?? now.getMonth() + 1;
 
-  const data = await loadSalesMonth(year, month);
+  const [data, ytd] = await Promise.all([
+    loadSalesMonth(year, month),
+    loadYearToDate(year),
+  ]);
   const nameById = new Map(data.salespeople.map((s) => [s.id, s.name]));
   const isHistorical = data.historicals.length > 0;
   const isCurrentMonth =
@@ -76,6 +79,7 @@ export default async function SalesDashboardPage({
         year={year}
         month={month}
         data={data}
+        ytd={ytd}
         nameById={nameById}
         isCurrentMonth={isCurrentMonth}
       />
@@ -87,6 +91,7 @@ export default async function SalesDashboardPage({
       year={year}
       month={month}
       data={data}
+      ytd={ytd}
       nameById={nameById}
       isCurrentMonth={isCurrentMonth}
     />
@@ -101,12 +106,14 @@ function LiveMonthView({
   year,
   month,
   data,
+  ytd,
   nameById,
   isCurrentMonth,
 }: {
   year: number;
   month: number;
   data: Awaited<ReturnType<typeof loadSalesMonth>>;
+  ytd: YearToDateData;
   nameById: Map<string, string>;
   isCurrentMonth: boolean;
 }) {
@@ -177,8 +184,10 @@ function LiveMonthView({
         showEntryButton={isCurrentMonth}
       />
 
+      <YtdStrip ytd={ytd} />
+
       {/* Company hero */}
-      <section className="mt-8 rounded-card bg-bark p-6 text-cream sm:p-8">
+      <section className="mt-3 rounded-card bg-bark p-6 text-cream sm:p-8">
         <div className="grid grid-cols-1 gap-6 sm:grid-cols-4 sm:items-stretch">
           <div className="flex flex-col justify-between border-b border-bark-deep pb-4 sm:border-b-0 sm:border-r sm:pb-0 sm:pr-6">
             <div>
@@ -353,12 +362,14 @@ function HistoricalMonthView({
   year,
   month,
   data,
+  ytd,
   nameById,
   isCurrentMonth,
 }: {
   year: number;
   month: number;
   data: Awaited<ReturnType<typeof loadSalesMonth>>;
+  ytd: YearToDateData;
   nameById: Map<string, string>;
   isCurrentMonth: boolean;
 }) {
@@ -396,8 +407,10 @@ function HistoricalMonthView({
         showEntryButton={isCurrentMonth}
       />
 
+      <YtdStrip ytd={ytd} />
+
       {/* Historical hero */}
-      <section className="mt-8 rounded-card bg-bark p-6 text-cream sm:p-8">
+      <section className="mt-3 rounded-card bg-bark p-6 text-cream sm:p-8">
         <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
           <div>
             <p className="font-headline text-xs font-extrabold uppercase tracking-ribbon text-lime">
@@ -493,13 +506,52 @@ function DashboardHeader({
         </p>
       </div>
       <div className="flex flex-col items-stretch gap-3 sm:items-end">
-        <MonthPicker year={year} month={month} />
         {showEntryButton && (
           <Link href="/sales/entry" className="bt-btn bt-btn-primary">
             Enter Today&apos;s Sales
           </Link>
         )}
+        <MonthPicker year={year} month={month} />
       </div>
+    </section>
+  );
+}
+
+/**
+ * A slim YTD progress bar that lives above the Company MTD card. Deliberately
+ * understated so it doesn't compete with the big monthly number.
+ */
+function YtdStrip({ ytd }: { ytd: YearToDateData }) {
+  if (!ytd.byMonth || ytd.byMonth.length === 0) return null;
+  const pct =
+    ytd.annualGoal && ytd.annualGoal > 0 ? ytd.ytdTotal / ytd.annualGoal : null;
+  const barPct = pct != null ? Math.min(100, Math.max(0, pct * 100)) : null;
+
+  return (
+    <section className="mt-6 flex flex-col gap-3 rounded-full border-2 border-paper-edge bg-white/70 px-5 py-2 sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+        <span className="font-headline text-[10px] font-extrabold uppercase tracking-ribbon text-fg-2">
+          YTD {ytd.year}
+        </span>
+        <span className="font-headline text-lg font-black text-ink">
+          {fmtUsd(ytd.ytdTotal)}
+        </span>
+        {ytd.annualGoal != null ? (
+          <span className="text-xs text-fg-3">
+            of {fmtUsd(ytd.annualGoal)} &middot; {pct != null ? fmtPct(pct) : '—'}
+          </span>
+        ) : (
+          <span className="text-xs text-fg-3">no annual goal set</span>
+        )}
+      </div>
+      {barPct != null && (
+        <div className="h-1.5 w-full overflow-hidden rounded-full bg-paper-edge sm:w-48">
+          <div
+            className="h-full rounded-full bg-orange"
+            style={{ width: `${barPct}%` }}
+          />
+        </div>
+      )}
     </section>
   );
 }
