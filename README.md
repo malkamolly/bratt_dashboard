@@ -72,6 +72,8 @@ npm install
 4. Paste the contents of `supabase/migrations/001_initial_schema.sql`, click Run.
 5. Paste the contents of `supabase/migrations/002_seed_data.sql`, click Run.
    (Before running, replace `owner@bratttree.com` with the real admin email.)
+6. Paste the contents of `supabase/migrations/003_monthly_historicals.sql`, click Run.
+   Adds the table that holds rolled-up monthly totals for closed months.
 
 ### 4. Wire the app to Supabase
 

@@ -33,6 +33,9 @@ export type SalesMonthData = {
   ctx: SalesMonthContext;
   salespeople: Salesperson[];
   entries: SalesEntryRow[];
+  /** Rolled-up monthly totals (one per salesperson). Empty if this month has
+   *  daily entries only. When present, these WIN over daily aggregates. */
+  historicals: Array<{ salesperson_id: string; amount: number }>;
   companyGoal: number;
   perPersonGoals: Record<string, number>;
   reconciliation: Record<string, number>;
@@ -70,6 +73,7 @@ export async function loadSalesMonth(
     reconRes,
     holidayRes,
     entriesRes,
+    historicalsRes,
   ] = await Promise.all([
     supabase
       .from('salespeople')
@@ -97,6 +101,11 @@ export async function loadSalesMonth(
       .select('entry_date, salesperson_id, amount')
       .gte('entry_date', start)
       .lte('entry_date', end),
+    supabase
+      .from('sales_monthly_historicals')
+      .select('salesperson_id, amount')
+      .eq('year', y)
+      .eq('month', m),
   ]);
 
   const holidays = new Set<IsoDate>(
@@ -122,11 +131,94 @@ export async function loadSalesMonth(
       salesperson_id: e.salesperson_id as string,
       amount: Number(e.amount),
     })),
+    historicals: (historicalsRes.data ?? []).map((h) => ({
+      salesperson_id: h.salesperson_id as string,
+      amount: Number(h.amount),
+    })),
     companyGoal: Number(settings?.company_goal ?? 0),
     perPersonGoals: normalizeMoneyMap(settings?.per_person_goals),
     reconciliation: normalizeMoneyMap(reconRes.data?.adjustments),
     holidays,
   };
+}
+
+// ----------------------------------------------------------------------------
+// Year-to-date roll-up
+// ----------------------------------------------------------------------------
+
+export type YearToDateData = {
+  year: number;
+  ytdTotal: number;
+  /** One entry per month present in either historicals or daily entries.
+   *  When a month has BOTH, historicals win and `source` is 'historicals'. */
+  byMonth: Array<{
+    month: number;
+    total: number;
+    source: 'historicals' | 'daily';
+  }>;
+  annualGoal: number | null;
+};
+
+/**
+ * Sum the year's sales: closed months come from `sales_monthly_historicals`,
+ * the live month comes from `sales_entries`. Annual goal is read from
+ * `yearly_targets` if present.
+ */
+export async function loadYearToDate(year?: number): Promise<YearToDateData> {
+  const now = new Date();
+  const y = year ?? now.getFullYear();
+  const supabase = await serverClient();
+
+  const [historicalsRes, entriesRes, targetRes] = await Promise.all([
+    supabase
+      .from('sales_monthly_historicals')
+      .select('month, amount')
+      .eq('year', y),
+    supabase
+      .from('sales_entries')
+      .select('entry_date, amount')
+      .gte('entry_date', `${y}-01-01`)
+      .lte('entry_date', `${y}-12-31`),
+    supabase
+      .from('yearly_targets')
+      .select('annual_goal')
+      .eq('year', y)
+      .maybeSingle(),
+  ]);
+
+  const histByMonth = new Map<number, number>();
+  for (const h of historicalsRes.data ?? []) {
+    const m = h.month as number;
+    histByMonth.set(m, (histByMonth.get(m) ?? 0) + Number(h.amount));
+  }
+
+  const dailyByMonth = new Map<number, number>();
+  for (const e of entriesRes.data ?? []) {
+    const m = Number((e.entry_date as string).slice(5, 7));
+    dailyByMonth.set(m, (dailyByMonth.get(m) ?? 0) + Number(e.amount));
+  }
+
+  const months = Array.from(
+    new Set<number>([...histByMonth.keys(), ...dailyByMonth.keys()]),
+  ).sort((a, b) => a - b);
+
+  const byMonth = months.map((m) => {
+    const hist = histByMonth.get(m) ?? 0;
+    const daily = dailyByMonth.get(m) ?? 0;
+    const useHist = hist > 0;
+    return {
+      month: m,
+      total: useHist ? hist : daily,
+      source: useHist ? ('historicals' as const) : ('daily' as const),
+    };
+  });
+
+  const ytdTotal = byMonth.reduce((s, x) => s + x.total, 0);
+  const annualGoal = targetRes.data?.annual_goal
+    ? Number(targetRes.data.annual_goal)
+    : null;
+
+  return { year: y, ytdTotal, byMonth, annualGoal };
 }
 
 /**

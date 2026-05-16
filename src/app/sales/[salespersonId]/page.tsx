@@ -6,11 +6,10 @@ import {
   monthRange,
   workingDaysInMonth,
   fromIsoDate,
-  toIsoDate,
   type IsoDate,
 } from '@/lib/dates';
-import { fmtUsd, monthLabel } from '@/lib/format';
-import { MonthPicker } from './MonthPicker';
+import { fmtUsd, fmtPct, monthLabel } from '@/lib/format';
+import { MonthPicker } from '@/components/MonthPicker';
 
 export const dynamic = 'force-dynamic';
 
@@ -44,7 +43,14 @@ export default async function SalespersonDetailPage({
   const supabase = await serverClient();
   const { start, end } = monthRange(year, month);
 
-  const [personRes, entriesRes, holidayRes, goalsRes] = await Promise.all([
+  const [
+    personRes,
+    entriesRes,
+    holidayRes,
+    goalsRes,
+    monthHistoricalRes,
+    yearHistoricalsRes,
+  ] = await Promise.all([
     supabase
       .from('salespeople')
       .select('id, name, is_active')
@@ -67,6 +73,19 @@ export default async function SalespersonDetailPage({
       .eq('year', year)
       .eq('month', month)
       .maybeSingle(),
+    supabase
+      .from('sales_monthly_historicals')
+      .select('amount, source_note')
+      .eq('salesperson_id', salespersonId)
+      .eq('year', year)
+      .eq('month', month)
+      .maybeSingle(),
+    supabase
+      .from('sales_monthly_historicals')
+      .select('month, amount')
+      .eq('salesperson_id', salespersonId)
+      .eq('year', year)
+      .order('month', { ascending: true }),
   ]);
 
   if (!personRes.data) notFound();
@@ -78,9 +97,15 @@ export default async function SalespersonDetailPage({
   );
   const totalWorkingDays = workingDaysInMonth(year, month, holidays);
 
-  const mtd = entries.reduce((s, e) => s + Number(e.amount), 0);
+  const monthHistorical = monthHistoricalRes.data
+    ? Number(monthHistoricalRes.data.amount)
+    : null;
+  const isHistoricalMonth = monthHistorical != null;
+
+  const dailySum = entries.reduce((s, e) => s + Number(e.amount), 0);
+  const mtd = isHistoricalMonth ? monthHistorical! : dailySum;
   const daysEntered = entries.length;
-  const dailyAvg = daysEntered > 0 ? mtd / daysEntered : 0;
+  const dailyAvg = daysEntered > 0 ? dailySum / daysEntered : 0;
 
   const rawGoals = goalsRes.data?.per_person_goals as
     | Record<string, number | string>
@@ -89,6 +114,12 @@ export default async function SalespersonDetailPage({
   const goalRaw = rawGoals?.[salespersonId];
   const goal = goalRaw != null ? Number(goalRaw) : null;
   const pctToGoal = goal && goal > 0 ? mtd / goal : null;
+
+  const priorMonths = (yearHistoricalsRes.data ?? []).map((h) => ({
+    month: h.month as number,
+    total: Number(h.amount),
+  }));
+  const ytdFromHistoricals = priorMonths.reduce((s, h) => s + h.total, 0);
 
   return (
     <main className="mx-auto max-w-4xl px-6 py-10">
@@ -106,18 +137,39 @@ export default async function SalespersonDetailPage({
         <MonthPicker year={year} month={month} />
       </div>
       <p className="mt-2 text-fg-2">
-        {monthLabel(year, month)} &middot;{' '}
-        <strong className="text-ink">{daysEntered}</strong> day
-        {daysEntered === 1 ? '' : 's'} entered of {totalWorkingDays} working days
+        {monthLabel(year, month)}
+        {isHistoricalMonth ? (
+          <>
+            {' '}&middot;{' '}
+            <span className="font-bold text-ink">Closed month</span>
+            <span className="ml-1 text-fg-3">(stored as monthly total)</span>
+          </>
+        ) : (
+          <>
+            {' '}&middot;{' '}
+            <strong className="text-ink">{daysEntered}</strong> day
+            {daysEntered === 1 ? '' : 's'} entered of {totalWorkingDays} working days
+          </>
+        )}
       </p>
 
       {/* Summary cards */}
       <section className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-4">
-        <SummaryCard label="Month-To-Date" value={fmtUsd(mtd)} accent="orange" />
+        <SummaryCard
+          label={isHistoricalMonth ? 'Month Total' : 'Month-To-Date'}
+          value={fmtUsd(mtd)}
+          accent="orange"
+        />
         <SummaryCard
           label="Daily Average"
           value={fmtUsd(dailyAvg)}
-          hint={daysEntered > 0 ? `Across ${daysEntered} day${daysEntered === 1 ? '' : 's'}` : undefined}
+          hint={
+            isHistoricalMonth
+              ? 'Not available (no daily detail)'
+              : daysEntered > 0
+                ? `Across ${daysEntered} day${daysEntered === 1 ? '' : 's'}`
+                : undefined
+          }
         />
         <SummaryCard
           label="Monthly Goal"
@@ -125,109 +177,204 @@ export default async function SalespersonDetailPage({
         />
         <SummaryCard
           label="% of Goal"
-          value={
-            pctToGoal != null
-              ? new Intl.NumberFormat('en-US', {
-                  style: 'percent',
-                  maximumFractionDigits: 0,
-                }).format(pctToGoal)
-              : '—'
-          }
+          value={pctToGoal != null ? fmtPct(pctToGoal) : '—'}
         />
       </section>
 
-      {/* Daily table */}
-      <section className="mt-8">
-        <h2 className="font-headline text-xl font-black uppercase tracking-ribbon text-ink">
-          Daily Entries
-        </h2>
+      {/* Daily table OR closed-month notice */}
+      {isHistoricalMonth ? (
+        <section className="mt-8 rounded-card border-2 border-dashed border-paper-edge bg-white/60 p-6 text-fg-2">
+          <p className="font-headline text-sm font-extrabold uppercase tracking-ribbon text-fg-2">
+            No daily breakdown
+          </p>
+          <p className="mt-2 text-sm">
+            {monthLabel(year, month)} was loaded as a monthly total rather than
+            day-by-day. The number above is the source of truth for this month.
+            {monthHistoricalRes.data?.source_note && (
+              <>
+                {' '}
+                <span className="text-fg-3">
+                  ({monthHistoricalRes.data.source_note})
+                </span>
+              </>
+            )}
+          </p>
+        </section>
+      ) : (
+        <DailyEntriesSection
+          year={year}
+          month={month}
+          start={start}
+          entries={entries}
+          total={dailySum}
+        />
+      )}
 
-        {entries.length === 0 ? (
-          <div className="mt-4 rounded-card border-2 border-dashed border-paper-edge bg-white/60 px-6 py-8 text-center text-fg-2">
-            No entries yet for {monthLabel(year, month)}.{' '}
-            <Link
-              href={`/sales/entry?date=${start}`}
-              className="font-bold text-orange hover:underline"
-            >
-              Add some →
-            </Link>
-          </div>
-        ) : (
+      {/* Prior months in this year */}
+      {priorMonths.length > 0 && (
+        <section className="mt-10">
+          <h2 className="font-headline text-xl font-black uppercase tracking-ribbon text-ink">
+            Prior Months ({year})
+          </h2>
           <div className="mt-4 overflow-hidden rounded-card border-[3px] border-lime bg-white">
             <table className="w-full text-left text-sm">
               <thead className="bg-paper-edge/40 text-fg-2">
                 <tr>
                   <th className="px-4 py-3 font-headline text-xs font-extrabold uppercase tracking-ribbon">
-                    Date
-                  </th>
-                  <th className="px-4 py-3 font-headline text-xs font-extrabold uppercase tracking-ribbon">
-                    Day
+                    Month
                   </th>
                   <th className="px-4 py-3 text-right font-headline text-xs font-extrabold uppercase tracking-ribbon">
-                    Amount
-                  </th>
-                  <th className="px-4 py-3 text-right font-headline text-xs font-extrabold uppercase tracking-ribbon">
-                    Entered By
+                    Total
                   </th>
                   <th className="px-4 py-3 text-right font-headline text-xs font-extrabold uppercase tracking-ribbon" />
                 </tr>
               </thead>
               <tbody>
-                {entries.map((e, idx) => {
-                  const d = fromIsoDate(e.entry_date as IsoDate);
-                  return (
-                    <tr
-                      key={e.entry_date as string}
-                      className={idx % 2 === 0 ? 'bg-white' : 'bg-paper/40'}
-                    >
-                      <td className="px-4 py-3 font-headline font-bold text-ink">
-                        {d.toLocaleDateString('en-US', {
-                          month: 'short',
-                          day: 'numeric',
-                          year: 'numeric',
-                        })}
-                      </td>
-                      <td className="px-4 py-3 text-fg-2">
-                        {d.toLocaleDateString('en-US', { weekday: 'long' })}
-                      </td>
-                      <td className="px-4 py-3 text-right font-headline font-bold">
-                        {fmtUsd(Number(e.amount))}
-                      </td>
-                      <td className="px-4 py-3 text-right text-xs text-fg-3">
-                        {e.created_by ?? '—'}
-                      </td>
-                      <td className="px-4 py-3 text-right">
-                        <Link
-                          href={`/sales/entry?date=${e.entry_date}`}
-                          className="font-headline text-xs font-extrabold uppercase tracking-ribbon text-orange hover:underline"
-                        >
-                          Edit →
-                        </Link>
-                      </td>
-                    </tr>
-                  );
-                })}
+                {priorMonths.map((p, idx) => (
+                  <tr
+                    key={p.month}
+                    className={idx % 2 === 0 ? 'bg-white' : 'bg-paper/40'}
+                  >
+                    <td className="px-4 py-3 font-headline font-bold text-ink">
+                      {monthLabel(year, p.month)}
+                    </td>
+                    <td className="px-4 py-3 text-right font-headline font-bold">
+                      {fmtUsd(p.total)}
+                    </td>
+                    <td className="px-4 py-3 text-right">
+                      <Link
+                        href={`/sales/${salespersonId}?year=${year}&month=${p.month}`}
+                        className="font-headline text-xs font-extrabold uppercase tracking-ribbon text-orange hover:underline"
+                      >
+                        View →
+                      </Link>
+                    </td>
+                  </tr>
+                ))}
               </tbody>
               <tfoot>
                 <tr className="border-t-2 border-paper-edge bg-paper-edge/30">
-                  <td
-                    colSpan={2}
-                    className="px-4 py-3 font-headline text-sm font-extrabold uppercase tracking-ribbon text-fg-2"
-                  >
-                    Total
+                  <td className="px-4 py-3 font-headline text-sm font-extrabold uppercase tracking-ribbon text-fg-2">
+                    Prior-Month Total
                   </td>
                   <td className="px-4 py-3 text-right font-headline text-lg font-black text-ink">
-                    {fmtUsd(mtd)}
+                    {fmtUsd(ytdFromHistoricals)}
                   </td>
-                  <td />
                   <td />
                 </tr>
               </tfoot>
             </table>
           </div>
-        )}
-      </section>
+        </section>
+      )}
     </main>
+  );
+}
+
+function DailyEntriesSection({
+  year,
+  month,
+  start,
+  entries,
+  total,
+}: {
+  year: number;
+  month: number;
+  start: string;
+  entries: Array<{ entry_date: string; amount: number | string; created_by: string | null }>;
+  total: number;
+}) {
+  return (
+    <section className="mt-8">
+      <h2 className="font-headline text-xl font-black uppercase tracking-ribbon text-ink">
+        Daily Entries
+      </h2>
+
+      {entries.length === 0 ? (
+        <div className="mt-4 rounded-card border-2 border-dashed border-paper-edge bg-white/60 px-6 py-8 text-center text-fg-2">
+          No entries yet for {monthLabel(year, month)}.{' '}
+          <Link
+            href={`/sales/entry?date=${start}`}
+            className="font-bold text-orange hover:underline"
+          >
+            Add some →
+          </Link>
+        </div>
+      ) : (
+        <div className="mt-4 overflow-hidden rounded-card border-[3px] border-lime bg-white">
+          <table className="w-full text-left text-sm">
+            <thead className="bg-paper-edge/40 text-fg-2">
+              <tr>
+                <th className="px-4 py-3 font-headline text-xs font-extrabold uppercase tracking-ribbon">
+                  Date
+                </th>
+                <th className="px-4 py-3 font-headline text-xs font-extrabold uppercase tracking-ribbon">
+                  Day
+                </th>
+                <th className="px-4 py-3 text-right font-headline text-xs font-extrabold uppercase tracking-ribbon">
+                  Amount
+                </th>
+                <th className="px-4 py-3 text-right font-headline text-xs font-extrabold uppercase tracking-ribbon">
+                  Entered By
+                </th>
+                <th className="px-4 py-3 text-right font-headline text-xs font-extrabold uppercase tracking-ribbon" />
+              </tr>
+            </thead>
+            <tbody>
+              {entries.map((e, idx) => {
+                const d = fromIsoDate(e.entry_date as IsoDate);
+                return (
+                  <tr
+                    key={e.entry_date as string}
+                    className={idx % 2 === 0 ? 'bg-white' : 'bg-paper/40'}
+                  >
+                    <td className="px-4 py-3 font-headline font-bold text-ink">
+                      {d.toLocaleDateString('en-US', {
+                        month: 'short',
+                        day: 'numeric',
+                        year: 'numeric',
+                      })}
+                    </td>
+                    <td className="px-4 py-3 text-fg-2">
+                      {d.toLocaleDateString('en-US', { weekday: 'long' })}
+                    </td>
+                    <td className="px-4 py-3 text-right font-headline font-bold">
+                      {fmtUsd(Number(e.amount))}
+                    </td>
+                    <td className="px-4 py-3 text-right text-xs text-fg-3">
+                      {e.created_by ?? '—'}
+                    </td>
+                    <td className="px-4 py-3 text-right">
+                      <Link
+                        href={`/sales/entry?date=${e.entry_date}`}
+                        className="font-headline text-xs font-extrabold uppercase tracking-ribbon text-orange hover:underline"
+                      >
+                        Edit →
+                      </Link>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+            <tfoot>
+              <tr className="border-t-2 border-paper-edge bg-paper-edge/30">
+                <td
+                  colSpan={2}
+                  className="px-4 py-3 font-headline text-sm font-extrabold uppercase tracking-ribbon text-fg-2"
+                >
+                  Total
+                </td>
+                <td className="px-4 py-3 text-right font-headline text-lg font-black text-ink">
+                  {fmtUsd(total)}
+                </td>
+                <td />
+                <td />
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+      )}
+    </section>
   );
 }
 
