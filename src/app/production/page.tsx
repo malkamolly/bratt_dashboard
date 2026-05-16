@@ -1,11 +1,13 @@
 export default function ProductionDashboardPage() {
   return (
-    <main className="mx-auto max-w-5xl px-6 py-16">
-      <h1 className="font-display text-3xl font-bold text-brand-primary">
+    <main className="mx-auto max-w-6xl px-6 py-12">
+      <p className="bt-eyebrow">Dashboard 2</p>
+      <h1 className="mt-2 font-display text-5xl uppercase tracking-wider text-ink">
         Production PACE
       </h1>
-      <p className="mt-4 text-brand-dark/70">
-        Dashboard coming next. Calculations live in <code>src/lib/calculations.ts</code>.
+      <p className="mt-4 max-w-xl text-fg-2">
+        Production crews and Plant Healthcare coming next. Calculations live in{' '}
+        <code className="font-mono text-sm">src/lib/calculations.ts</code>.
       </p>
     </main>
   );

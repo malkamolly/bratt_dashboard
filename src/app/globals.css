@@ -2,12 +2,65 @@
 @tailwind components;
 @tailwind utilities;
 
-:root {
-  --font-display: ui-sans-serif, system-ui, sans-serif;
-  --font-sans:    ui-sans-serif, system-ui, sans-serif;
+/* ---------- Brand fonts ---------- */
+@font-face {
+  font-family: "Rugfish";
+  src: url("/fonts/RugFishRegular.otf") format("opentype");
+  font-weight: 400 900;
+  font-style: normal;
+  font-display: swap;
 }
 
+/* Nunito is loaded as a <link> from Google Fonts in layout.tsx */
+
+/* ---------- Base ---------- */
+html { background: theme('colors.cream'); color: theme('colors.ink'); }
 body {
-  background: theme('colors.brand.light');
-  color: theme('colors.brand.dark');
+  font-family: theme('fontFamily.sans');
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+::selection { background: theme('colors.lime.DEFAULT'); color: theme('colors.ink'); }
+
+/* ---------- Brand components ---------- */
+@layer components {
+  /* The canonical "BRATT TREE" card: paper-warmth gradient + lime keyline */
+  .bt-card {
+    @apply rounded-card border-[3px] border-lime p-6;
+    background: linear-gradient(180deg, #FFFFFF 0%, #FBF5C8 100%);
+  }
+  .bt-card-accent { border-color: theme('colors.orange.DEFAULT'); }
+
+  /* Pill buttons */
+  .bt-btn {
+    @apply inline-flex items-center gap-2 rounded-full font-headline font-extrabold uppercase tracking-ribbon
+           text-sm px-6 py-3 transition-colors duration-150 ease-out-brand;
+  }
+  .bt-btn-primary { @apply bg-orange text-white hover:bg-orange-hover; }
+  .bt-btn-dark    { @apply bg-bark text-cream hover:bg-ink; }
+  .bt-btn-ghost   { @apply bg-transparent text-ink ring-2 ring-inset ring-ink hover:bg-ink hover:text-cream hover:ring-0; }
+
+  /* Trust strip - orange ribbon, ALL CAPS, wide-tracked */
+  .bt-ribbon {
+    @apply bg-orange text-white font-headline font-extrabold uppercase tracking-ribbon text-xs;
+  }
+
+  /* Dark wood top nav */
+  .bt-nav {
+    @apply bg-bark text-cream;
+  }
+
+  /* "Eyebrow" — small all-caps orange label above a heading */
+  .bt-eyebrow {
+    @apply font-headline font-extrabold uppercase tracking-ribbon text-xs text-orange;
+  }
+
+  /* Status chips */
+  .bt-status      { @apply inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-extrabold uppercase tracking-ribbon; }
+  .bt-status-ahead   { @apply bt-status bg-green-dark text-white; }
+  .bt-status-onpace  { @apply bt-status bg-green text-ink; }
+  .bt-status-behind  { @apply bt-status bg-orange-press text-white; }
+  .bt-status-warn    { @apply bt-status bg-status-warn text-ink; }
+  .bt-status-neutral { @apply bt-status bg-paper-edge text-fg-2; }
 }

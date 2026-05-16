@@ -105,15 +105,24 @@ Visit http://localhost:3000.
 
 Future updates are automatic: any push to `main` redeploys.
 
+## Brand system
+
+The KickCharge brand kit is integrated:
+
+- Color tokens in `tailwind.config.ts` (orange, lime, bark/wood, cream, etc.)
+- Rugfish display font in `public/fonts/`, loaded via `globals.css`
+- Nunito loaded from Google Fonts via `next/font`
+- Logo, mascot, and watermark PNGs in `public/brand/`
+- Branded components: `BrandHeader`, `TrustRibbon`, `.bt-card`, `.bt-btn-*`, `.bt-status-*`
+
 ## What's NOT in this commit yet
 
 - Sales dashboard UI (`/sales`)
 - Sales entry form (`/sales/entry`)
 - Production dashboard UI (`/production`)
 - Production entry form (`/production/entry`)
-- Admin panel (`/admin`)
+- Admin panel actual controls (`/admin` is a stub)
 - Login page (`/login`) and middleware to enforce the allowlist
-- Bratt Tree brand assets (logo, mascot, exact brand colors from KickCharge)
 - ServiceTitan integration (Phase 2 - not built intentionally)
 
 ## Phase 2 hooks
