@@ -74,6 +74,8 @@ npm install
    (Before running, replace `owner@bratttree.com` with the real admin email.)
 6. Paste the contents of `supabase/migrations/003_monthly_historicals.sql`, click Run.
    Adds the table that holds rolled-up monthly totals for closed months.
+7. Paste the contents of `supabase/migrations/004_crane_ops_and_production_historicals.sql`, click Run.
+   Adds the Crane Operators crew and the production-side monthly historicals table.
 
 ### 4. Wire the app to Supabase
 
