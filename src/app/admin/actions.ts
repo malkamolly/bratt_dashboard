@@ -33,7 +33,10 @@ function parseIntStrict(raw: FormDataEntryValue | null): number | null {
 function refreshAffectedPages() {
   revalidatePath('/');
   revalidatePath('/sales');
+  revalidatePath('/production');
   revalidatePath('/admin');
+  revalidatePath('/admin/sales');
+  revalidatePath('/admin/production');
 }
 
 // ----------------------------------------------------------------------------
@@ -44,17 +47,17 @@ export async function saveAnnualGoal(formData: FormData): Promise<void> {
   const year = parseIntStrict(formData.get('year'));
   const annualGoal = parseMoney(formData.get('annual_goal'));
   if (year == null || annualGoal == null) {
-    redirect('/admin?error=invalid_annual_goal');
+    redirect('/admin/sales?error=invalid_annual_goal');
   }
 
   const supabase = await serverClient();
   const { error } = await supabase
     .from('yearly_targets')
     .upsert({ year: year!, annual_goal: annualGoal! }, { onConflict: 'year' });
-  if (error) redirect(`/admin?error=${encodeURIComponent(error.message)}`);
+  if (error) redirect(`/admin/sales?error=${encodeURIComponent(error.message)}`);
 
   refreshAffectedPages();
-  redirect('/admin?saved=annual');
+  redirect('/admin/sales?saved=annual');
 }
 
 // ----------------------------------------------------------------------------
@@ -66,7 +69,7 @@ export async function saveMonthlyGoals(formData: FormData): Promise<void> {
   const month = parseIntStrict(formData.get('month'));
   const companyGoal = parseMoney(formData.get('company_goal'));
   if (year == null || month == null || companyGoal == null) {
-    redirect('/admin?error=invalid_monthly_goals');
+    redirect('/admin/sales?error=invalid_monthly_goals');
   }
 
   // Per-person inputs are keyed "goal__<salesperson_id>".
@@ -76,7 +79,7 @@ export async function saveMonthlyGoals(formData: FormData): Promise<void> {
     const id = key.slice('goal__'.length);
     const amt = parseMoney(value);
     if (amt == null) {
-      redirect('/admin?error=invalid_person_goal');
+      redirect('/admin/sales?error=invalid_person_goal');
     }
     if (amt! > 0) perPersonGoals[id] = amt!;
   }
@@ -93,10 +96,10 @@ export async function saveMonthlyGoals(formData: FormData): Promise<void> {
       },
       { onConflict: 'year,month' },
     );
-  if (error) redirect(`/admin?error=${encodeURIComponent(error.message)}`);
+  if (error) redirect(`/admin/sales?error=${encodeURIComponent(error.message)}`);
 
   refreshAffectedPages();
-  redirect(`/admin?year=${year}&month=${month}&saved=goals`);
+  redirect(`/admin/sales?year=${year}&month=${month}&saved=goals`);
 }
 
 // ----------------------------------------------------------------------------
@@ -107,7 +110,7 @@ export async function saveHistoricals(formData: FormData): Promise<void> {
   const year = parseIntStrict(formData.get('year'));
   const month = parseIntStrict(formData.get('month'));
   if (year == null || month == null) {
-    redirect('/admin?error=invalid_historicals');
+    redirect('/admin/sales?error=invalid_historicals');
   }
 
   type Row = {
@@ -124,7 +127,7 @@ export async function saveHistoricals(formData: FormData): Promise<void> {
     const salesperson_id = key.slice('hist__'.length);
     const amount = parseMoney(value);
     if (amount == null) {
-      redirect('/admin?error=invalid_hist_amount');
+      redirect('/admin/sales?error=invalid_hist_amount');
     }
     rows.push({
       year: year!,
@@ -137,17 +140,17 @@ export async function saveHistoricals(formData: FormData): Promise<void> {
   }
 
   if (rows.length === 0) {
-    redirect(`/admin?year=${year}&month=${month}&error=no_rows`);
+    redirect(`/admin/sales?year=${year}&month=${month}&error=no_rows`);
   }
 
   const supabase = await serverClient();
   const { error } = await supabase
     .from('sales_monthly_historicals')
     .upsert(rows, { onConflict: 'year,month,salesperson_id' });
-  if (error) redirect(`/admin?error=${encodeURIComponent(error.message)}`);
+  if (error) redirect(`/admin/sales?error=${encodeURIComponent(error.message)}`);
 
   refreshAffectedPages();
-  redirect(`/admin?year=${year}&month=${month}&saved=historicals`);
+  redirect(`/admin/sales?year=${year}&month=${month}&saved=historicals`);
 }
 
 // ----------------------------------------------------------------------------
@@ -164,10 +167,10 @@ export async function addSalesperson(formData: FormData): Promise<void> {
   const { error } = await supabase
     .from('salespeople')
     .insert({ name, display_order: displayOrder, is_active: true });
-  if (error) redirect(`/admin?error=${encodeURIComponent(error.message)}`);
+  if (error) redirect(`/admin/sales?error=${encodeURIComponent(error.message)}`);
 
   refreshAffectedPages();
-  redirect('/admin?saved=salesperson_added');
+  redirect('/admin/sales?saved=salesperson_added');
 }
 
 export async function updateSalesperson(formData: FormData): Promise<void> {
@@ -176,17 +179,17 @@ export async function updateSalesperson(formData: FormData): Promise<void> {
   const name = String(formData.get('name') ?? '').trim();
   const displayOrder = parseIntStrict(formData.get('display_order')) ?? 0;
   const isActive = formData.get('is_active') === 'on';
-  if (!id || !name) redirect('/admin?error=missing_fields');
+  if (!id || !name) redirect('/admin/sales?error=missing_fields');
 
   const supabase = await serverClient();
   const { error } = await supabase
     .from('salespeople')
     .update({ name, display_order: displayOrder, is_active: isActive })
     .eq('id', id);
-  if (error) redirect(`/admin?error=${encodeURIComponent(error.message)}`);
+  if (error) redirect(`/admin/sales?error=${encodeURIComponent(error.message)}`);
 
   refreshAffectedPages();
-  redirect('/admin?saved=salesperson_updated');
+  redirect('/admin/sales?saved=salesperson_updated');
 }
 
 // ----------------------------------------------------------------------------
@@ -198,7 +201,7 @@ export async function addCrewMember(formData: FormData): Promise<void> {
   const homeCrewId = String(formData.get('home_crew_id') ?? '') || null;
   const isForeman = formData.get('is_foreman') === 'on';
   const displayOrder = parseIntStrict(formData.get('display_order')) ?? 999;
-  if (!name) redirect('/admin?error=missing_name');
+  if (!name) redirect('/admin/production?error=missing_name');
 
   const supabase = await serverClient();
   const { error } = await supabase.from('crew_members').insert({
@@ -208,10 +211,10 @@ export async function addCrewMember(formData: FormData): Promise<void> {
     display_order: displayOrder,
     is_active: true,
   });
-  if (error) redirect(`/admin?error=${encodeURIComponent(error.message)}`);
+  if (error) redirect(`/admin/production?error=${encodeURIComponent(error.message)}`);
 
   refreshAffectedPages();
-  redirect('/admin?saved=crew_member_added');
+  redirect('/admin/production?saved=crew_member_added');
 }
 
 export async function updateCrewMember(formData: FormData): Promise<void> {
@@ -222,7 +225,7 @@ export async function updateCrewMember(formData: FormData): Promise<void> {
   const isForeman = formData.get('is_foreman') === 'on';
   const isActive = formData.get('is_active') === 'on';
   const displayOrder = parseIntStrict(formData.get('display_order')) ?? 0;
-  if (!id || !name) redirect('/admin?error=missing_fields');
+  if (!id || !name) redirect('/admin/production?error=missing_fields');
 
   const supabase = await serverClient();
   const { error } = await supabase
@@ -235,8 +238,8 @@ export async function updateCrewMember(formData: FormData): Promise<void> {
       display_order: displayOrder,
     })
     .eq('id', id);
-  if (error) redirect(`/admin?error=${encodeURIComponent(error.message)}`);
+  if (error) redirect(`/admin/production?error=${encodeURIComponent(error.message)}`);
 
   refreshAffectedPages();
-  redirect('/admin?saved=crew_member_updated');
+  redirect('/admin/production?saved=crew_member_updated');
 }

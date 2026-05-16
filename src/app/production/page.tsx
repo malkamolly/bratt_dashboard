@@ -137,15 +137,15 @@ function LiveMonthView({
     c.budgeted_days,
   );
 
-  const productionCrewIds = new Set(
-    data.crews.filter((cr) => cr.kind === 'production').map((cr) => cr.id),
-  );
-  const phcCrewIds = new Set(
-    data.crews.filter((cr) => cr.kind === 'phc').map((cr) => cr.id),
-  );
+  const idsByKind = (kind: string) =>
+    new Set(data.crews.filter((cr) => cr.kind === kind).map((cr) => cr.id));
+  const productionCrewIds = idsByKind('production');
+  const stumpCrewIds = idsByKind('stump');
+  const phcCrewIds = idsByKind('phc');
   const productionCrewRows = result.perCrew.filter((p) =>
     productionCrewIds.has(p.crew_id),
   );
+  const stumpCrewRows = result.perCrew.filter((p) => stumpCrewIds.has(p.crew_id));
   const phcCrewRows = result.perCrew.filter((p) => phcCrewIds.has(p.crew_id));
 
   const weeks = workingWeeksInMonth(year, month, data.holidays);
@@ -299,6 +299,16 @@ function LiveMonthView({
         companyDaysComplete={c.budgeted_days_been_through}
       />
 
+      {stumpCrewRows.length > 0 && (
+        <CrewTable
+          title="Stump Grinding"
+          rows={stumpCrewRows}
+          nameById={nameById}
+          companyDays={c.budgeted_days}
+          companyDaysComplete={c.budgeted_days_been_through}
+        />
+      )}
+
       {phcCrewRows.length > 0 && (
         <CrewTable
           title="Plant Healthcare"
@@ -432,22 +442,18 @@ function HistoricalMonthView({
           : 'on-pace'
       : 'no-data';
 
-  const productionRows = data.crews
-    .filter((c) => c.kind === 'production')
-    .map((c) => ({
-      crew: c,
-      jobs: histByCrew.get(c.id)?.jobs ?? 0,
-      revenue: histByCrew.get(c.id)?.revenue ?? 0,
-      budget: data.crewBudgets[c.id] ?? 0,
-    }));
-  const phcRows = data.crews
-    .filter((c) => c.kind === 'phc')
-    .map((c) => ({
-      crew: c,
-      jobs: histByCrew.get(c.id)?.jobs ?? 0,
-      revenue: histByCrew.get(c.id)?.revenue ?? 0,
-      budget: data.crewBudgets[c.id] ?? 0,
-    }));
+  const rowsForKind = (kind: string) =>
+    data.crews
+      .filter((c) => c.kind === kind)
+      .map((c) => ({
+        crew: c,
+        jobs: histByCrew.get(c.id)?.jobs ?? 0,
+        revenue: histByCrew.get(c.id)?.revenue ?? 0,
+        budget: data.crewBudgets[c.id] ?? 0,
+      }));
+  const productionRows = rowsForKind('production');
+  const stumpRows = rowsForKind('stump');
+  const phcRows = rowsForKind('phc');
 
   return (
     <main className="mx-auto max-w-6xl px-6 py-10">
@@ -488,6 +494,14 @@ function HistoricalMonthView({
         nameById={nameById}
         totalRev={totalRev}
       />
+      {stumpRows.length > 0 && (
+        <HistoricalCrewTable
+          title="Stump Grinding"
+          rows={stumpRows}
+          nameById={nameById}
+          totalRev={totalRev}
+        />
+      )}
       {phcRows.length > 0 && (
         <HistoricalCrewTable
           title="Plant Healthcare"
