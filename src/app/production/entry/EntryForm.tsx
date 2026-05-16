@@ -23,13 +23,15 @@ type Props = {
 // empty placeholders so the next row starts cleanly on the left. Mobile
 // collapses to one card per row.
 // ----------------------------------------------------------------------------
-const ROW_LAYOUT: (string | null)[][] = [
+// Each row is a list of crew names. Rows shorter than 3 get centered (empty
+// cells flank the cards left and right) so card widths stay uniform.
+const ROW_LAYOUT: string[][] = [
   ['PHC', 'Stump Grinding', 'Clam'],
-  ['Black', 'Red', null],
+  ['Black', 'Red'],
   ['Blue I', 'Blue II', 'Blue III'],
-  ['Green 1', 'Green 2', null],
-  ['Gray', 'Pink', null],
-  ['Other', 'Unassigned', null],
+  ['Green 1', 'Green 2'],
+  ['Gray', 'Pink'],
+  ['Other', 'Unassigned'],
 ];
 
 function SaveButton({ dirty }: { dirty: boolean }) {
@@ -221,30 +223,17 @@ export function EntryForm({
     router.push(`/production/entry?${params.toString()}`);
   }
 
-  // Flatten the row layout into a single ordered list of cells. Each entry
-  // is either a crew (to render a card) or `null` (an empty placeholder cell
-  // that keeps later rows aligned to column 0). Any active crews not named
-  // in the layout get appended at the bottom.
+  // Resolve crew names → crews. Any active crews not named in the layout
+  // get appended as a final row so they're never missing from the form.
   const crewByName = new Map(crews.map((c) => [c.name, c]));
-  const namedInLayout = new Set(
-    ROW_LAYOUT.flat().filter((s): s is string => s != null),
-  );
+  const namedInLayout = new Set(ROW_LAYOUT.flat());
   const extraCrews = crews.filter((c) => !namedInLayout.has(c.name));
 
-  type Cell = { kind: 'crew'; crew: Crew } | { kind: 'empty' };
-  const cells: Cell[] = [];
-  for (const row of ROW_LAYOUT) {
-    for (const slot of row) {
-      if (slot == null) {
-        cells.push({ kind: 'empty' });
-      } else {
-        const crew = crewByName.get(slot);
-        if (crew) cells.push({ kind: 'crew', crew });
-      }
-    }
-  }
-  for (const c of extraCrews) {
-    cells.push({ kind: 'crew', crew: c });
+  const renderedRows: Crew[][] = ROW_LAYOUT.map((names) =>
+    names.map((n) => crewByName.get(n)).filter((c): c is Crew => !!c),
+  ).filter((row) => row.length > 0);
+  if (extraCrews.length > 0) {
+    renderedRows.push(extraCrews);
   }
 
   return (
@@ -252,7 +241,12 @@ export function EntryForm({
       <input type="hidden" name="entry_date" value={date} />
 
       <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-        <label className="flex flex-col gap-1">
+        <p className="text-sm text-fg-2 sm:max-w-xl">
+          Type each crew member&apos;s numbers below. Crew totals update live as
+          you type. Use a member&apos;s <strong>Crew ▾</strong> dropdown to move
+          them to a different crew just for this day.
+        </p>
+        <label className="flex flex-col gap-1 sm:items-end">
           <span className="bt-eyebrow">Entry Date</span>
           <input
             type="date"
@@ -261,11 +255,6 @@ export function EntryForm({
             className="rounded-2 border-2 border-paper-edge bg-white px-3 py-2 font-headline text-base focus:border-orange focus:outline-none"
           />
         </label>
-        <p className="text-sm text-fg-2 sm:max-w-md">
-          Type each crew member&apos;s numbers below. Crew totals update live as
-          you type. Use a member&apos;s <strong>Crew ▾</strong> dropdown to move
-          them to a different crew just for this day.
-        </p>
       </div>
 
       {justSaved && !state && (
@@ -279,32 +268,60 @@ export function EntryForm({
         </div>
       )}
 
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-        {cells.map((cell, i) => {
-          if (cell.kind === 'empty') {
-            return <div key={`empty-${i}`} className="hidden md:block" />;
-          }
-          const { crew } = cell;
-          const members = memberByCrew.get(crew.id) ?? [];
-          const totals = crewTotals.get(crew.id) ?? { jobs: 0, revenue: 0 };
+      <div className="space-y-4">
+        {renderedRows.map((row, ri) => {
+          // Each row is its own 6-column grid so short rows can be centered
+          // with empty spacer cells. A card always spans 2 of 6 columns so it
+          // has the same visual width regardless of how many cards are in the
+          // row. 3 cards = 2+2+2; 2 cards = 1+2+2+1; 1 card = 2+2+2.
+          const sideSpan =
+            row.length === 3 ? 0 : row.length === 2 ? 1 : row.length === 1 ? 2 : 0;
           return (
-            <CrewCard
-              key={crew.id}
-              crew={crew}
-              members={members}
-              totals={totals}
-              allCrewsForReassignment={crews}
-              memberJobs={memberJobs}
-              setMemberJobs={setMemberJobs}
-              memberRevenue={memberRevenue}
-              setMemberRevenue={setMemberRevenue}
-              memberAssignment={memberAssignment}
-              setMemberAssignment={setMemberAssignment}
-              crewJobs={crewJobs}
-              setCrewJobs={setCrewJobs}
-              crewRevenue={crewRevenue}
-              setCrewRevenue={setCrewRevenue}
-            />
+            <div key={ri} className="grid grid-cols-1 gap-4 md:grid-cols-6">
+              {sideSpan > 0 && (
+                <div
+                  className={
+                    sideSpan === 1
+                      ? 'hidden md:block md:col-span-1'
+                      : 'hidden md:block md:col-span-2'
+                  }
+                />
+              )}
+              {row.map((crew) => {
+                const members = memberByCrew.get(crew.id) ?? [];
+                const totals =
+                  crewTotals.get(crew.id) ?? { jobs: 0, revenue: 0 };
+                return (
+                  <div key={crew.id} className="md:col-span-2">
+                    <CrewCard
+                      crew={crew}
+                      members={members}
+                      totals={totals}
+                      allCrewsForReassignment={crews}
+                      memberJobs={memberJobs}
+                      setMemberJobs={setMemberJobs}
+                      memberRevenue={memberRevenue}
+                      setMemberRevenue={setMemberRevenue}
+                      memberAssignment={memberAssignment}
+                      setMemberAssignment={setMemberAssignment}
+                      crewJobs={crewJobs}
+                      setCrewJobs={setCrewJobs}
+                      crewRevenue={crewRevenue}
+                      setCrewRevenue={setCrewRevenue}
+                    />
+                  </div>
+                );
+              })}
+              {sideSpan > 0 && (
+                <div
+                  className={
+                    sideSpan === 1
+                      ? 'hidden md:block md:col-span-1'
+                      : 'hidden md:block md:col-span-2'
+                  }
+                />
+              )}
+            </div>
           );
         })}
       </div>
