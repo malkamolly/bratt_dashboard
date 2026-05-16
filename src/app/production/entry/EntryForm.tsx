@@ -40,7 +40,7 @@ function SaveButton({ dirty }: { dirty: boolean }) {
     <button
       type="submit"
       disabled={pending || !dirty}
-      className="bt-btn bt-btn-primary disabled:cursor-not-allowed disabled:opacity-60"
+      className="bt-btn bt-btn-primary w-full justify-center disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
     >
       {pending ? 'Saving…' : 'Save Day'}
     </button>
@@ -340,8 +340,11 @@ export function EntryForm({
         </div>
       </div>
 
-      <div className="flex items-center justify-end gap-3">
-        <a href="/production" className="bt-btn bt-btn-ghost">
+      <div className="flex flex-col-reverse gap-2 sm:flex-row sm:items-center sm:justify-end sm:gap-3">
+        <a
+          href="/production"
+          className="bt-btn bt-btn-ghost w-full justify-center sm:w-auto"
+        >
           Back to Dashboard
         </a>
         <SaveButton dirty={dirty} />
