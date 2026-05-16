@@ -56,7 +56,7 @@ You'll do these steps once, in order, on your laptop.
 ### 2. Get the code
 
 ```bash
-git clone https://github.com/BrattTreeService/bratt_dashboard.git
+git clone https://github.com/malkamolly/bratt_dashboard.git
 cd bratt_dashboard
 npm install
 ```
