@@ -188,3 +188,55 @@ export async function updateSalesperson(formData: FormData): Promise<void> {
   refreshAffectedPages();
   redirect('/admin?saved=salesperson_updated');
 }
+
+// ----------------------------------------------------------------------------
+// 5. Crew members (production roster)
+// ----------------------------------------------------------------------------
+export async function addCrewMember(formData: FormData): Promise<void> {
+  await requireAdmin();
+  const name = String(formData.get('name') ?? '').trim();
+  const homeCrewId = String(formData.get('home_crew_id') ?? '') || null;
+  const isForeman = formData.get('is_foreman') === 'on';
+  const displayOrder = parseIntStrict(formData.get('display_order')) ?? 999;
+  if (!name) redirect('/admin?error=missing_name');
+
+  const supabase = await serverClient();
+  const { error } = await supabase.from('crew_members').insert({
+    name,
+    home_crew_id: homeCrewId,
+    is_foreman: isForeman,
+    display_order: displayOrder,
+    is_active: true,
+  });
+  if (error) redirect(`/admin?error=${encodeURIComponent(error.message)}`);
+
+  refreshAffectedPages();
+  redirect('/admin?saved=crew_member_added');
+}
+
+export async function updateCrewMember(formData: FormData): Promise<void> {
+  await requireAdmin();
+  const id = String(formData.get('id') ?? '');
+  const name = String(formData.get('name') ?? '').trim();
+  const homeCrewId = String(formData.get('home_crew_id') ?? '') || null;
+  const isForeman = formData.get('is_foreman') === 'on';
+  const isActive = formData.get('is_active') === 'on';
+  const displayOrder = parseIntStrict(formData.get('display_order')) ?? 0;
+  if (!id || !name) redirect('/admin?error=missing_fields');
+
+  const supabase = await serverClient();
+  const { error } = await supabase
+    .from('crew_members')
+    .update({
+      name,
+      home_crew_id: homeCrewId,
+      is_foreman: isForeman,
+      is_active: isActive,
+      display_order: displayOrder,
+    })
+    .eq('id', id);
+  if (error) redirect(`/admin?error=${encodeURIComponent(error.message)}`);
+
+  refreshAffectedPages();
+  redirect('/admin?saved=crew_member_updated');
+}

@@ -76,6 +76,9 @@ npm install
    Adds the table that holds rolled-up monthly totals for closed months.
 7. Paste the contents of `supabase/migrations/004_crane_ops_and_production_historicals.sql`, click Run.
    Adds the Crane Operators crew and the production-side monthly historicals table.
+8. Paste the contents of `supabase/migrations/005_crew_members_and_member_entries.sql`, click Run.
+   Adds the crew_members and production_member_entries tables, seeds the visible
+   roster (Black, Blue I, Stump Grinding, PHC), and deactivates Crane Operators.
 
 ### 4. Wire the app to Supabase
 
