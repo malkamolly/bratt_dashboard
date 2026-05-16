@@ -24,18 +24,18 @@ export function MonthPicker({ year, month, basePath }: Props) {
   const prevHref = basePath ? `${basePath}?${prevQuery}` : `?${prevQuery}`;
   const nextHref = basePath ? `${basePath}?${nextQuery}` : `?${nextQuery}`;
 
-  const btn =
-    'inline-flex h-9 w-9 items-center justify-center rounded-full border-2 border-bark bg-white font-headline text-base font-extrabold text-ink hover:border-orange hover:bg-orange hover:text-white transition-colors';
+  const arrow =
+    'inline-flex h-7 w-7 items-center justify-center rounded-full text-cream/70 transition-colors hover:bg-lime hover:text-ink';
 
   return (
-    <div className="inline-flex items-center gap-2 rounded-full border-2 border-bark bg-white/80 px-2 py-1">
-      <Link href={prevHref} aria-label="Previous month" className={btn}>
+    <div className="inline-flex items-center gap-2 rounded-full bg-bark px-3 py-1.5 text-cream shadow-sh-1">
+      <Link href={prevHref} aria-label="Previous month" className={arrow}>
         ←
       </Link>
-      <span className="min-w-[7rem] text-center font-headline text-sm font-extrabold uppercase tracking-ribbon text-ink">
+      <span className="min-w-[6.5rem] text-center font-headline text-xs font-extrabold uppercase tracking-ribbon text-cream">
         {MONTHS[month - 1]} {year}
       </span>
-      <Link href={nextHref} aria-label="Next month" className={btn}>
+      <Link href={nextHref} aria-label="Next month" className={arrow}>
         →
       </Link>
     </div>
