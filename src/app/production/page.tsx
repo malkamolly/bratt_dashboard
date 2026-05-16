@@ -137,17 +137,18 @@ function LiveMonthView({
     c.budgeted_days,
   );
 
-  const idsByKind = (kind: string) =>
-    new Set(data.crews.filter((cr) => cr.kind === kind).map((cr) => cr.id));
-  const productionCrewIds = idsByKind('production');
-  const stumpCrewIds = idsByKind('stump');
-  const clamCrewIds = idsByKind('clam');
-  const phcCrewIds = idsByKind('phc');
+  // Clam crews live inside the Production Crews section on the dashboard
+  // (even though they have kind='clam' so the entry form positions them
+  // separately).
+  const idsByKinds = (...kinds: string[]) =>
+    new Set(data.crews.filter((cr) => kinds.includes(cr.kind)).map((cr) => cr.id));
+  const productionCrewIds = idsByKinds('production', 'clam');
+  const stumpCrewIds = idsByKinds('stump');
+  const phcCrewIds = idsByKinds('phc');
   const productionCrewRows = result.perCrew.filter((p) =>
     productionCrewIds.has(p.crew_id),
   );
   const stumpCrewRows = result.perCrew.filter((p) => stumpCrewIds.has(p.crew_id));
-  const clamCrewRows = result.perCrew.filter((p) => clamCrewIds.has(p.crew_id));
   const phcCrewRows = result.perCrew.filter((p) => phcCrewIds.has(p.crew_id));
 
   const weeks = workingWeeksInMonth(year, month, data.holidays);
@@ -311,16 +312,6 @@ function LiveMonthView({
         />
       )}
 
-      {clamCrewRows.length > 0 && (
-        <CrewTable
-          title="Clam"
-          rows={clamCrewRows}
-          nameById={nameById}
-          companyDays={c.budgeted_days}
-          companyDaysComplete={c.budgeted_days_been_through}
-        />
-      )}
-
       {phcCrewRows.length > 0 && (
         <CrewTable
           title="Plant Healthcare"
@@ -352,8 +343,18 @@ function CrewTable({
       <h2 className="font-headline text-xl font-black uppercase tracking-ribbon text-ink">
         {title}
       </h2>
-      <div className="mt-4 overflow-hidden rounded-card border-[3px] border-lime bg-white">
-        <table className="w-full text-left text-sm">
+      <div className="mt-4 overflow-x-auto rounded-card border-[3px] border-lime bg-white">
+        <table className="w-full min-w-[768px] table-fixed text-left text-sm">
+          <colgroup>
+            <col className="w-[18%]" />
+            <col className="w-[8%]" />
+            <col className="w-[13%]" />
+            <col className="w-[12%]" />
+            <col className="w-[13%]" />
+            <col className="w-[13%]" />
+            <col className="w-[11%]" />
+            <col className="w-[12%]" />
+          </colgroup>
           <thead className="bg-paper-edge/40 text-fg-2">
             <tr>
               <Th>Crew</Th>
@@ -454,19 +455,23 @@ function HistoricalMonthView({
           : 'on-pace'
       : 'no-data';
 
-  const rowsForKind = (kind: string) =>
+  const rowsForKinds = (...kinds: string[]) =>
     data.crews
-      .filter((c) => c.kind === kind)
+      .filter((c) => kinds.includes(c.kind))
       .map((c) => ({
         crew: c,
         jobs: histByCrew.get(c.id)?.jobs ?? 0,
         revenue: histByCrew.get(c.id)?.revenue ?? 0,
         budget: data.crewBudgets[c.id] ?? 0,
       }));
-  const productionRows = rowsForKind('production');
-  const stumpRows = rowsForKind('stump');
-  const clamRows = rowsForKind('clam');
-  const phcRows = rowsForKind('phc');
+  const productionRows = rowsForKinds('production', 'clam');
+  const stumpRows = rowsForKinds('stump');
+  const phcRows = rowsForKinds('phc');
+  const sumRev = (rows: typeof productionRows) =>
+    rows.reduce((s, r) => s + r.revenue, 0);
+  const productionSubtotal = sumRev(productionRows);
+  const stumpSubtotal = sumRev(stumpRows);
+  const phcSubtotal = sumRev(phcRows);
 
   return (
     <main className="mx-auto max-w-6xl px-6 py-10">
@@ -499,6 +504,12 @@ function HistoricalMonthView({
           </div>
           <span className={statusChipClass(status)}>{statusLabel(status)}</span>
         </div>
+
+        <div className="mt-6 grid grid-cols-3 gap-3 border-t border-bark-deep pt-4">
+          <SubtotalStat label="Production Crews" value={productionSubtotal} />
+          <SubtotalStat label="Stump Grinding" value={stumpSubtotal} />
+          <SubtotalStat label="PHC" value={phcSubtotal} />
+        </div>
       </section>
 
       <HistoricalCrewTable
@@ -511,14 +522,6 @@ function HistoricalMonthView({
         <HistoricalCrewTable
           title="Stump Grinding"
           rows={stumpRows}
-          nameById={nameById}
-          totalRev={totalRev}
-        />
-      )}
-      {clamRows.length > 0 && (
-        <HistoricalCrewTable
-          title="Clam"
-          rows={clamRows}
           nameById={nameById}
           totalRev={totalRev}
         />
@@ -551,8 +554,15 @@ function HistoricalCrewTable({
       <h2 className="font-headline text-xl font-black uppercase tracking-ribbon text-ink">
         {title}
       </h2>
-      <div className="mt-4 overflow-hidden rounded-card border-[3px] border-lime bg-white">
-        <table className="w-full text-left text-sm">
+      <div className="mt-4 overflow-x-auto rounded-card border-[3px] border-lime bg-white">
+        <table className="w-full min-w-[640px] table-fixed text-left text-sm">
+          <colgroup>
+            <col className="w-[28%]" />
+            <col className="w-[12%]" />
+            <col className="w-[22%]" />
+            <col className="w-[20%]" />
+            <col className="w-[18%]" />
+          </colgroup>
           <thead className="bg-paper-edge/40 text-fg-2">
             <tr>
               <Th>Crew</Th>
@@ -659,6 +669,19 @@ function YtdStrip({ ytd }: { ytd: ProductionYtdData }) {
         </div>
       )}
     </section>
+  );
+}
+
+function SubtotalStat({ label, value }: { label: string; value: number }) {
+  return (
+    <div>
+      <p className="font-headline text-[10px] font-extrabold uppercase tracking-ribbon text-lime">
+        {label}
+      </p>
+      <p className="mt-1 font-headline text-xl font-black sm:text-2xl">
+        {fmtUsd(value)}
+      </p>
+    </div>
   );
 }
 
