@@ -43,6 +43,9 @@ const FLASH_LABELS: Record<string, string> = {
   salesperson_updated: 'Salesperson updated.',
   crew_member_added: 'Crew member added.',
   crew_member_updated: 'Crew member updated.',
+  annual_production: 'Annual production goal saved.',
+  crew_budgets: 'Crew budgets saved.',
+  prod_historicals: 'Production historicals saved.',
 };
 
 export function FlashBanner({

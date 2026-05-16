@@ -607,6 +607,9 @@ function Header({
 
 function YtdStrip({ ytd }: { ytd: ProductionYtdData }) {
   if (!ytd.byMonth || ytd.byMonth.length === 0) return null;
+  const pct =
+    ytd.annualGoal && ytd.annualGoal > 0 ? ytd.ytdRevenue / ytd.annualGoal : null;
+  const barPct = pct != null ? Math.min(100, Math.max(0, pct * 100)) : null;
   return (
     <section className="mt-6 flex flex-col gap-3 rounded-full border-2 border-paper-edge bg-white/70 px-5 py-2 sm:flex-row sm:items-center sm:justify-between">
       <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
@@ -616,10 +619,24 @@ function YtdStrip({ ytd }: { ytd: ProductionYtdData }) {
         <span className="font-headline text-lg font-black text-ink">
           {fmtUsd(ytd.ytdRevenue)}
         </span>
-        <span className="text-xs text-fg-3">
-          {ytd.ytdJobs} {ytd.ytdJobs === 1 ? 'job' : 'jobs'}
-        </span>
+        {ytd.annualGoal != null ? (
+          <span className="text-xs text-fg-3">
+            of {fmtUsd(ytd.annualGoal)} &middot; {pct != null ? fmtPct(pct) : '—'}
+          </span>
+        ) : (
+          <span className="text-xs text-fg-3">
+            {ytd.ytdJobs} {ytd.ytdJobs === 1 ? 'job' : 'jobs'} &middot; no annual goal set
+          </span>
+        )}
       </div>
+      {barPct != null && (
+        <div className="h-1.5 w-full overflow-hidden rounded-full bg-paper-edge sm:w-48">
+          <div
+            className="h-full rounded-full bg-orange"
+            style={{ width: `${barPct}%` }}
+          />
+        </div>
+      )}
     </section>
   );
 }
