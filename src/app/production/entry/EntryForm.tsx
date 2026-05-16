@@ -3,17 +3,18 @@
 import { useActionState, useMemo, useState } from 'react';
 import { useFormStatus } from 'react-dom';
 import { useRouter, useSearchParams } from 'next/navigation';
-import {
-  saveProductionEntries,
-  deleteProductionEntry,
-  type SaveResult,
-} from './actions';
-import type { Crew } from '@/types';
+import { saveProductionEntries, type SaveResult } from './actions';
+import type { Crew, CrewMember } from '@/types';
 
 type Props = {
   date: string;
   crews: Crew[];
-  initialByCrew: Record<string, { jobs: number; revenue: number }>;
+  members: CrewMember[];
+  initialMemberEntries: Record<
+    string,
+    { crew_id: string; jobs: number; revenue: number }
+  >;
+  initialCrewEntries: Record<string, { jobs: number; revenue: number }>;
 };
 
 function SaveButton({ dirty }: { dirty: boolean }) {
@@ -29,7 +30,28 @@ function SaveButton({ dirty }: { dirty: boolean }) {
   );
 }
 
-export function EntryForm({ date, crews, initialByCrew }: Props) {
+const fmtCurrency = new Intl.NumberFormat('en-US', {
+  style: 'currency',
+  currency: 'USD',
+  maximumFractionDigits: 0,
+});
+
+const parseRevenue = (s: string) => {
+  const n = Number(String(s).replace(/[$,\s]/g, ''));
+  return Number.isFinite(n) ? n : 0;
+};
+const parseJobs = (s: string) => {
+  const n = Number(String(s).replace(/[\s,]/g, ''));
+  return Number.isFinite(n) ? n : 0;
+};
+
+export function EntryForm({
+  date,
+  crews,
+  members,
+  initialMemberEntries,
+  initialCrewEntries,
+}: Props) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [state, formAction] = useActionState<SaveResult, FormData>(
@@ -37,72 +59,160 @@ export function EntryForm({ date, crews, initialByCrew }: Props) {
     undefined,
   );
 
-  const [values, setValues] = useState<
-    Record<string, { jobs: string; revenue: string }>
+  // Member values and their per-day crew assignment.
+  const [memberJobs, setMemberJobs] = useState<Record<string, string>>(() => {
+    const m: Record<string, string> = {};
+    for (const mb of members) {
+      const e = initialMemberEntries[mb.id];
+      m[mb.id] = e && e.jobs ? String(e.jobs) : '';
+    }
+    return m;
+  });
+  const [memberRevenue, setMemberRevenue] = useState<Record<string, string>>(
+    () => {
+      const m: Record<string, string> = {};
+      for (const mb of members) {
+        const e = initialMemberEntries[mb.id];
+        m[mb.id] = e && e.revenue ? String(e.revenue) : '';
+      }
+      return m;
+    },
+  );
+  const [memberAssignment, setMemberAssignment] = useState<
+    Record<string, string>
   >(() => {
-    const m: Record<string, { jobs: string; revenue: string }> = {};
-    for (const c of crews) {
-      const v = initialByCrew[c.id];
-      m[c.id] = {
-        jobs: v && v.jobs ? String(v.jobs) : '',
-        revenue: v && v.revenue ? String(v.revenue) : '',
-      };
+    const m: Record<string, string> = {};
+    for (const mb of members) {
+      const e = initialMemberEntries[mb.id];
+      m[mb.id] = e?.crew_id ?? mb.home_crew_id ?? '';
     }
     return m;
   });
 
-  const totalRevenue = useMemo(() => {
-    let s = 0;
-    for (const v of Object.values(values)) {
-      const n = Number(String(v.revenue).replace(/[$,\s]/g, ''));
-      if (Number.isFinite(n)) s += n;
+  // Direct crew-level entries (only used for crews without members).
+  const memberByCrew = useMemo(() => {
+    const map = new Map<string, CrewMember[]>();
+    for (const mb of members) {
+      const cid = memberAssignment[mb.id] ?? mb.home_crew_id ?? '';
+      if (!cid) continue;
+      if (!map.has(cid)) map.set(cid, []);
+      map.get(cid)!.push(mb);
     }
-    return s;
-  }, [values]);
+    return map;
+  }, [members, memberAssignment]);
 
-  const totalJobs = useMemo(() => {
-    let s = 0;
-    for (const v of Object.values(values)) {
-      const n = Number(String(v.jobs).replace(/[\s,]/g, ''));
-      if (Number.isFinite(n)) s += n;
-    }
-    return s;
-  }, [values]);
+  const crewsWithoutMembers = useMemo(() => {
+    return crews.filter((c) => !memberByCrew.has(c.id));
+  }, [crews, memberByCrew]);
 
-  const dirty = useMemo(() => {
+  const [crewJobs, setCrewJobs] = useState<Record<string, string>>(() => {
+    const m: Record<string, string> = {};
     for (const c of crews) {
-      const initial = initialByCrew[c.id] ?? { jobs: 0, revenue: 0 };
-      const cur = values[c.id] ?? { jobs: '', revenue: '' };
-      const curJobs = Number(String(cur.jobs).replace(/[\s,]/g, '')) || 0;
-      const curRev = Number(String(cur.revenue).replace(/[$,\s]/g, '')) || 0;
-      if (curJobs !== initial.jobs) return true;
-      if (Math.round(curRev * 100) !== Math.round(initial.revenue * 100)) return true;
+      const e = initialCrewEntries[c.id];
+      m[c.id] = e && e.jobs ? String(e.jobs) : '';
+    }
+    return m;
+  });
+  const [crewRevenue, setCrewRevenue] = useState<Record<string, string>>(() => {
+    const m: Record<string, string> = {};
+    for (const c of crews) {
+      const e = initialCrewEntries[c.id];
+      m[c.id] = e && e.revenue ? String(e.revenue) : '';
+    }
+    return m;
+  });
+
+  // Live rollups
+  const crewTotals = useMemo(() => {
+    const totals = new Map<string, { jobs: number; revenue: number }>();
+    for (const mb of members) {
+      const cid = memberAssignment[mb.id] ?? mb.home_crew_id ?? '';
+      if (!cid) continue;
+      const cur = totals.get(cid) ?? { jobs: 0, revenue: 0 };
+      totals.set(cid, {
+        jobs: cur.jobs + parseJobs(memberJobs[mb.id] ?? ''),
+        revenue: cur.revenue + parseRevenue(memberRevenue[mb.id] ?? ''),
+      });
+    }
+    // Add crew-level direct inputs for crews without members
+    for (const c of crewsWithoutMembers) {
+      const j = parseJobs(crewJobs[c.id] ?? '');
+      const r = parseRevenue(crewRevenue[c.id] ?? '');
+      if (j === 0 && r === 0) continue;
+      totals.set(c.id, { jobs: j, revenue: r });
+    }
+    return totals;
+  }, [
+    members,
+    memberAssignment,
+    memberJobs,
+    memberRevenue,
+    crewsWithoutMembers,
+    crewJobs,
+    crewRevenue,
+  ]);
+
+  const dayTotal = useMemo(() => {
+    let jobs = 0;
+    let rev = 0;
+    for (const v of crewTotals.values()) {
+      jobs += v.jobs;
+      rev += v.revenue;
+    }
+    return { jobs, revenue: rev };
+  }, [crewTotals]);
+
+  // Dirty flag
+  const dirty = useMemo(() => {
+    for (const mb of members) {
+      const initial = initialMemberEntries[mb.id];
+      const initJobs = initial?.jobs ?? 0;
+      const initRev = initial?.revenue ?? 0;
+      const initCrew = initial?.crew_id ?? mb.home_crew_id ?? '';
+      const curJobs = parseJobs(memberJobs[mb.id] ?? '');
+      const curRev = parseRevenue(memberRevenue[mb.id] ?? '');
+      const curCrew = memberAssignment[mb.id] ?? mb.home_crew_id ?? '';
+      if (curJobs !== initJobs) return true;
+      if (Math.round(curRev * 100) !== Math.round(initRev * 100)) return true;
+      if (curCrew !== initCrew && (curJobs > 0 || curRev > 0 || initJobs > 0 || initRev > 0)) return true;
+    }
+    for (const c of crewsWithoutMembers) {
+      const initial = initialCrewEntries[c.id];
+      const initJobs = initial?.jobs ?? 0;
+      const initRev = initial?.revenue ?? 0;
+      const curJobs = parseJobs(crewJobs[c.id] ?? '');
+      const curRev = parseRevenue(crewRevenue[c.id] ?? '');
+      if (curJobs !== initJobs) return true;
+      if (Math.round(curRev * 100) !== Math.round(initRev * 100)) return true;
     }
     return false;
-  }, [values, crews, initialByCrew]);
+  }, [
+    members,
+    initialMemberEntries,
+    memberJobs,
+    memberRevenue,
+    memberAssignment,
+    crewsWithoutMembers,
+    initialCrewEntries,
+    crewJobs,
+    crewRevenue,
+  ]);
 
   const justSaved = searchParams.get('saved') === '1';
-  const justDeleted = searchParams.get('deleted') === '1';
 
   function changeDate(newDate: string) {
     const params = new URLSearchParams(searchParams.toString());
     params.set('date', newDate);
     params.delete('saved');
-    params.delete('deleted');
     router.push(`/production/entry?${params.toString()}`);
   }
 
-  const fmtCurrency = new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency: 'USD',
-    maximumFractionDigits: 0,
-  });
-
-  const production = crews.filter((c) => c.kind === 'production');
-  const phc = crews.filter((c) => c.kind === 'phc');
+  // Build crew sections in display_order. Production first, then PHC.
+  const productionCrews = crews.filter((c) => c.kind === 'production');
+  const phcCrews = crews.filter((c) => c.kind === 'phc');
 
   return (
-    <form action={formAction} className="space-y-6">
+    <form action={formAction} className="space-y-8">
       <input type="hidden" name="entry_date" value={date} />
 
       <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
@@ -116,8 +226,9 @@ export function EntryForm({ date, crews, initialByCrew }: Props) {
           />
         </label>
         <p className="text-sm text-fg-2 sm:max-w-md">
-          Need to fix a past day? Change the date — existing numbers pre-fill so
-          you can overwrite. Use the <strong>×</strong> button to remove a crew&apos;s row.
+          Type each crew member&apos;s numbers below. Crew totals update live as
+          you type. Use a member&apos;s <strong>Crew ▾</strong> dropdown to move
+          them to a different crew just for this day.
         </p>
       </div>
 
@@ -126,34 +237,47 @@ export function EntryForm({ date, crews, initialByCrew }: Props) {
           Saved. Numbers will refresh on the dashboard.
         </div>
       )}
-      {justDeleted && !state && (
-        <div className="rounded-2 border-2 border-green bg-green/10 px-4 py-3 text-sm font-bold text-green-dark">
-          Entry deleted.
-        </div>
-      )}
       {state?.ok === false && (
         <div className="rounded-2 border-2 border-orange-press bg-orange/10 px-4 py-3 text-sm font-bold text-orange-press">
           {state.error}
         </div>
       )}
 
-      <CrewGrid
+      <CrewSectionGroup
         title="Production Crews"
-        crews={production}
-        values={values}
-        setValues={setValues}
-        initialByCrew={initialByCrew}
-        date={date}
+        crews={productionCrews}
+        allCrewsForReassignment={crews}
+        memberByCrew={memberByCrew}
+        memberJobs={memberJobs}
+        setMemberJobs={setMemberJobs}
+        memberRevenue={memberRevenue}
+        setMemberRevenue={setMemberRevenue}
+        memberAssignment={memberAssignment}
+        setMemberAssignment={setMemberAssignment}
+        crewJobs={crewJobs}
+        setCrewJobs={setCrewJobs}
+        crewRevenue={crewRevenue}
+        setCrewRevenue={setCrewRevenue}
+        crewTotals={crewTotals}
       />
 
-      {phc.length > 0 && (
-        <CrewGrid
+      {phcCrews.length > 0 && (
+        <CrewSectionGroup
           title="Plant Healthcare"
-          crews={phc}
-          values={values}
-          setValues={setValues}
-          initialByCrew={initialByCrew}
-          date={date}
+          crews={phcCrews}
+          allCrewsForReassignment={crews}
+          memberByCrew={memberByCrew}
+          memberJobs={memberJobs}
+          setMemberJobs={setMemberJobs}
+          memberRevenue={memberRevenue}
+          setMemberRevenue={setMemberRevenue}
+          memberAssignment={memberAssignment}
+          setMemberAssignment={setMemberAssignment}
+          crewJobs={crewJobs}
+          setCrewJobs={setCrewJobs}
+          crewRevenue={crewRevenue}
+          setCrewRevenue={setCrewRevenue}
+          crewTotals={crewTotals}
         />
       )}
 
@@ -163,10 +287,10 @@ export function EntryForm({ date, crews, initialByCrew }: Props) {
         </span>
         <div className="text-right">
           <p className="font-headline text-2xl font-black text-ink">
-            {fmtCurrency.format(totalRevenue)}
+            {fmtCurrency.format(dayTotal.revenue)}
           </p>
           <p className="text-xs text-fg-3">
-            {totalJobs} {totalJobs === 1 ? 'job' : 'jobs'}
+            {dayTotal.jobs} {dayTotal.jobs === 1 ? 'job' : 'jobs'}
           </p>
         </div>
       </div>
@@ -181,116 +305,192 @@ export function EntryForm({ date, crews, initialByCrew }: Props) {
   );
 }
 
-function CrewGrid({
+// ----------------------------------------------------------------------------
+// One group (Production or PHC) - renders a card per crew with its members.
+// ----------------------------------------------------------------------------
+function CrewSectionGroup({
   title,
   crews,
-  values,
-  setValues,
-  initialByCrew,
-  date,
+  allCrewsForReassignment,
+  memberByCrew,
+  memberJobs,
+  setMemberJobs,
+  memberRevenue,
+  setMemberRevenue,
+  memberAssignment,
+  setMemberAssignment,
+  crewJobs,
+  setCrewJobs,
+  crewRevenue,
+  setCrewRevenue,
+  crewTotals,
 }: {
   title: string;
   crews: Crew[];
-  values: Record<string, { jobs: string; revenue: string }>;
-  setValues: React.Dispatch<React.SetStateAction<Record<string, { jobs: string; revenue: string }>>>;
-  initialByCrew: Record<string, { jobs: number; revenue: number }>;
-  date: string;
+  allCrewsForReassignment: Crew[];
+  memberByCrew: Map<string, CrewMember[]>;
+  memberJobs: Record<string, string>;
+  setMemberJobs: React.Dispatch<React.SetStateAction<Record<string, string>>>;
+  memberRevenue: Record<string, string>;
+  setMemberRevenue: React.Dispatch<React.SetStateAction<Record<string, string>>>;
+  memberAssignment: Record<string, string>;
+  setMemberAssignment: React.Dispatch<React.SetStateAction<Record<string, string>>>;
+  crewJobs: Record<string, string>;
+  setCrewJobs: React.Dispatch<React.SetStateAction<Record<string, string>>>;
+  crewRevenue: Record<string, string>;
+  setCrewRevenue: React.Dispatch<React.SetStateAction<Record<string, string>>>;
+  crewTotals: Map<string, { jobs: number; revenue: number }>;
 }) {
   return (
-    <div>
-      <h2 className="mb-2 font-headline text-sm font-extrabold uppercase tracking-ribbon text-fg-2">
+    <div className="space-y-5">
+      <h2 className="font-headline text-sm font-extrabold uppercase tracking-ribbon text-fg-2">
         {title}
       </h2>
-      <div className="bt-card !p-0 overflow-hidden">
-        <table className="w-full text-left">
-          <thead className="bg-paper-edge/40">
-            <tr>
-              <th className="px-5 py-3 font-headline text-xs font-extrabold uppercase tracking-ribbon text-fg-2">
-                Crew
-              </th>
-              <th className="px-3 py-3 text-right font-headline text-xs font-extrabold uppercase tracking-ribbon text-fg-2">
-                Jobs
-              </th>
-              <th className="px-3 py-3 text-right font-headline text-xs font-extrabold uppercase tracking-ribbon text-fg-2">
-                Revenue ($)
-              </th>
-              <th className="w-12 px-2 py-3" />
-            </tr>
-          </thead>
-          <tbody>
-            {crews.map((c, idx) => {
-              const has = initialByCrew[c.id] != null;
-              const v = values[c.id] ?? { jobs: '', revenue: '' };
-              return (
-                <tr
-                  key={c.id}
-                  className={idx % 2 === 0 ? 'bg-white/60' : 'bg-transparent'}
-                >
-                  <td className="px-5 py-2 font-headline text-base font-bold text-ink">
-                    {c.name}
-                  </td>
-                  <td className="px-3 py-2 text-right">
-                    <input
-                      type="text"
-                      inputMode="numeric"
-                      name={`jobs__${c.id}`}
-                      value={v.jobs}
+      {crews.map((c) => {
+        const members = memberByCrew.get(c.id) ?? [];
+        const totals = crewTotals.get(c.id) ?? { jobs: 0, revenue: 0 };
+        const hasMembers = members.length > 0;
+        return (
+          <div key={c.id} className="bt-card !p-0 overflow-hidden">
+            {/* Crew header with rollup totals */}
+            <div className="flex items-center justify-between bg-bark px-5 py-3 text-cream">
+              <h3 className="font-headline text-base font-extrabold uppercase tracking-ribbon">
+                {c.name}
+              </h3>
+              <div className="flex items-baseline gap-4 text-right">
+                <div>
+                  <p className="text-[10px] font-extrabold uppercase tracking-ribbon text-lime">
+                    Jobs
+                  </p>
+                  <p className="font-headline text-lg font-black">{totals.jobs}</p>
+                </div>
+                <div>
+                  <p className="text-[10px] font-extrabold uppercase tracking-ribbon text-lime">
+                    Revenue
+                  </p>
+                  <p className="font-headline text-lg font-black">
+                    {fmtCurrency.format(totals.revenue)}
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Members or direct crew-level entry */}
+            {hasMembers ? (
+              <div>
+                {members.map((mb, idx) => (
+                  <div
+                    key={mb.id}
+                    className={`flex flex-wrap items-center gap-2 px-5 py-2 sm:flex-nowrap ${
+                      idx % 2 === 0 ? 'bg-white/60' : 'bg-transparent'
+                    }`}
+                  >
+                    <input type="hidden" name={`crew__member_${mb.id}`} value={memberAssignment[mb.id] ?? ''} />
+                    <div className="flex flex-1 items-center gap-2">
+                      <span className="font-headline text-sm font-bold text-ink">
+                        {mb.name}
+                      </span>
+                      {mb.is_foreman && (
+                        <span className="rounded-full bg-orange/15 px-1.5 py-0.5 font-headline text-[9px] font-extrabold uppercase tracking-ribbon text-orange-press">
+                          Foreman
+                        </span>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-[10px] font-bold uppercase text-fg-3">
+                        Jobs
+                      </span>
+                      <input
+                        type="text"
+                        inputMode="numeric"
+                        name={`jobs__member_${mb.id}`}
+                        value={memberJobs[mb.id] ?? ''}
+                        onChange={(e) =>
+                          setMemberJobs((m) => ({ ...m, [mb.id]: e.target.value }))
+                        }
+                        placeholder="0"
+                        className="w-16 rounded-2 border-2 border-paper-edge bg-white px-2 py-1.5 text-right font-headline focus:border-orange focus:outline-none"
+                      />
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-[10px] font-bold uppercase text-fg-3">
+                        $
+                      </span>
+                      <input
+                        type="text"
+                        inputMode="decimal"
+                        name={`revenue__member_${mb.id}`}
+                        value={memberRevenue[mb.id] ?? ''}
+                        onChange={(e) =>
+                          setMemberRevenue((m) => ({ ...m, [mb.id]: e.target.value }))
+                        }
+                        placeholder="0"
+                        className="w-28 rounded-2 border-2 border-paper-edge bg-white px-2 py-1.5 text-right font-headline focus:border-orange focus:outline-none"
+                      />
+                    </div>
+                    <select
+                      value={memberAssignment[mb.id] ?? ''}
                       onChange={(e) =>
-                        setValues((m) => ({
+                        setMemberAssignment((m) => ({
                           ...m,
-                          [c.id]: { ...m[c.id], jobs: e.target.value },
+                          [mb.id]: e.target.value,
                         }))
                       }
-                      placeholder="0"
-                      className="w-20 rounded-2 border-2 border-paper-edge bg-white px-2 py-2 text-right font-headline focus:border-orange focus:outline-none"
-                    />
-                  </td>
-                  <td className="px-3 py-2 text-right">
-                    <input
-                      type="text"
-                      inputMode="decimal"
-                      name={`revenue__${c.id}`}
-                      value={v.revenue}
-                      onChange={(e) =>
-                        setValues((m) => ({
-                          ...m,
-                          [c.id]: { ...m[c.id], revenue: e.target.value },
-                        }))
-                      }
-                      placeholder="0"
-                      className="w-36 rounded-2 border-2 border-paper-edge bg-white px-2 py-2 text-right font-headline focus:border-orange focus:outline-none"
-                    />
-                  </td>
-                  <td className="w-12 px-2 py-2 text-center">
-                    {has ? (
-                      <button
-                        type="submit"
-                        name="delete_crew_id"
-                        value={c.id}
-                        formAction={deleteProductionEntry}
-                        onClick={(e) => {
-                          if (
-                            !window.confirm(
-                              `Delete ${c.name}'s entry for ${date}? This can't be undone.`,
-                            )
-                          ) {
-                            e.preventDefault();
-                          }
-                        }}
-                        title={`Delete ${c.name}'s entry for this day`}
-                        aria-label={`Delete ${c.name}'s entry`}
-                        className="inline-flex h-7 w-7 items-center justify-center rounded-full border-2 border-paper-edge text-fg-3 transition-colors hover:border-orange-press hover:bg-orange-press hover:text-white"
-                      >
-                        ×
-                      </button>
-                    ) : null}
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      </div>
+                      className="rounded-2 border-2 border-paper-edge bg-white px-2 py-1.5 font-headline text-xs font-extrabold uppercase tracking-ribbon text-ink focus:border-orange focus:outline-none"
+                      title="Move to a different crew for this day"
+                    >
+                      {allCrewsForReassignment.map((cr) => (
+                        <option key={cr.id} value={cr.id}>
+                          {cr.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              // Crew-level direct entry (no members configured)
+              <div className="flex flex-wrap items-center gap-3 px-5 py-3">
+                <span className="text-xs italic text-fg-3 sm:flex-1">
+                  No crew members configured. Enter crew totals directly.
+                </span>
+                <div className="flex items-center gap-1.5">
+                  <span className="text-[10px] font-bold uppercase text-fg-3">
+                    Jobs
+                  </span>
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    name={`jobs__crew_${c.id}`}
+                    value={crewJobs[c.id] ?? ''}
+                    onChange={(e) =>
+                      setCrewJobs((m) => ({ ...m, [c.id]: e.target.value }))
+                    }
+                    placeholder="0"
+                    className="w-16 rounded-2 border-2 border-paper-edge bg-white px-2 py-1.5 text-right font-headline focus:border-orange focus:outline-none"
+                  />
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <span className="text-[10px] font-bold uppercase text-fg-3">
+                    $
+                  </span>
+                  <input
+                    type="text"
+                    inputMode="decimal"
+                    name={`revenue__crew_${c.id}`}
+                    value={crewRevenue[c.id] ?? ''}
+                    onChange={(e) =>
+                      setCrewRevenue((m) => ({ ...m, [c.id]: e.target.value }))
+                    }
+                    placeholder="0"
+                    className="w-28 rounded-2 border-2 border-paper-edge bg-white px-2 py-1.5 text-right font-headline focus:border-orange focus:outline-none"
+                  />
+                </div>
+              </div>
+            )}
+          </div>
+        );
+      })}
     </div>
   );
 }

@@ -15,6 +15,15 @@ export type Crew = {
   is_active: boolean;
 };
 
+export type CrewMember = {
+  id: string;
+  name: string;
+  home_crew_id: string | null;
+  is_foreman: boolean;
+  display_order: number;
+  is_active: boolean;
+};
+
 export type AllowedEmail = {
   email: string;
   role: 'user' | 'admin';

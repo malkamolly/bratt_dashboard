@@ -14,7 +14,7 @@ import {
   workingDaysBeenThrough,
   type IsoDate,
 } from './dates';
-import type { Crew } from '@/types';
+import type { Crew, CrewMember } from '@/types';
 
 export type ProductionMonthContext = {
   year: number;
@@ -158,31 +158,59 @@ export async function loadProductionMonth(
 
 export async function loadProductionEntriesForDate(date: IsoDate): Promise<{
   crews: Crew[];
-  entriesByCrew: Record<string, { jobs: number; revenue: number }>;
+  members: CrewMember[];
+  /** Per-member entries for that date: maps member_id -> {crew_id, jobs, revenue} */
+  memberEntries: Record<string, { crew_id: string; jobs: number; revenue: number }>;
+  /** Crew-level entries (for crews without members) for that date */
+  crewEntries: Record<string, { jobs: number; revenue: number }>;
 }> {
   const supabase = await serverClient();
-  const [crewsRes, entriesRes] = await Promise.all([
-    supabase
-      .from('crews')
-      .select('id, name, kind, display_order, is_active')
-      .eq('is_active', true)
-      .order('display_order'),
-    supabase
-      .from('production_entries')
-      .select('crew_id, jobs, revenue')
-      .eq('entry_date', date),
-  ]);
+  const [crewsRes, membersRes, memberEntriesRes, crewEntriesRes] =
+    await Promise.all([
+      supabase
+        .from('crews')
+        .select('id, name, kind, display_order, is_active')
+        .eq('is_active', true)
+        .order('display_order'),
+      supabase
+        .from('crew_members')
+        .select('id, name, home_crew_id, is_foreman, display_order, is_active')
+        .eq('is_active', true)
+        .order('display_order'),
+      supabase
+        .from('production_member_entries')
+        .select('crew_member_id, crew_id, jobs, revenue')
+        .eq('entry_date', date),
+      supabase
+        .from('production_entries')
+        .select('crew_id, jobs, revenue')
+        .eq('entry_date', date),
+    ]);
 
-  const entriesByCrew: Record<string, { jobs: number; revenue: number }> = {};
-  for (const row of entriesRes.data ?? []) {
-    entriesByCrew[row.crew_id as string] = {
+  const memberEntries: Record<
+    string,
+    { crew_id: string; jobs: number; revenue: number }
+  > = {};
+  for (const row of memberEntriesRes.data ?? []) {
+    memberEntries[row.crew_member_id as string] = {
+      crew_id: row.crew_id as string,
       jobs: Number(row.jobs),
       revenue: Number(row.revenue),
     };
   }
+  const crewEntries: Record<string, { jobs: number; revenue: number }> = {};
+  for (const row of crewEntriesRes.data ?? []) {
+    crewEntries[row.crew_id as string] = {
+      jobs: Number(row.jobs),
+      revenue: Number(row.revenue),
+    };
+  }
+
   return {
     crews: (crewsRes.data ?? []) as Crew[],
-    entriesByCrew,
+    members: (membersRes.data ?? []) as CrewMember[],
+    memberEntries,
+    crewEntries,
   };
 }
 

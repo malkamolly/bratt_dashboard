@@ -9,8 +9,10 @@ import {
   saveHistoricals,
   addSalesperson,
   updateSalesperson,
+  addCrewMember,
+  updateCrewMember,
 } from './actions';
-import type { Salesperson } from '@/types';
+import type { Salesperson, Crew, CrewMember } from '@/types';
 
 export const dynamic = 'force-dynamic';
 
@@ -48,6 +50,8 @@ export default async function AdminPage({
     yearlyTargetRes,
     monthSettingsRes,
     historicalsRes,
+    crewsRes,
+    crewMembersRes,
   ] = await Promise.all([
     supabase
       .from('salespeople')
@@ -69,6 +73,15 @@ export default async function AdminPage({
       .select('salesperson_id, amount')
       .eq('year', year)
       .eq('month', month),
+    supabase
+      .from('crews')
+      .select('id, name, kind, display_order, is_active')
+      .eq('is_active', true)
+      .order('display_order'),
+    supabase
+      .from('crew_members')
+      .select('id, name, home_crew_id, is_foreman, display_order, is_active')
+      .order('display_order'),
   ]);
 
   const salespeople = (salespeopleRes.data ?? []) as Salesperson[];
@@ -87,6 +100,8 @@ export default async function AdminPage({
   for (const h of historicalsRes.data ?? []) {
     historicalsByPerson[h.salesperson_id as string] = Number(h.amount);
   }
+  const crews = (crewsRes.data ?? []) as Crew[];
+  const crewMembers = (crewMembersRes.data ?? []) as CrewMember[];
 
   return (
     <main className="mx-auto max-w-5xl px-6 py-10">
@@ -117,6 +132,7 @@ export default async function AdminPage({
           salespeople={activeSalespeople}
         />
         <RosterSection salespeople={salespeople} />
+        <CrewMembersSection crewMembers={crewMembers} crews={crews} />
       </div>
     </main>
   );
@@ -140,6 +156,8 @@ function FlashBanner({ saved, error }: { saved?: string; error?: string }) {
     historicals: 'Historical totals saved.',
     salesperson_added: 'Salesperson added.',
     salesperson_updated: 'Salesperson updated.',
+    crew_member_added: 'Crew member added.',
+    crew_member_updated: 'Crew member updated.',
   };
   return (
     <div className="mt-6 rounded-2 border-2 border-green bg-green/10 px-4 py-3 text-sm font-bold text-green-dark">
@@ -412,6 +430,148 @@ function RosterSection({ salespeople }: { salespeople: Salesperson[] }) {
               defaultValue={(salespeople[salespeople.length - 1]?.display_order ?? 100) + 10}
               className="mt-1 w-24 rounded-1 border-2 border-paper-edge bg-white px-2 py-1.5 font-headline text-right focus:border-orange focus:outline-none"
             />
+          </label>
+          <button type="submit" className="bt-btn bt-btn-primary">
+            Add
+          </button>
+        </form>
+      </div>
+    </SectionCard>
+  );
+}
+
+// ----------------------------------------------------------------------------
+// Section 5: Crew members (production roster)
+// ----------------------------------------------------------------------------
+function CrewMembersSection({
+  crewMembers,
+  crews,
+}: {
+  crewMembers: CrewMember[];
+  crews: Crew[];
+}) {
+  return (
+    <SectionCard
+      eyebrow="5 — Crew Roster"
+      title="Crew Members"
+      description="Production team members and their home crew. The home crew is where they appear by default on the daily entry form; they can be moved to another crew for an individual day from the form. Foremen get a small badge so dispatchers can spot them."
+    >
+      <div className="space-y-2">
+        {crewMembers.map((mb) => (
+          <form
+            key={mb.id}
+            action={updateCrewMember}
+            className="flex flex-col gap-2 rounded-2 border-2 border-paper-edge bg-white px-3 py-2 sm:flex-row sm:items-center"
+          >
+            <input type="hidden" name="id" value={mb.id} />
+            <label className="flex flex-1 items-center gap-2">
+              <span className="bt-eyebrow w-16">Name</span>
+              <input
+                type="text"
+                name="name"
+                defaultValue={mb.name}
+                className="flex-1 rounded-1 border border-paper-edge bg-bone px-2 py-1 font-headline focus:border-orange focus:outline-none"
+              />
+            </label>
+            <label className="flex items-center gap-2">
+              <span className="bt-eyebrow">Home Crew</span>
+              <select
+                name="home_crew_id"
+                defaultValue={mb.home_crew_id ?? ''}
+                className="rounded-1 border border-paper-edge bg-bone px-2 py-1 font-headline focus:border-orange focus:outline-none"
+              >
+                <option value="">— Unassigned —</option>
+                {crews.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="flex items-center gap-2">
+              <span className="bt-eyebrow">Order</span>
+              <input
+                type="number"
+                name="display_order"
+                defaultValue={mb.display_order}
+                className="w-20 rounded-1 border border-paper-edge bg-bone px-2 py-1 font-headline text-right focus:border-orange focus:outline-none"
+              />
+            </label>
+            <label className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                name="is_foreman"
+                defaultChecked={mb.is_foreman}
+                className="h-4 w-4"
+              />
+              <span className="font-headline text-xs font-extrabold uppercase tracking-ribbon text-fg-2">
+                Foreman
+              </span>
+            </label>
+            <label className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                name="is_active"
+                defaultChecked={mb.is_active}
+                className="h-4 w-4"
+              />
+              <span className="font-headline text-xs font-extrabold uppercase tracking-ribbon text-fg-2">
+                Active
+              </span>
+            </label>
+            <button type="submit" className="bt-btn bt-btn-ghost !px-4 !py-1.5 text-xs">
+              Save
+            </button>
+          </form>
+        ))}
+      </div>
+
+      <div className="mt-6 rounded-2 border-2 border-dashed border-paper-edge p-3">
+        <p className="bt-eyebrow">Add Crew Member</p>
+        <form
+          action={addCrewMember}
+          className="mt-2 flex flex-col gap-2 sm:flex-row sm:items-end"
+        >
+          <label className="flex-1">
+            <span className="text-xs text-fg-2">Name</span>
+            <input
+              type="text"
+              name="name"
+              required
+              placeholder="e.g. Alex Rivera"
+              className="mt-1 w-full rounded-1 border-2 border-paper-edge bg-white px-2 py-1.5 font-headline focus:border-orange focus:outline-none"
+            />
+          </label>
+          <label>
+            <span className="text-xs text-fg-2">Home Crew</span>
+            <select
+              name="home_crew_id"
+              className="mt-1 rounded-1 border-2 border-paper-edge bg-white px-2 py-1.5 font-headline focus:border-orange focus:outline-none"
+            >
+              <option value="">— Unassigned —</option>
+              {crews.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.name}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label>
+            <span className="text-xs text-fg-2">Order</span>
+            <input
+              type="number"
+              name="display_order"
+              defaultValue={
+                (crewMembers[crewMembers.length - 1]?.display_order ?? 100) + 10
+              }
+              className="mt-1 w-24 rounded-1 border-2 border-paper-edge bg-white px-2 py-1.5 font-headline text-right focus:border-orange focus:outline-none"
+            />
+          </label>
+          <label className="flex items-center gap-2 sm:pb-1.5">
+            <input type="checkbox" name="is_foreman" className="h-4 w-4" />
+            <span className="font-headline text-xs font-extrabold uppercase tracking-ribbon text-fg-2">
+              Foreman
+            </span>
           </label>
           <button type="submit" className="bt-btn bt-btn-primary">
             Add

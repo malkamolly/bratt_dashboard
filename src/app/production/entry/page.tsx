@@ -4,7 +4,7 @@ import { loadProductionEntriesForDate } from '@/lib/production-data';
 import { toIsoDate, fromIsoDate, isWeekend } from '@/lib/dates';
 import { EntryForm } from './EntryForm';
 
-type SearchParams = Promise<{ date?: string; saved?: string; deleted?: string }>;
+type SearchParams = Promise<{ date?: string; saved?: string }>;
 
 function isValidIsoDate(s: string): boolean {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(s)) return false;
@@ -25,7 +25,8 @@ export default async function ProductionEntryPage({
   const date =
     params.date && isValidIsoDate(params.date) ? params.date : today;
 
-  const { crews, entriesByCrew } = await loadProductionEntriesForDate(date);
+  const { crews, members, memberEntries, crewEntries } =
+    await loadProductionEntriesForDate(date);
 
   const d = fromIsoDate(date);
   const dayLabel = d.toLocaleDateString('en-US', {
@@ -37,7 +38,7 @@ export default async function ProductionEntryPage({
   const weekend = isWeekend(d);
 
   return (
-    <main className="mx-auto max-w-3xl px-6 py-10">
+    <main className="mx-auto max-w-4xl px-6 py-10">
       <p className="bt-eyebrow">Production</p>
       <h1 className="mt-2 font-display text-5xl uppercase tracking-wider text-ink">
         Daily Entry
@@ -56,7 +57,9 @@ export default async function ProductionEntryPage({
           key={date}
           date={date}
           crews={crews}
-          initialByCrew={entriesByCrew}
+          members={members}
+          initialMemberEntries={memberEntries}
+          initialCrewEntries={crewEntries}
         />
       </div>
     </main>
