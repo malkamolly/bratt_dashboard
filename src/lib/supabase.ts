@@ -7,7 +7,7 @@
 //                      server components). Uses cookies for the session.
 // ============================================================================
 
-import { createBrowserClient, createServerClient } from '@supabase/ssr';
+import { createBrowserClient, createServerClient, type CookieOptions } from '@supabase/ssr';
 import { cookies } from 'next/headers';
 
 export function browserClient() {
@@ -27,7 +27,7 @@ export async function serverClient() {
         getAll() {
           return cookieStore.getAll();
         },
-        setAll(toSet) {
+        setAll(toSet: { name: string; value: string; options: CookieOptions }[]) {
           try {
             toSet.forEach(({ name, value, options }) =>
               cookieStore.set(name, value, options),
