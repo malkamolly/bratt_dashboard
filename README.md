@@ -84,6 +84,9 @@ npm install
 10. Paste the contents of `supabase/migrations/007_phc_stump_unassigned.sql`, click Run.
     Renames "Douglas & Karenna" to PHC, adds the 'stump' and 'unassigned' crew
     kinds, and creates the Unassigned holding bucket.
+11. Paste the contents of `supabase/migrations/008_reorder_crews.sql`, click Run.
+    Updates the display_order on each crew so the dashboard tables match the
+    entry form's row layout.
 
 ### 4. Wire the app to Supabase
 
