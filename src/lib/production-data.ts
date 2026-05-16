@@ -228,6 +228,7 @@ export type ProductionYtdData = {
     jobs: number;
     source: 'historicals' | 'daily';
   }>;
+  annualGoal: number | null;
 };
 
 export async function loadProductionYearToDate(
@@ -237,7 +238,7 @@ export async function loadProductionYearToDate(
   const y = year ?? now.getFullYear();
   const supabase = await serverClient();
 
-  const [historicalsRes, entriesRes] = await Promise.all([
+  const [historicalsRes, entriesRes, targetRes] = await Promise.all([
     supabase
       .from('production_monthly_historicals')
       .select('month, jobs, revenue')
@@ -247,6 +248,11 @@ export async function loadProductionYearToDate(
       .select('entry_date, jobs, revenue')
       .gte('entry_date', `${y}-01-01`)
       .lte('entry_date', `${y}-12-31`),
+    supabase
+      .from('yearly_targets')
+      .select('annual_production_goal')
+      .eq('year', y)
+      .maybeSingle(),
   ]);
 
   const histByMonth = new Map<number, { jobs: number; revenue: number }>();
@@ -286,10 +292,14 @@ export async function loadProductionYearToDate(
     };
   });
 
+  const annualGoal = targetRes.data?.annual_production_goal
+    ? Number(targetRes.data.annual_production_goal)
+    : null;
   return {
     year: y,
     ytdRevenue: byMonth.reduce((s, x) => s + x.revenue, 0),
     ytdJobs: byMonth.reduce((s, x) => s + x.jobs, 0),
     byMonth,
+    annualGoal: annualGoal && annualGoal > 0 ? annualGoal : null,
   };
 }

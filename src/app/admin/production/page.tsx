@@ -2,13 +2,33 @@ import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { getAllowedUser } from '@/lib/auth';
 import { serverClient } from '@/lib/supabase';
+import { fmtUsd, monthLabel } from '@/lib/format';
+import { MonthPicker } from '@/components/MonthPicker';
 import { SectionCard, FlashBanner } from '@/components/admin-shared';
-import { addCrewMember, updateCrewMember } from '../actions';
+import {
+  addCrewMember,
+  updateCrewMember,
+  saveAnnualProductionGoal,
+  saveCrewBudgets,
+  saveProductionHistoricals,
+} from '../actions';
 import type { Crew, CrewMember } from '@/types';
 
 export const dynamic = 'force-dynamic';
 
-type Search = Promise<{ saved?: string; error?: string }>;
+type Search = Promise<{
+  year?: string;
+  month?: string;
+  saved?: string;
+  error?: string;
+}>;
+
+function parseIntInRange(raw: string | undefined, min: number, max: number) {
+  if (raw == null) return null;
+  const n = Number(raw);
+  if (!Number.isInteger(n) || n < min || n > max) return null;
+  return n;
+}
 
 export default async function ProductionAdminPage({
   searchParams,
@@ -20,21 +40,62 @@ export default async function ProductionAdminPage({
   if (user.role !== 'admin') redirect('/access-denied');
 
   const sp = await searchParams;
+  const now = new Date();
+  const year = parseIntInRange(sp.year, 2000, 2100) ?? now.getFullYear();
+  const month = parseIntInRange(sp.month, 1, 12) ?? now.getMonth() + 1;
+
   const supabase = await serverClient();
-  const [crewsRes, crewMembersRes] = await Promise.all([
+  const [
+    crewsAllRes,
+    crewMembersRes,
+    yearlyTargetRes,
+    budgetsRes,
+    historicalsRes,
+  ] = await Promise.all([
     supabase
       .from('crews')
       .select('id, name, kind, display_order, is_active')
-      .eq('is_active', true)
       .order('display_order'),
     supabase
       .from('crew_members')
       .select('id, name, home_crew_id, is_foreman, display_order, is_active')
       .order('display_order'),
+    supabase
+      .from('yearly_targets')
+      .select('annual_production_goal')
+      .eq('year', year)
+      .maybeSingle(),
+    supabase
+      .from('crew_monthly_budgets')
+      .select('crew_id, budget_revenue')
+      .eq('year', year)
+      .eq('month', month),
+    supabase
+      .from('production_monthly_historicals')
+      .select('crew_id, jobs, revenue')
+      .eq('year', year)
+      .eq('month', month),
   ]);
 
-  const crews = (crewsRes.data ?? []) as Crew[];
+  const crewsAll = (crewsAllRes.data ?? []) as Crew[];
+  const activeCrews = crewsAll.filter(
+    (c) => c.is_active && c.kind !== 'unassigned',
+  );
   const crewMembers = (crewMembersRes.data ?? []) as CrewMember[];
+  const annualProductionGoal = yearlyTargetRes.data?.annual_production_goal
+    ? Number(yearlyTargetRes.data.annual_production_goal)
+    : null;
+  const budgetsByCrew: Record<string, number> = {};
+  for (const b of budgetsRes.data ?? []) {
+    budgetsByCrew[b.crew_id as string] = Number(b.budget_revenue);
+  }
+  const histByCrew: Record<string, { jobs: number; revenue: number }> = {};
+  for (const h of historicalsRes.data ?? []) {
+    histByCrew[h.crew_id as string] = {
+      jobs: Number(h.jobs),
+      revenue: Number(h.revenue),
+    };
+  }
 
   return (
     <main className="mx-auto max-w-5xl px-6 py-10">
@@ -49,19 +110,225 @@ export default async function ProductionAdminPage({
         Production Admin
       </h1>
       <p className="mt-3 text-fg-2">
-        Crew roster today. Annual goal, monthly crew budgets, and historicals
-        editors are coming soon.
+        Annual goal, monthly crew budgets, historical totals, and crew roster.
+        Crew Budgets and Historicals each have their own month picker.
       </p>
 
       <FlashBanner saved={sp.saved} error={sp.error} />
 
       <div className="mt-10 space-y-12">
-        <CrewMembersSection crewMembers={crewMembers} crews={crews} />
+        <AnnualProductionGoalSection
+          year={year}
+          currentValue={annualProductionGoal}
+        />
+        <CrewBudgetsSection
+          year={year}
+          month={month}
+          crews={activeCrews}
+          budgets={budgetsByCrew}
+        />
+        <ProductionHistoricalsSection
+          year={year}
+          month={month}
+          crews={activeCrews}
+          values={histByCrew}
+        />
+        <CrewMembersSection crewMembers={crewMembers} crews={crewsAll.filter((c) => c.is_active)} />
       </div>
     </main>
   );
 }
 
+// ---------------------------------------------------------------------------
+// Section 1: Annual production goal
+// ---------------------------------------------------------------------------
+function AnnualProductionGoalSection({
+  year,
+  currentValue,
+}: {
+  year: number;
+  currentValue: number | null;
+}) {
+  return (
+    <SectionCard
+      eyebrow="1 — Annual"
+      title={`Annual Production Goal (${year})`}
+      description="The big yearly production-revenue number. Powers the YTD progress bar on the Production PACE dashboard."
+    >
+      <form
+        action={saveAnnualProductionGoal}
+        className="flex flex-col gap-3 sm:flex-row sm:items-end"
+      >
+        <input type="hidden" name="year" value={year} />
+        <label className="flex-1">
+          <span className="bt-eyebrow">Annual Goal ($)</span>
+          <input
+            type="text"
+            inputMode="decimal"
+            name="annual_production_goal"
+            defaultValue={currentValue != null ? String(currentValue) : ''}
+            placeholder="e.g. 12000000"
+            className="mt-1 w-full rounded-2 border-2 border-paper-edge bg-white px-3 py-2 font-headline text-base focus:border-orange focus:outline-none"
+          />
+        </label>
+        <button type="submit" className="bt-btn bt-btn-primary">
+          Save Annual Goal
+        </button>
+      </form>
+      {currentValue != null && currentValue > 0 && (
+        <p className="mt-3 text-sm text-fg-3">
+          Currently set to <strong>{fmtUsd(currentValue)}</strong>.
+        </p>
+      )}
+    </SectionCard>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Section 2: Monthly crew budgets
+// ---------------------------------------------------------------------------
+function CrewBudgetsSection({
+  year,
+  month,
+  crews,
+  budgets,
+}: {
+  year: number;
+  month: number;
+  crews: Crew[];
+  budgets: Record<string, number>;
+}) {
+  return (
+    <SectionCard
+      eyebrow="2 — Budgets"
+      title={`Crew Budgets — ${monthLabel(year, month)}`}
+      description="Monthly revenue budget per crew. Drives the % of Budget column and Behind/Ahead status pills on the dashboard."
+      headerRight={<MonthPicker year={year} month={month} basePath="/admin/production" />}
+    >
+      <form action={saveCrewBudgets} className="space-y-4">
+        <input type="hidden" name="year" value={year} />
+        <input type="hidden" name="month" value={month} />
+
+        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+          {crews.map((c) => {
+            const v = budgets[c.id];
+            return (
+              <label
+                key={c.id}
+                className="flex items-center gap-3 rounded-2 border-2 border-paper-edge bg-white px-3 py-2"
+              >
+                <span className="w-32 font-headline text-sm font-bold text-ink">
+                  {c.name}
+                </span>
+                <span className="text-fg-3">$</span>
+                <input
+                  type="text"
+                  inputMode="decimal"
+                  name={`budget__${c.id}`}
+                  defaultValue={v != null && v !== 0 ? String(v) : ''}
+                  placeholder="0"
+                  className="flex-1 rounded-1 border border-transparent bg-transparent px-1 py-1 font-headline text-right focus:border-orange focus:outline-none"
+                />
+              </label>
+            );
+          })}
+        </div>
+
+        <div className="flex justify-end">
+          <button type="submit" className="bt-btn bt-btn-primary">
+            Save Crew Budgets
+          </button>
+        </div>
+      </form>
+    </SectionCard>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Section 3: Production historicals (per crew jobs + revenue)
+// ---------------------------------------------------------------------------
+function ProductionHistoricalsSection({
+  year,
+  month,
+  crews,
+  values,
+}: {
+  year: number;
+  month: number;
+  crews: Crew[];
+  values: Record<string, { jobs: number; revenue: number }>;
+}) {
+  const hasAny = Object.values(values).some((v) => v.revenue > 0 || v.jobs > 0);
+  return (
+    <SectionCard
+      eyebrow="3 — Historicals"
+      title={`Monthly Totals — ${monthLabel(year, month)}`}
+      description="A closed month's rolled-up jobs and revenue per crew. Saving here marks the month as 'historical' on the dashboard."
+      headerRight={<MonthPicker year={year} month={month} basePath="/admin/production" />}
+    >
+      {!hasAny && (
+        <p className="mb-4 rounded-2 border-2 border-dashed border-paper-edge bg-white/60 px-3 py-2 text-xs text-fg-2">
+          No historicals saved for {monthLabel(year, month)} yet.
+        </p>
+      )}
+      <form action={saveProductionHistoricals} className="space-y-4">
+        <input type="hidden" name="year" value={year} />
+        <input type="hidden" name="month" value={month} />
+
+        {/* Header row */}
+        <div className="grid grid-cols-[minmax(7rem,1fr)_4.5rem_minmax(6rem,1fr)] gap-2 px-2 text-[10px] font-extrabold uppercase tracking-ribbon text-fg-3">
+          <span>Crew</span>
+          <span className="text-right">Jobs</span>
+          <span className="text-right">Revenue ($)</span>
+        </div>
+        <div className="space-y-1.5">
+          {crews.map((c) => {
+            const v = values[c.id];
+            return (
+              <div
+                key={c.id}
+                className="grid grid-cols-[minmax(7rem,1fr)_4.5rem_minmax(6rem,1fr)] items-center gap-2 rounded-2 border-2 border-paper-edge bg-white px-2 py-1.5"
+              >
+                <span className="font-headline text-sm font-bold text-ink">
+                  {c.name}
+                </span>
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  name={`histjobs__${c.id}`}
+                  defaultValue={v?.jobs ? String(v.jobs) : ''}
+                  placeholder="0"
+                  className="rounded-1 border border-transparent bg-transparent px-1 py-1 text-right font-headline text-sm focus:border-paper-edge focus:outline-none"
+                />
+                <div className="flex items-center">
+                  <span className="pr-1 text-fg-3">$</span>
+                  <input
+                    type="text"
+                    inputMode="decimal"
+                    name={`histrev__${c.id}`}
+                    defaultValue={v?.revenue ? String(v.revenue) : ''}
+                    placeholder="0"
+                    className="flex-1 rounded-1 border border-transparent bg-transparent px-1 py-1 text-right font-headline text-sm focus:border-paper-edge focus:outline-none"
+                  />
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        <div className="flex justify-end">
+          <button type="submit" className="bt-btn bt-btn-primary">
+            Save Historicals
+          </button>
+        </div>
+      </form>
+    </SectionCard>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Section 4: Crew member roster (table layout)
+// ---------------------------------------------------------------------------
 function CrewMembersSection({
   crewMembers,
   crews,
@@ -71,80 +338,14 @@ function CrewMembersSection({
 }) {
   return (
     <SectionCard
-      eyebrow="Crew Roster"
+      eyebrow="4 — Crew Roster"
       title="Crew Members"
-      description="Production team members and their home crew. The home crew is where they appear by default on the daily entry form; they can be moved to another crew for an individual day from the form. Foremen get a small badge so dispatchers can spot them."
+      description="Production team members and their home crew. The home crew is where they appear by default on the daily entry form; they can be moved to another crew for an individual day from the form."
     >
-      <div className="space-y-2">
-        {crewMembers.map((mb) => (
-          <form
-            key={mb.id}
-            action={updateCrewMember}
-            className="flex flex-col gap-2 rounded-2 border-2 border-paper-edge bg-white px-3 py-2 sm:flex-row sm:items-center"
-          >
-            <input type="hidden" name="id" value={mb.id} />
-            <label className="flex flex-1 items-center gap-2">
-              <span className="bt-eyebrow w-16">Name</span>
-              <input
-                type="text"
-                name="name"
-                defaultValue={mb.name}
-                className="flex-1 rounded-1 border border-paper-edge bg-bone px-2 py-1 font-headline focus:border-orange focus:outline-none"
-              />
-            </label>
-            <label className="flex items-center gap-2">
-              <span className="bt-eyebrow">Home Crew</span>
-              <select
-                name="home_crew_id"
-                defaultValue={mb.home_crew_id ?? ''}
-                className="rounded-1 border border-paper-edge bg-bone px-2 py-1 font-headline focus:border-orange focus:outline-none"
-              >
-                <option value="">— Unassigned —</option>
-                {crews.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.name}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label className="flex items-center gap-2">
-              <span className="bt-eyebrow">Order</span>
-              <input
-                type="number"
-                name="display_order"
-                defaultValue={mb.display_order}
-                className="w-20 rounded-1 border border-paper-edge bg-bone px-2 py-1 font-headline text-right focus:border-orange focus:outline-none"
-              />
-            </label>
-            <label className="flex items-center gap-2">
-              <input
-                type="checkbox"
-                name="is_foreman"
-                defaultChecked={mb.is_foreman}
-                className="h-4 w-4"
-              />
-              <span className="font-headline text-xs font-extrabold uppercase tracking-ribbon text-fg-2">
-                Foreman
-              </span>
-            </label>
-            <label className="flex items-center gap-2">
-              <input
-                type="checkbox"
-                name="is_active"
-                defaultChecked={mb.is_active}
-                className="h-4 w-4"
-              />
-              <span className="font-headline text-xs font-extrabold uppercase tracking-ribbon text-fg-2">
-                Active
-              </span>
-            </label>
-            <button type="submit" className="bt-btn bt-btn-ghost !px-4 !py-1.5 text-xs">
-              Save
-            </button>
-          </form>
-        ))}
-      </div>
-
+      <RosterTable
+        crews={crews}
+        members={crewMembers}
+      />
       <div className="mt-6 rounded-2 border-2 border-dashed border-paper-edge p-3">
         <p className="bt-eyebrow">Add Crew Member</p>
         <form
@@ -158,14 +359,14 @@ function CrewMembersSection({
               name="name"
               required
               placeholder="e.g. Alex Rivera"
-              className="mt-1 w-full rounded-1 border-2 border-paper-edge bg-white px-2 py-1.5 font-headline focus:border-orange focus:outline-none"
+              className="mt-1 w-full rounded-1 border-2 border-paper-edge bg-white px-2 py-1.5 font-headline text-sm focus:border-orange focus:outline-none"
             />
           </label>
           <label>
-            <span className="text-xs text-fg-2">Home Crew</span>
+            <span className="text-xs text-fg-2">Crew</span>
             <select
               name="home_crew_id"
-              className="mt-1 rounded-1 border-2 border-paper-edge bg-white px-2 py-1.5 font-headline focus:border-orange focus:outline-none"
+              className="mt-1 rounded-1 border-2 border-paper-edge bg-white px-2 py-1.5 font-headline text-sm focus:border-orange focus:outline-none"
             >
               <option value="">— Unassigned —</option>
               {crews.map((c) => (
@@ -183,7 +384,7 @@ function CrewMembersSection({
               defaultValue={
                 (crewMembers[crewMembers.length - 1]?.display_order ?? 100) + 10
               }
-              className="mt-1 w-24 rounded-1 border-2 border-paper-edge bg-white px-2 py-1.5 font-headline text-right focus:border-orange focus:outline-none"
+              className="mt-1 w-20 rounded-1 border-2 border-paper-edge bg-white px-2 py-1.5 font-headline text-sm text-right focus:border-orange focus:outline-none"
             />
           </label>
           <label className="flex items-center gap-2 sm:pb-1.5">
@@ -198,5 +399,83 @@ function CrewMembersSection({
         </form>
       </div>
     </SectionCard>
+  );
+}
+
+function RosterTable({
+  crews,
+  members,
+}: {
+  crews: Crew[];
+  members: CrewMember[];
+}) {
+  return (
+    <div className="overflow-x-auto">
+      <div className="grid min-w-[640px] grid-cols-[minmax(8rem,1.5fr)_minmax(7rem,1fr)_3.5rem_2.5rem_2.5rem_auto] items-center gap-1.5 text-xs">
+        {/* Header */}
+        <div className="bt-eyebrow text-fg-3">Name</div>
+        <div className="bt-eyebrow text-fg-3">Crew</div>
+        <div className="bt-eyebrow text-fg-3 text-right">Order</div>
+        <div className="bt-eyebrow text-fg-3 text-center">F</div>
+        <div className="bt-eyebrow text-fg-3 text-center">Active</div>
+        <div />
+
+        {members.map((mb) => (
+          <form
+            key={mb.id}
+            action={updateCrewMember}
+            className="contents [&>*]:my-0.5"
+          >
+            <input type="hidden" name="id" value={mb.id} />
+            <input
+              type="text"
+              name="name"
+              defaultValue={mb.name}
+              className="rounded-1 border border-paper-edge bg-bone px-2 py-1 font-headline text-sm focus:border-orange focus:outline-none"
+            />
+            <select
+              name="home_crew_id"
+              defaultValue={mb.home_crew_id ?? ''}
+              className="rounded-1 border border-paper-edge bg-bone px-2 py-1 font-headline text-sm focus:border-orange focus:outline-none"
+            >
+              <option value="">— Unassigned —</option>
+              {crews.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.name}
+                </option>
+              ))}
+            </select>
+            <input
+              type="number"
+              name="display_order"
+              defaultValue={mb.display_order}
+              className="rounded-1 border border-paper-edge bg-bone px-1.5 py-1 text-right font-headline text-sm focus:border-orange focus:outline-none"
+            />
+            <div className="flex justify-center">
+              <input
+                type="checkbox"
+                name="is_foreman"
+                defaultChecked={mb.is_foreman}
+                className="h-4 w-4"
+              />
+            </div>
+            <div className="flex justify-center">
+              <input
+                type="checkbox"
+                name="is_active"
+                defaultChecked={mb.is_active}
+                className="h-4 w-4"
+              />
+            </div>
+            <button
+              type="submit"
+              className="rounded-full border-2 border-ink px-3 py-1 font-headline text-[10px] font-extrabold uppercase tracking-ribbon text-ink transition-colors hover:bg-ink hover:text-cream"
+            >
+              Save
+            </button>
+          </form>
+        ))}
+      </div>
+    </div>
   );
 }

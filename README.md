@@ -87,6 +87,9 @@ npm install
 11. Paste the contents of `supabase/migrations/008_reorder_crews.sql`, click Run.
     Updates the display_order on each crew so the dashboard tables match the
     entry form's row layout.
+12. Paste the contents of `supabase/migrations/009_annual_production_goal.sql`,
+    click Run. Adds an annual_production_goal column to yearly_targets so the
+    Production PACE YTD progress bar can fill in once a goal is set.
 
 ### 4. Wire the app to Supabase
 

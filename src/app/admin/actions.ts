@@ -217,6 +217,147 @@ export async function addCrewMember(formData: FormData): Promise<void> {
   redirect('/admin/production?saved=crew_member_added');
 }
 
+// ----------------------------------------------------------------------------
+// 6. Production: annual goal
+// ----------------------------------------------------------------------------
+export async function saveAnnualProductionGoal(formData: FormData): Promise<void> {
+  await requireAdmin();
+  const year = parseIntStrict(formData.get('year'));
+  const goal = parseMoney(formData.get('annual_production_goal'));
+  if (year == null || goal == null) {
+    redirect('/admin/production?error=invalid_annual_production_goal');
+  }
+
+  const supabase = await serverClient();
+  // Use upsert; if a row exists, only update the production column.
+  const { data: existing } = await supabase
+    .from('yearly_targets')
+    .select('year, annual_goal')
+    .eq('year', year!)
+    .maybeSingle();
+  const { error } = await supabase
+    .from('yearly_targets')
+    .upsert(
+      {
+        year: year!,
+        annual_goal: existing?.annual_goal ?? 0,
+        annual_production_goal: goal!,
+      },
+      { onConflict: 'year' },
+    );
+  if (error)
+    redirect(`/admin/production?error=${encodeURIComponent(error.message)}`);
+
+  refreshAffectedPages();
+  redirect('/admin/production?saved=annual_production');
+}
+
+// ----------------------------------------------------------------------------
+// 7. Production: monthly crew budgets
+// ----------------------------------------------------------------------------
+export async function saveCrewBudgets(formData: FormData): Promise<void> {
+  await requireAdmin();
+  const year = parseIntStrict(formData.get('year'));
+  const month = parseIntStrict(formData.get('month'));
+  if (year == null || month == null) {
+    redirect('/admin/production?error=invalid_crew_budgets');
+  }
+
+  type Row = { year: number; month: number; crew_id: string; budget_revenue: number };
+  const rows: Row[] = [];
+  for (const [key, value] of formData.entries()) {
+    if (!key.startsWith('budget__')) continue;
+    const crew_id = key.slice('budget__'.length);
+    const amt = parseMoney(value);
+    if (amt == null) {
+      redirect('/admin/production?error=invalid_budget');
+    }
+    rows.push({ year: year!, month: month!, crew_id, budget_revenue: amt! });
+  }
+  if (rows.length === 0) {
+    redirect(`/admin/production?year=${year}&month=${month}&error=no_rows`);
+  }
+
+  const supabase = await serverClient();
+  const { error } = await supabase
+    .from('crew_monthly_budgets')
+    .upsert(rows, { onConflict: 'year,month,crew_id' });
+  if (error)
+    redirect(`/admin/production?error=${encodeURIComponent(error.message)}`);
+
+  refreshAffectedPages();
+  redirect(`/admin/production?year=${year}&month=${month}&saved=crew_budgets`);
+}
+
+// ----------------------------------------------------------------------------
+// 8. Production: monthly historicals
+// ----------------------------------------------------------------------------
+export async function saveProductionHistoricals(formData: FormData): Promise<void> {
+  const user = await requireAdmin();
+  const year = parseIntStrict(formData.get('year'));
+  const month = parseIntStrict(formData.get('month'));
+  if (year == null || month == null) {
+    redirect('/admin/production?error=invalid_prod_historicals');
+  }
+
+  type Pair = { jobs?: number; revenue?: number };
+  const byCrew = new Map<string, Pair>();
+  for (const [key, value] of formData.entries()) {
+    if (key.startsWith('histjobs__')) {
+      const id = key.slice('histjobs__'.length);
+      const n = Number(String(value).trim().replace(/[\s,]/g, '') || '0');
+      if (!Number.isInteger(n) || n < 0) {
+        redirect('/admin/production?error=invalid_jobs');
+      }
+      byCrew.set(id, { ...(byCrew.get(id) ?? {}), jobs: n });
+    } else if (key.startsWith('histrev__')) {
+      const id = key.slice('histrev__'.length);
+      const n = parseMoney(value);
+      if (n == null) {
+        redirect('/admin/production?error=invalid_revenue');
+      }
+      byCrew.set(id, { ...(byCrew.get(id) ?? {}), revenue: n! });
+    }
+  }
+  if (byCrew.size === 0) {
+    redirect(`/admin/production?year=${year}&month=${month}&error=no_rows`);
+  }
+
+  type Row = {
+    year: number;
+    month: number;
+    crew_id: string;
+    jobs: number;
+    revenue: number;
+    source_note: string;
+    created_by: string;
+  };
+  const rows: Row[] = [];
+  for (const [crew_id, p] of byCrew.entries()) {
+    rows.push({
+      year: year!,
+      month: month!,
+      crew_id,
+      jobs: p.jobs ?? 0,
+      revenue: p.revenue ?? 0,
+      source_note: 'Edited via admin form',
+      created_by: user.email,
+    });
+  }
+
+  const supabase = await serverClient();
+  const { error } = await supabase
+    .from('production_monthly_historicals')
+    .upsert(rows, { onConflict: 'year,month,crew_id' });
+  if (error)
+    redirect(`/admin/production?error=${encodeURIComponent(error.message)}`);
+
+  refreshAffectedPages();
+  redirect(
+    `/admin/production?year=${year}&month=${month}&saved=prod_historicals`,
+  );
+}
+
 export async function updateCrewMember(formData: FormData): Promise<void> {
   await requireAdmin();
   const id = String(formData.get('id') ?? '');

@@ -311,48 +311,44 @@ function RosterSection({ salespeople }: { salespeople: Salesperson[] }) {
       title="Salespeople"
       description="Edit names, change display order on the dashboard, or hide ex-employees. Salespeople are never deleted - flipping 'Active' off just hides them from new entries while keeping their history intact."
     >
-      <div className="space-y-2">
-        {salespeople.map((sp) => (
-          <form
-            key={sp.id}
-            action={updateSalesperson}
-            className="flex flex-col gap-2 rounded-2 border-2 border-paper-edge bg-white px-3 py-2 sm:flex-row sm:items-center"
-          >
-            <input type="hidden" name="id" value={sp.id} />
-            <label className="flex flex-1 items-center gap-2">
-              <span className="bt-eyebrow w-16">Name</span>
+      <div className="overflow-x-auto">
+        <div className="grid min-w-[480px] grid-cols-[minmax(8rem,2fr)_3.5rem_2.5rem_auto] items-center gap-1.5 text-xs">
+          <div className="bt-eyebrow text-fg-3">Name</div>
+          <div className="bt-eyebrow text-fg-3 text-right">Order</div>
+          <div className="bt-eyebrow text-fg-3 text-center">Active</div>
+          <div />
+          {salespeople.map((sp) => (
+            <form key={sp.id} action={updateSalesperson} className="contents [&>*]:my-0.5">
+              <input type="hidden" name="id" value={sp.id} />
               <input
                 type="text"
                 name="name"
                 defaultValue={sp.name}
-                className="flex-1 rounded-1 border border-paper-edge bg-bone px-2 py-1 font-headline focus:border-orange focus:outline-none"
+                className="rounded-1 border border-paper-edge bg-bone px-2 py-1 font-headline text-sm focus:border-orange focus:outline-none"
               />
-            </label>
-            <label className="flex items-center gap-2">
-              <span className="bt-eyebrow">Order</span>
               <input
                 type="number"
                 name="display_order"
                 defaultValue={sp.display_order}
-                className="w-20 rounded-1 border border-paper-edge bg-bone px-2 py-1 font-headline text-right focus:border-orange focus:outline-none"
+                className="rounded-1 border border-paper-edge bg-bone px-1.5 py-1 text-right font-headline text-sm focus:border-orange focus:outline-none"
               />
-            </label>
-            <label className="flex items-center gap-2">
-              <input
-                type="checkbox"
-                name="is_active"
-                defaultChecked={sp.is_active}
-                className="h-4 w-4"
-              />
-              <span className="font-headline text-xs font-extrabold uppercase tracking-ribbon text-fg-2">
-                Active
-              </span>
-            </label>
-            <button type="submit" className="bt-btn bt-btn-ghost !px-4 !py-1.5 text-xs">
-              Save
-            </button>
-          </form>
-        ))}
+              <div className="flex justify-center">
+                <input
+                  type="checkbox"
+                  name="is_active"
+                  defaultChecked={sp.is_active}
+                  className="h-4 w-4"
+                />
+              </div>
+              <button
+                type="submit"
+                className="rounded-full border-2 border-ink px-3 py-1 font-headline text-[10px] font-extrabold uppercase tracking-ribbon text-ink transition-colors hover:bg-ink hover:text-cream"
+              >
+                Save
+              </button>
+            </form>
+          ))}
+        </div>
       </div>
 
       <div className="mt-6 rounded-2 border-2 border-dashed border-paper-edge p-3">
