@@ -21,9 +21,11 @@ export async function BrandHeader() {
             priority
             className="h-9 w-9 rounded-full sm:h-11 sm:w-11"
           />
-          <span className="hidden font-display text-xl tracking-wider sm:inline">
+          <span className="font-display text-base tracking-wider sm:text-xl">
             BRATT TREE
-            <span className="ml-2 align-middle text-xs tracking-ribbon text-lime">PACE</span>
+            <span className="ml-1 align-middle text-[9px] tracking-ribbon text-lime sm:ml-2 sm:text-xs">
+              PACE
+            </span>
           </span>
         </Link>
 
