@@ -2,10 +2,11 @@
 -- Bratt Tree - Production historicals: Jan + Feb + Mar + Apr 2026
 -- ============================================================================
 -- Source: ServiceTitan "All - Completed Jobs" exports, one per month.
--- Rows with revenue > 0 are aggregated by technician, then mapped to the
--- technician's home crew. Technicians not in the crew_members roster have
--- their revenue + jobs swept into the 'Other' crew. Revenue is rounded up
--- to the nearest whole dollar; jobs rounded to nearest integer.
+-- Rows with revenue > 0 are aggregated by technician and routed to a crew.
+-- Clam team: Eric Schwagel, Francisco Fonseca, Sean Adams (current), and
+-- Brian Fleck (former; was Clam team while employed). Everyone else not in
+-- the crew_members roster is bucketed into 'Other'. Revenue is rounded up
+-- to whole dollars; jobs are rounded to the nearest integer.
 -- ============================================================================
 
 insert into production_monthly_historicals (year, month, crew_id, jobs, revenue, source_note)
@@ -21,8 +22,9 @@ from (values
   (2026, 1, 'Gray', 20, 61757, 'ServiceTitan export, January 2026'),
   (2026, 1, 'Pink', 17, 59393, 'ServiceTitan export, January 2026'),
   (2026, 1, 'Stump Grinding', 44, 31359, 'ServiceTitan export, January 2026'),
+  (2026, 1, 'Clam', 13, 10487, 'ServiceTitan export, January 2026'),
   (2026, 1, 'PHC', 0, 0, 'ServiceTitan export, January 2026'),
-  (2026, 1, 'Other', 27, 42781, 'ServiceTitan export, January 2026'),
+  (2026, 1, 'Other', 14, 32294, 'ServiceTitan export, January 2026'),
   (2026, 2, 'Black', 27, 80063, 'ServiceTitan export, February 2026'),
   (2026, 2, 'Red', 22, 98762, 'ServiceTitan export, February 2026'),
   (2026, 2, 'Blue I', 31, 98939, 'ServiceTitan export, February 2026'),
@@ -33,8 +35,9 @@ from (values
   (2026, 2, 'Gray', 17, 72828, 'ServiceTitan export, February 2026'),
   (2026, 2, 'Pink', 33, 86093, 'ServiceTitan export, February 2026'),
   (2026, 2, 'Stump Grinding', 47, 33064, 'ServiceTitan export, February 2026'),
+  (2026, 2, 'Clam', 3, 2100, 'ServiceTitan export, February 2026'),
   (2026, 2, 'PHC', 0, 0, 'ServiceTitan export, February 2026'),
-  (2026, 2, 'Other', 7, 19459, 'ServiceTitan export, February 2026'),
+  (2026, 2, 'Other', 4, 17359, 'ServiceTitan export, February 2026'),
   (2026, 3, 'Black', 28, 83550, 'ServiceTitan export, March 2026'),
   (2026, 3, 'Red', 21, 57506, 'ServiceTitan export, March 2026'),
   (2026, 3, 'Blue I', 43, 50579, 'ServiceTitan export, March 2026'),
@@ -45,8 +48,9 @@ from (values
   (2026, 3, 'Gray', 15, 60229, 'ServiceTitan export, March 2026'),
   (2026, 3, 'Pink', 42, 96629, 'ServiceTitan export, March 2026'),
   (2026, 3, 'Stump Grinding', 57, 37257, 'ServiceTitan export, March 2026'),
+  (2026, 3, 'Clam', 11, 9600, 'ServiceTitan export, March 2026'),
   (2026, 3, 'PHC', 0, 0, 'ServiceTitan export, March 2026'),
-  (2026, 3, 'Other', 18, 27771, 'ServiceTitan export, March 2026'),
+  (2026, 3, 'Other', 7, 18171, 'ServiceTitan export, March 2026'),
   (2026, 4, 'Black', 33, 71219, 'ServiceTitan export, April 2026'),
   (2026, 4, 'Red', 28, 86625, 'ServiceTitan export, April 2026'),
   (2026, 4, 'Blue I', 40, 46982, 'ServiceTitan export, April 2026'),
@@ -57,8 +61,9 @@ from (values
   (2026, 4, 'Gray', 24, 51227, 'ServiceTitan export, April 2026'),
   (2026, 4, 'Pink', 39, 88183, 'ServiceTitan export, April 2026'),
   (2026, 4, 'Stump Grinding', 66, 34102, 'ServiceTitan export, April 2026'),
+  (2026, 4, 'Clam', 3, 2200, 'ServiceTitan export, April 2026'),
   (2026, 4, 'PHC', 210, 86579, 'ServiceTitan export, April 2026'),
-  (2026, 4, 'Other', 4, 3600, 'ServiceTitan export, April 2026')
+  (2026, 4, 'Other', 1, 1400, 'ServiceTitan export, April 2026')
 ) as v(year, month, crew_name, jobs, revenue, note)
 join crews c on c.name = v.crew_name
 on conflict (year, month, crew_id) do update
