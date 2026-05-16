@@ -9,8 +9,19 @@ import {
 } from '@/lib/calculations';
 import { fmtUsd, fmtPct, monthLabel } from '@/lib/format';
 import { workingWeeksInMonth, toIsoDate, type IsoDate } from '@/lib/dates';
+import { MonthPicker } from '@/components/MonthPicker';
 
 export const dynamic = 'force-dynamic';
+
+type Search = Promise<{ year?: string; month?: string }>;
+
+function parseIntInRange(raw: string | undefined, min: number, max: number): number | null {
+  if (raw == null) return null;
+  const n = Number(raw);
+  if (!Number.isInteger(n)) return null;
+  if (n < min || n > max) return null;
+  return n;
+}
 
 function statusChipClass(s: PaceStatus): string {
   switch (s) {
@@ -40,11 +51,65 @@ function statusLabel(s: PaceStatus): string {
   }
 }
 
-export default async function SalesDashboardPage() {
+export default async function SalesDashboardPage({
+  searchParams,
+}: {
+  searchParams: Search;
+}) {
   const user = await getAllowedUser();
   if (!user) redirect('/login');
 
-  const data = await loadSalesMonth();
+  const sp = await searchParams;
+  const now = new Date();
+  const year = parseIntInRange(sp.year, 2000, 2100) ?? now.getFullYear();
+  const month = parseIntInRange(sp.month, 1, 12) ?? now.getMonth() + 1;
+
+  const data = await loadSalesMonth(year, month);
+  const nameById = new Map(data.salespeople.map((s) => [s.id, s.name]));
+  const isHistorical = data.historicals.length > 0;
+  const isCurrentMonth =
+    year === now.getFullYear() && month === now.getMonth() + 1;
+
+  if (isHistorical) {
+    return (
+      <HistoricalMonthView
+        year={year}
+        month={month}
+        data={data}
+        nameById={nameById}
+        isCurrentMonth={isCurrentMonth}
+      />
+    );
+  }
+
+  return (
+    <LiveMonthView
+      year={year}
+      month={month}
+      data={data}
+      nameById={nameById}
+      isCurrentMonth={isCurrentMonth}
+    />
+  );
+}
+
+// ----------------------------------------------------------------------------
+// Live month: full pace dashboard with daily entries, week-by-week, and
+// projected month-end pace.
+// ----------------------------------------------------------------------------
+function LiveMonthView({
+  year,
+  month,
+  data,
+  nameById,
+  isCurrentMonth,
+}: {
+  year: number;
+  month: number;
+  data: Awaited<ReturnType<typeof loadSalesMonth>>;
+  nameById: Map<string, string>;
+  isCurrentMonth: boolean;
+}) {
   const result = calculateSalesPace({
     entries: data.entries,
     reconciliation: { adjustments: data.reconciliation },
@@ -62,17 +127,9 @@ export default async function SalesDashboardPage() {
     c.budgeted_days_been_through,
     c.budgeted_days,
   );
-  const nameById = new Map(data.salespeople.map((sp) => [sp.id, sp.name]));
 
-  // Week grouping uses the real holiday set so Memorial Day etc. don't count
-  // as working days.
-  const weeks = workingWeeksInMonth(
-    data.ctx.year,
-    data.ctx.month,
-    data.holidays,
-  );
+  const weeks = workingWeeksInMonth(year, month, data.holidays);
 
-  // Sum entries by week.
   type WeekRow = {
     label: string;
     workingDaysTotal: number;
@@ -80,7 +137,6 @@ export default async function SalesDashboardPage() {
     total: number;
     dailyAvg: number;
     expected: number;
-    isPast: boolean;
   };
   const entriesByDate = new Map<IsoDate, number>();
   for (const e of data.entries) {
@@ -90,9 +146,7 @@ export default async function SalesDashboardPage() {
     );
   }
   const todayIso = toIsoDate(data.ctx.asOf);
-  const weeklyGoal =
-    c.budgeted_days > 0 ? c.goal / c.budgeted_days : 0; // per-day allocation
-
+  const weeklyGoal = c.budgeted_days > 0 ? c.goal / c.budgeted_days : 0;
   const weekRows: WeekRow[] = weeks.map((w) => {
     const workingDaysTotal = w.workingDays.length;
     const workingDaysComplete = w.workingDays.filter((d) => d <= todayIso).length;
@@ -103,41 +157,27 @@ export default async function SalesDashboardPage() {
     const dailyAvg =
       workingDaysComplete > 0 ? total / workingDaysComplete : 0;
     const expected = weeklyGoal * workingDaysTotal;
-    return {
-      label: w.label,
-      workingDaysTotal,
-      workingDaysComplete,
-      total,
-      dailyAvg,
-      expected,
-      isPast: workingDaysComplete >= workingDaysTotal,
-    };
+    return { label: w.label, workingDaysTotal, workingDaysComplete, total, dailyAvg, expected };
   });
 
   return (
     <main className="mx-auto max-w-6xl px-6 py-10">
-      {/* Header */}
-      <section className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-        <div>
-          <p className="bt-eyebrow">Dashboard 1</p>
-          <h1 className="mt-2 font-display text-5xl uppercase tracking-wider text-ink">
-            Sales PACE
-          </h1>
-          <p className="mt-3 text-fg-2">
-            {monthLabel(data.ctx.year, data.ctx.month)} &mdash;{' '}
+      <DashboardHeader
+        year={year}
+        month={month}
+        subline={
+          <>
             <strong className="text-ink">
               Day {c.budgeted_days_been_through} of {c.budgeted_days}
             </strong>{' '}
             ({c.budgeted_days_remaining} working day
             {c.budgeted_days_remaining === 1 ? '' : 's'} left)
-          </p>
-        </div>
-        <Link href="/sales/entry" className="bt-btn bt-btn-primary">
-          Enter Today&apos;s Sales
-        </Link>
-      </section>
+          </>
+        }
+        showEntryButton={isCurrentMonth}
+      />
 
-      {/* Company hero — MTD + 3 stats all on one row */}
+      {/* Company hero */}
       <section className="mt-8 rounded-card bg-bark p-6 text-cream sm:p-8">
         <div className="grid grid-cols-1 gap-6 sm:grid-cols-4 sm:items-stretch">
           <div className="flex flex-col justify-between border-b border-bark-deep pb-4 sm:border-b-0 sm:border-r sm:pb-0 sm:pr-6">
@@ -145,7 +185,7 @@ export default async function SalesDashboardPage() {
               <p className="font-headline text-xs font-extrabold uppercase tracking-ribbon text-lime">
                 Company MTD
               </p>
-              <p className="mt-2 font-display text-5xl tracking-wider sm:text-5xl">
+              <p className="mt-2 font-display text-5xl tracking-wider">
                 {fmtUsd(c.mtd_total)}
               </p>
               <p className="mt-1 text-sm text-cream/80">
@@ -199,20 +239,18 @@ export default async function SalesDashboardPage() {
             <tbody>
               {weekRows.map((w, idx) => {
                 const status: PaceStatus =
-                  w.workingDaysComplete === 0
+                  w.workingDaysComplete === 0 || w.expected <= 0
                     ? 'no-data'
-                    : w.expected <= 0
-                      ? 'no-data'
-                      : (() => {
-                          const partialExpected =
-                            (w.workingDaysComplete / w.workingDaysTotal) *
-                            w.expected;
-                          if (partialExpected <= 0) return 'no-data';
-                          const ratio = w.total / partialExpected;
-                          if (ratio >= 1.05) return 'ahead';
-                          if (ratio < 0.95) return 'behind';
-                          return 'on-pace';
-                        })();
+                    : (() => {
+                        const partialExpected =
+                          (w.workingDaysComplete / w.workingDaysTotal) *
+                          w.expected;
+                        if (partialExpected <= 0) return 'no-data';
+                        const ratio = w.total / partialExpected;
+                        if (ratio >= 1.05) return 'ahead';
+                        if (ratio < 0.95) return 'behind';
+                        return 'on-pace';
+                      })();
                 return (
                   <tr
                     key={w.label}
@@ -240,12 +278,11 @@ export default async function SalesDashboardPage() {
         </div>
       </section>
 
-      {/* Per-salesperson table */}
+      {/* Per-salesperson */}
       <section className="mt-10">
         <h2 className="font-headline text-xl font-black uppercase tracking-ribbon text-ink">
           By Salesperson
         </h2>
-
         <div className="mt-4 overflow-hidden rounded-card border-[3px] border-lime bg-white">
           <table className="w-full text-left text-sm">
             <thead className="bg-paper-edge/40 text-fg-2">
@@ -308,6 +345,165 @@ export default async function SalesDashboardPage() {
   );
 }
 
+// ----------------------------------------------------------------------------
+// Historical month: closed-out month stored as one rolled-up total per
+// salesperson. No daily/weekly views — just the per-person totals.
+// ----------------------------------------------------------------------------
+function HistoricalMonthView({
+  year,
+  month,
+  data,
+  nameById,
+  isCurrentMonth,
+}: {
+  year: number;
+  month: number;
+  data: Awaited<ReturnType<typeof loadSalesMonth>>;
+  nameById: Map<string, string>;
+  isCurrentMonth: boolean;
+}) {
+  const histByPerson = new Map<string, number>();
+  for (const h of data.historicals) {
+    histByPerson.set(h.salesperson_id, h.amount);
+  }
+  const total = data.historicals.reduce((s, h) => s + h.amount, 0);
+  const goal = data.companyGoal;
+  const pct = goal > 0 ? total / goal : 0;
+  const status: PaceStatus =
+    goal > 0
+      ? total / goal >= 1.05
+        ? 'ahead'
+        : total / goal < 0.95
+          ? 'behind'
+          : 'on-pace'
+      : 'no-data';
+
+  // Order by display_order, fall back to historical map order.
+  const rows = data.salespeople
+    .map((sp) => ({ id: sp.id, name: sp.name, amount: histByPerson.get(sp.id) ?? 0 }))
+    .sort((a, b) => {
+      const oa = data.salespeople.find((s) => s.id === a.id)?.display_order ?? 0;
+      const ob = data.salespeople.find((s) => s.id === b.id)?.display_order ?? 0;
+      return oa - ob;
+    });
+
+  return (
+    <main className="mx-auto max-w-6xl px-6 py-10">
+      <DashboardHeader
+        year={year}
+        month={month}
+        subline={<>Closed month &middot; stored as monthly totals only</>}
+        showEntryButton={isCurrentMonth}
+      />
+
+      {/* Historical hero */}
+      <section className="mt-8 rounded-card bg-bark p-6 text-cream sm:p-8">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+          <div>
+            <p className="font-headline text-xs font-extrabold uppercase tracking-ribbon text-lime">
+              Total for {monthLabel(year, month)}
+            </p>
+            <p className="mt-2 font-display text-6xl tracking-wider">
+              {fmtUsd(total)}
+            </p>
+            <p className="mt-1 text-sm text-cream/80">
+              of {fmtUsd(goal)} &middot; {fmtPct(pct)} of goal
+            </p>
+          </div>
+          <span className={statusChipClass(status)}>{statusLabel(status)}</span>
+        </div>
+      </section>
+
+      <section className="mt-10">
+        <h2 className="font-headline text-xl font-black uppercase tracking-ribbon text-ink">
+          By Salesperson
+        </h2>
+        <div className="mt-4 overflow-hidden rounded-card border-[3px] border-lime bg-white">
+          <table className="w-full text-left text-sm">
+            <thead className="bg-paper-edge/40 text-fg-2">
+              <tr>
+                <Th>Salesperson</Th>
+                <Th align="right">Total</Th>
+                <Th align="right">% of Month</Th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((r, idx) => (
+                <tr
+                  key={r.id}
+                  className={idx % 2 === 0 ? 'bg-white' : 'bg-paper/40'}
+                >
+                  <Td className="font-headline font-bold">
+                    <Link
+                      href={`/sales/${r.id}?year=${year}&month=${month}`}
+                      className="text-ink hover:text-orange hover:underline"
+                    >
+                      {nameById.get(r.id) ?? r.name}
+                    </Link>
+                  </Td>
+                  <Td align="right">{fmtUsd(r.amount)}</Td>
+                  <Td align="right">
+                    {total > 0 ? fmtPct(r.amount / total) : '—'}
+                  </Td>
+                </tr>
+              ))}
+            </tbody>
+            <tfoot>
+              <tr className="border-t-2 border-paper-edge bg-paper-edge/30">
+                <Td className="font-headline text-sm font-extrabold uppercase tracking-ribbon text-fg-2">
+                  Month Total
+                </Td>
+                <Td align="right" className="font-headline text-lg font-black text-ink">
+                  {fmtUsd(total)}
+                </Td>
+                <Td />
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+      </section>
+    </main>
+  );
+}
+
+// ----------------------------------------------------------------------------
+// Shared bits
+// ----------------------------------------------------------------------------
+
+function DashboardHeader({
+  year,
+  month,
+  subline,
+  showEntryButton,
+}: {
+  year: number;
+  month: number;
+  subline: React.ReactNode;
+  showEntryButton: boolean;
+}) {
+  return (
+    <section className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+      <div>
+        <p className="bt-eyebrow">Dashboard 1</p>
+        <h1 className="mt-2 font-display text-5xl uppercase tracking-wider text-ink">
+          Sales PACE
+        </h1>
+        <p className="mt-3 text-fg-2">
+          {monthLabel(year, month)} &mdash; {subline}
+        </p>
+      </div>
+      <div className="flex flex-col items-stretch gap-3 sm:items-end">
+        <MonthPicker year={year} month={month} />
+        {showEntryButton && (
+          <Link href="/sales/entry" className="bt-btn bt-btn-primary">
+            Enter Today&apos;s Sales
+          </Link>
+        )}
+      </div>
+    </section>
+  );
+}
+
 function Stat({
   label,
   value,
@@ -355,7 +551,7 @@ function Td({
   align = 'left',
   className = '',
 }: {
-  children: React.ReactNode;
+  children?: React.ReactNode;
   align?: 'left' | 'right';
   className?: string;
 }) {
