@@ -3,7 +3,7 @@
 import { useActionState, useMemo, useState } from 'react';
 import { useFormStatus } from 'react-dom';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { saveSalesEntries, type SaveResult } from './actions';
+import { saveSalesEntries, deleteSalesEntry, type SaveResult } from './actions';
 import type { Salesperson } from '@/types';
 
 type Props = {
@@ -34,7 +34,9 @@ export function EntryForm({ date, salespeople, initialAmounts }: Props) {
   );
 
   // Local state tracks the live inputs so we can show running totals and a
-  // dirty flag without re-render gymnastics.
+  // dirty flag without re-render gymnastics. The parent passes key={date}
+  // which remounts this component when the date changes, so this initializer
+  // always reflects the currently-selected day.
   const [amounts, setAmounts] = useState<Record<string, string>>(() => {
     const m: Record<string, string> = {};
     for (const sp of salespeople) {
@@ -61,11 +63,13 @@ export function EntryForm({ date, salespeople, initialAmounts }: Props) {
   }, [amounts, salespeople, initialAmounts]);
 
   const justSaved = searchParams.get('saved') === '1';
+  const justDeleted = searchParams.get('deleted') === '1';
 
   function changeDate(newDate: string) {
     const params = new URLSearchParams(searchParams.toString());
     params.set('date', newDate);
     params.delete('saved');
+    params.delete('deleted');
     router.push(`/sales/entry?${params.toString()}`);
   }
 
@@ -89,15 +93,21 @@ export function EntryForm({ date, salespeople, initialAmounts }: Props) {
             className="rounded-2 border-2 border-paper-edge bg-white px-3 py-2 font-headline text-base focus:border-orange focus:outline-none"
           />
         </label>
-        <p className="text-sm text-fg-2">
-          Pick a date, fill in each person&apos;s sales, then Save. Existing
-          entries for the day pre-fill so you can correct them.
+        <p className="text-sm text-fg-2 sm:max-w-md">
+          Need to fix a past day? Just change the date — existing numbers pre-fill
+          so you can overwrite them. Use the <strong>×</strong> button to remove
+          an entry entirely.
         </p>
       </div>
 
       {justSaved && !state && (
         <div className="rounded-2 border-2 border-green bg-green/10 px-4 py-3 text-sm font-bold text-green-dark">
           Saved. Numbers will refresh on the dashboard.
+        </div>
+      )}
+      {justDeleted && !state && (
+        <div className="rounded-2 border-2 border-green bg-green/10 px-4 py-3 text-sm font-bold text-green-dark">
+          Entry deleted.
         </div>
       )}
       {state?.ok === false && (
@@ -116,32 +126,60 @@ export function EntryForm({ date, salespeople, initialAmounts }: Props) {
               <th className="px-5 py-3 text-right font-headline text-xs font-extrabold uppercase tracking-ribbon text-fg-2">
                 Amount ($)
               </th>
+              <th className="w-12 px-2 py-3" />
             </tr>
           </thead>
           <tbody>
-            {salespeople.map((sp, idx) => (
-              <tr
-                key={sp.id}
-                className={idx % 2 === 0 ? 'bg-white/60' : 'bg-transparent'}
-              >
-                <td className="px-5 py-2 font-headline text-base font-bold text-ink">
-                  {sp.name}
-                </td>
-                <td className="px-5 py-2 text-right">
-                  <input
-                    type="text"
-                    inputMode="decimal"
-                    name={`amount__${sp.id}`}
-                    value={amounts[sp.id] ?? ''}
-                    onChange={(e) =>
-                      setAmounts((m) => ({ ...m, [sp.id]: e.target.value }))
-                    }
-                    placeholder="0"
-                    className="w-40 rounded-2 border-2 border-paper-edge bg-white px-3 py-2 text-right font-headline text-base focus:border-orange focus:outline-none"
-                  />
-                </td>
-              </tr>
-            ))}
+            {salespeople.map((sp, idx) => {
+              const hasExistingEntry = initialAmounts[sp.id] != null;
+              return (
+                <tr
+                  key={sp.id}
+                  className={idx % 2 === 0 ? 'bg-white/60' : 'bg-transparent'}
+                >
+                  <td className="px-5 py-2 font-headline text-base font-bold text-ink">
+                    {sp.name}
+                  </td>
+                  <td className="px-5 py-2 text-right">
+                    <input
+                      type="text"
+                      inputMode="decimal"
+                      name={`amount__${sp.id}`}
+                      value={amounts[sp.id] ?? ''}
+                      onChange={(e) =>
+                        setAmounts((m) => ({ ...m, [sp.id]: e.target.value }))
+                      }
+                      placeholder="0"
+                      className="w-40 rounded-2 border-2 border-paper-edge bg-white px-3 py-2 text-right font-headline text-base focus:border-orange focus:outline-none"
+                    />
+                  </td>
+                  <td className="w-12 px-2 py-2 text-center">
+                    {hasExistingEntry ? (
+                      <button
+                        type="submit"
+                        name="delete_salesperson_id"
+                        value={sp.id}
+                        formAction={deleteSalesEntry}
+                        onClick={(e) => {
+                          if (
+                            !window.confirm(
+                              `Delete ${sp.name}'s entry for ${date}? This can't be undone.`,
+                            )
+                          ) {
+                            e.preventDefault();
+                          }
+                        }}
+                        title={`Delete ${sp.name}'s entry for this day`}
+                        aria-label={`Delete ${sp.name}'s entry`}
+                        className="inline-flex h-7 w-7 items-center justify-center rounded-full border-2 border-paper-edge text-fg-3 transition-colors hover:border-orange-press hover:bg-orange-press hover:text-white"
+                      >
+                        ×
+                      </button>
+                    ) : null}
+                  </td>
+                </tr>
+              );
+            })}
           </tbody>
           <tfoot>
             <tr className="border-t-2 border-paper-edge bg-paper-edge/30">
@@ -151,6 +189,7 @@ export function EntryForm({ date, salespeople, initialAmounts }: Props) {
               <td className="px-5 py-3 text-right font-headline text-xl font-black text-ink">
                 {totalCurrency}
               </td>
+              <td />
             </tr>
           </tfoot>
         </table>

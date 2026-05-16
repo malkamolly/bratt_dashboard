@@ -53,6 +53,7 @@ export default async function SalesEntryPage({
 
       <div className="mt-8">
         <EntryForm
+          key={date}
           date={date}
           salespeople={salespeople}
           initialAmounts={entriesByPerson}

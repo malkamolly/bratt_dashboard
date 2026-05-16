@@ -36,6 +36,8 @@ export type SalesMonthData = {
   companyGoal: number;
   perPersonGoals: Record<string, number>;
   reconciliation: Record<string, number>;
+  /** Observed holidays in YYYY-MM-DD; used for working-day math. */
+  holidays: Set<IsoDate>;
 };
 
 function normalizeMoneyMap(raw: unknown): Record<string, number> {
@@ -123,6 +125,7 @@ export async function loadSalesMonth(
     companyGoal: Number(settings?.company_goal ?? 0),
     perPersonGoals: normalizeMoneyMap(settings?.per_person_goals),
     reconciliation: normalizeMoneyMap(reconRes.data?.adjustments),
+    holidays,
   };
 }
 
