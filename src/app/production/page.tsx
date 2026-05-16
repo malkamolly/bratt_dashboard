@@ -1,14 +1,665 @@
-export default function ProductionDashboardPage() {
+import Link from 'next/link';
+import { redirect } from 'next/navigation';
+import { getAllowedUser } from '@/lib/auth';
+import {
+  loadProductionMonth,
+  loadProductionYearToDate,
+  type ProductionYtdData,
+} from '@/lib/production-data';
+import {
+  calculateProductionPace,
+  paceStatus,
+  type PaceStatus,
+} from '@/lib/calculations';
+import { fmtUsd, fmtPct, monthLabel } from '@/lib/format';
+import { workingWeeksInMonth, toIsoDate, type IsoDate } from '@/lib/dates';
+import { MonthPicker } from '@/components/MonthPicker';
+import type { Crew } from '@/types';
+
+export const dynamic = 'force-dynamic';
+
+type Search = Promise<{ year?: string; month?: string }>;
+
+function parseIntInRange(raw: string | undefined, min: number, max: number) {
+  if (raw == null) return null;
+  const n = Number(raw);
+  if (!Number.isInteger(n) || n < min || n > max) return null;
+  return n;
+}
+
+function statusChipClass(s: PaceStatus): string {
+  switch (s) {
+    case 'ahead':
+      return 'bt-status-ahead';
+    case 'on-pace':
+      return 'bt-status-onpace';
+    case 'behind':
+      return 'bt-status-behind';
+    case 'no-data':
+    default:
+      return 'bt-status-neutral';
+  }
+}
+
+function statusLabel(s: PaceStatus): string {
+  switch (s) {
+    case 'ahead':
+      return 'Ahead';
+    case 'on-pace':
+      return 'On Pace';
+    case 'behind':
+      return 'Behind';
+    case 'no-data':
+    default:
+      return '—';
+  }
+}
+
+export default async function ProductionDashboardPage({
+  searchParams,
+}: {
+  searchParams: Search;
+}) {
+  const user = await getAllowedUser();
+  if (!user) redirect('/login');
+
+  const sp = await searchParams;
+  const now = new Date();
+  const year = parseIntInRange(sp.year, 2000, 2100) ?? now.getFullYear();
+  const month = parseIntInRange(sp.month, 1, 12) ?? now.getMonth() + 1;
+
+  const [data, ytd] = await Promise.all([
+    loadProductionMonth(year, month),
+    loadProductionYearToDate(year),
+  ]);
+
+  const isCurrentMonth =
+    year === now.getFullYear() && month === now.getMonth() + 1;
+  const isHistorical = data.historicals.length > 0;
+  const nameById = new Map(data.crews.map((c) => [c.id, c.name]));
+
+  if (isHistorical) {
+    return (
+      <HistoricalMonthView
+        year={year}
+        month={month}
+        data={data}
+        ytd={ytd}
+        nameById={nameById}
+        isCurrentMonth={isCurrentMonth}
+      />
+    );
+  }
   return (
-    <main className="mx-auto max-w-6xl px-6 py-12">
-      <p className="bt-eyebrow">Dashboard 2</p>
-      <h1 className="mt-2 font-display text-5xl uppercase tracking-wider text-ink">
-        Production PACE
-      </h1>
-      <p className="mt-4 max-w-xl text-fg-2">
-        Production crews and Plant Healthcare coming next. Calculations live in{' '}
-        <code className="font-mono text-sm">src/lib/calculations.ts</code>.
-      </p>
+    <LiveMonthView
+      year={year}
+      month={month}
+      data={data}
+      ytd={ytd}
+      nameById={nameById}
+      isCurrentMonth={isCurrentMonth}
+    />
+  );
+}
+
+// ---------------------------------------------------------------------------
+// LIVE MONTH
+// ---------------------------------------------------------------------------
+function LiveMonthView({
+  year,
+  month,
+  data,
+  ytd,
+  nameById,
+  isCurrentMonth,
+}: {
+  year: number;
+  month: number;
+  data: Awaited<ReturnType<typeof loadProductionMonth>>;
+  ytd: ProductionYtdData;
+  nameById: Map<string, string>;
+  isCurrentMonth: boolean;
+}) {
+  const result = calculateProductionPace({
+    entries: data.entries,
+    reconciliation: { adjustments: data.reconciliation },
+    budgetedDays: data.ctx.budgetedDays,
+    budgetedDaysBeenThrough: data.ctx.budgetedDaysBeenThrough,
+    crewBudgets: data.crewBudgets,
+    crewIds: data.crews.map((c) => c.id),
+  });
+
+  const c = result.combined;
+  const companyStatus = paceStatus(
+    c.mtd_revenue,
+    c.total_budget,
+    c.budgeted_days_been_through,
+    c.budgeted_days,
+  );
+
+  const productionCrewIds = new Set(
+    data.crews.filter((cr) => cr.kind === 'production').map((cr) => cr.id),
+  );
+  const phcCrewIds = new Set(
+    data.crews.filter((cr) => cr.kind === 'phc').map((cr) => cr.id),
+  );
+  const productionCrewRows = result.perCrew.filter((p) =>
+    productionCrewIds.has(p.crew_id),
+  );
+  const phcCrewRows = result.perCrew.filter((p) => phcCrewIds.has(p.crew_id));
+
+  const weeks = workingWeeksInMonth(year, month, data.holidays);
+  const revByDate = new Map<IsoDate, number>();
+  for (const e of data.entries) {
+    revByDate.set(e.entry_date, (revByDate.get(e.entry_date) ?? 0) + e.revenue);
+  }
+  const todayIso = toIsoDate(data.ctx.asOf);
+  const weeklyTarget =
+    c.budgeted_days > 0 ? c.total_budget / c.budgeted_days : 0;
+  const weekRows = weeks.map((w) => {
+    const workingDaysTotal = w.workingDays.length;
+    const workingDaysComplete = w.workingDays.filter((d) => d <= todayIso).length;
+    const total = w.workingDays.reduce(
+      (s, d) => s + (revByDate.get(d) ?? 0),
+      0,
+    );
+    const dailyAvg = workingDaysComplete > 0 ? total / workingDaysComplete : 0;
+    const expected = weeklyTarget * workingDaysTotal;
+    return { label: w.label, workingDaysTotal, workingDaysComplete, total, dailyAvg, expected };
+  });
+
+  return (
+    <main className="mx-auto max-w-6xl px-6 py-10">
+      <Header
+        year={year}
+        month={month}
+        subline={
+          <>
+            <strong className="text-ink">
+              Day {c.budgeted_days_been_through} of {c.budgeted_days}
+            </strong>{' '}
+            ({c.budgeted_days_remaining} working day
+            {c.budgeted_days_remaining === 1 ? '' : 's'} left)
+          </>
+        }
+        showEntryButton={isCurrentMonth}
+      />
+
+      <YtdStrip ytd={ytd} />
+
+      <section className="mt-3 rounded-card bg-bark p-6 text-cream sm:p-8">
+        <div className="grid grid-cols-1 gap-6 sm:grid-cols-4 sm:items-stretch">
+          <div className="flex flex-col justify-between border-b border-bark-deep pb-4 sm:border-b-0 sm:border-r sm:pb-0 sm:pr-6">
+            <div>
+              <p className="font-headline text-xs font-extrabold uppercase tracking-ribbon text-lime">
+                Combined MTD
+              </p>
+              <p className="mt-2 font-display text-5xl tracking-wider">
+                {fmtUsd(c.mtd_revenue)}
+              </p>
+              <p className="mt-1 text-sm text-cream/80">
+                of {fmtUsd(c.total_budget)} &middot;{' '}
+                {c.total_budget > 0
+                  ? fmtPct(c.mtd_revenue / c.total_budget)
+                  : '—'} of budget
+              </p>
+              <p className="mt-1 text-xs text-cream/60">
+                {c.mtd_jobs} {c.mtd_jobs === 1 ? 'job' : 'jobs'} &middot; avg{' '}
+                {fmtUsd(c.avg_job_size)}/job
+              </p>
+            </div>
+            <div className="mt-3">
+              <span className={statusChipClass(companyStatus)}>
+                {statusLabel(companyStatus)}
+              </span>
+            </div>
+          </div>
+
+          <Stat
+            label="Pacing to finish"
+            value={fmtUsd(c.total_pacing_revenue)}
+            hint="If today's rate holds"
+          />
+          <Stat
+            label="Daily avg so far"
+            value={fmtUsd(c.daily_avg_revenue)}
+            hint={`${c.daily_avg_jobs.toFixed(1)} jobs/day`}
+          />
+          <Stat
+            label="Daily needed for budget"
+            value={fmtUsd(c.total_daily_budget_needed)}
+            hint={`Across ${c.budgeted_days_remaining} day${
+              c.budgeted_days_remaining === 1 ? '' : 's'
+            } left`}
+          />
+        </div>
+      </section>
+
+      <section className="mt-10">
+        <h2 className="font-headline text-xl font-black uppercase tracking-ribbon text-ink">
+          Week by Week
+        </h2>
+        <div className="mt-4 overflow-hidden rounded-card border-[3px] border-lime bg-white">
+          <table className="w-full text-left text-sm">
+            <thead className="bg-paper-edge/40 text-fg-2">
+              <tr>
+                <Th>Week</Th>
+                <Th align="right">Days</Th>
+                <Th align="right">Revenue</Th>
+                <Th align="right">Daily Avg</Th>
+                <Th align="right">Weekly Target</Th>
+                <Th align="right">Status</Th>
+              </tr>
+            </thead>
+            <tbody>
+              {weekRows.map((w, idx) => {
+                const status: PaceStatus =
+                  w.workingDaysComplete === 0 || w.expected <= 0
+                    ? 'no-data'
+                    : (() => {
+                        const partial =
+                          (w.workingDaysComplete / w.workingDaysTotal) *
+                          w.expected;
+                        if (partial <= 0) return 'no-data';
+                        const ratio = w.total / partial;
+                        if (ratio >= 1.05) return 'ahead';
+                        if (ratio < 0.95) return 'behind';
+                        return 'on-pace';
+                      })();
+                return (
+                  <tr
+                    key={w.label}
+                    className={idx % 2 === 0 ? 'bg-white' : 'bg-paper/40'}
+                  >
+                    <Td className="font-headline font-bold text-ink">{w.label}</Td>
+                    <Td align="right">
+                      {w.workingDaysComplete}/{w.workingDaysTotal}
+                    </Td>
+                    <Td align="right">{fmtUsd(w.total)}</Td>
+                    <Td align="right">{fmtUsd(w.dailyAvg)}</Td>
+                    <Td align="right">{fmtUsd(w.expected)}</Td>
+                    <Td align="right">
+                      <span className={statusChipClass(status)}>
+                        {statusLabel(status)}
+                      </span>
+                    </Td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <CrewTable
+        title="Production Crews"
+        rows={productionCrewRows}
+        nameById={nameById}
+        companyDays={c.budgeted_days}
+        companyDaysComplete={c.budgeted_days_been_through}
+      />
+
+      {phcCrewRows.length > 0 && (
+        <CrewTable
+          title="Plant Healthcare"
+          rows={phcCrewRows}
+          nameById={nameById}
+          companyDays={c.budgeted_days}
+          companyDaysComplete={c.budgeted_days_been_through}
+        />
+      )}
     </main>
+  );
+}
+
+function CrewTable({
+  title,
+  rows,
+  nameById,
+  companyDays,
+  companyDaysComplete,
+}: {
+  title: string;
+  rows: Array<ReturnType<typeof calculateProductionPace>['perCrew'][number]>;
+  nameById: Map<string, string>;
+  companyDays: number;
+  companyDaysComplete: number;
+}) {
+  return (
+    <section className="mt-10">
+      <h2 className="font-headline text-xl font-black uppercase tracking-ribbon text-ink">
+        {title}
+      </h2>
+      <div className="mt-4 overflow-hidden rounded-card border-[3px] border-lime bg-white">
+        <table className="w-full text-left text-sm">
+          <thead className="bg-paper-edge/40 text-fg-2">
+            <tr>
+              <Th>Crew</Th>
+              <Th align="right">Jobs</Th>
+              <Th align="right">Revenue</Th>
+              <Th align="right">Avg Job</Th>
+              <Th align="right">Pacing</Th>
+              <Th align="right">Budget</Th>
+              <Th align="right">% of Budget</Th>
+              <Th align="right">Status</Th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((p, idx) => {
+              const status =
+                p.budget > 0
+                  ? paceStatus(
+                      p.mtd_revenue,
+                      p.budget,
+                      companyDaysComplete,
+                      companyDays,
+                    )
+                  : 'no-data';
+              const name = nameById.get(p.crew_id) ?? p.crew_id;
+              return (
+                <tr
+                  key={p.crew_id}
+                  className={idx % 2 === 0 ? 'bg-white' : 'bg-paper/40'}
+                >
+                  <Td className="font-headline font-bold">
+                    <Link
+                      href={`/production/${p.crew_id}`}
+                      className="text-ink hover:text-orange hover:underline"
+                    >
+                      {name}
+                    </Link>
+                  </Td>
+                  <Td align="right">{p.mtd_jobs}</Td>
+                  <Td align="right">{fmtUsd(p.mtd_revenue)}</Td>
+                  <Td align="right">{p.mtd_jobs > 0 ? fmtUsd(p.avg_job_size) : '—'}</Td>
+                  <Td align="right">{fmtUsd(p.pacing_revenue)}</Td>
+                  <Td align="right">
+                    {p.budget > 0 ? fmtUsd(p.budget) : 'TBD'}
+                  </Td>
+                  <Td align="right">
+                    {p.budget > 0 ? fmtPct(p.pct_to_budget) : '—'}
+                  </Td>
+                  <Td align="right">
+                    <span className={statusChipClass(status)}>
+                      {statusLabel(status)}
+                    </span>
+                  </Td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+      <p className="mt-3 text-xs text-fg-3">
+        Click a crew name to see day-by-day numbers.
+      </p>
+    </section>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// HISTORICAL MONTH
+// ---------------------------------------------------------------------------
+function HistoricalMonthView({
+  year,
+  month,
+  data,
+  ytd,
+  nameById,
+  isCurrentMonth,
+}: {
+  year: number;
+  month: number;
+  data: Awaited<ReturnType<typeof loadProductionMonth>>;
+  ytd: ProductionYtdData;
+  nameById: Map<string, string>;
+  isCurrentMonth: boolean;
+}) {
+  const histByCrew = new Map<string, { jobs: number; revenue: number }>();
+  for (const h of data.historicals) {
+    histByCrew.set(h.crew_id, { jobs: h.jobs, revenue: h.revenue });
+  }
+  const totalRev = data.historicals.reduce((s, h) => s + h.revenue, 0);
+  const totalJobs = data.historicals.reduce((s, h) => s + h.jobs, 0);
+  const totalBudget = Object.values(data.crewBudgets).reduce((s, n) => s + n, 0);
+  const pct = totalBudget > 0 ? totalRev / totalBudget : 0;
+  const status: PaceStatus =
+    totalBudget > 0
+      ? pct >= 1.05
+        ? 'ahead'
+        : pct < 0.95
+          ? 'behind'
+          : 'on-pace'
+      : 'no-data';
+
+  const productionRows = data.crews
+    .filter((c) => c.kind === 'production')
+    .map((c) => ({
+      crew: c,
+      jobs: histByCrew.get(c.id)?.jobs ?? 0,
+      revenue: histByCrew.get(c.id)?.revenue ?? 0,
+      budget: data.crewBudgets[c.id] ?? 0,
+    }));
+  const phcRows = data.crews
+    .filter((c) => c.kind === 'phc')
+    .map((c) => ({
+      crew: c,
+      jobs: histByCrew.get(c.id)?.jobs ?? 0,
+      revenue: histByCrew.get(c.id)?.revenue ?? 0,
+      budget: data.crewBudgets[c.id] ?? 0,
+    }));
+
+  return (
+    <main className="mx-auto max-w-6xl px-6 py-10">
+      <Header
+        year={year}
+        month={month}
+        subline={<>Closed month &middot; stored as monthly totals only</>}
+        showEntryButton={isCurrentMonth}
+      />
+
+      <YtdStrip ytd={ytd} />
+
+      <section className="mt-3 rounded-card bg-bark p-6 text-cream sm:p-8">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+          <div>
+            <p className="font-headline text-xs font-extrabold uppercase tracking-ribbon text-lime">
+              Total for {monthLabel(year, month)}
+            </p>
+            <p className="mt-2 font-display text-6xl tracking-wider">
+              {fmtUsd(totalRev)}
+            </p>
+            <p className="mt-1 text-sm text-cream/80">
+              {totalBudget > 0 ? (
+                <>of {fmtUsd(totalBudget)} &middot; {fmtPct(pct)} of budget</>
+              ) : (
+                'no budget set'
+              )}{' '}
+              &middot; {totalJobs} {totalJobs === 1 ? 'job' : 'jobs'}
+            </p>
+          </div>
+          <span className={statusChipClass(status)}>{statusLabel(status)}</span>
+        </div>
+      </section>
+
+      <HistoricalCrewTable
+        title="Production Crews"
+        rows={productionRows}
+        nameById={nameById}
+        totalRev={totalRev}
+      />
+      {phcRows.length > 0 && (
+        <HistoricalCrewTable
+          title="Plant Healthcare"
+          rows={phcRows}
+          nameById={nameById}
+          totalRev={totalRev}
+        />
+      )}
+    </main>
+  );
+}
+
+function HistoricalCrewTable({
+  title,
+  rows,
+  nameById,
+  totalRev,
+}: {
+  title: string;
+  rows: Array<{ crew: Crew; jobs: number; revenue: number; budget: number }>;
+  nameById: Map<string, string>;
+  totalRev: number;
+}) {
+  return (
+    <section className="mt-10">
+      <h2 className="font-headline text-xl font-black uppercase tracking-ribbon text-ink">
+        {title}
+      </h2>
+      <div className="mt-4 overflow-hidden rounded-card border-[3px] border-lime bg-white">
+        <table className="w-full text-left text-sm">
+          <thead className="bg-paper-edge/40 text-fg-2">
+            <tr>
+              <Th>Crew</Th>
+              <Th align="right">Jobs</Th>
+              <Th align="right">Revenue</Th>
+              <Th align="right">Budget</Th>
+              <Th align="right">% of Month</Th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((r, idx) => (
+              <tr
+                key={r.crew.id}
+                className={idx % 2 === 0 ? 'bg-white' : 'bg-paper/40'}
+              >
+                <Td className="font-headline font-bold text-ink">
+                  {nameById.get(r.crew.id) ?? r.crew.name}
+                </Td>
+                <Td align="right">{r.jobs}</Td>
+                <Td align="right">{fmtUsd(r.revenue)}</Td>
+                <Td align="right">{r.budget > 0 ? fmtUsd(r.budget) : '—'}</Td>
+                <Td align="right">
+                  {totalRev > 0 ? fmtPct(r.revenue / totalRev) : '—'}
+                </Td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </section>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Shared bits
+// ---------------------------------------------------------------------------
+function Header({
+  year,
+  month,
+  subline,
+  showEntryButton,
+}: {
+  year: number;
+  month: number;
+  subline: React.ReactNode;
+  showEntryButton: boolean;
+}) {
+  return (
+    <section className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+      <div>
+        <p className="bt-eyebrow">Dashboard 2</p>
+        <h1 className="mt-2 font-display text-5xl uppercase tracking-wider text-ink">
+          Production PACE
+        </h1>
+        <p className="mt-3 text-fg-2">
+          {monthLabel(year, month)} &mdash; {subline}
+        </p>
+      </div>
+      <div className="flex flex-wrap items-center gap-3">
+        {showEntryButton && (
+          <Link
+            href="/production/entry"
+            className="inline-flex items-center rounded-full bg-orange px-5 py-2 font-headline text-xs font-extrabold uppercase tracking-ribbon text-white shadow-sh-1 transition-colors hover:bg-orange-hover"
+          >
+            Enter Today&apos;s Numbers
+          </Link>
+        )}
+        <MonthPicker year={year} month={month} />
+      </div>
+    </section>
+  );
+}
+
+function YtdStrip({ ytd }: { ytd: ProductionYtdData }) {
+  if (!ytd.byMonth || ytd.byMonth.length === 0) return null;
+  return (
+    <section className="mt-6 flex flex-col gap-3 rounded-full border-2 border-paper-edge bg-white/70 px-5 py-2 sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+        <span className="font-headline text-[10px] font-extrabold uppercase tracking-ribbon text-fg-2">
+          YTD {ytd.year}
+        </span>
+        <span className="font-headline text-lg font-black text-ink">
+          {fmtUsd(ytd.ytdRevenue)}
+        </span>
+        <span className="text-xs text-fg-3">
+          {ytd.ytdJobs} {ytd.ytdJobs === 1 ? 'job' : 'jobs'}
+        </span>
+      </div>
+    </section>
+  );
+}
+
+function Stat({ label, value, hint }: { label: string; value: string; hint?: string }) {
+  return (
+    <div className="flex flex-col justify-between border-b border-bark-deep pb-4 last:border-b-0 last:pb-0 sm:border-b-0 sm:border-r sm:pb-0 sm:pr-6 sm:last:border-r-0 sm:last:pr-0">
+      <div>
+        <p className="font-headline text-[11px] font-extrabold uppercase tracking-ribbon text-lime">
+          {label}
+        </p>
+        <p className="mt-2 font-headline text-2xl font-black sm:text-3xl">
+          {value}
+        </p>
+      </div>
+      {hint && <p className="mt-1 text-xs text-cream/70">{hint}</p>}
+    </div>
+  );
+}
+
+function Th({
+  children,
+  align = 'left',
+}: {
+  children: React.ReactNode;
+  align?: 'left' | 'right';
+}) {
+  return (
+    <th
+      className={`px-4 py-3 font-headline text-xs font-extrabold uppercase tracking-ribbon ${
+        align === 'right' ? 'text-right' : 'text-left'
+      }`}
+    >
+      {children}
+    </th>
+  );
+}
+
+function Td({
+  children,
+  align = 'left',
+  className = '',
+}: {
+  children?: React.ReactNode;
+  align?: 'left' | 'right';
+  className?: string;
+}) {
+  return (
+    <td
+      className={`px-4 py-3 ${
+        align === 'right' ? 'text-right' : 'text-left'
+      } ${className}`}
+    >
+      {children}
+    </td>
   );
 }
