@@ -1,0 +1,93 @@
+-- ============================================================================
+-- Bratt Tree - Per-member production historicals: Jan-Apr 2026
+-- ============================================================================
+-- Source: ServiceTitan "All - Completed Jobs" exports. Each technician's
+-- monthly revenue/jobs sum is stored as one row in production_member_historicals
+-- and attributed to their home crew. Revenue rounded up to whole dollars.
+-- ============================================================================
+
+insert into production_member_historicals (year, month, crew_member_id, crew_id, jobs, revenue, source_note)
+select v.year, v.month, cm.id, c.id, v.jobs, v.revenue, v.note
+from (values
+  (2026, 1, '**Unassigned Tree Crew', 'Other', 1, 3528, 'ServiceTitan export, January 2026'),
+  (2026, 1, 'Andy L', 'Blue II', 18, 37100, 'ServiceTitan export, January 2026'),
+  (2026, 1, 'Brian Fleck', 'Clam', 3, 2487, 'ServiceTitan export, January 2026'),
+  (2026, 1, 'Bryan Christiansen', 'Blue I', 2, 2871, 'ServiceTitan export, January 2026'),
+  (2026, 1, 'Caleb Olson', 'Other', 4, 12801, 'ServiceTitan export, January 2026'),
+  (2026, 1, 'Conrad', 'Blue III', 35, 42240, 'ServiceTitan export, January 2026'),
+  (2026, 1, 'Elia', 'Blue III', 1, 1406, 'ServiceTitan export, January 2026'),
+  (2026, 1, 'Eric Schwagel', 'Clam', 6, 4800, 'ServiceTitan export, January 2026'),
+  (2026, 1, 'Ezra', 'Green 2', 1, 20700, 'ServiceTitan export, January 2026'),
+  (2026, 1, 'Francisco Fonseca', 'Clam', 4, 3200, 'ServiceTitan export, January 2026'),
+  (2026, 1, 'Jackson', 'Red', 25, 96894, 'ServiceTitan export, January 2026'),
+  (2026, 1, 'John Carpenter', 'Stump Grinding', 44, 31359, 'ServiceTitan export, January 2026'),
+  (2026, 1, 'Los Ramirez', 'Clam', 2, 6984, 'ServiceTitan export, January 2026'),
+  (2026, 1, 'Nate Weekley', 'Other', 5, 7588, 'ServiceTitan export, January 2026'),
+  (2026, 1, 'Nathan Runtsch', 'Blue I', 32, 40031, 'ServiceTitan export, January 2026'),
+  (2026, 1, 'Nick Lampman', 'Other', 2, 1394, 'ServiceTitan export, January 2026'),
+  (2026, 1, 'Ross', 'Green 1', 22, 43191, 'ServiceTitan export, January 2026'),
+  (2026, 1, 'Sean B', 'Pink', 17, 59393, 'ServiceTitan export, January 2026'),
+  (2026, 1, 'Sean-Paul', 'Gray', 20, 61757, 'ServiceTitan export, January 2026'),
+  (2026, 1, 'Taylor Mueller', 'Black', 23, 89986, 'ServiceTitan export, January 2026'),
+  (2026, 1, 'Trevor', 'Green 1', 4, 3299, 'ServiceTitan export, January 2026'),
+  (2026, 2, 'Andy L', 'Blue II', 23, 38705, 'ServiceTitan export, February 2026'),
+  (2026, 2, 'Bryan Christiansen', 'Blue I', 2, 5042, 'ServiceTitan export, February 2026'),
+  (2026, 2, 'Caleb Olson', 'Other', 2, 5986, 'ServiceTitan export, February 2026'),
+  (2026, 2, 'Conrad', 'Blue III', 25, 61229, 'ServiceTitan export, February 2026'),
+  (2026, 2, 'Eric Schwagel', 'Clam', 1, 800, 'ServiceTitan export, February 2026'),
+  (2026, 2, 'Ezra', 'Green 2', 28, 66799, 'ServiceTitan export, February 2026'),
+  (2026, 2, 'Francisco Fonseca', 'Clam', 2, 1300, 'ServiceTitan export, February 2026'),
+  (2026, 2, 'Jackson', 'Red', 22, 98762, 'ServiceTitan export, February 2026'),
+  (2026, 2, 'John Carpenter', 'Stump Grinding', 47, 33064, 'ServiceTitan export, February 2026'),
+  (2026, 2, 'Los Ramirez', 'Clam', 2, 11373, 'ServiceTitan export, February 2026'),
+  (2026, 2, 'Nathan Runtsch', 'Blue I', 29, 93897, 'ServiceTitan export, February 2026'),
+  (2026, 2, 'Ross', 'Green 1', 18, 42408, 'ServiceTitan export, February 2026'),
+  (2026, 2, 'Sean B', 'Pink', 33, 86093, 'ServiceTitan export, February 2026'),
+  (2026, 2, 'Sean-Paul', 'Gray', 17, 72828, 'ServiceTitan export, February 2026'),
+  (2026, 2, 'Taylor Mueller', 'Black', 27, 80063, 'ServiceTitan export, February 2026'),
+  (2026, 2, 'Trevor', 'Green 1', 9, 20837, 'ServiceTitan export, February 2026'),
+  (2026, 3, 'Andy L', 'Blue II', 40, 59311, 'ServiceTitan export, March 2026'),
+  (2026, 3, 'Bryan Christiansen', 'Blue I', 4, 3054, 'ServiceTitan export, March 2026'),
+  (2026, 3, 'Caleb Olson', 'Other', 5, 13574, 'ServiceTitan export, March 2026'),
+  (2026, 3, 'Conrad', 'Blue III', 42, 58039, 'ServiceTitan export, March 2026'),
+  (2026, 3, 'Elia', 'Blue III', 2, 2923, 'ServiceTitan export, March 2026'),
+  (2026, 3, 'Eric Schwagel', 'Clam', 7, 5600, 'ServiceTitan export, March 2026'),
+  (2026, 3, 'Ezra', 'Green 2', 21, 44521, 'ServiceTitan export, March 2026'),
+  (2026, 3, 'Francisco Fonseca', 'Clam', 3, 3200, 'ServiceTitan export, March 2026'),
+  (2026, 3, 'Jackson', 'Red', 21, 57506, 'ServiceTitan export, March 2026'),
+  (2026, 3, 'Jaidyn Atchley', 'Black', 5, 8616, 'ServiceTitan export, March 2026'),
+  (2026, 3, 'John Carpenter', 'Stump Grinding', 57, 37257, 'ServiceTitan export, March 2026'),
+  (2026, 3, 'Los Ramirez', 'Clam', 2, 4597, 'ServiceTitan export, March 2026'),
+  (2026, 3, 'Nathan Runtsch', 'Blue I', 39, 47525, 'ServiceTitan export, March 2026'),
+  (2026, 3, 'Ross', 'Green 1', 45, 81898, 'ServiceTitan export, March 2026'),
+  (2026, 3, 'Sean Adams', 'Clam', 1, 800, 'ServiceTitan export, March 2026'),
+  (2026, 3, 'Sean B', 'Pink', 42, 96629, 'ServiceTitan export, March 2026'),
+  (2026, 3, 'Sean-Paul', 'Gray', 15, 60229, 'ServiceTitan export, March 2026'),
+  (2026, 3, 'Taylor Mueller', 'Black', 23, 74934, 'ServiceTitan export, March 2026'),
+  (2026, 3, 'Trevor', 'Green 1', 3, 4636, 'ServiceTitan export, March 2026'),
+  (2026, 4, 'Andy L', 'Blue II', 39, 50595, 'ServiceTitan export, April 2026'),
+  (2026, 4, 'Bryan Christiansen', 'Blue I', 3, 2214, 'ServiceTitan export, April 2026'),
+  (2026, 4, 'Caleb Olson', 'Other', 1, 1400, 'ServiceTitan export, April 2026'),
+  (2026, 4, 'Conrad', 'Blue III', 53, 63365, 'ServiceTitan export, April 2026'),
+  (2026, 4, 'Douglas Vines', 'PHC', 100, 40954, 'ServiceTitan export, April 2026'),
+  (2026, 4, 'Elia', 'Blue III', 2, 2650, 'ServiceTitan export, April 2026'),
+  (2026, 4, 'Ezra', 'Green 2', 10, 14510, 'ServiceTitan export, April 2026'),
+  (2026, 4, 'Francisco Fonseca', 'Clam', 3, 2200, 'ServiceTitan export, April 2026'),
+  (2026, 4, 'Jackson', 'Red', 28, 86625, 'ServiceTitan export, April 2026'),
+  (2026, 4, 'Jaidyn Atchley', 'Black', 7, 7024, 'ServiceTitan export, April 2026'),
+  (2026, 4, 'John Carpenter', 'Stump Grinding', 66, 34102, 'ServiceTitan export, April 2026'),
+  (2026, 4, 'Karenna Petersen', 'PHC', 110, 45626, 'ServiceTitan export, April 2026'),
+  (2026, 4, 'Nathan Runtsch', 'Blue I', 37, 44768, 'ServiceTitan export, April 2026'),
+  (2026, 4, 'Ross', 'Green 1', 42, 71626, 'ServiceTitan export, April 2026'),
+  (2026, 4, 'Sean B', 'Pink', 39, 88183, 'ServiceTitan export, April 2026'),
+  (2026, 4, 'Sean-Paul', 'Gray', 24, 51227, 'ServiceTitan export, April 2026'),
+  (2026, 4, 'Taylor Mueller', 'Black', 26, 64196, 'ServiceTitan export, April 2026')
+) as v(year, month, member_name, crew_name, jobs, revenue, note)
+join crew_members cm on cm.name = v.member_name
+join crews c on c.name = v.crew_name
+on conflict (year, month, crew_member_id) do update
+  set jobs = excluded.jobs,
+      revenue = excluded.revenue,
+      crew_id = excluded.crew_id,
+      source_note = excluded.source_note,
+      updated_at = now();
