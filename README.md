@@ -128,7 +128,7 @@ insert into allowed_emails (email, role) values
 on conflict (email) do nothing;
 
 -- Make someone an admin (can edit budgets, names, etc.):
-update allowed_emails set role = 'admin' where email = 'connor@bratttree.com';
+update allowed_emails set role = 'admin' where email = 'someone@bratttree.com';
 ```
 
 **To remove a person:**

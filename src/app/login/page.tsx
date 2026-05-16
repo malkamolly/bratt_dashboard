@@ -70,7 +70,7 @@ export default async function LoginPage({
       </div>
 
       <p className="mt-6 text-center text-xs text-fg-3">
-        Trouble signing in? Ask Connor or the admin to add your email to the allowlist.
+        Trouble signing in? Ask Molly to add your email to the allowlist.
       </p>
     </main>
   );

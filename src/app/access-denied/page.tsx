@@ -18,7 +18,7 @@ export default function AccessDeniedPage() {
         </h1>
         <p className="mt-3 text-sm text-fg-2">
           Your email isn&apos;t on the Bratt Tree PACE allowlist. If this is a
-          mistake, ask Connor or an admin to add you.
+          mistake, ask Molly to add you.
         </p>
         <Link href="/login" className="bt-btn bt-btn-dark mt-6 justify-center">
           Back to Sign In
