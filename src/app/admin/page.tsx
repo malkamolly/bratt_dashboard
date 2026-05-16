@@ -92,14 +92,11 @@ export default async function AdminPage({
     <main className="mx-auto max-w-5xl px-6 py-10">
       {/* Header */}
       <p className="bt-eyebrow">Admin</p>
-      <div className="mt-2 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-        <h1 className="font-display text-5xl uppercase tracking-wider text-ink">
-          Settings
-        </h1>
-        <MonthPicker year={year} month={month} />
-      </div>
+      <h1 className="mt-2 font-display text-5xl uppercase tracking-wider text-ink">
+        Settings
+      </h1>
       <p className="mt-3 text-fg-2">
-        Showing data for <strong className="text-ink">{monthLabel(year, month)}</strong>. The month picker affects the Monthly Goals and Historicals sections.
+        Goals and Historicals each have their own month picker so you can edit any month.
       </p>
 
       <FlashBanner saved={sp.saved} error={sp.error} />
@@ -214,6 +211,7 @@ function MonthlyGoalsSection({
       eyebrow="2 — Goals"
       title={`Monthly Goals — ${monthLabel(year, month)}`}
       description="Company-wide goal plus an optional per-salesperson target. Per-person goals show as '% of Goal' columns on the dashboard."
+      headerRight={<MonthPicker year={year} month={month} basePath="/admin" />}
     >
       <form action={saveMonthlyGoals} className="space-y-5">
         <input type="hidden" name="year" value={year} />
@@ -290,6 +288,7 @@ function HistoricalsSection({
       eyebrow="3 — Historicals"
       title={`Monthly Totals — ${monthLabel(year, month)}`}
       description="A closed month's rolled-up total per salesperson. Saving here marks the month as 'historical' on the dashboard."
+      headerRight={<MonthPicker year={year} month={month} basePath="/admin" />}
     >
       {!hasAny && (
         <p className="mb-4 rounded-2 border-2 border-dashed border-paper-edge bg-white/60 px-3 py-2 text-xs text-fg-2">
@@ -430,20 +429,27 @@ function SectionCard({
   eyebrow,
   title,
   description,
+  headerRight,
   children,
 }: {
   eyebrow: string;
   title: string;
   description?: string;
+  headerRight?: React.ReactNode;
   children: React.ReactNode;
 }) {
   return (
     <section className="bt-card">
-      <p className="bt-eyebrow">{eyebrow}</p>
-      <h2 className="mt-2 font-headline text-2xl font-black uppercase text-bark-deep">
-        {title}
-      </h2>
-      {description && <p className="mt-2 text-sm text-fg-2">{description}</p>}
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div>
+          <p className="bt-eyebrow">{eyebrow}</p>
+          <h2 className="mt-2 font-headline text-2xl font-black uppercase text-bark-deep">
+            {title}
+          </h2>
+          {description && <p className="mt-2 text-sm text-fg-2">{description}</p>}
+        </div>
+        {headerRight && <div className="shrink-0">{headerRight}</div>}
+      </div>
       <div className="mt-5">{children}</div>
     </section>
   );

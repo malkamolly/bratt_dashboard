@@ -505,9 +505,12 @@ function DashboardHeader({
           {monthLabel(year, month)} &mdash; {subline}
         </p>
       </div>
-      <div className="flex flex-col items-stretch gap-3 sm:items-end">
+      <div className="flex flex-wrap items-center gap-3">
         {showEntryButton && (
-          <Link href="/sales/entry" className="bt-btn bt-btn-primary">
+          <Link
+            href="/sales/entry"
+            className="inline-flex items-center rounded-full bg-orange px-5 py-2 font-headline text-xs font-extrabold uppercase tracking-ribbon text-white shadow-sh-1 transition-colors hover:bg-orange-hover"
+          >
             Enter Today&apos;s Sales
           </Link>
         )}
