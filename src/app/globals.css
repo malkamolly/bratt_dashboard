@@ -1,0 +1,13 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --font-display: ui-sans-serif, system-ui, sans-serif;
+  --font-sans:    ui-sans-serif, system-ui, sans-serif;
+}
+
+body {
+  background: theme('colors.brand.light');
+  color: theme('colors.brand.dark');
+}
