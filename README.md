@@ -79,6 +79,8 @@ npm install
 8. Paste the contents of `supabase/migrations/005_crew_members_and_member_entries.sql`, click Run.
    Adds the crew_members and production_member_entries tables, seeds the visible
    roster (Black, Blue I, Stump Grinding, PHC), and deactivates Crane Operators.
+9. Paste the contents of `supabase/migrations/006_expand_crew_roster.sql`, click Run.
+   Splits Green into Green 1 + Green 2, and seeds the remaining crew member rosters.
 
 ### 4. Wire the app to Supabase
 
