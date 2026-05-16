@@ -168,7 +168,7 @@ function LiveMonthView({
   });
 
   return (
-    <main className="mx-auto max-w-6xl px-6 py-10">
+    <main className="mx-auto max-w-6xl px-4 py-6 sm:px-6 sm:py-10">
       <DashboardHeader
         year={year}
         month={month}
@@ -233,15 +233,15 @@ function LiveMonthView({
         <h2 className="font-headline text-xl font-black uppercase tracking-ribbon text-ink">
           Week by Week
         </h2>
-        <div className="mt-4 overflow-hidden rounded-card border-[3px] border-lime bg-white">
-          <table className="w-full text-left text-sm">
+        <div className="mt-4 overflow-x-auto rounded-card border-[3px] border-lime bg-white">
+          <table className="min-w-full text-left text-sm">
             <thead className="bg-paper-edge/40 text-fg-2">
               <tr>
                 <Th>Week</Th>
-                <Th align="right">Days</Th>
+                <Th align="right" hideOnMobile>Days</Th>
                 <Th align="right">Total</Th>
                 <Th align="right">Daily Avg</Th>
-                <Th align="right">Weekly Target</Th>
+                <Th align="right" hideOnMobile>Weekly Target</Th>
                 <Th align="right">Status</Th>
               </tr>
             </thead>
@@ -268,12 +268,12 @@ function LiveMonthView({
                     <Td className="font-headline font-bold text-ink">
                       {w.label}
                     </Td>
-                    <Td align="right">
+                    <Td align="right" hideOnMobile>
                       {w.workingDaysComplete}/{w.workingDaysTotal}
                     </Td>
                     <Td align="right">{fmtUsd(w.total)}</Td>
                     <Td align="right">{fmtUsd(w.dailyAvg)}</Td>
-                    <Td align="right">{fmtUsd(w.expected)}</Td>
+                    <Td align="right" hideOnMobile>{fmtUsd(w.expected)}</Td>
                     <Td align="right">
                       <span className={statusChipClass(status)}>
                         {statusLabel(status)}
@@ -292,14 +292,14 @@ function LiveMonthView({
         <h2 className="font-headline text-xl font-black uppercase tracking-ribbon text-ink">
           By Salesperson
         </h2>
-        <div className="mt-4 overflow-hidden rounded-card border-[3px] border-lime bg-white">
-          <table className="w-full text-left text-sm">
+        <div className="mt-4 overflow-x-auto rounded-card border-[3px] border-lime bg-white">
+          <table className="min-w-full text-left text-sm">
             <thead className="bg-paper-edge/40 text-fg-2">
               <tr>
                 <Th>Salesperson</Th>
                 <Th align="right">MTD</Th>
-                <Th align="right">Pacing</Th>
-                <Th align="right">Goal</Th>
+                <Th align="right" hideOnMobile>Pacing</Th>
+                <Th align="right" hideOnMobile>Goal</Th>
                 <Th align="right">% of Goal</Th>
                 <Th align="right">Status</Th>
               </tr>
@@ -330,8 +330,8 @@ function LiveMonthView({
                       </Link>
                     </Td>
                     <Td align="right">{fmtUsd(p.mtd_total)}</Td>
-                    <Td align="right">{fmtUsd(p.mtd_pace)}</Td>
-                    <Td align="right">
+                    <Td align="right" hideOnMobile>{fmtUsd(p.mtd_pace)}</Td>
+                    <Td align="right" hideOnMobile>
                       {p.goal != null ? fmtUsd(p.goal) : 'TBD'}
                     </Td>
                     <Td align="right">{fmtPct(p.pct_to_goal)}</Td>
@@ -399,7 +399,7 @@ function HistoricalMonthView({
     });
 
   return (
-    <main className="mx-auto max-w-6xl px-6 py-10">
+    <main className="mx-auto max-w-6xl px-4 py-6 sm:px-6 sm:py-10">
       <DashboardHeader
         year={year}
         month={month}
@@ -431,8 +431,8 @@ function HistoricalMonthView({
         <h2 className="font-headline text-xl font-black uppercase tracking-ribbon text-ink">
           By Salesperson
         </h2>
-        <div className="mt-4 overflow-hidden rounded-card border-[3px] border-lime bg-white">
-          <table className="w-full text-left text-sm">
+        <div className="mt-4 overflow-x-auto rounded-card border-[3px] border-lime bg-white">
+          <table className="min-w-full text-left text-sm">
             <thead className="bg-paper-edge/40 text-fg-2">
               <tr>
                 <Th>Salesperson</Th>
@@ -586,15 +586,17 @@ function Stat({
 function Th({
   children,
   align = 'left',
+  hideOnMobile = false,
 }: {
   children: React.ReactNode;
   align?: 'left' | 'right';
+  hideOnMobile?: boolean;
 }) {
   return (
     <th
-      className={`px-4 py-3 font-headline text-xs font-extrabold uppercase tracking-ribbon ${
+      className={`whitespace-nowrap px-2 py-2 font-headline text-xs font-extrabold uppercase tracking-ribbon sm:px-4 sm:py-3 ${
         align === 'right' ? 'text-right' : 'text-left'
-      }`}
+      } ${hideOnMobile ? 'hidden sm:table-cell' : ''}`}
     >
       {children}
     </th>
@@ -605,16 +607,18 @@ function Td({
   children,
   align = 'left',
   className = '',
+  hideOnMobile = false,
 }: {
   children?: React.ReactNode;
   align?: 'left' | 'right';
   className?: string;
+  hideOnMobile?: boolean;
 }) {
   return (
     <td
-      className={`px-4 py-3 ${
+      className={`whitespace-nowrap px-2 py-2 sm:px-4 sm:py-3 ${
         align === 'right' ? 'text-right' : 'text-left'
-      } ${className}`}
+      } ${hideOnMobile ? 'hidden sm:table-cell' : ''} ${className}`}
     >
       {children}
     </td>
