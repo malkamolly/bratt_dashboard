@@ -122,7 +122,7 @@ export default async function SalespersonDetailPage({
   const ytdFromHistoricals = priorMonths.reduce((s, h) => s + h.total, 0);
 
   return (
-    <main className="mx-auto max-w-4xl px-6 py-10">
+    <main className="mx-auto max-w-4xl px-4 py-6 sm:px-6 sm:py-10">
       <p className="bt-eyebrow">
         <Link href="/sales" className="hover:underline">
           Sales PACE
@@ -216,17 +216,17 @@ export default async function SalespersonDetailPage({
           <h2 className="font-headline text-xl font-black uppercase tracking-ribbon text-ink">
             Prior Months ({year})
           </h2>
-          <div className="mt-4 overflow-hidden rounded-card border-[3px] border-lime bg-white">
-            <table className="w-full text-left text-sm">
+          <div className="mt-4 overflow-x-auto rounded-card border-[3px] border-lime bg-white">
+            <table className="min-w-full text-left text-sm">
               <thead className="bg-paper-edge/40 text-fg-2">
                 <tr>
-                  <th className="px-4 py-3 font-headline text-xs font-extrabold uppercase tracking-ribbon">
+                  <th className="whitespace-nowrap px-2 py-2 font-headline text-xs font-extrabold uppercase tracking-ribbon sm:px-4 sm:py-3">
                     Month
                   </th>
-                  <th className="px-4 py-3 text-right font-headline text-xs font-extrabold uppercase tracking-ribbon">
+                  <th className="whitespace-nowrap px-2 py-2 text-right font-headline text-xs font-extrabold uppercase tracking-ribbon sm:px-4 sm:py-3">
                     Total
                   </th>
-                  <th className="px-4 py-3 text-right font-headline text-xs font-extrabold uppercase tracking-ribbon" />
+                  <th className="whitespace-nowrap px-2 py-2 text-right font-headline text-xs font-extrabold uppercase tracking-ribbon sm:px-4 sm:py-3" />
                 </tr>
               </thead>
               <tbody>
@@ -235,13 +235,13 @@ export default async function SalespersonDetailPage({
                     key={p.month}
                     className={idx % 2 === 0 ? 'bg-white' : 'bg-paper/40'}
                   >
-                    <td className="px-4 py-3 font-headline font-bold text-ink">
+                    <td className="whitespace-nowrap px-2 py-2 font-headline font-bold text-ink sm:px-4 sm:py-3">
                       {monthLabel(year, p.month)}
                     </td>
-                    <td className="px-4 py-3 text-right font-headline font-bold">
+                    <td className="whitespace-nowrap px-2 py-2 text-right font-headline font-bold sm:px-4 sm:py-3">
                       {fmtUsd(p.total)}
                     </td>
-                    <td className="px-4 py-3 text-right">
+                    <td className="whitespace-nowrap px-2 py-2 text-right sm:px-4 sm:py-3">
                       <Link
                         href={`/sales/${salespersonId}?year=${year}&month=${p.month}`}
                         className="font-headline text-xs font-extrabold uppercase tracking-ribbon text-orange hover:underline"
@@ -254,10 +254,10 @@ export default async function SalespersonDetailPage({
               </tbody>
               <tfoot>
                 <tr className="border-t-2 border-paper-edge bg-paper-edge/30">
-                  <td className="px-4 py-3 font-headline text-sm font-extrabold uppercase tracking-ribbon text-fg-2">
+                  <td className="whitespace-nowrap px-2 py-2 font-headline text-sm font-extrabold uppercase tracking-ribbon text-fg-2 sm:px-4 sm:py-3">
                     Prior-Month Total
                   </td>
-                  <td className="px-4 py-3 text-right font-headline text-lg font-black text-ink">
+                  <td className="whitespace-nowrap px-2 py-2 text-right font-headline text-lg font-black text-ink sm:px-4 sm:py-3">
                     {fmtUsd(ytdFromHistoricals)}
                   </td>
                   <td />
@@ -301,50 +301,59 @@ function DailyEntriesSection({
           </Link>
         </div>
       ) : (
-        <div className="mt-4 overflow-hidden rounded-card border-[3px] border-lime bg-white">
-          <table className="w-full text-left text-sm">
+        <div className="mt-4 overflow-x-auto rounded-card border-[3px] border-lime bg-white">
+          <table className="min-w-full text-left text-sm">
             <thead className="bg-paper-edge/40 text-fg-2">
               <tr>
-                <th className="px-4 py-3 font-headline text-xs font-extrabold uppercase tracking-ribbon">
+                <th className="whitespace-nowrap px-2 py-2 font-headline text-xs font-extrabold uppercase tracking-ribbon sm:px-4 sm:py-3">
                   Date
                 </th>
-                <th className="px-4 py-3 font-headline text-xs font-extrabold uppercase tracking-ribbon">
+                <th className="whitespace-nowrap px-2 py-2 font-headline text-xs font-extrabold uppercase tracking-ribbon sm:px-4 sm:py-3">
                   Day
                 </th>
-                <th className="px-4 py-3 text-right font-headline text-xs font-extrabold uppercase tracking-ribbon">
+                <th className="whitespace-nowrap px-2 py-2 text-right font-headline text-xs font-extrabold uppercase tracking-ribbon sm:px-4 sm:py-3">
                   Amount
                 </th>
-                <th className="px-4 py-3 text-right font-headline text-xs font-extrabold uppercase tracking-ribbon">
+                <th className="hidden whitespace-nowrap px-2 py-2 text-right font-headline text-xs font-extrabold uppercase tracking-ribbon sm:table-cell sm:px-4 sm:py-3">
                   Entered By
                 </th>
-                <th className="px-4 py-3 text-right font-headline text-xs font-extrabold uppercase tracking-ribbon" />
+                <th className="whitespace-nowrap px-2 py-2 text-right font-headline text-xs font-extrabold uppercase tracking-ribbon sm:px-4 sm:py-3" />
               </tr>
             </thead>
             <tbody>
               {entries.map((e, idx) => {
                 const d = fromIsoDate(e.entry_date as IsoDate);
+                const shortDate = d.toLocaleDateString('en-US', {
+                  month: 'short',
+                  day: 'numeric',
+                });
+                const fullDate = d.toLocaleDateString('en-US', {
+                  month: 'short',
+                  day: 'numeric',
+                  year: 'numeric',
+                });
+                const shortDay = d.toLocaleDateString('en-US', { weekday: 'short' });
+                const longDay = d.toLocaleDateString('en-US', { weekday: 'long' });
                 return (
                   <tr
                     key={e.entry_date as string}
                     className={idx % 2 === 0 ? 'bg-white' : 'bg-paper/40'}
                   >
-                    <td className="px-4 py-3 font-headline font-bold text-ink">
-                      {d.toLocaleDateString('en-US', {
-                        month: 'short',
-                        day: 'numeric',
-                        year: 'numeric',
-                      })}
+                    <td className="whitespace-nowrap px-2 py-2 font-headline font-bold text-ink sm:px-4 sm:py-3">
+                      <span className="sm:hidden">{shortDate}</span>
+                      <span className="hidden sm:inline">{fullDate}</span>
                     </td>
-                    <td className="px-4 py-3 text-fg-2">
-                      {d.toLocaleDateString('en-US', { weekday: 'long' })}
+                    <td className="whitespace-nowrap px-2 py-2 text-fg-2 sm:px-4 sm:py-3">
+                      <span className="sm:hidden">{shortDay}</span>
+                      <span className="hidden sm:inline">{longDay}</span>
                     </td>
-                    <td className="px-4 py-3 text-right font-headline font-bold">
+                    <td className="whitespace-nowrap px-2 py-2 text-right font-headline font-bold sm:px-4 sm:py-3">
                       {fmtUsd(Number(e.amount))}
                     </td>
-                    <td className="px-4 py-3 text-right text-xs text-fg-3">
+                    <td className="hidden whitespace-nowrap px-2 py-2 text-right text-xs text-fg-3 sm:table-cell sm:px-4 sm:py-3">
                       {e.created_by ?? '—'}
                     </td>
-                    <td className="px-4 py-3 text-right">
+                    <td className="whitespace-nowrap px-2 py-2 text-right sm:px-4 sm:py-3">
                       <Link
                         href={`/sales/entry?date=${e.entry_date}`}
                         className="font-headline text-xs font-extrabold uppercase tracking-ribbon text-orange hover:underline"
@@ -360,14 +369,14 @@ function DailyEntriesSection({
               <tr className="border-t-2 border-paper-edge bg-paper-edge/30">
                 <td
                   colSpan={2}
-                  className="px-4 py-3 font-headline text-sm font-extrabold uppercase tracking-ribbon text-fg-2"
+                  className="whitespace-nowrap px-2 py-2 font-headline text-sm font-extrabold uppercase tracking-ribbon text-fg-2 sm:px-4 sm:py-3"
                 >
                   Total
                 </td>
-                <td className="px-4 py-3 text-right font-headline text-lg font-black text-ink">
+                <td className="whitespace-nowrap px-2 py-2 text-right font-headline text-lg font-black text-ink sm:px-4 sm:py-3">
                   {fmtUsd(total)}
                 </td>
-                <td />
+                <td className="hidden sm:table-cell" />
                 <td />
               </tr>
             </tfoot>
