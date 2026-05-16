@@ -387,7 +387,7 @@ function CrewTable({
                   <Td className="font-headline font-bold">
                     <Link
                       href={`/production/${p.crew_id}`}
-                      className="text-ink hover:text-orange hover:underline"
+                      className="text-orange underline decoration-orange/40 underline-offset-2 hover:decoration-orange"
                     >
                       {name}
                     </Link>

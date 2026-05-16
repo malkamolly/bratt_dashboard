@@ -324,7 +324,7 @@ function LiveMonthView({
                     <Td className="font-headline font-bold">
                       <Link
                         href={`/sales/${p.salesperson_id}`}
-                        className="text-ink hover:text-orange hover:underline"
+                        className="text-orange underline decoration-orange/40 underline-offset-2 hover:decoration-orange"
                       >
                         {name}
                       </Link>
@@ -449,7 +449,7 @@ function HistoricalMonthView({
                   <Td className="font-headline font-bold">
                     <Link
                       href={`/sales/${r.id}?year=${year}&month=${month}`}
-                      className="text-ink hover:text-orange hover:underline"
+                      className="text-orange underline decoration-orange/40 underline-offset-2 hover:decoration-orange"
                     >
                       {nameById.get(r.id) ?? r.name}
                     </Link>
