@@ -49,6 +49,7 @@ export default async function CrewDetailPage({
     budgetRes,
     monthHistoricalRes,
     yearHistoricalsRes,
+    memberEntriesRes,
   ] = await Promise.all([
     supabase
       .from('crews')
@@ -86,6 +87,13 @@ export default async function CrewDetailPage({
       .eq('crew_id', crewId)
       .eq('year', year)
       .order('month', { ascending: true }),
+    // Per-member entries for this crew during this month (for audit)
+    supabase
+      .from('production_member_entries')
+      .select('crew_member_id, jobs, revenue, crew_members(name, is_foreman)')
+      .eq('crew_id', crewId)
+      .gte('entry_date', start)
+      .lte('entry_date', end),
   ]);
 
   if (!crewRes.data) notFound();
@@ -122,6 +130,28 @@ export default async function CrewDetailPage({
     jobs: Number(h.jobs),
     revenue: Number(h.revenue),
   }));
+
+  // Aggregate member entries for this crew/month for the audit section.
+  type MemberRow = { id: string; name: string; isForeman: boolean; jobs: number; revenue: number };
+  const memberMap = new Map<string, MemberRow>();
+  for (const row of memberEntriesRes.data ?? []) {
+    const id = row.crew_member_id as string;
+    const cm = (row as { crew_members?: { name?: string; is_foreman?: boolean } | null })
+      .crew_members;
+    const cur = memberMap.get(id) ?? {
+      id,
+      name: cm?.name ?? id,
+      isForeman: !!cm?.is_foreman,
+      jobs: 0,
+      revenue: 0,
+    };
+    cur.jobs += Number(row.jobs);
+    cur.revenue += Number(row.revenue);
+    memberMap.set(id, cur);
+  }
+  const memberRows = Array.from(memberMap.values()).sort(
+    (a, b) => b.revenue - a.revenue,
+  );
 
   return (
     <main className="mx-auto max-w-4xl px-6 py-10">
@@ -268,6 +298,93 @@ export default async function CrewDetailPage({
           </div>
         </section>
       )}
+
+      {/* Member contributions - useful for auditing against ServiceTitan */}
+      <section className="mt-10">
+        <h2 className="font-headline text-xl font-black uppercase tracking-ribbon text-ink">
+          Member Contributions
+        </h2>
+        <p className="mt-1 text-xs text-fg-3">
+          Per-person totals for whoever ran with this crew during{' '}
+          {monthLabel(year, month)}. Use this to spot-check against ServiceTitan.
+        </p>
+        {memberRows.length === 0 ? (
+          <div className="mt-4 rounded-card border-2 border-dashed border-paper-edge bg-white/60 px-6 py-6 text-center text-sm text-fg-2">
+            {isHistorical
+              ? 'This month was loaded as a monthly total only — no member-level breakdown is available.'
+              : 'No member-level entries yet for this crew this month.'}
+          </div>
+        ) : (
+          <div className="mt-4 overflow-x-auto rounded-card border-[3px] border-lime bg-white">
+            <table className="w-full min-w-[480px] table-fixed text-left text-sm">
+              <colgroup>
+                <col className="w-[42%]" />
+                <col className="w-[14%]" />
+                <col className="w-[22%]" />
+                <col className="w-[22%]" />
+              </colgroup>
+              <thead className="bg-paper-edge/40 text-fg-2">
+                <tr>
+                  <th className="px-4 py-3 font-headline text-xs font-extrabold uppercase tracking-ribbon">
+                    Member
+                  </th>
+                  <th className="px-4 py-3 text-right font-headline text-xs font-extrabold uppercase tracking-ribbon">
+                    Jobs
+                  </th>
+                  <th className="px-4 py-3 text-right font-headline text-xs font-extrabold uppercase tracking-ribbon">
+                    Revenue
+                  </th>
+                  <th className="px-4 py-3 text-right font-headline text-xs font-extrabold uppercase tracking-ribbon">
+                    % of Crew
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {memberRows.map((m, idx) => (
+                  <tr
+                    key={m.id}
+                    className={idx % 2 === 0 ? 'bg-white' : 'bg-paper/40'}
+                  >
+                    <td className="px-4 py-3 font-headline font-bold text-ink">
+                      <span className="inline-flex items-center gap-1.5">
+                        {m.name}
+                        {m.isForeman && (
+                          <span className="rounded-full bg-orange/20 px-1.5 py-0.5 font-headline text-[9px] font-extrabold uppercase tracking-ribbon text-orange-press">
+                            F
+                          </span>
+                        )}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 text-right font-headline font-bold">
+                      {m.jobs}
+                    </td>
+                    <td className="px-4 py-3 text-right font-headline font-bold">
+                      {fmtUsd(m.revenue)}
+                    </td>
+                    <td className="px-4 py-3 text-right">
+                      {mtdRevenue > 0 ? fmtPct(m.revenue / mtdRevenue) : '—'}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+              <tfoot>
+                <tr className="border-t-2 border-paper-edge bg-paper-edge/30">
+                  <td className="px-4 py-3 font-headline text-sm font-extrabold uppercase tracking-ribbon text-fg-2">
+                    Total
+                  </td>
+                  <td className="px-4 py-3 text-right font-headline font-black text-ink">
+                    {memberRows.reduce((s, m) => s + m.jobs, 0)}
+                  </td>
+                  <td className="px-4 py-3 text-right font-headline text-lg font-black text-ink">
+                    {fmtUsd(memberRows.reduce((s, m) => s + m.revenue, 0))}
+                  </td>
+                  <td />
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+        )}
+      </section>
 
       {priorMonths.length > 0 && (
         <section className="mt-10">
