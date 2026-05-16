@@ -8,10 +8,13 @@
 -- ============================================================================
 
 -- ----------------------------------------------------------------------------
--- Allowlist (PLACEHOLDER - replace these before running in production)
+-- Allowlist
+-- Seeded with the initial admin email. Additional team members can be added
+-- via the admin panel once the dashboard is live, or via SQL:
+--   insert into allowed_emails (email, role) values ('name@bratttree.com', 'user');
 -- ----------------------------------------------------------------------------
 insert into allowed_emails (email, role) values
-  ('owner@bratttree.com', 'admin')
+  ('molly@bratttree.com', 'admin')
 on conflict (email) do nothing;
 
 -- ----------------------------------------------------------------------------
