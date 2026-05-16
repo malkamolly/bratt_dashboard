@@ -18,28 +18,19 @@ type Props = {
 };
 
 // ----------------------------------------------------------------------------
-// Layout: rows of crews keyed by name, with the col-span (out of 6) per crew.
-// On md+ screens the form renders as a 6-column grid; col-spans control how
-// each crew fills its row. Mobile collapses to one card per row.
+// Layout: uniform 3-column grid on md+ screens. Each cell is the same width
+// regardless of how many crews are on a given row. `null` cells render as
+// empty placeholders so the next row starts cleanly on the left. Mobile
+// collapses to one card per row.
 // ----------------------------------------------------------------------------
-type LayoutSlot = { name: string; span: 2 | 3 };
-const ROW_LAYOUT: LayoutSlot[][] = [
-  [{ name: 'PHC', span: 3 }, { name: 'Stump Grinding', span: 3 }],
-  [{ name: 'Black', span: 3 }, { name: 'Red', span: 3 }],
-  [
-    { name: 'Blue I', span: 2 },
-    { name: 'Blue II', span: 2 },
-    { name: 'Blue III', span: 2 },
-  ],
-  [{ name: 'Green 1', span: 3 }, { name: 'Green 2', span: 3 }],
-  [{ name: 'Gray', span: 3 }, { name: 'Pink', span: 3 }],
-  [{ name: 'Other', span: 3 }, { name: 'Unassigned', span: 3 }],
+const ROW_LAYOUT: (string | null)[][] = [
+  ['PHC', 'Stump Grinding', null],
+  ['Black', 'Red', null],
+  ['Blue I', 'Blue II', 'Blue III'],
+  ['Green 1', 'Green 2', null],
+  ['Gray', 'Pink', null],
+  ['Other', 'Unassigned', null],
 ];
-// Tailwind needs concrete class names to be statically present in source.
-const SPAN_CLASS: Record<2 | 3, string> = {
-  2: 'md:col-span-2',
-  3: 'md:col-span-3',
-};
 
 function SaveButton({ dirty }: { dirty: boolean }) {
   const { pending } = useFormStatus();
@@ -230,22 +221,30 @@ export function EntryForm({
     router.push(`/production/entry?${params.toString()}`);
   }
 
-  // Resolve the layout into actual crew rows + collect any "extra" crews
-  // (active crews that aren't named in the layout) for a fallback final row.
+  // Flatten the row layout into a single ordered list of cells. Each entry
+  // is either a crew (to render a card) or `null` (an empty placeholder cell
+  // that keeps later rows aligned to column 0). Any active crews not named
+  // in the layout get appended at the bottom.
   const crewByName = new Map(crews.map((c) => [c.name, c]));
-  const namedInLayout = new Set(ROW_LAYOUT.flat().map((s) => s.name));
+  const namedInLayout = new Set(
+    ROW_LAYOUT.flat().filter((s): s is string => s != null),
+  );
   const extraCrews = crews.filter((c) => !namedInLayout.has(c.name));
 
-  type RenderedSlot = { crew: Crew; span: 2 | 3 };
-  const layoutSlots: RenderedSlot[] = [];
+  type Cell = { kind: 'crew'; crew: Crew } | { kind: 'empty' };
+  const cells: Cell[] = [];
   for (const row of ROW_LAYOUT) {
     for (const slot of row) {
-      const crew = crewByName.get(slot.name);
-      if (crew) layoutSlots.push({ crew, span: slot.span });
+      if (slot == null) {
+        cells.push({ kind: 'empty' });
+      } else {
+        const crew = crewByName.get(slot);
+        if (crew) cells.push({ kind: 'crew', crew });
+      }
     }
   }
   for (const c of extraCrews) {
-    layoutSlots.push({ crew: c, span: 3 });
+    cells.push({ kind: 'crew', crew: c });
   }
 
   return (
@@ -280,29 +279,32 @@ export function EntryForm({
         </div>
       )}
 
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-6">
-        {layoutSlots.map(({ crew, span }) => {
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+        {cells.map((cell, i) => {
+          if (cell.kind === 'empty') {
+            return <div key={`empty-${i}`} className="hidden md:block" />;
+          }
+          const { crew } = cell;
           const members = memberByCrew.get(crew.id) ?? [];
           const totals = crewTotals.get(crew.id) ?? { jobs: 0, revenue: 0 };
           return (
-            <div key={crew.id} className={SPAN_CLASS[span]}>
-              <CrewCard
-                crew={crew}
-                members={members}
-                totals={totals}
-                allCrewsForReassignment={crews}
-                memberJobs={memberJobs}
-                setMemberJobs={setMemberJobs}
-                memberRevenue={memberRevenue}
-                setMemberRevenue={setMemberRevenue}
-                memberAssignment={memberAssignment}
-                setMemberAssignment={setMemberAssignment}
-                crewJobs={crewJobs}
-                setCrewJobs={setCrewJobs}
-                crewRevenue={crewRevenue}
-                setCrewRevenue={setCrewRevenue}
-              />
-            </div>
+            <CrewCard
+              key={crew.id}
+              crew={crew}
+              members={members}
+              totals={totals}
+              allCrewsForReassignment={crews}
+              memberJobs={memberJobs}
+              setMemberJobs={setMemberJobs}
+              memberRevenue={memberRevenue}
+              setMemberRevenue={setMemberRevenue}
+              memberAssignment={memberAssignment}
+              setMemberAssignment={setMemberAssignment}
+              crewJobs={crewJobs}
+              setCrewJobs={setCrewJobs}
+              crewRevenue={crewRevenue}
+              setCrewRevenue={setCrewRevenue}
+            />
           );
         })}
       </div>
@@ -407,7 +409,7 @@ function CrewCard({
                 name={`crew__member_${mb.id}`}
                 value={memberAssignment[mb.id] ?? ''}
               />
-              <div className="flex min-w-0 max-w-[6rem] items-center gap-1">
+              <div className="flex min-w-0 flex-1 items-center gap-1">
                 <span className="truncate font-headline text-xs font-bold text-ink">
                   {mb.name}
                 </span>
@@ -456,7 +458,7 @@ function CrewCard({
                   }))
                 }
                 title="Move to a different crew for this day"
-                className="min-w-0 flex-1 truncate rounded-1 border border-paper-edge bg-white py-1 pl-1 pr-1 font-headline text-[10px] font-extrabold uppercase tracking-ribbon text-ink focus:border-orange focus:outline-none"
+                className="w-36 shrink-0 truncate rounded-1 border border-paper-edge bg-white py-1 pl-1 pr-1 font-headline text-[10px] font-extrabold uppercase tracking-ribbon text-ink focus:border-orange focus:outline-none"
               >
                 {allCrewsForReassignment.map((cr) => (
                   <option key={cr.id} value={cr.id}>
