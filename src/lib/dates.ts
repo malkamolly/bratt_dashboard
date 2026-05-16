@@ -82,3 +82,59 @@ export function monthRange(year: number, month: number): { start: IsoDate; end: 
     end: toIsoDate(new Date(year, month - 1, last)),
   };
 }
+
+export type WorkingWeek = {
+  /** ISO date of the Monday of this work-week (may be outside the month) */
+  weekKey: IsoDate;
+  /** Label like "May 4–8" or "Apr 27 – May 1" for the working span */
+  label: string;
+  /** Working days (Mon-Fri minus holidays) that fall in BOTH this week AND the target month */
+  workingDays: IsoDate[];
+};
+
+/**
+ * Group all working days in (year, month) into Mon-Sun calendar weeks.
+ * Returns one entry per week that has at least one working day in the month.
+ */
+export function workingWeeksInMonth(
+  year: number,
+  month: number,
+  holidays: Set<IsoDate>,
+): WorkingWeek[] {
+  const last = new Date(year, month, 0).getDate();
+  const groups = new Map<string, WorkingWeek>();
+
+  for (let day = 1; day <= last; day++) {
+    const d = new Date(year, month - 1, day);
+    if (isWeekend(d)) continue;
+    const iso = toIsoDate(d);
+    if (holidays.has(iso)) continue;
+
+    // Monday of this calendar week (treating Sunday=0 as end of prior week).
+    const dow = d.getDay(); // 0=Sun ... 6=Sat
+    const daysSinceMonday = dow === 0 ? 6 : dow - 1;
+    const monday = new Date(d);
+    monday.setDate(d.getDate() - daysSinceMonday);
+    const weekKey = toIsoDate(monday);
+
+    if (!groups.has(weekKey)) {
+      groups.set(weekKey, { weekKey, label: '', workingDays: [] });
+    }
+    groups.get(weekKey)!.workingDays.push(iso);
+  }
+
+  const weeks = Array.from(groups.values()).sort((a, b) =>
+    a.weekKey.localeCompare(b.weekKey),
+  );
+  for (const w of weeks) {
+    const first = fromIsoDate(w.workingDays[0]);
+    const lastDay = fromIsoDate(w.workingDays[w.workingDays.length - 1]);
+    const fmt = (d: Date) =>
+      d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    w.label =
+      first.getMonth() === lastDay.getMonth()
+        ? `${fmt(first)}–${lastDay.getDate()}`
+        : `${fmt(first)} – ${fmt(lastDay)}`;
+  }
+  return weeks;
+}

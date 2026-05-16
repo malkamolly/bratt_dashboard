@@ -80,3 +80,31 @@ export async function saveSalesEntries(
   // Redirect (with date preserved) so the form re-loads fresh values.
   redirect(`/sales/entry?date=${encodeURIComponent(date)}&saved=1`);
 }
+
+// ----------------------------------------------------------------------------
+// Delete one (date, salesperson) entry.
+// Triggered from the per-row "×" button on the entry form.
+// ----------------------------------------------------------------------------
+export async function deleteSalesEntry(formData: FormData): Promise<void> {
+  const user = await getAllowedUser();
+  if (!user) {
+    redirect('/login');
+  }
+
+  const date = String(formData.get('entry_date') ?? '');
+  const salespersonId = String(formData.get('delete_salesperson_id') ?? '');
+  if (!isValidIsoDate(date) || !salespersonId) {
+    redirect(`/sales/entry?date=${encodeURIComponent(date)}`);
+  }
+
+  const supabase = await serverClient();
+  await supabase
+    .from('sales_entries')
+    .delete()
+    .eq('entry_date', date)
+    .eq('salesperson_id', salespersonId);
+
+  revalidatePath('/sales');
+  revalidatePath('/sales/entry');
+  redirect(`/sales/entry?date=${encodeURIComponent(date)}&deleted=1`);
+}
