@@ -50,6 +50,7 @@ export default async function CrewDetailPage({
     monthHistoricalRes,
     yearHistoricalsRes,
     memberEntriesRes,
+    memberHistoricalsRes,
   ] = await Promise.all([
     supabase
       .from('crews')
@@ -87,13 +88,20 @@ export default async function CrewDetailPage({
       .eq('crew_id', crewId)
       .eq('year', year)
       .order('month', { ascending: true }),
-    // Per-member entries for this crew during this month (for audit)
+    // Per-member daily entries for this crew during this month (live months)
     supabase
       .from('production_member_entries')
       .select('crew_member_id, jobs, revenue, crew_members(name, is_foreman)')
       .eq('crew_id', crewId)
       .gte('entry_date', start)
       .lte('entry_date', end),
+    // Per-member historicals for this crew this month (closed months)
+    supabase
+      .from('production_member_historicals')
+      .select('crew_member_id, jobs, revenue, crew_members(name, is_foreman)')
+      .eq('crew_id', crewId)
+      .eq('year', year)
+      .eq('month', month),
   ]);
 
   if (!crewRes.data) notFound();
@@ -131,10 +139,16 @@ export default async function CrewDetailPage({
     revenue: Number(h.revenue),
   }));
 
-  // Aggregate member entries for this crew/month for the audit section.
+  // Aggregate member-level contributions for the audit section.
+  // For a historical month, use production_member_historicals (one row per
+  // member/month already aggregated). For a live month, sum the daily
+  // production_member_entries rows for this crew.
   type MemberRow = { id: string; name: string; isForeman: boolean; jobs: number; revenue: number };
   const memberMap = new Map<string, MemberRow>();
-  for (const row of memberEntriesRes.data ?? []) {
+  const memberSource = isHistorical
+    ? memberHistoricalsRes.data ?? []
+    : memberEntriesRes.data ?? [];
+  for (const row of memberSource) {
     const id = row.crew_member_id as string;
     const cm = (row as { crew_members?: { name?: string; is_foreman?: boolean } | null })
       .crew_members;
@@ -310,9 +324,7 @@ export default async function CrewDetailPage({
         </p>
         {memberRows.length === 0 ? (
           <div className="mt-4 rounded-card border-2 border-dashed border-paper-edge bg-white/60 px-6 py-6 text-center text-sm text-fg-2">
-            {isHistorical
-              ? 'This month was loaded as a monthly total only — no member-level breakdown is available.'
-              : 'No member-level entries yet for this crew this month.'}
+            No member-level data for this crew this month.
           </div>
         ) : (
           <div className="mt-4 overflow-x-auto rounded-card border-[3px] border-lime bg-white">
