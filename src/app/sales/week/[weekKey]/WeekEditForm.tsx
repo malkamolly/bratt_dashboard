@@ -152,10 +152,17 @@ export function WeekEditForm({
       )}
 
       <div className="bt-card !p-0 overflow-x-auto">
-        <table className="min-w-full text-left">
+        <table className="w-full table-fixed text-left">
+          <colgroup>
+            <col className="w-[120px] sm:w-[140px]" />
+            {days.map((d) => (
+              <col key={d} />
+            ))}
+            <col className="w-[88px]" />
+          </colgroup>
           <thead className="bg-paper-edge/40">
             <tr>
-              <th className="sticky left-0 z-10 bg-paper-edge/40 px-4 py-3 font-headline text-xs font-extrabold uppercase tracking-ribbon text-fg-2">
+              <th className="sticky left-0 z-10 bg-paper-edge/40 px-3 py-3 font-headline text-xs font-extrabold uppercase tracking-ribbon text-fg-2">
                 Salesperson
               </th>
               {days.map((d) => {
@@ -164,15 +171,15 @@ export function WeekEditForm({
                 return (
                   <th
                     key={d}
-                    className={`whitespace-nowrap px-3 py-3 text-right font-headline text-xs font-extrabold uppercase tracking-ribbon text-fg-2 ${
+                    className={`px-1.5 py-3 text-right font-headline text-xs font-extrabold uppercase tracking-ribbon text-fg-2 ${
                       isOffHours ? 'bg-paper/30' : ''
                     }`}
                   >
                     <div className="flex flex-col items-end leading-tight">
-                      <span>
+                      <span className="flex items-center gap-1">
                         {weekday}
                         {isOffHours && (
-                          <span className="ml-1 rounded-full bg-status-warn/30 px-1.5 py-0.5 align-middle text-[10px] font-extrabold uppercase tracking-ribbon text-fg-1">
+                          <span className="rounded-full bg-status-warn/30 px-1.5 py-0.5 text-[9px] font-extrabold uppercase tracking-ribbon text-fg-1">
                             Off
                           </span>
                         )}
@@ -184,7 +191,7 @@ export function WeekEditForm({
                   </th>
                 );
               })}
-              <th className="whitespace-nowrap px-4 py-3 text-right font-headline text-xs font-extrabold uppercase tracking-ribbon text-fg-2">
+              <th className="px-2 py-3 text-right font-headline text-xs font-extrabold uppercase tracking-ribbon text-fg-2">
                 Week Total
               </th>
             </tr>
@@ -195,7 +202,7 @@ export function WeekEditForm({
                 key={sp.id}
                 className={idx % 2 === 0 ? 'bg-white/60' : 'bg-transparent'}
               >
-                <td className="sticky left-0 z-10 whitespace-nowrap bg-inherit px-4 py-2 font-headline text-sm font-bold text-ink">
+                <td className="sticky left-0 z-10 truncate bg-inherit px-3 py-2 font-headline text-sm font-bold text-ink">
                   {sp.name}
                 </td>
                 {days.map((d) => {
@@ -206,11 +213,11 @@ export function WeekEditForm({
                   return (
                     <td
                       key={d}
-                      className={`px-3 py-2 text-right ${
+                      className={`px-1.5 py-2 text-right ${
                         isOffHours ? 'bg-paper/30' : ''
                       }`}
                     >
-                      <div className="flex items-center justify-end gap-1">
+                      <div className="group/cell relative">
                         <input
                           type="text"
                           inputMode="decimal"
@@ -220,9 +227,11 @@ export function WeekEditForm({
                             setAmounts((m) => ({ ...m, [k]: e.target.value }))
                           }
                           placeholder="0"
-                          className="w-24 rounded-2 border-2 border-paper-edge bg-white px-2 py-1.5 text-right font-headline text-sm focus:border-orange focus:outline-none"
+                          className={`w-full rounded-2 border-2 border-paper-edge bg-white px-2 py-1.5 text-right font-headline text-sm focus:border-orange focus:outline-none ${
+                            hasExisting ? 'pr-6' : ''
+                          }`}
                         />
-                        {hasExisting ? (
+                        {hasExisting && (
                           <button
                             type="submit"
                             formAction={deleteWeekCell}
@@ -239,18 +248,16 @@ export function WeekEditForm({
                             }}
                             title={`Delete ${sp.name}'s entry for ${date}`}
                             aria-label={`Delete ${sp.name}'s entry for ${date}`}
-                            className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full border-2 border-paper-edge text-xs text-fg-3 transition-colors hover:border-orange-press hover:bg-orange-press hover:text-white"
+                            className="absolute right-1.5 top-1/2 inline-flex h-4 w-4 -translate-y-1/2 items-center justify-center rounded-full text-xs leading-none text-fg-3 opacity-50 transition-opacity hover:bg-orange-press hover:text-white hover:opacity-100 focus:opacity-100 group-focus-within/cell:opacity-100 group-hover/cell:opacity-100"
                           >
                             ×
                           </button>
-                        ) : (
-                          <span className="inline-block h-6 w-6 shrink-0" />
                         )}
                       </div>
                     </td>
                   );
                 })}
-                <td className="whitespace-nowrap px-4 py-2 text-right font-headline text-sm font-extrabold text-ink">
+                <td className="px-2 py-2 text-right font-headline text-sm font-extrabold text-ink">
                   {fmtUsd(spTotals[sp.id])}
                 </td>
               </tr>
@@ -258,7 +265,7 @@ export function WeekEditForm({
           </tbody>
           <tfoot>
             <tr className="border-t-2 border-paper-edge bg-paper-edge/30">
-              <td className="sticky left-0 z-10 whitespace-nowrap bg-paper-edge/30 px-4 py-3 font-headline text-xs font-extrabold uppercase tracking-ribbon text-fg-2">
+              <td className="sticky left-0 z-10 bg-paper-edge/30 px-3 py-3 font-headline text-xs font-extrabold uppercase tracking-ribbon text-fg-2">
                 Day Total
               </td>
               {days.map((d) => {
@@ -266,7 +273,7 @@ export function WeekEditForm({
                 return (
                   <td
                     key={d}
-                    className={`whitespace-nowrap px-3 py-3 text-right font-headline text-sm font-extrabold text-ink ${
+                    className={`px-1.5 py-3 text-right font-headline text-sm font-extrabold text-ink ${
                       isOffHours ? 'bg-paper/30' : ''
                     }`}
                   >
@@ -274,7 +281,7 @@ export function WeekEditForm({
                   </td>
                 );
               })}
-              <td className="whitespace-nowrap px-4 py-3 text-right font-headline text-lg font-black text-ink">
+              <td className="px-2 py-3 text-right font-headline text-base font-black text-ink">
                 {fmtUsd(weekTotal)}
               </td>
             </tr>

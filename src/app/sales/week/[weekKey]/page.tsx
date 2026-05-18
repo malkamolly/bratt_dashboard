@@ -5,6 +5,7 @@ import { serverClient } from '@/lib/supabase';
 import {
   workingWeeksInMonth,
   fromIsoDate,
+  toIsoDate,
   type IsoDate,
 } from '@/lib/dates';
 import { monthLabel } from '@/lib/format';
@@ -28,6 +29,42 @@ function isValidIsoDate(s: string): boolean {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(s)) return false;
   const d = new Date(`${s}T00:00:00`);
   return !Number.isNaN(d.getTime());
+}
+
+/**
+ * Given a Monday and a day offset (e.g. -7 or +7), figure out what
+ * /sales/week/<key>?year=&month= URL we should jump to. We pick the month
+ * that contains the most of the target week's calendar days — that way,
+ * crossing a month boundary lands you in the right monthly context. If
+ * the target month has no actual working week with that key (all-holiday
+ * weeks etc.), we fall back to the next most common month, then give up.
+ */
+function adjacentWeekHref(
+  baseMonday: Date,
+  offsetDays: number,
+  holidays: Set<IsoDate>,
+): string | null {
+  const target = new Date(baseMonday);
+  target.setDate(baseMonday.getDate() + offsetDays);
+  const targetMondayIso = toIsoDate(target);
+
+  const counts = new Map<string, number>();
+  for (let i = 0; i < 7; i++) {
+    const d = new Date(target);
+    d.setDate(target.getDate() + i);
+    const k = `${d.getFullYear()}__${d.getMonth() + 1}`;
+    counts.set(k, (counts.get(k) ?? 0) + 1);
+  }
+
+  const ordered = Array.from(counts.entries()).sort((a, b) => b[1] - a[1]);
+  for (const [k] of ordered) {
+    const [y, m] = k.split('__').map(Number);
+    const weeks = workingWeeksInMonth(y, m, holidays);
+    if (weeks.some((w) => w.weekKey === targetMondayIso)) {
+      return `/sales/week/${targetMondayIso}?year=${y}&month=${m}`;
+    }
+  }
+  return null;
 }
 
 export default async function SalesWeekEditPage({
@@ -104,12 +141,22 @@ export default async function SalesWeekEditPage({
       ? `${fmt(firstDate)}–${lastDate.getDate()}`
       : `${fmt(firstDate)} – ${fmt(lastDate)}`;
 
+  const baseMonday = fromIsoDate(week.weekKey);
+  const prevHref = adjacentWeekHref(baseMonday, -7, holidays);
+  const nextHref = adjacentWeekHref(baseMonday, +7, holidays);
+
   return (
     <main className="mx-auto max-w-6xl px-4 py-6 sm:px-6 sm:py-10">
       <p className="bt-eyebrow">Sales · Week Detail</p>
-      <h1 className="mt-2 font-display text-4xl uppercase tracking-wider text-ink sm:text-5xl">
-        Week of {rangeLabel}
-      </h1>
+      <div className="mt-2 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+        <h1 className="font-display text-4xl uppercase tracking-wider text-ink sm:text-5xl">
+          Week of {rangeLabel}
+        </h1>
+        <div className="flex items-center gap-2">
+          <WeekNavButton href={prevHref} label="‹ Prev week" />
+          <WeekNavButton href={nextHref} label="Next week ›" />
+        </div>
+      </div>
       <p className="mt-3 text-fg-2">
         {monthLabel(year, month)} &mdash; {week.workingDays.length} working day
         {week.workingDays.length === 1 ? '' : 's'}. Weekend rows are shown too —
@@ -134,5 +181,31 @@ export default async function SalesWeekEditPage({
         />
       </div>
     </main>
+  );
+}
+
+function WeekNavButton({
+  href,
+  label,
+}: {
+  href: string | null;
+  label: string;
+}) {
+  const classes =
+    'inline-flex items-center rounded-full border-2 border-paper-edge bg-white px-3 py-1.5 font-headline text-xs font-extrabold uppercase tracking-ribbon text-ink transition-colors';
+  if (!href) {
+    return (
+      <span
+        aria-disabled="true"
+        className={`${classes} cursor-not-allowed opacity-40`}
+      >
+        {label}
+      </span>
+    );
+  }
+  return (
+    <Link href={href} className={`${classes} hover:border-orange hover:text-orange`}>
+      {label}
+    </Link>
   );
 }
