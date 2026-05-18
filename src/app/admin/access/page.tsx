@@ -1,6 +1,11 @@
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
-import { getAllowedUser } from '@/lib/auth';
+import {
+  getAllowedUser,
+  ROLE_DESCRIPTIONS,
+  ROLE_LABELS,
+  type Role,
+} from '@/lib/auth';
 import { serverClient } from '@/lib/supabase';
 import { SectionCard, FlashBanner } from '@/components/admin-shared';
 import {
@@ -15,9 +20,11 @@ type Search = Promise<{ saved?: string; error?: string }>;
 
 type AllowedEmailRow = {
   email: string;
-  role: 'user' | 'admin';
+  role: Role;
   added_at: string;
 };
+
+const ROLE_OPTIONS: Role[] = ['admin', 'user', 'sales_arborist', 'field_crew'];
 
 export default async function AccessAdminPage({
   searchParams,
@@ -53,10 +60,19 @@ export default async function AccessAdminPage({
         Access
       </h1>
       <p className="mt-3 max-w-2xl text-fg-2">
-        People who can sign in to the dashboard. Admins can edit everything;
-        Users can view dashboards and enter daily sales / production numbers
-        only.
+        People who can sign in to the dashboard. Each role controls which hubs
+        someone can see:
       </p>
+      <ul className="mt-3 space-y-1 text-sm text-fg-2">
+        {ROLE_OPTIONS.map((r) => (
+          <li key={r}>
+            <span className="font-headline text-xs font-extrabold uppercase tracking-ribbon text-bark-deep">
+              {ROLE_LABELS[r]}
+            </span>{' '}
+            &mdash; {ROLE_DESCRIPTIONS[r]}
+          </li>
+        ))}
+      </ul>
 
       <FlashBanner saved={sp.saved} error={sp.error} />
 
@@ -82,7 +98,7 @@ export default async function AccessAdminPage({
                 className="mt-1 w-full rounded-2 border-2 border-paper-edge bg-white px-3 py-2 font-headline text-sm focus:border-orange focus:outline-none"
               />
             </label>
-            <label className="sm:w-40">
+            <label className="sm:w-52">
               <span className="block font-headline text-xs font-extrabold uppercase tracking-ribbon text-fg-2">
                 Role
               </span>
@@ -91,8 +107,11 @@ export default async function AccessAdminPage({
                 defaultValue="user"
                 className="mt-1 w-full rounded-2 border-2 border-paper-edge bg-white px-3 py-2 font-headline text-sm focus:border-orange focus:outline-none"
               >
-                <option value="user">User</option>
-                <option value="admin">Admin</option>
+                {ROLE_OPTIONS.map((r) => (
+                  <option key={r} value={r}>
+                    {ROLE_LABELS[r]}
+                  </option>
+                ))}
               </select>
             </label>
             <button
@@ -142,8 +161,11 @@ export default async function AccessAdminPage({
                           disabled={isSelf}
                           className="rounded-2 border-2 border-paper-edge bg-white px-2 py-1 font-headline text-xs disabled:opacity-50"
                         >
-                          <option value="user">User</option>
-                          <option value="admin">Admin</option>
+                          {ROLE_OPTIONS.map((r) => (
+                            <option key={r} value={r}>
+                              {ROLE_LABELS[r]}
+                            </option>
+                          ))}
                         </select>
                         <button
                           type="submit"

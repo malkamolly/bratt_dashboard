@@ -403,8 +403,9 @@ export async function addAllowedEmail(formData: FormData): Promise<void> {
   if (!email || !email.includes('@')) {
     redirect(`/admin/access?error=${encodeURIComponent('Enter a valid email address.')}`);
   }
-  if (role !== 'user' && role !== 'admin') {
-    redirect(`/admin/access?error=${encodeURIComponent('Role must be user or admin.')}`);
+  const VALID_ROLES = ['admin', 'user', 'sales_arborist', 'field_crew'];
+  if (!VALID_ROLES.includes(role)) {
+    redirect(`/admin/access?error=${encodeURIComponent('Invalid role.')}`);
   }
 
   const supabase = await serverClient();
@@ -422,8 +423,9 @@ export async function updateAllowedEmailRole(formData: FormData): Promise<void> 
   const email = normalizeEmail(formData.get('email'));
   const role = String(formData.get('role') ?? '');
   if (!email) redirect(`/admin/access?error=${encodeURIComponent('Missing email.')}`);
-  if (role !== 'user' && role !== 'admin') {
-    redirect(`/admin/access?error=${encodeURIComponent('Role must be user or admin.')}`);
+  const VALID_ROLES = ['admin', 'user', 'sales_arborist', 'field_crew'];
+  if (!VALID_ROLES.includes(role)) {
+    redirect(`/admin/access?error=${encodeURIComponent('Invalid role.')}`);
   }
   if (email === me.email.toLowerCase() && role !== 'admin') {
     redirect(`/admin/access?error=${encodeURIComponent("You can't demote yourself — ask another admin to do it.")}`);

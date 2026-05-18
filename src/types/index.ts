@@ -28,7 +28,7 @@ export type CrewMember = {
 
 export type AllowedEmail = {
   email: string;
-  role: 'user' | 'admin';
+  role: 'admin' | 'user' | 'sales_arborist' | 'field_crew';
   added_at: string;
 };
 
