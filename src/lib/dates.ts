@@ -90,6 +90,10 @@ export type WorkingWeek = {
   label: string;
   /** Working days (Mon-Fri minus holidays) that fall in BOTH this week AND the target month */
   workingDays: IsoDate[];
+  /** Every calendar day (Mon–Sun) in this week that falls in the target month.
+   *  Includes weekends and holiday-flagged weekdays — used when summing sales
+   *  so weekend or holiday bookings still roll up to the right week. */
+  daysInMonth: IsoDate[];
 };
 
 /**
@@ -118,7 +122,12 @@ export function workingWeeksInMonth(
     const weekKey = toIsoDate(monday);
 
     if (!groups.has(weekKey)) {
-      groups.set(weekKey, { weekKey, label: '', workingDays: [] });
+      groups.set(weekKey, {
+        weekKey,
+        label: '',
+        workingDays: [],
+        daysInMonth: [],
+      });
     }
     groups.get(weekKey)!.workingDays.push(iso);
   }
@@ -127,6 +136,19 @@ export function workingWeeksInMonth(
     a.weekKey.localeCompare(b.weekKey),
   );
   for (const w of weeks) {
+    // Expand the calendar week (Mon..Sun) from weekKey and keep every day
+    // that falls inside the target month. Weekends and holidays are kept
+    // so sales booked on those dates roll up into the right week.
+    const mondayParts = w.weekKey.split('-').map(Number);
+    const monday = new Date(mondayParts[0], mondayParts[1] - 1, mondayParts[2]);
+    for (let i = 0; i < 7; i++) {
+      const d = new Date(monday);
+      d.setDate(monday.getDate() + i);
+      if (d.getFullYear() === year && d.getMonth() === month - 1) {
+        w.daysInMonth.push(toIsoDate(d));
+      }
+    }
+
     const first = fromIsoDate(w.workingDays[0]);
     const lastDay = fromIsoDate(w.workingDays[w.workingDays.length - 1]);
     const fmt = (d: Date) =>

@@ -138,6 +138,7 @@ function LiveMonthView({
   const weeks = workingWeeksInMonth(year, month, data.holidays);
 
   type WeekRow = {
+    weekKey: IsoDate;
     label: string;
     workingDaysTotal: number;
     workingDaysComplete: number;
@@ -157,14 +158,16 @@ function LiveMonthView({
   const weekRows: WeekRow[] = weeks.map((w) => {
     const workingDaysTotal = w.workingDays.length;
     const workingDaysComplete = w.workingDays.filter((d) => d <= todayIso).length;
-    const total = w.workingDays.reduce(
+    // Sum every entry in this week (incl. weekends/holidays) — sales can be
+    // booked off-hours and still count toward the week's pace.
+    const total = w.daysInMonth.reduce(
       (s, d) => s + (entriesByDate.get(d) ?? 0),
       0,
     );
     const dailyAvg =
       workingDaysComplete > 0 ? total / workingDaysComplete : 0;
     const expected = weeklyGoal * workingDaysTotal;
-    return { label: w.label, workingDaysTotal, workingDaysComplete, total, dailyAvg, expected };
+    return { weekKey: w.weekKey, label: w.label, workingDaysTotal, workingDaysComplete, total, dailyAvg, expected };
   });
 
   return (
@@ -260,24 +263,48 @@ function LiveMonthView({
                         if (ratio < 0.95) return 'behind';
                         return 'on-pace';
                       })();
+                const weekHref = `/sales/week/${w.weekKey}?year=${year}&month=${month}`;
                 return (
                   <tr
-                    key={w.label}
-                    className={idx % 2 === 0 ? 'bg-white' : 'bg-paper/40'}
+                    key={w.weekKey}
+                    className={`${
+                      idx % 2 === 0 ? 'bg-white' : 'bg-paper/40'
+                    } cursor-pointer transition-colors hover:bg-lime/20`}
                   >
                     <Td className="font-headline font-bold text-ink">
-                      {w.label}
+                      <Link
+                        href={weekHref}
+                        className="text-orange underline decoration-orange/40 underline-offset-2 hover:decoration-orange"
+                      >
+                        {w.label}
+                      </Link>
                     </Td>
                     <Td align="right" hideOnMobile>
-                      {w.workingDaysComplete}/{w.workingDaysTotal}
+                      <Link href={weekHref} className="block">
+                        {w.workingDaysComplete}/{w.workingDaysTotal}
+                      </Link>
                     </Td>
-                    <Td align="right">{fmtUsd(w.total)}</Td>
-                    <Td align="right">{fmtUsd(w.dailyAvg)}</Td>
-                    <Td align="right" hideOnMobile>{fmtUsd(w.expected)}</Td>
                     <Td align="right">
-                      <span className={statusChipClass(status)}>
-                        {statusLabel(status)}
-                      </span>
+                      <Link href={weekHref} className="block">
+                        {fmtUsd(w.total)}
+                      </Link>
+                    </Td>
+                    <Td align="right">
+                      <Link href={weekHref} className="block">
+                        {fmtUsd(w.dailyAvg)}
+                      </Link>
+                    </Td>
+                    <Td align="right" hideOnMobile>
+                      <Link href={weekHref} className="block">
+                        {fmtUsd(w.expected)}
+                      </Link>
+                    </Td>
+                    <Td align="right">
+                      <Link href={weekHref} className="block">
+                        <span className={statusChipClass(status)}>
+                          {statusLabel(status)}
+                        </span>
+                      </Link>
                     </Td>
                   </tr>
                 );
@@ -285,6 +312,9 @@ function LiveMonthView({
             </tbody>
           </table>
         </div>
+        <p className="mt-3 text-xs text-fg-3">
+          Click a week to see and edit the daily entries that make up its total.
+        </p>
       </section>
 
       {/* Per-salesperson */}
