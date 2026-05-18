@@ -384,3 +384,77 @@ export async function updateCrewMember(formData: FormData): Promise<void> {
   refreshAffectedPages();
   redirect('/admin/production?saved=crew_member_updated');
 }
+
+// ----------------------------------------------------------------------------
+// 9. Allowed emails (access management)
+// ----------------------------------------------------------------------------
+// Safety rule: an admin cannot remove their own row or demote themselves to
+// 'user'. Otherwise they could lock themselves out of the dashboard with no
+// way back in short of opening Supabase.
+
+function normalizeEmail(raw: FormDataEntryValue | null): string {
+  return String(raw ?? '').trim().toLowerCase();
+}
+
+export async function addAllowedEmail(formData: FormData): Promise<void> {
+  await requireAdmin();
+  const email = normalizeEmail(formData.get('email'));
+  const role = String(formData.get('role') ?? 'user');
+  if (!email || !email.includes('@')) {
+    redirect(`/admin/access?error=${encodeURIComponent('Enter a valid email address.')}`);
+  }
+  if (role !== 'user' && role !== 'admin') {
+    redirect(`/admin/access?error=${encodeURIComponent('Role must be user or admin.')}`);
+  }
+
+  const supabase = await serverClient();
+  const { error } = await supabase
+    .from('allowed_emails')
+    .insert({ email, role });
+  if (error) redirect(`/admin/access?error=${encodeURIComponent(error.message)}`);
+
+  revalidatePath('/admin/access');
+  redirect('/admin/access?saved=email_added');
+}
+
+export async function updateAllowedEmailRole(formData: FormData): Promise<void> {
+  const me = await requireAdmin();
+  const email = normalizeEmail(formData.get('email'));
+  const role = String(formData.get('role') ?? '');
+  if (!email) redirect(`/admin/access?error=${encodeURIComponent('Missing email.')}`);
+  if (role !== 'user' && role !== 'admin') {
+    redirect(`/admin/access?error=${encodeURIComponent('Role must be user or admin.')}`);
+  }
+  if (email === me.email.toLowerCase() && role !== 'admin') {
+    redirect(`/admin/access?error=${encodeURIComponent("You can't demote yourself — ask another admin to do it.")}`);
+  }
+
+  const supabase = await serverClient();
+  const { error } = await supabase
+    .from('allowed_emails')
+    .update({ role })
+    .ilike('email', email);
+  if (error) redirect(`/admin/access?error=${encodeURIComponent(error.message)}`);
+
+  revalidatePath('/admin/access');
+  redirect('/admin/access?saved=role_updated');
+}
+
+export async function removeAllowedEmail(formData: FormData): Promise<void> {
+  const me = await requireAdmin();
+  const email = normalizeEmail(formData.get('email'));
+  if (!email) redirect(`/admin/access?error=${encodeURIComponent('Missing email.')}`);
+  if (email === me.email.toLowerCase()) {
+    redirect(`/admin/access?error=${encodeURIComponent("You can't remove yourself — ask another admin to do it.")}`);
+  }
+
+  const supabase = await serverClient();
+  const { error } = await supabase
+    .from('allowed_emails')
+    .delete()
+    .ilike('email', email);
+  if (error) redirect(`/admin/access?error=${encodeURIComponent(error.message)}`);
+
+  revalidatePath('/admin/access');
+  redirect('/admin/access?saved=email_removed');
+}

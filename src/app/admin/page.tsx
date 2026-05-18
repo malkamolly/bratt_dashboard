@@ -49,6 +49,21 @@ export default async function AdminLandingPage() {
             Open &rarr;
           </p>
         </Link>
+
+        <Link href="/admin/access" className="bt-card group transition-colors hover:!border-orange md:col-span-2">
+          <p className="bt-eyebrow">Admin 3</p>
+          <h2 className="mt-2 font-headline text-3xl font-black uppercase text-bark-deep">
+            Access
+          </h2>
+          <p className="mt-3 text-sm text-fg-2">
+            Add or remove the people who can sign in to the dashboard, and set
+            whether each one is a User (view + daily entry) or an Admin (full
+            edit access).
+          </p>
+          <p className="mt-6 font-headline text-xs font-extrabold uppercase tracking-ribbon text-orange">
+            Open &rarr;
+          </p>
+        </Link>
       </section>
     </main>
   );
