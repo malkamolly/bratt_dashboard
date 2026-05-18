@@ -178,6 +178,7 @@ export default async function SalesWeekEditPage({
           initialAmounts={initialAmounts}
           year={year}
           month={month}
+          canEdit={user.role === 'admin'}
         />
       </div>
     </main>
