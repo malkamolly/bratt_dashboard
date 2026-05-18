@@ -5,13 +5,81 @@
 /* ---------- Brand fonts ---------- */
 @font-face {
   font-family: "Rugfish";
-  src: url("/fonts/RugFishRegular.otf") format("opentype");
+  src: url("/assets/fonts/RugFishRegular.otf") format("opentype");
   font-weight: 400 900;
   font-style: normal;
   font-display: swap;
 }
+@import url("https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap");
 
-/* Nunito is loaded as a <link> from Google Fonts in layout.tsx */
+:root {
+  --bt-orange: #EB4C1B;
+  --bt-lime:   #E9E71D;
+  --bt-bark:   #26190E;
+  --bt-cream:  #FFF8EC;
+  --bt-ink:    #1A0E05;
+  --fg-inverse: var(--bt-cream);
+  --font-headline: "Nunito", "Helvetica Neue", system-ui, sans-serif;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --sh-2: 0 4px 14px rgba(26,14,5,.10), 0 1px 0 rgba(26,14,5,.04);
+}
+* { box-sizing: border-box; }
+body { margin: 0; font-family: var(--font-headline); }
+header.site {
+  background: var(--bt-bark);
+  color: var(--fg-inverse);
+  border-bottom: 4px solid var(--bt-orange);
+  box-shadow: var(--sh-2);
+}
+header.site .inner {
+  max-width: 1080px;
+  margin: 0 auto;
+  padding: var(--space-3) var(--space-5);
+  display: flex; align-items: center; justify-content: space-between;
+  gap: var(--space-5); flex-wrap: wrap;
+}
+header.site .brand {
+  display: inline-flex; align-items: center; gap: var(--space-3);
+  text-decoration: none;
+}
+header.site .brand img.logo {
+  display: block;
+  height: 56px; width: auto;
+}
+header.site .brand .sub {
+  font-family: var(--font-headline);
+  font-weight: 900;
+  font-size: 12px;
+  letter-spacing: 0.22em;
+  color: var(--bt-cream);
+  text-transform: uppercase;
+  padding-left: var(--space-3);
+  border-left: 2px solid var(--bt-orange);
+}
+header.site nav {
+  display: flex; flex-wrap: wrap; gap: var(--space-4);
+}
+header.site nav a,
+header.site nav button.signout {
+  color: var(--bt-cream);
+  font-family: var(--font-headline);
+  font-weight: 800;
+  font-size: 13px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  text-decoration: none;
+  padding: 6px 0;
+  border-bottom: 3px solid transparent;
+  transition: border-color 120ms ease, color 120ms ease;
+  background: none; cursor: pointer;
+}
+header.site nav a:hover,
+header.site nav button.signout:hover {
+  color: var(--bt-lime);
+  border-bottom-color: var(--bt-orange);
+}
 
 /* ---------- Base ---------- */
 html { background: theme('colors.cream'); color: theme('colors.ink'); }
