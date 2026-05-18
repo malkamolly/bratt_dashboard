@@ -7,39 +7,40 @@ export async function BrandHeader() {
   const user = await getAllowedUser();
 
   return (
-    <header className="bt-nav sticky top-0 z-30 border-b-2 border-bark-deep">
-      <div className="mx-auto flex max-w-6xl items-center justify-between gap-2 px-4 py-2 sm:px-6 sm:py-3">
+    <header className="bt-nav sticky top-0 z-30 border-b-4 border-orange">
+      <div className="mx-auto flex max-w-7xl items-center justify-between gap-3 px-4 py-2 sm:px-6 sm:py-3">
         <Link
           href={user ? '/' : '/login'}
-          className="flex shrink-0 items-center gap-2 sm:gap-3"
+          className="flex shrink-0 items-center gap-3 sm:gap-5"
         >
           <Image
-            src="/brand/mascot-circle.png"
+            src="/brand/logo.png"
             alt="Bratt Tree"
-            width={44}
-            height={44}
+            width={140}
+            height={188}
             priority
-            className="h-9 w-9 rounded-full sm:h-11 sm:w-11"
+            className="h-12 w-auto sm:h-16"
           />
-          <span className="font-display text-base tracking-wider sm:text-xl">
-            BRATT TREE
-            <span className="ml-1 align-middle text-[9px] tracking-ribbon text-lime sm:ml-2 sm:text-xs">
-              PACE
-            </span>
+          <span
+            aria-hidden="true"
+            className="hidden h-10 w-px bg-cream/30 sm:block"
+          />
+          <span className="hidden font-headline text-sm font-extrabold uppercase tracking-ribbon text-cream sm:inline sm:text-base">
+            PACE DASHBOARD
           </span>
         </Link>
 
         {user ? (
-          <nav className="flex items-center gap-0.5 font-headline text-[11px] font-extrabold uppercase tracking-ribbon sm:gap-3 sm:text-sm">
+          <nav className="flex items-center gap-3 font-headline text-[11px] font-extrabold uppercase tracking-ribbon sm:gap-6 sm:text-sm">
             <Link
               href="/sales"
-              className="rounded-full px-2 py-1.5 hover:bg-bark-deep sm:px-3 sm:py-2"
+              className="text-cream transition-colors hover:text-lime"
             >
               Sales
             </Link>
             <Link
               href="/production"
-              className="rounded-full px-2 py-1.5 hover:bg-bark-deep sm:px-3 sm:py-2"
+              className="text-cream transition-colors hover:text-lime"
             >
               <span className="hidden sm:inline">Production</span>
               <span className="sm:hidden">Prod</span>
@@ -47,15 +48,15 @@ export async function BrandHeader() {
             {user.role === 'admin' && (
               <Link
                 href="/admin"
-                className="rounded-full px-2 py-1.5 hover:bg-bark-deep sm:px-3 sm:py-2"
+                className="text-cream transition-colors hover:text-lime"
               >
                 Admin
               </Link>
             )}
-            <form action="/auth/signout" method="post" className="ml-0.5 sm:ml-2">
+            <form action="/auth/signout" method="post" className="ml-1 sm:ml-2">
               <button
                 type="submit"
-                className="flex items-center rounded-full px-2 py-1.5 text-cream/70 hover:bg-bark-deep hover:text-cream sm:px-3 sm:py-2"
+                className="flex items-center text-cream/70 transition-colors hover:text-lime"
                 title={`Sign out (${user.email})`}
                 aria-label="Sign out"
               >
