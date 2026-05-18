@@ -24,6 +24,8 @@ type Props = {
   initialAmounts: Record<string, number>;
   year: number;
   month: number;
+  /** If false, render the table as read-only (non-admin users). */
+  canEdit: boolean;
 };
 
 function cellKey(date: IsoDate, salespersonId: string): string {
@@ -60,6 +62,7 @@ export function WeekEditForm({
   initialAmounts,
   year,
   month,
+  canEdit,
 }: Props) {
   const searchParams = useSearchParams();
   const [state, formAction] = useActionState<SaveWeekResult, FormData>(
@@ -135,6 +138,18 @@ export function WeekEditForm({
       <input type="hidden" name="year" value={String(year)} />
       <input type="hidden" name="month" value={String(month)} />
 
+      {!canEdit && (
+        <div className="rounded-2 border-2 border-paper-edge bg-paper/40 px-4 py-3 text-sm font-bold text-fg-2">
+          View only. Use the{' '}
+          <a
+            href="/sales/entry"
+            className="text-orange underline decoration-orange/40 underline-offset-2 hover:decoration-orange"
+          >
+            Daily entry form
+          </a>{' '}
+          to add or change sales numbers. (Admins can edit directly here.)
+        </div>
+      )}
       {justSaved && !state && (
         <div className="rounded-2 border-2 border-green bg-green/10 px-4 py-3 text-sm font-bold text-green-dark">
           Saved. Dashboard totals will refresh.
@@ -227,11 +242,14 @@ export function WeekEditForm({
                             setAmounts((m) => ({ ...m, [k]: e.target.value }))
                           }
                           placeholder="0"
+                          readOnly={!canEdit}
+                          aria-readonly={!canEdit}
+                          tabIndex={canEdit ? undefined : -1}
                           className={`w-full rounded-2 border-2 border-paper-edge bg-white px-2 py-1.5 text-right font-headline text-sm focus:border-orange focus:outline-none ${
-                            hasExisting ? 'pr-6' : ''
-                          }`}
+                            hasExisting && canEdit ? 'pr-6' : ''
+                          } ${!canEdit ? 'cursor-default bg-paper/20 text-fg-2' : ''}`}
                         />
-                        {hasExisting && (
+                        {hasExisting && canEdit && (
                           <button
                             type="submit"
                             formAction={deleteWeekCell}
@@ -296,7 +314,7 @@ export function WeekEditForm({
         >
           Back to Dashboard
         </a>
-        <SaveButton dirty={dirty} />
+        {canEdit && <SaveButton dirty={dirty} />}
       </div>
     </form>
   );

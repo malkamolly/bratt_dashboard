@@ -36,6 +36,9 @@ export async function saveWeekEntries(
 ): Promise<SaveWeekResult> {
   const user = await getAllowedUser();
   if (!user) return { ok: false, error: 'Not signed in.' };
+  if (user.role !== 'admin') {
+    return { ok: false, error: 'Weekly edits are admin-only. Use the Daily entry form.' };
+  }
 
   const weekKey = String(formData.get('week_key') ?? '');
   const year = String(formData.get('year') ?? '');
@@ -98,6 +101,10 @@ export async function saveWeekEntries(
 export async function deleteWeekCell(formData: FormData): Promise<void> {
   const user = await getAllowedUser();
   if (!user) redirect('/login');
+  if (user.role !== 'admin') {
+    const weekKey = String(formData.get('week_key') ?? '');
+    redirect(`/sales/week/${encodeURIComponent(weekKey)}`);
+  }
 
   const weekKey = String(formData.get('week_key') ?? '');
   const year = String(formData.get('year') ?? '');
