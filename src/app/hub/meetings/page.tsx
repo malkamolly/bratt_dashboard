@@ -1,0 +1,76 @@
+import Link from 'next/link';
+import { requireHubAccess } from '@/lib/auth';
+import { HubSubNav } from '@/components/HubSubNav';
+import { listMeetings } from '@/lib/hub-content';
+
+export const dynamic = 'force-dynamic';
+
+function formatDate(iso: string): string {
+  if (!iso) return '';
+  const [y, m, d] = iso.split('-').map(Number);
+  const date = new Date(y, m - 1, d);
+  return date.toLocaleDateString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+  });
+}
+
+export default async function MeetingsListPage() {
+  await requireHubAccess('hub');
+  const meetings = listMeetings();
+
+  return (
+    <main className="mx-auto max-w-4xl px-6 py-10">
+      <p className="bt-eyebrow">
+        <Link href="/hub" className="hover:underline">
+          Sales Arborist Hub
+        </Link>
+        <span className="mx-2 text-fg-3">/</span>
+        Meetings
+      </p>
+      <h1 className="mt-2 font-display text-5xl uppercase tracking-wider text-ink sm:text-6xl">
+        Meetings
+      </h1>
+      <p className="mt-3 max-w-2xl text-fg-2">
+        Latest meeting at the top. Older meetings stay archived here and their
+        educational topics also appear in the{' '}
+        <Link href="/hub/library" className="font-bold text-orange underline">
+          training library
+        </Link>
+        .
+      </p>
+
+      <div className="mt-8">
+        <HubSubNav active="/hub/meetings" />
+      </div>
+
+      {meetings.length === 0 ? (
+        <p className="text-sm text-fg-2">No meetings posted yet.</p>
+      ) : (
+        <ul className="divide-y-2 divide-paper-edge border-y-2 border-ink/80">
+          {meetings.map((m) => (
+            <li key={m.slug}>
+              <Link
+                href={`/hub/meetings/${m.slug}`}
+                className="block px-1 py-5 transition-colors hover:bg-paper-edge/40"
+              >
+                <p className="font-headline text-xs font-extrabold uppercase tracking-ribbon text-orange">
+                  {formatDate(m.date)}
+                </p>
+                <p className="mt-1 font-headline text-xl font-black text-bark-deep">
+                  {m.title.replace(/&mdash;/g, '—')}
+                </p>
+                {m.educational?.title && (
+                  <p className="mt-1 text-sm text-fg-2">
+                    Topic: {m.educational.title}
+                  </p>
+                )}
+              </Link>
+            </li>
+          ))}
+        </ul>
+      )}
+    </main>
+  );
+}
