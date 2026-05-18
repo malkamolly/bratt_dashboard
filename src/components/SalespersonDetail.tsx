@@ -128,7 +128,7 @@ export async function SalespersonDetail({
   const ytdFromHistoricals = priorMonths.reduce((s, h) => s + h.total, 0);
 
   return (
-    <main className="mx-auto max-w-4xl px-4 py-6 sm:px-6 sm:py-10">
+    <main className="mx-auto max-w-6xl px-4 py-6 sm:px-6 sm:py-10">
       {breadcrumb}
 
       <section className="mt-4 flex flex-col gap-5 sm:flex-row sm:items-center">
@@ -136,12 +136,12 @@ export async function SalespersonDetail({
           <Image
             src={arborist.photo}
             alt=""
-            width={112}
-            height={112}
-            className="h-28 w-28 shrink-0 rounded-full object-cover ring-4 ring-paper-edge"
+            width={176}
+            height={176}
+            className="h-44 w-44 shrink-0 rounded-full object-cover ring-4 ring-paper-edge"
           />
         ) : arborist ? (
-          <div className="flex h-28 w-28 shrink-0 items-center justify-center rounded-full bg-bark text-cream font-display text-5xl uppercase ring-4 ring-paper-edge">
+          <div className="flex h-44 w-44 shrink-0 items-center justify-center rounded-full bg-bark text-cream font-display text-6xl uppercase ring-4 ring-paper-edge">
             {person.name.slice(0, 1)}
           </div>
         ) : null}
@@ -195,7 +195,19 @@ export async function SalespersonDetail({
         </div>
       </section>
 
-      {/* Summary cards */}
+      {/* YTD hero */}
+      <section className="mt-8 rounded-card bg-bark p-5 text-cream sm:p-6">
+        <div className="flex flex-col gap-1 sm:flex-row sm:items-baseline sm:justify-between">
+          <p className="font-headline text-xs font-extrabold uppercase tracking-ribbon text-lime">
+            {year} Year-to-Date
+          </p>
+          <p className="font-headline text-4xl font-black sm:text-5xl">
+            {fmtUsd(ytdFromHistoricals + (isHistoricalMonth ? 0 : dailySum))}
+          </p>
+        </div>
+      </section>
+
+      {/* Summary cards (this month) */}
       <section className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-4">
         <SummaryCard
           label={isHistoricalMonth ? 'Month Total' : 'Month-To-Date'}
