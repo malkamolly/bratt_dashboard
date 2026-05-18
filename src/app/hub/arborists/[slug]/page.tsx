@@ -1,94 +1,60 @@
-import Image from 'next/image';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { requireHubAccess } from '@/lib/auth';
 import { serverClient } from '@/lib/supabase';
-import { fmtUsd } from '@/lib/format';
+import { SalespersonDetail } from '@/components/SalespersonDetail';
 import { HubSubNav } from '@/components/HubSubNav';
 import { getArborist } from '@/lib/hub-content';
 
 export const dynamic = 'force-dynamic';
 
 type Params = Promise<{ slug: string }>;
+type Search = Promise<{ year?: string; month?: string }>;
 
-async function loadYtdForSalesperson(name: string): Promise<{
-  ytdTotal: number;
-  annualGoal: number | null;
-  matchedName: string;
-} | null> {
-  const supabase = await serverClient();
-  const year = new Date().getFullYear();
-
-  const { data: person } = await supabase
-    .from('salespeople')
-    .select('id, name')
-    .ilike('name', name)
-    .maybeSingle();
-  if (!person) return null;
-
-  const [historicalsRes, entriesRes, targetRes] = await Promise.all([
-    supabase
-      .from('sales_monthly_historicals')
-      .select('month, amount')
-      .eq('year', year)
-      .eq('salesperson_id', person.id),
-    supabase
-      .from('sales_entries')
-      .select('entry_date, amount')
-      .eq('salesperson_id', person.id)
-      .gte('entry_date', `${year}-01-01`)
-      .lte('entry_date', `${year}-12-31`),
-    supabase
-      .from('yearly_targets')
-      .select('annual_goal')
-      .eq('year', year)
-      .maybeSingle(),
-  ]);
-
-  const histByMonth = new Map<number, number>();
-  for (const h of historicalsRes.data ?? []) {
-    const m = h.month as number;
-    histByMonth.set(m, (histByMonth.get(m) ?? 0) + Number(h.amount));
-  }
-  const dailyByMonth = new Map<number, number>();
-  for (const e of entriesRes.data ?? []) {
-    const m = Number((e.entry_date as string).slice(5, 7));
-    dailyByMonth.set(m, (dailyByMonth.get(m) ?? 0) + Number(e.amount));
-  }
-  const months = new Set<number>([
-    ...histByMonth.keys(),
-    ...dailyByMonth.keys(),
-  ]);
-  let ytdTotal = 0;
-  for (const m of months) {
-    ytdTotal += histByMonth.get(m) ?? dailyByMonth.get(m) ?? 0;
-  }
-
-  return {
-    ytdTotal,
-    annualGoal: targetRes.data?.annual_goal
-      ? Number(targetRes.data.annual_goal)
-      : null,
-    matchedName: person.name,
-  };
+function parseIntInRange(
+  raw: string | undefined,
+  min: number,
+  max: number,
+): number | null {
+  if (raw == null) return null;
+  const n = Number(raw);
+  if (!Number.isInteger(n)) return null;
+  if (n < min || n > max) return null;
+  return n;
 }
 
 export default async function ArboristDetailPage({
   params,
+  searchParams,
 }: {
   params: Params;
+  searchParams: Search;
 }) {
   await requireHubAccess('hub');
   const { slug } = await params;
+  const sp = await searchParams;
+
   const a = getArborist(slug);
   if (!a) notFound();
 
-  const stats = a.salesperson_name
-    ? await loadYtdForSalesperson(a.salesperson_name)
-    : null;
+  const now = new Date();
+  const year = parseIntInRange(sp.year, 2000, 2100) ?? now.getFullYear();
+  const month = parseIntInRange(sp.month, 1, 12) ?? now.getMonth() + 1;
 
-  return (
-    <main className="mx-auto max-w-4xl px-6 py-10">
+  // Resolve the matching salesperson row in the dashboard, if any.
+  let salespersonId: string | null = null;
+  if (a.salesperson_name) {
+    const supabase = await serverClient();
+    const { data: person } = await supabase
+      .from('salespeople')
+      .select('id')
+      .ilike('name', a.salesperson_name)
+      .maybeSingle();
+    salespersonId = person?.id ?? null;
+  }
+
+  const breadcrumb = (
+    <>
       <p className="bt-eyebrow">
         <Link href="/hub" className="hover:underline">
           Sales Arborist Hub
@@ -100,75 +66,42 @@ export default async function ArboristDetailPage({
         <span className="mx-2 text-fg-3">/</span>
         {a.name}
       </p>
-
-      <div className="mt-8">
+      <div className="mt-6">
         <HubSubNav active="/hub/arborists" />
       </div>
+    </>
+  );
 
-      <section className="flex flex-col gap-6 sm:flex-row sm:items-center">
-        {a.photo ? (
-          <Image
-            src={a.photo}
-            alt=""
-            width={160}
-            height={160}
-            className="h-40 w-40 shrink-0 rounded-full object-cover ring-4 ring-paper-edge"
-          />
-        ) : (
-          <div className="flex h-40 w-40 shrink-0 items-center justify-center rounded-full bg-bark text-cream font-display text-6xl uppercase ring-4 ring-paper-edge">
-            {a.name.slice(0, 1)}
-          </div>
-        )}
-        <div>
-          <h1 className="font-display text-5xl uppercase tracking-wider text-ink">
-            {a.name}
-          </h1>
-          <p className="mt-2 text-fg-2">{a.title}</p>
-          <div className="mt-3 flex flex-wrap items-center gap-2">
-            {a.manager ? (
-              <span className="rounded-full bg-bark px-3 py-1 font-headline text-xs font-extrabold uppercase tracking-ribbon text-cream">
-                Sales Manager
-              </span>
-            ) : a.certified ? (
-              <>
-                <span className="rounded-full bg-green/15 px-3 py-1 font-headline text-xs font-extrabold uppercase tracking-ribbon text-green-dark">
-                  ISA Certified
-                </span>
-                {a.isa_number && (
-                  <span className="font-headline text-sm font-bold text-fg-3">
-                    {a.isa_number}
-                  </span>
-                )}
-              </>
-            ) : (
-              <span className="rounded-full bg-orange/15 px-3 py-1 font-headline text-xs font-extrabold uppercase tracking-ribbon text-orange-press">
-                Certification in progress
-              </span>
-            )}
-          </div>
-        </div>
-      </section>
+  // No matching salesperson — fall back to a name-only page.
+  if (!salespersonId) {
+    return (
+      <main className="mx-auto max-w-4xl px-4 py-6 sm:px-6 sm:py-10">
+        {breadcrumb}
+        <h1 className="mt-2 font-display text-5xl uppercase tracking-wider text-ink">
+          {a.name}
+        </h1>
+        <p className="mt-2 text-fg-2">{a.title}</p>
+        <p className="mt-8 rounded-card border-2 border-dashed border-paper-edge bg-paper p-6 text-center text-sm text-fg-2">
+          No salesperson record found in the dashboard for &quot;
+          {a.salesperson_name ?? a.name}&quot;.
+        </p>
+      </main>
+    );
+  }
 
-      {stats && (
-        <section className="mt-10 rounded-card bg-bark p-6 text-cream">
-          <p className="font-headline text-xs font-extrabold uppercase tracking-ribbon text-lime">
-            {new Date().getFullYear()} Year-to-Date
-          </p>
-          <p className="mt-2 font-headline text-4xl font-black">
-            {fmtUsd(stats.ytdTotal)}
-          </p>
-          <p className="mt-1 text-sm text-cream/80">
-            Live from the Pace dashboard ({stats.matchedName}).
-          </p>
-        </section>
-      )}
-
-      {a.salesperson_name && !stats && (
-        <section className="mt-10 rounded-card border-2 border-dashed border-paper-edge bg-paper p-6 text-center text-sm text-fg-2">
-          No salesperson record found for &quot;{a.salesperson_name}&quot; in
-          the dashboard.
-        </section>
-      )}
-    </main>
+  return (
+    <SalespersonDetail
+      salespersonId={salespersonId}
+      year={year}
+      month={month}
+      breadcrumb={breadcrumb}
+      basePath={`/hub/arborists/${a.slug}`}
+      arborist={{
+        photo: a.photo ?? null,
+        certified: a.certified,
+        isa_number: a.isa_number ?? null,
+        manager: !!a.manager,
+      }}
+    />
   );
 }

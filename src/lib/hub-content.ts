@@ -50,6 +50,10 @@ function slugFromFile(file: string): string {
 }
 
 export function listArborists(): Arborist[] {
+  // Arborists pinned to the end of the roster (Sales Manager + senior).
+  // Otherwise alphabetical by name.
+  const PINNED_LAST = ['brent-b', 'caleb-o'];
+
   const dir = path.join(CONTENT_ROOT, 'arborists');
   return readDirSafe(dir)
     .map((file) => {
@@ -69,7 +73,25 @@ export function listArborists(): Arborist[] {
         body: content,
       };
     })
-    .sort((a, b) => a.name.localeCompare(b.name));
+    .sort((a, b) => {
+      const aPinned = PINNED_LAST.indexOf(a.slug);
+      const bPinned = PINNED_LAST.indexOf(b.slug);
+      if (aPinned !== -1 && bPinned === -1) return 1;
+      if (bPinned !== -1 && aPinned === -1) return -1;
+      if (aPinned !== -1 && bPinned !== -1) return aPinned - bPinned;
+      return a.name.localeCompare(b.name);
+    });
+}
+
+export function getArboristBySalespersonName(
+  salespersonName: string,
+): Arborist | null {
+  const target = salespersonName.toLowerCase();
+  return (
+    listArborists().find(
+      (a) => (a.salesperson_name ?? '').toLowerCase() === target,
+    ) ?? null
+  );
 }
 
 export function getArborist(slug: string): Arborist | null {

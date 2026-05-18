@@ -1,11 +1,30 @@
 import Image from 'next/image';
 import Link from 'next/link';
 import { requireHubAccess } from '@/lib/auth';
+import { loadYearToDate } from '@/lib/sales-data';
+import { loadProductionYearToDate } from '@/lib/production-data';
+import { fmtUsd, fmtPct } from '@/lib/format';
 
 export const dynamic = 'force-dynamic';
 
 export default async function PaceHomePage() {
-  const user = await requireHubAccess('pace');
+  await requireHubAccess('pace');
+
+  const [salesYtd, productionYtd] = await Promise.all([
+    loadYearToDate(),
+    loadProductionYearToDate(),
+  ]);
+
+  const salesPct =
+    salesYtd.annualGoal && salesYtd.annualGoal > 0
+      ? salesYtd.ytdTotal / salesYtd.annualGoal
+      : null;
+  const prodPct =
+    productionYtd.annualGoal && productionYtd.annualGoal > 0
+      ? productionYtd.ytdRevenue / productionYtd.annualGoal
+      : null;
+
+  const year = new Date().getFullYear();
 
   return (
     <main className="mx-auto max-w-6xl px-6 py-12">
@@ -63,26 +82,63 @@ export default async function PaceHomePage() {
         </Link>
       </section>
 
-      {user.role === 'admin' && (
-        <section className="mt-10 rounded-card bg-bark p-6 text-cream">
-          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <p className="font-headline text-xs font-extrabold uppercase tracking-ribbon text-lime">
-                YTD vs. Annual Target
-              </p>
-              <p className="mt-1 font-headline text-2xl font-black uppercase">
-                Yearly target &mdash; coming soon
-              </p>
-              <p className="mt-1 text-sm text-cream/80">
-                Set the annual goal in the admin panel and we&apos;ll show running progress here.
-              </p>
-            </div>
-            <Link href="/admin" className="bt-btn bt-btn-primary">
-              Open Admin
-            </Link>
-          </div>
-        </section>
-      )}
+      <section className="mt-10 rounded-card bg-bark p-6 text-cream">
+        <p className="font-headline text-xs font-extrabold uppercase tracking-ribbon text-lime">
+          {year} Year-to-Date — At a glance
+        </p>
+        <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <YtdBlock
+            label="Sales YTD"
+            ytd={salesYtd.ytdTotal}
+            goal={salesYtd.annualGoal}
+            pct={salesPct}
+            href="/sales"
+          />
+          <YtdBlock
+            label="Production YTD"
+            ytd={productionYtd.ytdRevenue}
+            goal={productionYtd.annualGoal}
+            pct={prodPct}
+            href="/production"
+          />
+        </div>
+      </section>
     </main>
+  );
+}
+
+function YtdBlock({
+  label,
+  ytd,
+  goal,
+  pct,
+  href,
+}: {
+  label: string;
+  ytd: number;
+  goal: number | null;
+  pct: number | null;
+  href: string;
+}) {
+  return (
+    <Link
+      href={href}
+      className="block rounded-2 border-2 border-cream/15 p-4 transition-colors hover:border-lime"
+    >
+      <p className="font-headline text-[11px] font-extrabold uppercase tracking-ribbon text-cream/70">
+        {label}
+      </p>
+      <p className="mt-1 font-headline text-3xl font-black">
+        {fmtUsd(ytd)}
+      </p>
+      {goal != null && (
+        <p className="mt-1 text-sm text-cream/80">
+          {pct != null ? fmtPct(pct) : '—'} of {fmtUsd(goal)} goal
+        </p>
+      )}
+      {goal == null && (
+        <p className="mt-1 text-sm text-cream/60">No annual goal set yet</p>
+      )}
+    </Link>
   );
 }
