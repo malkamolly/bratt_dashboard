@@ -1,0 +1,52 @@
+title: Sales Arborist Hub
+description: Roster, weekly meetings, onboarding, and training library for the Bratt Tree Service Sales Arborist team.
+url: ""
+baseurl: "/salesarborist_hub"
+
+# Build settings
+markdown: kramdown
+highlighter: rouge
+permalink: pretty
+future: true
+
+# Collections
+collections:
+  arborists:
+    output: true
+    permalink: /arborists/:path/
+  meetings:
+    output: true
+    permalink: /meetings/:path/
+
+# Default front matter
+defaults:
+  - scope:
+      path: ""
+      type: "arborists"
+    values:
+      layout: arborist
+  - scope:
+      path: ""
+      type: "meetings"
+    values:
+      layout: meeting
+  - scope:
+      path: ""
+    values:
+      layout: default
+
+# Files to exclude from the build
+exclude:
+  - Gemfile
+  - Gemfile.lock
+  - vendor
+  - node_modules
+  - README.md
+  - CLAUDE.md
+  - .claude
+
+# Plugins (allowlisted by GitHub Pages)
+plugins:
+  - jekyll-feed
+  - jekyll-sitemap
+  - jekyll-seo-tag

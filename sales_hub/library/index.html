@@ -1,0 +1,64 @@
+---
+layout: default
+title: Training Library
+permalink: /library/
+---
+
+<header class="page-header">
+  <p class="page-header__eyebrow">Educational Topics</p>
+  <h1 class="page-header__title">Training Library</h1>
+  <p class="page-header__lede">Browse the educational topic from every weekly meeting. Click a tag to narrow the list.</p>
+</header>
+
+{%- comment -%}
+  Collect every unique tag used across educational topics.
+{%- endcomment -%}
+{% assign all_tags = "" | split: "" %}
+{% for meeting in site.meetings %}
+  {% if meeting.educational.tags %}
+    {% for tag in meeting.educational.tags %}
+      {% unless all_tags contains tag %}
+        {% assign all_tags = all_tags | push: tag %}
+      {% endunless %}
+    {% endfor %}
+  {% endif %}
+{% endfor %}
+{% assign all_tags = all_tags | sort %}
+
+{% if all_tags.size > 0 %}
+  <div class="library-filters" data-library-filters>
+    <button type="button" class="library-filter library-filter--active" data-filter="all">All</button>
+    {% for tag in all_tags %}
+      {% assign slug = tag | downcase | replace: ' ', '-' %}
+      <button type="button" class="library-filter" data-filter="{{ slug }}">{{ tag }}</button>
+    {% endfor %}
+  </div>
+{% endif %}
+
+<ul class="library-grid" data-library-grid>
+  {% assign topics = site.meetings | where_exp: "m", "m.educational" | sort: "date" | reverse %}
+  {% for meeting in topics %}
+    {%- assign tag_slugs = "" -%}
+    {% if meeting.educational.tags %}
+      {% for tag in meeting.educational.tags %}
+        {% assign slug = tag | downcase | replace: ' ', '-' %}
+        {% assign tag_slugs = tag_slugs | append: slug | append: "," %}
+      {% endfor %}
+    {% endif %}
+    <li class="library-card" data-tags="{{ tag_slugs }}">
+      <a class="library-card__link" href="{{ meeting.url | relative_url }}">
+        <p class="library-card__date">{{ meeting.date | date: '%b %Y' }}</p>
+        <h2 class="library-card__title">{{ meeting.educational.title }}</h2>
+        {% if meeting.educational.tags %}
+          <ul class="library-card__tags">
+            {% for tag in meeting.educational.tags %}<li>{{ tag }}</li>{% endfor %}
+          </ul>
+        {% endif %}
+      </a>
+    </li>
+  {% endfor %}
+</ul>
+
+<p class="library-empty" data-library-empty hidden>No topics match that tag yet.</p>
+
+<script src="{{ '/assets/js/library-filter.js' | relative_url }}" defer></script>

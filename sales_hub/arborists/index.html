@@ -1,0 +1,40 @@
+---
+layout: default
+title: Team Roster
+permalink: /arborists/
+---
+
+<header class="page-header">
+  <p class="page-header__eyebrow">Sales Arborist Team</p>
+  <h1 class="page-header__title">Team Roster</h1>
+  <p class="page-header__lede">{{ site.arborists | size }} team members &middot; {{ site.arborists | where: "certified", true | size }} ISA Certified Arborists</p>
+</header>
+
+<ul class="roster-grid">
+  {% assign sorted = site.arborists | sort: "name" %}
+  {% for person in sorted %}
+    <li class="roster-card">
+      <a href="{{ person.url | relative_url }}" class="roster-card__link">
+        {% if person.photo %}
+          <img class="roster-card__photo" src="{{ person.photo | relative_url }}" alt="" />
+        {% else %}
+          <div class="roster-card__photo roster-card__photo--placeholder" aria-hidden="true">{{ person.name | slice: 0 }}</div>
+        {% endif %}
+        <div class="roster-card__body">
+          <h2 class="roster-card__name">{{ person.name }}</h2>
+          {% if person.title %}<p class="roster-card__title">{{ person.title }}</p>{% endif %}
+          <p class="roster-card__cert">
+            {% if person.manager %}
+              <span class="badge badge--manager">Sales Manager</span>
+            {% elsif person.certified %}
+              <span class="badge badge--certified">Certified</span>
+              {% if person.isa_number %}<span class="roster-card__isa">{{ person.isa_number }}</span>{% endif %}
+            {% else %}
+              <span class="badge badge--pending">In progress</span>
+            {% endif %}
+          </p>
+        </div>
+      </a>
+    </li>
+  {% endfor %}
+</ul>
