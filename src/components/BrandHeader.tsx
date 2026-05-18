@@ -7,31 +7,31 @@ export async function BrandHeader() {
   const user = await getAllowedUser();
 
   return (
-    <header className="bt-nav sticky top-0 z-30 border-b-4 border-orange">
-      <div className="mx-auto flex max-w-7xl items-center justify-between gap-3 px-4 py-2 sm:px-6 sm:py-3">
+    <header className="bt-nav sticky top-0 z-30 border-b-2 border-orange">
+      <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-2 sm:px-8 sm:py-2">
         <Link
           href={user ? '/' : '/login'}
-          className="flex shrink-0 items-center gap-3 sm:gap-5"
+          className="flex shrink-0 items-center gap-4 sm:gap-6"
         >
           <Image
             src="/brand/logo.png"
             alt="Bratt Tree"
-            width={140}
-            height={188}
+            width={160}
+            height={215}
             priority
-            className="h-12 w-auto sm:h-16"
+            className="h-14 w-auto sm:h-20"
           />
           <span
             aria-hidden="true"
-            className="hidden h-10 w-px bg-cream/30 sm:block"
+            className="hidden h-12 w-px bg-orange sm:block sm:h-14"
           />
-          <span className="hidden font-headline text-sm font-extrabold uppercase tracking-ribbon text-cream sm:inline sm:text-base">
+          <span className="hidden font-headline text-base font-extrabold uppercase tracking-ribbon text-cream sm:inline sm:text-lg">
             PACE DASHBOARD
           </span>
         </Link>
 
         {user ? (
-          <nav className="flex items-center gap-3 font-headline text-[11px] font-extrabold uppercase tracking-ribbon sm:gap-6 sm:text-sm">
+          <nav className="flex items-center gap-4 font-headline text-[11px] font-extrabold uppercase tracking-ribbon sm:gap-7 sm:text-base">
             <Link
               href="/sales"
               className="text-cream transition-colors hover:text-lime"
@@ -56,7 +56,7 @@ export async function BrandHeader() {
             <form action="/auth/signout" method="post" className="ml-1 sm:ml-2">
               <button
                 type="submit"
-                className="flex items-center text-cream/70 transition-colors hover:text-lime"
+                className="flex items-center uppercase tracking-ribbon text-cream/70 transition-colors hover:text-lime"
                 title={`Sign out (${user.email})`}
                 aria-label="Sign out"
               >
