@@ -158,7 +158,9 @@ function LiveMonthView({
   const weekRows: WeekRow[] = weeks.map((w) => {
     const workingDaysTotal = w.workingDays.length;
     const workingDaysComplete = w.workingDays.filter((d) => d <= todayIso).length;
-    const total = w.workingDays.reduce(
+    // Sum every entry in this week (incl. weekends/holidays) — sales can be
+    // booked off-hours and still count toward the week's pace.
+    const total = w.daysInMonth.reduce(
       (s, d) => s + (entriesByDate.get(d) ?? 0),
       0,
     );

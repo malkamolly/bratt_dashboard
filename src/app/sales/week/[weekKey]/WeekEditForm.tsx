@@ -14,7 +14,11 @@ import type { IsoDate } from '@/lib/dates';
 
 type Props = {
   weekKey: IsoDate;
-  workingDays: IsoDate[];
+  /** Every calendar day in the week that's in the target month, Mon→Sun. */
+  days: IsoDate[];
+  /** Subset of `days` that are M-F (not a holiday). Weekend/holiday rows are
+   *  still editable but visually labeled so users see when a sale is off-hours. */
+  workingDaySet: IsoDate[];
   salespeople: Salesperson[];
   /** Map keyed by `${date}__${salesperson_id}` -> amount. */
   initialAmounts: Record<string, number>;
@@ -50,7 +54,8 @@ function SaveButton({ dirty }: { dirty: boolean }) {
 
 export function WeekEditForm({
   weekKey,
-  workingDays,
+  days,
+  workingDaySet,
   salespeople,
   initialAmounts,
   year,
@@ -62,10 +67,12 @@ export function WeekEditForm({
     undefined,
   );
 
+  const workingDays = useMemo(() => new Set(workingDaySet), [workingDaySet]);
+
   // String map so users can clear a cell and we still track the edit.
   const [amounts, setAmounts] = useState<Record<string, string>>(() => {
     const m: Record<string, string> = {};
-    for (const d of workingDays) {
+    for (const d of days) {
       for (const sp of salespeople) {
         const k = cellKey(d, sp.id);
         const v = initialAmounts[k];
@@ -87,23 +94,23 @@ export function WeekEditForm({
 
   const dayTotals = useMemo(() => {
     const m: Record<string, number> = {};
-    for (const d of workingDays) {
+    for (const d of days) {
       let sum = 0;
       for (const sp of salespeople) sum += numericAmounts[cellKey(d, sp.id)] ?? 0;
       m[d] = sum;
     }
     return m;
-  }, [numericAmounts, workingDays, salespeople]);
+  }, [numericAmounts, days, salespeople]);
 
   const spTotals = useMemo(() => {
     const m: Record<string, number> = {};
     for (const sp of salespeople) {
       let sum = 0;
-      for (const d of workingDays) sum += numericAmounts[cellKey(d, sp.id)] ?? 0;
+      for (const d of days) sum += numericAmounts[cellKey(d, sp.id)] ?? 0;
       m[sp.id] = sum;
     }
     return m;
-  }, [numericAmounts, workingDays, salespeople]);
+  }, [numericAmounts, days, salespeople]);
 
   const weekTotal = useMemo(
     () => Object.values(dayTotals).reduce((s, n) => s + n, 0),
@@ -165,16 +172,26 @@ export function WeekEditForm({
             </tr>
           </thead>
           <tbody>
-            {workingDays.map((d, idx) => {
+            {days.map((d, idx) => {
               const { weekday, date } = dayLabel(d);
+              const isOffHours = !workingDays.has(d);
               return (
                 <tr
                   key={d}
-                  className={idx % 2 === 0 ? 'bg-white/60' : 'bg-transparent'}
+                  className={`${
+                    idx % 2 === 0 ? 'bg-white/60' : 'bg-transparent'
+                  } ${isOffHours ? 'bg-paper/30' : ''}`}
                 >
                   <td className="sticky left-0 z-10 whitespace-nowrap bg-inherit px-4 py-2 font-headline text-sm font-bold text-ink">
                     <div className="flex flex-col leading-tight">
-                      <span>{weekday}</span>
+                      <span>
+                        {weekday}
+                        {isOffHours && (
+                          <span className="ml-1.5 rounded-full bg-status-warn/30 px-1.5 py-0.5 align-middle text-[10px] font-extrabold uppercase tracking-ribbon text-fg-1">
+                            Off
+                          </span>
+                        )}
+                      </span>
                       <span className="text-xs font-normal text-fg-3">
                         {date}
                       </span>

@@ -75,19 +75,23 @@ export default async function SalesWeekEditPage({
   const week = weeks.find((w) => w.weekKey === weekKey);
   if (!week) notFound();
 
-  const firstDay = week.workingDays[0];
-  const lastDay = week.workingDays[week.workingDays.length - 1];
+  // Show every calendar day in the week that's in the month — weekends too —
+  // so off-hours sales can be viewed and edited.
+  const daysInWeek = week.daysInMonth;
+  const workingDaySet = new Set(week.workingDays);
+  const firstDay = daysInWeek[0];
+  const lastDay = daysInWeek[daysInWeek.length - 1];
   const entriesRes = await supabase
     .from('sales_entries')
     .select('entry_date, salesperson_id, amount')
     .gte('entry_date', firstDay)
     .lte('entry_date', lastDay);
 
-  const workingDaysSet = new Set(week.workingDays);
+  const daySet = new Set(daysInWeek);
   const initialAmounts: Record<string, number> = {};
   for (const row of entriesRes.data ?? []) {
     const d = row.entry_date as IsoDate;
-    if (!workingDaysSet.has(d)) continue;
+    if (!daySet.has(d)) continue;
     initialAmounts[`${d}__${row.salesperson_id}`] = Number(row.amount);
   }
 
@@ -108,7 +112,8 @@ export default async function SalesWeekEditPage({
       </h1>
       <p className="mt-3 text-fg-2">
         {monthLabel(year, month)} &mdash; {week.workingDays.length} working day
-        {week.workingDays.length === 1 ? '' : 's'}.{' '}
+        {week.workingDays.length === 1 ? '' : 's'}. Weekend rows are shown too —
+        enter any off-hours sales there.{' '}
         <Link
           href={`/sales?year=${year}&month=${month}`}
           className="text-orange underline decoration-orange/40 underline-offset-2 hover:decoration-orange"
@@ -120,7 +125,8 @@ export default async function SalesWeekEditPage({
       <div className="mt-8">
         <WeekEditForm
           weekKey={week.weekKey}
-          workingDays={week.workingDays}
+          days={daysInWeek}
+          workingDaySet={Array.from(workingDaySet)}
           salespeople={salespeople}
           initialAmounts={initialAmounts}
           year={year}
