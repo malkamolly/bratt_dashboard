@@ -137,11 +137,11 @@ export async function SalespersonDetail({
             src={arborist.photo}
             alt=""
             width={176}
-            height={176}
-            className="h-44 w-44 shrink-0 rounded-full object-cover ring-4 ring-paper-edge"
+            height={213}
+            className="aspect-[440/533] w-40 shrink-0 rounded-3xl object-cover ring-4 ring-paper-edge sm:w-44"
           />
         ) : arborist ? (
-          <div className="flex h-44 w-44 shrink-0 items-center justify-center rounded-full bg-bark text-cream font-display text-6xl uppercase ring-4 ring-paper-edge">
+          <div className="flex aspect-[440/533] w-40 shrink-0 items-center justify-center rounded-3xl bg-bark text-cream font-display text-6xl uppercase ring-4 ring-paper-edge sm:w-44">
             {person.name.slice(0, 1)}
           </div>
         ) : null}
@@ -195,20 +195,12 @@ export async function SalespersonDetail({
         </div>
       </section>
 
-      {/* YTD hero */}
-      <section className="mt-8 rounded-card bg-bark p-5 text-cream sm:p-6">
-        <div className="flex flex-col gap-1 sm:flex-row sm:items-baseline sm:justify-between">
-          <p className="font-headline text-xs font-extrabold uppercase tracking-ribbon text-lime">
-            {year} Year-to-Date
-          </p>
-          <p className="font-headline text-4xl font-black sm:text-5xl">
-            {fmtUsd(ytdFromHistoricals + (isHistoricalMonth ? 0 : dailySum))}
-          </p>
-        </div>
-      </section>
-
-      {/* Summary cards (this month) */}
-      <section className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-4">
+      {/* Summary cards: YTD then this-month breakdown */}
+      <section className="mt-8 grid grid-cols-2 gap-3 md:grid-cols-5">
+        <SummaryCard
+          label={`${year} YTD`}
+          value={fmtUsd(ytdFromHistoricals + (isHistoricalMonth ? 0 : dailySum))}
+        />
         <SummaryCard
           label={isHistoricalMonth ? 'Month Total' : 'Month-To-Date'}
           value={fmtUsd(mtd)}
@@ -219,9 +211,9 @@ export async function SalespersonDetail({
           value={fmtUsd(dailyAvg)}
           hint={
             isHistoricalMonth
-              ? 'Not available (no daily detail)'
+              ? 'No daily detail'
               : daysEntered > 0
-                ? `Across ${daysEntered} day${daysEntered === 1 ? '' : 's'}`
+                ? `${daysEntered} day${daysEntered === 1 ? '' : 's'}`
                 : undefined
           }
         />
@@ -460,15 +452,17 @@ function SummaryCard({
     <div
       className={
         accent === 'orange'
-          ? 'rounded-card border-[3px] border-orange bg-white p-4'
-          : 'rounded-card border-[3px] border-lime bg-white p-4'
+          ? 'rounded-2 border-[3px] border-orange bg-white px-3 py-2.5'
+          : 'rounded-2 border-[3px] border-lime bg-white px-3 py-2.5'
       }
     >
-      <p className="font-headline text-[11px] font-extrabold uppercase tracking-ribbon text-fg-2">
+      <p className="font-headline text-[10px] font-extrabold uppercase tracking-ribbon text-fg-2">
         {label}
       </p>
-      <p className="mt-1 font-headline text-2xl font-black text-ink">{value}</p>
-      {hint && <p className="mt-0.5 text-xs text-fg-3">{hint}</p>}
+      <p className="mt-0.5 font-headline text-lg font-black text-ink lg:text-xl">
+        {value}
+      </p>
+      {hint && <p className="mt-0.5 text-[11px] text-fg-3">{hint}</p>}
     </div>
   );
 }
