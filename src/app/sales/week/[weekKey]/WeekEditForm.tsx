@@ -171,7 +171,7 @@ export function WeekEditForm({
                 return (
                   <th
                     key={d}
-                    className={`px-1.5 py-3 text-right font-headline text-xs font-extrabold uppercase tracking-ribbon text-fg-2 ${
+                    className={`py-3 pl-1.5 pr-7 text-right font-headline text-xs font-extrabold uppercase tracking-ribbon text-fg-2 ${
                       isOffHours ? 'bg-paper/30' : ''
                     }`}
                   >
@@ -273,7 +273,7 @@ export function WeekEditForm({
                 return (
                   <td
                     key={d}
-                    className={`px-1.5 py-3 text-right font-headline text-sm font-extrabold text-ink ${
+                    className={`py-3 pl-1.5 pr-7 text-right font-headline text-sm font-extrabold text-ink ${
                       isOffHours ? 'bg-paper/30' : ''
                     }`}
                   >
