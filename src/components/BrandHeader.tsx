@@ -1,8 +1,10 @@
 import Link from 'next/link';
-import { getAllowedUser } from '@/lib/auth';
+import { canAccessHub, getAllowedUser } from '@/lib/auth';
 
 export async function BrandHeader() {
   const user = await getAllowedUser();
+  const hasPace = user ? canAccessHub(user.role, 'pace') : false;
+  const hasHub = user ? canAccessHub(user.role, 'hub') : false;
 
   return (
     <header className="site">
@@ -14,8 +16,9 @@ export async function BrandHeader() {
         </Link>
         {user ? (
           <nav>
-            <Link href="/sales">Sales</Link>
-            <Link href="/production">Production</Link>
+            {hasPace && <Link href="/sales">Sales</Link>}
+            {hasPace && <Link href="/production">Production</Link>}
+            {hasHub && <Link href="/hub">Arborist Hub</Link>}
             {user.role === 'admin' && <Link href="/admin">Admin</Link>}
             <form action="/auth/signout" method="post">
               <button
