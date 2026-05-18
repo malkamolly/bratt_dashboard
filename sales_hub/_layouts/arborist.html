@@ -1,0 +1,46 @@
+---
+layout: default
+---
+<article class="arborist-page">
+  <a class="back-link" href="{{ '/arborists/' | relative_url }}">&larr; Back to roster</a>
+
+  <header class="arborist-page__header">
+    {% if page.photo %}
+      <img class="arborist-page__photo" src="{{ page.photo | relative_url }}" alt="{{ page.name }}" />
+    {% else %}
+      <div class="arborist-page__photo arborist-page__photo--placeholder" aria-hidden="true">
+        {{ page.name | slice: 0 }}
+      </div>
+    {% endif %}
+    <div>
+      <h1 class="arborist-page__name">{{ page.name }}</h1>
+      {% if page.title %}<p class="arborist-page__title">{{ page.title }}</p>{% endif %}
+      <p class="arborist-page__cert">
+        {% if page.manager %}
+          <span class="badge badge--manager">Sales Manager</span>
+        {% elsif page.certified %}
+          <span class="badge badge--certified">ISA Certified Arborist</span>
+          {% if page.isa_number %}<span class="arborist-page__isa">{{ page.isa_number }}</span>{% endif %}
+        {% else %}
+          <span class="badge badge--pending">Not yet certified</span>
+        {% endif %}
+      </p>
+    </div>
+  </header>
+
+  {% assign has_meta = page.region or page.email or page.phone or page.started %}
+  {% if has_meta %}
+    <dl class="arborist-page__meta">
+      {% if page.region %}<div><dt>Region</dt><dd>{{ page.region }}</dd></div>{% endif %}
+      {% if page.email %}<div><dt>Email</dt><dd><a href="mailto:{{ page.email }}">{{ page.email }}</a></dd></div>{% endif %}
+      {% if page.phone %}<div><dt>Phone</dt><dd>{{ page.phone }}</dd></div>{% endif %}
+      {% if page.started %}<div><dt>Started</dt><dd>{{ page.started | date: '%B %Y' }}</dd></div>{% endif %}
+    </dl>
+  {% endif %}
+
+  {% if content and content != "" %}
+    <div class="arborist-page__bio">
+      {{ content }}
+    </div>
+  {% endif %}
+</article>
