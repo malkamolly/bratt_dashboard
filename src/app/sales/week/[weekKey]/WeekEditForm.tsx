@@ -156,112 +156,124 @@ export function WeekEditForm({
           <thead className="bg-paper-edge/40">
             <tr>
               <th className="sticky left-0 z-10 bg-paper-edge/40 px-4 py-3 font-headline text-xs font-extrabold uppercase tracking-ribbon text-fg-2">
-                Day
+                Salesperson
               </th>
-              {salespeople.map((sp) => (
-                <th
-                  key={sp.id}
-                  className="whitespace-nowrap px-3 py-3 text-right font-headline text-xs font-extrabold uppercase tracking-ribbon text-fg-2"
-                >
-                  {sp.name}
-                </th>
-              ))}
-              <th className="whitespace-nowrap px-4 py-3 text-right font-headline text-xs font-extrabold uppercase tracking-ribbon text-fg-2">
-                Day Total
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            {days.map((d, idx) => {
-              const { weekday, date } = dayLabel(d);
-              const isOffHours = !workingDays.has(d);
-              return (
-                <tr
-                  key={d}
-                  className={`${
-                    idx % 2 === 0 ? 'bg-white/60' : 'bg-transparent'
-                  } ${isOffHours ? 'bg-paper/30' : ''}`}
-                >
-                  <td className="sticky left-0 z-10 whitespace-nowrap bg-inherit px-4 py-2 font-headline text-sm font-bold text-ink">
-                    <div className="flex flex-col leading-tight">
+              {days.map((d) => {
+                const { weekday, date } = dayLabel(d);
+                const isOffHours = !workingDays.has(d);
+                return (
+                  <th
+                    key={d}
+                    className={`whitespace-nowrap px-3 py-3 text-right font-headline text-xs font-extrabold uppercase tracking-ribbon text-fg-2 ${
+                      isOffHours ? 'bg-paper/30' : ''
+                    }`}
+                  >
+                    <div className="flex flex-col items-end leading-tight">
                       <span>
                         {weekday}
                         {isOffHours && (
-                          <span className="ml-1.5 rounded-full bg-status-warn/30 px-1.5 py-0.5 align-middle text-[10px] font-extrabold uppercase tracking-ribbon text-fg-1">
+                          <span className="ml-1 rounded-full bg-status-warn/30 px-1.5 py-0.5 align-middle text-[10px] font-extrabold uppercase tracking-ribbon text-fg-1">
                             Off
                           </span>
                         )}
                       </span>
-                      <span className="text-xs font-normal text-fg-3">
+                      <span className="text-[10px] font-normal normal-case tracking-normal text-fg-3">
                         {date}
                       </span>
                     </div>
-                  </td>
-                  {salespeople.map((sp) => {
-                    const k = cellKey(d, sp.id);
-                    const hasExisting = initialAmounts[k] != null;
-                    return (
-                      <td key={sp.id} className="px-3 py-2 text-right">
-                        <div className="flex items-center justify-end gap-1">
-                          <input
-                            type="text"
-                            inputMode="decimal"
-                            name={`amount__${k}`}
-                            value={amounts[k] ?? ''}
-                            onChange={(e) =>
-                              setAmounts((m) => ({ ...m, [k]: e.target.value }))
-                            }
-                            placeholder="0"
-                            className="w-28 rounded-2 border-2 border-paper-edge bg-white px-2 py-1.5 text-right font-headline text-sm focus:border-orange focus:outline-none"
-                          />
-                          {hasExisting ? (
-                            <button
-                              type="submit"
-                              formAction={deleteWeekCell}
-                              name="delete_target"
-                              value={`${d}::${sp.id}`}
-                              onClick={(e) => {
-                                if (
-                                  !window.confirm(
-                                    `Delete ${sp.name}'s entry for ${date}? This can't be undone.`,
-                                  )
-                                ) {
-                                  e.preventDefault();
-                                }
-                              }}
-                              title={`Delete ${sp.name}'s entry for ${date}`}
-                              aria-label={`Delete ${sp.name}'s entry for ${date}`}
-                              className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full border-2 border-paper-edge text-xs text-fg-3 transition-colors hover:border-orange-press hover:bg-orange-press hover:text-white"
-                            >
-                              ×
-                            </button>
-                          ) : (
-                            <span className="inline-block h-6 w-6 shrink-0" />
-                          )}
-                        </div>
-                      </td>
-                    );
-                  })}
-                  <td className="whitespace-nowrap px-4 py-2 text-right font-headline text-sm font-extrabold text-ink">
-                    {fmtUsd(dayTotals[d])}
-                  </td>
-                </tr>
-              );
-            })}
+                  </th>
+                );
+              })}
+              <th className="whitespace-nowrap px-4 py-3 text-right font-headline text-xs font-extrabold uppercase tracking-ribbon text-fg-2">
+                Week Total
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            {salespeople.map((sp, idx) => (
+              <tr
+                key={sp.id}
+                className={idx % 2 === 0 ? 'bg-white/60' : 'bg-transparent'}
+              >
+                <td className="sticky left-0 z-10 whitespace-nowrap bg-inherit px-4 py-2 font-headline text-sm font-bold text-ink">
+                  {sp.name}
+                </td>
+                {days.map((d) => {
+                  const { date } = dayLabel(d);
+                  const k = cellKey(d, sp.id);
+                  const hasExisting = initialAmounts[k] != null;
+                  const isOffHours = !workingDays.has(d);
+                  return (
+                    <td
+                      key={d}
+                      className={`px-3 py-2 text-right ${
+                        isOffHours ? 'bg-paper/30' : ''
+                      }`}
+                    >
+                      <div className="flex items-center justify-end gap-1">
+                        <input
+                          type="text"
+                          inputMode="decimal"
+                          name={`amount__${k}`}
+                          value={amounts[k] ?? ''}
+                          onChange={(e) =>
+                            setAmounts((m) => ({ ...m, [k]: e.target.value }))
+                          }
+                          placeholder="0"
+                          className="w-24 rounded-2 border-2 border-paper-edge bg-white px-2 py-1.5 text-right font-headline text-sm focus:border-orange focus:outline-none"
+                        />
+                        {hasExisting ? (
+                          <button
+                            type="submit"
+                            formAction={deleteWeekCell}
+                            name="delete_target"
+                            value={`${d}::${sp.id}`}
+                            onClick={(e) => {
+                              if (
+                                !window.confirm(
+                                  `Delete ${sp.name}'s entry for ${date}? This can't be undone.`,
+                                )
+                              ) {
+                                e.preventDefault();
+                              }
+                            }}
+                            title={`Delete ${sp.name}'s entry for ${date}`}
+                            aria-label={`Delete ${sp.name}'s entry for ${date}`}
+                            className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full border-2 border-paper-edge text-xs text-fg-3 transition-colors hover:border-orange-press hover:bg-orange-press hover:text-white"
+                          >
+                            ×
+                          </button>
+                        ) : (
+                          <span className="inline-block h-6 w-6 shrink-0" />
+                        )}
+                      </div>
+                    </td>
+                  );
+                })}
+                <td className="whitespace-nowrap px-4 py-2 text-right font-headline text-sm font-extrabold text-ink">
+                  {fmtUsd(spTotals[sp.id])}
+                </td>
+              </tr>
+            ))}
           </tbody>
           <tfoot>
             <tr className="border-t-2 border-paper-edge bg-paper-edge/30">
               <td className="sticky left-0 z-10 whitespace-nowrap bg-paper-edge/30 px-4 py-3 font-headline text-xs font-extrabold uppercase tracking-ribbon text-fg-2">
-                Salesperson Total
+                Day Total
               </td>
-              {salespeople.map((sp) => (
-                <td
-                  key={sp.id}
-                  className="whitespace-nowrap px-3 py-3 text-right font-headline text-sm font-extrabold text-ink"
-                >
-                  {fmtUsd(spTotals[sp.id])}
-                </td>
-              ))}
+              {days.map((d) => {
+                const isOffHours = !workingDays.has(d);
+                return (
+                  <td
+                    key={d}
+                    className={`whitespace-nowrap px-3 py-3 text-right font-headline text-sm font-extrabold text-ink ${
+                      isOffHours ? 'bg-paper/30' : ''
+                    }`}
+                  >
+                    {fmtUsd(dayTotals[d])}
+                  </td>
+                );
+              })}
               <td className="whitespace-nowrap px-4 py-3 text-right font-headline text-lg font-black text-ink">
                 {fmtUsd(weekTotal)}
               </td>
