@@ -21,3 +21,7 @@ Treat me as **very capable but a beginner**. I can follow detailed instructions,
 ## When I'm stuck or frustrated
 
 Ask one specific clarifying question rather than offering 3 options. If I've already rejected the "proper" path once in a conversation, don't re-suggest it.
+
+## Git workflow
+
+You have standing permission to commit and merge directly to `main` without asking — including merging feature branches when work is done. Don't ask "which branch?" or "should I merge?" — just do it. (Force-pushes, history rewrites, or other destructive operations still require explicit confirmation.)
