@@ -14,8 +14,10 @@ import { serverClient } from '@/lib/supabase';
 import {
   monthRange,
   workingDaysInMonth,
+  workingWeeksInMonth,
   fromIsoDate,
   type IsoDate,
+  type WorkingWeek,
 } from '@/lib/dates';
 import { fmtUsd, fmtPct, monthLabel } from '@/lib/format';
 import { MonthPicker } from '@/components/MonthPicker';
@@ -102,6 +104,7 @@ export async function SalespersonDetail({
     (holidayRes.data ?? []).map((h) => h.holiday_date as IsoDate),
   );
   const totalWorkingDays = workingDaysInMonth(year, month, holidays);
+  const weeks = workingWeeksInMonth(year, month, holidays);
 
   const monthHistorical = monthHistoricalRes.data
     ? Number(monthHistoricalRes.data.amount)
@@ -138,10 +141,10 @@ export async function SalespersonDetail({
             alt=""
             width={176}
             height={213}
-            className="aspect-[440/533] w-40 shrink-0 rounded-3xl object-cover ring-4 ring-paper-edge sm:w-44"
+            className="aspect-[440/533] w-40 shrink-0 rounded-3xl object-cover sm:w-44"
           />
         ) : arborist ? (
-          <div className="flex aspect-[440/533] w-40 shrink-0 items-center justify-center rounded-3xl bg-bark text-cream font-display text-6xl uppercase ring-4 ring-paper-edge sm:w-44">
+          <div className="flex aspect-[440/533] w-40 shrink-0 items-center justify-center rounded-3xl bg-bark text-cream font-display text-6xl uppercase sm:w-44">
             {person.name.slice(0, 1)}
           </div>
         ) : null}
@@ -252,7 +255,7 @@ export async function SalespersonDetail({
           month={month}
           start={start}
           entries={entries}
-          total={dailySum}
+          weeks={weeks}
         />
       )}
 
@@ -322,7 +325,7 @@ function DailyEntriesSection({
   month,
   start,
   entries,
-  total,
+  weeks,
 }: {
   year: number;
   month: number;
@@ -332,8 +335,11 @@ function DailyEntriesSection({
     amount: number | string;
     created_by: string | null;
   }>;
-  total: number;
+  weeks: WorkingWeek[];
 }) {
+  const entryByDate = new Map<string, (typeof entries)[number]>();
+  for (const e of entries) entryByDate.set(e.entry_date as string, e);
+
   return (
     <section className="mt-8">
       <h2 className="font-headline text-xl font-black uppercase tracking-ribbon text-ink">
@@ -351,86 +357,64 @@ function DailyEntriesSection({
           </Link>
         </div>
       ) : (
-        <div className="mt-4 overflow-x-auto rounded-card border-[3px] border-lime bg-white">
-          <table className="min-w-full text-left text-sm">
-            <thead className="bg-paper-edge/40 text-fg-2">
-              <tr>
-                <th className="whitespace-nowrap px-2 py-2 font-headline text-xs font-extrabold uppercase tracking-ribbon sm:px-4 sm:py-3">
-                  Date
-                </th>
-                <th className="whitespace-nowrap px-2 py-2 font-headline text-xs font-extrabold uppercase tracking-ribbon sm:px-4 sm:py-3">
-                  Day
-                </th>
-                <th className="whitespace-nowrap px-2 py-2 text-right font-headline text-xs font-extrabold uppercase tracking-ribbon sm:px-4 sm:py-3">
-                  Amount
-                </th>
-                <th className="hidden whitespace-nowrap px-2 py-2 text-right font-headline text-xs font-extrabold uppercase tracking-ribbon sm:table-cell sm:px-4 sm:py-3">
-                  Entered By
-                </th>
-                <th className="whitespace-nowrap px-2 py-2 text-right font-headline text-xs font-extrabold uppercase tracking-ribbon sm:px-4 sm:py-3" />
-              </tr>
-            </thead>
-            <tbody>
-              {entries.map((e, idx) => {
-                const d = fromIsoDate(e.entry_date as IsoDate);
-                const shortDate = d.toLocaleDateString('en-US', {
-                  month: 'short',
-                  day: 'numeric',
-                });
-                const fullDate = d.toLocaleDateString('en-US', {
-                  month: 'short',
-                  day: 'numeric',
-                  year: 'numeric',
-                });
-                const shortDay = d.toLocaleDateString('en-US', { weekday: 'short' });
-                const longDay = d.toLocaleDateString('en-US', { weekday: 'long' });
-                return (
-                  <tr
-                    key={e.entry_date as string}
-                    className={idx % 2 === 0 ? 'bg-white' : 'bg-paper/40'}
-                  >
-                    <td className="whitespace-nowrap px-2 py-2 font-headline font-bold text-ink sm:px-4 sm:py-3">
-                      <span className="sm:hidden">{shortDate}</span>
-                      <span className="hidden sm:inline">{fullDate}</span>
-                    </td>
-                    <td className="whitespace-nowrap px-2 py-2 text-fg-2 sm:px-4 sm:py-3">
-                      <span className="sm:hidden">{shortDay}</span>
-                      <span className="hidden sm:inline">{longDay}</span>
-                    </td>
-                    <td className="whitespace-nowrap px-2 py-2 text-right font-headline font-bold sm:px-4 sm:py-3">
-                      {fmtUsd(Number(e.amount))}
-                    </td>
-                    <td className="hidden whitespace-nowrap px-2 py-2 text-right text-xs text-fg-3 sm:table-cell sm:px-4 sm:py-3">
-                      {e.created_by ?? '—'}
-                    </td>
-                    <td className="whitespace-nowrap px-2 py-2 text-right sm:px-4 sm:py-3">
-                      <Link
-                        href={`/sales/entry?date=${e.entry_date}`}
-                        className="font-headline text-xs font-extrabold uppercase tracking-ribbon text-orange hover:underline"
-                      >
-                        Edit →
-                      </Link>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-            <tfoot>
-              <tr className="border-t-2 border-paper-edge bg-paper-edge/30">
-                <td
-                  colSpan={2}
-                  className="whitespace-nowrap px-2 py-2 font-headline text-sm font-extrabold uppercase tracking-ribbon text-fg-2 sm:px-4 sm:py-3"
-                >
-                  Total
-                </td>
-                <td className="whitespace-nowrap px-2 py-2 text-right font-headline text-lg font-black text-ink sm:px-4 sm:py-3">
-                  {fmtUsd(total)}
-                </td>
-                <td className="hidden sm:table-cell" />
-                <td />
-              </tr>
-            </tfoot>
-          </table>
+        <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5">
+          {weeks.map((w) => {
+            const weekTotal = w.workingDays.reduce((s, d) => {
+              const e = entryByDate.get(d);
+              return s + (e ? Number(e.amount) : 0);
+            }, 0);
+            return (
+              <div
+                key={w.weekKey}
+                className="overflow-hidden rounded-2 border-[3px] border-lime bg-white"
+              >
+                <header className="border-b-2 border-paper-edge bg-paper-edge/40 px-3 py-2">
+                  <p className="font-headline text-[11px] font-extrabold uppercase tracking-ribbon text-fg-2">
+                    Week of {w.label}
+                  </p>
+                </header>
+                <ul className="divide-y divide-paper-edge/50">
+                  {w.workingDays.map((iso) => {
+                    const d = fromIsoDate(iso as IsoDate);
+                    const dow = d.toLocaleDateString('en-US', {
+                      weekday: 'short',
+                    });
+                    const e = entryByDate.get(iso);
+                    return (
+                      <li key={iso}>
+                        <Link
+                          href={`/sales/entry?date=${iso}`}
+                          className="flex items-baseline justify-between px-3 py-1.5 text-sm hover:bg-paper-edge/30"
+                        >
+                          <span className="font-headline font-bold text-ink">
+                            <span className="mr-1.5 text-fg-3">{dow}</span>
+                            {d.getDate()}
+                          </span>
+                          <span
+                            className={
+                              e
+                                ? 'font-headline font-bold text-ink'
+                                : 'text-fg-3'
+                            }
+                          >
+                            {e ? fmtUsd(Number(e.amount)) : '—'}
+                          </span>
+                        </Link>
+                      </li>
+                    );
+                  })}
+                </ul>
+                <footer className="flex items-baseline justify-between border-t-2 border-paper-edge bg-paper-edge/30 px-3 py-2">
+                  <span className="font-headline text-[11px] font-extrabold uppercase tracking-ribbon text-fg-2">
+                    Total
+                  </span>
+                  <span className="font-headline font-black text-ink">
+                    {fmtUsd(weekTotal)}
+                  </span>
+                </footer>
+              </div>
+            );
+          })}
         </div>
       )}
     </section>
