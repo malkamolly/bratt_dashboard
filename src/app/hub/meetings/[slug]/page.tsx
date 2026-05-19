@@ -1,10 +1,8 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import ReactMarkdown from 'react-markdown';
-import remarkGfm from 'remark-gfm';
 import { canEditMeetings, requireHubAccess } from '@/lib/auth';
 import { HubSubNav } from '@/components/HubSubNav';
-import { getMeetingBySlug, meetingToSlides, tagSlug } from '@/lib/meeting-data';
+import { getMeetingBySlug, splitIntoSlides } from '@/lib/meeting-data';
 import { deleteMeeting } from '../actions';
 
 export const dynamic = 'force-dynamic';
@@ -34,92 +32,84 @@ export default async function MeetingDetailPage({
   if (!meeting) notFound();
 
   const canEdit = canEditMeetings(user.role);
-  const slides = meetingToSlides(meeting);
+  const educationalSlides = splitIntoSlides(
+    meeting.educational_body,
+    'educational',
+  );
+  const operationalSlides = splitIntoSlides(
+    meeting.operational_body,
+    'operational',
+  );
 
   return (
-    <main className="mx-auto max-w-3xl px-6 py-10">
-      <p className="bt-eyebrow">
-        <Link href="/hub" className="hover:underline">
-          Sales Arborist Hub
-        </Link>
-        <span className="mx-2 text-fg-3">/</span>
-        <Link href="/hub/meetings" className="hover:underline">
-          Meetings
-        </Link>
-      </p>
+    <main className="mx-auto max-w-4xl px-6 py-10">
+      <Link
+        href="/hub/meetings"
+        className="bt-eyebrow inline-block hover:underline"
+      >
+        ← Back to Meetings
+      </Link>
 
       <div className="mt-8">
         <HubSubNav active="/hub/meetings" />
       </div>
 
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-        <div>
-          <p className="font-headline text-xs font-extrabold uppercase tracking-ribbon text-orange">
-            {formatDate(meeting.date)}
-          </p>
-          <h1 className="mt-2 font-display text-4xl uppercase tracking-wider text-ink sm:text-5xl">
-            {meeting.title}
-          </h1>
-        </div>
-        <div className="flex shrink-0 flex-wrap gap-2">
-          {slides.length > 0 && (
-            <Link
-              href={`/hub/meetings/${slug}/present`}
-              className="bt-btn bt-btn-primary"
-            >
-              ▶ Present
-            </Link>
-          )}
-          {canEdit && (
+      <p className="font-headline text-xs font-extrabold uppercase tracking-ribbon text-orange">
+        {formatDate(meeting.date)}
+      </p>
+      <div className="mt-2 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <h1 className="font-display text-4xl uppercase tracking-wider text-ink sm:text-5xl">
+          {meeting.title}
+        </h1>
+        {canEdit && (
+          <div className="flex shrink-0 flex-wrap gap-2">
             <Link
               href={`/hub/meetings/${slug}/edit`}
               className="bt-btn bt-btn-ghost"
             >
               Edit
             </Link>
-          )}
-        </div>
-      </div>
-
-      {meeting.educational_title && (
-        <section className="mt-10">
-          <p className="bt-eyebrow">Educational Topic</p>
-          <h2 className="mt-2 font-headline text-3xl font-black uppercase text-bark-deep">
-            {meeting.educational_title}
-          </h2>
-          {meeting.educational_tags.length > 0 && (
-            <div className="mt-3 flex flex-wrap gap-2">
-              {meeting.educational_tags.map((t) => (
-                <Link
-                  key={t}
-                  href={`/hub/library?tag=${tagSlug(t)}`}
-                  className="rounded-full bg-paper-edge px-3 py-1 font-headline text-[11px] font-extrabold uppercase tracking-ribbon text-bark-deep hover:bg-lime/60"
-                >
-                  {t}
-                </Link>
-              ))}
-            </div>
-          )}
-          {meeting.educational_body && (
-            <div className="prose prose-bratt mt-6 max-w-none">
-              <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                {meeting.educational_body}
-              </ReactMarkdown>
-            </div>
-          )}
-        </section>
-      )}
-
-      {meeting.operational_body && (
-        <section className="mt-10">
-          <p className="bt-eyebrow">Operational Updates</p>
-          <div className="prose prose-bratt mt-3 max-w-none">
-            <ReactMarkdown remarkPlugins={[remarkGfm]}>
-              {meeting.operational_body}
-            </ReactMarkdown>
           </div>
-        </section>
-      )}
+        )}
+      </div>
+      <p className="mt-3 text-fg-2">Click a topic to present.</p>
+
+      <div className="mt-8 space-y-4">
+        {meeting.educational_title && educationalSlides.length > 0 && (
+          <SectionCard
+            href={`/hub/meetings/${slug}/present/educational`}
+            eyebrow="Educational Topic"
+            title={meeting.educational_title}
+            tags={meeting.educational_tags}
+            slideCount={educationalSlides.length + 1 /* + cover */}
+          />
+        )}
+        {operationalSlides.length > 0 && (
+          <SectionCard
+            href={`/hub/meetings/${slug}/present/operational`}
+            eyebrow="Operational Updates"
+            title="This Week's Updates"
+            tags={[]}
+            slideCount={operationalSlides.length + 1}
+          />
+        )}
+        {!meeting.educational_title && operationalSlides.length === 0 && (
+          <p className="rounded-card border-2 border-dashed border-paper-edge bg-paper p-8 text-center text-sm text-fg-2">
+            This meeting doesn&apos;t have any slides yet.
+            {canEdit && (
+              <>
+                {' '}
+                <Link
+                  href={`/hub/meetings/${slug}/edit`}
+                  className="font-bold text-orange hover:underline"
+                >
+                  Edit it →
+                </Link>
+              </>
+            )}
+          </p>
+        )}
+      </div>
 
       {canEdit && (
         <section className="mt-16 border-t-2 border-paper-edge pt-6">
@@ -135,5 +125,52 @@ export default async function MeetingDetailPage({
         </section>
       )}
     </main>
+  );
+}
+
+function SectionCard({
+  href,
+  eyebrow,
+  title,
+  tags,
+  slideCount,
+}: {
+  href: string;
+  eyebrow: string;
+  title: string;
+  tags: string[];
+  slideCount: number;
+}) {
+  return (
+    <Link
+      href={href}
+      className="group block rounded-card border-[3px] border-lime bg-bark p-6 transition-colors hover:border-orange"
+    >
+      <p className="font-headline text-xs font-extrabold uppercase tracking-ribbon text-lime">
+        {eyebrow}
+      </p>
+      <h2 className="mt-2 font-display text-3xl uppercase tracking-wider text-cream sm:text-4xl">
+        {title}
+      </h2>
+      {tags.length > 0 && (
+        <div className="mt-4 flex flex-wrap gap-2">
+          {tags.map((t) => (
+            <span
+              key={t}
+              className="rounded-full bg-lime/20 px-3 py-1 font-headline text-[11px] font-extrabold uppercase tracking-ribbon text-lime"
+            >
+              {t}
+            </span>
+          ))}
+        </div>
+      )}
+      <p className="mt-6 flex items-center gap-2 font-headline text-xs font-extrabold uppercase tracking-ribbon text-orange group-hover:text-cream">
+        <span>Click to present</span>
+        <span aria-hidden>→</span>
+        <span className="ml-auto text-cream/60">
+          {slideCount} slide{slideCount === 1 ? '' : 's'}
+        </span>
+      </p>
+    </Link>
   );
 }
