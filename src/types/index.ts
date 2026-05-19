@@ -5,6 +5,7 @@ export type Salesperson = {
   name: string;
   display_order: number;
   is_active: boolean;
+  photo_url?: string | null;
 };
 
 export type CrewKind = 'production' | 'phc' | 'stump' | 'unassigned' | 'clam';

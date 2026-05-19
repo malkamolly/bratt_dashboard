@@ -173,6 +173,54 @@ export async function addSalesperson(formData: FormData): Promise<void> {
   redirect('/admin/sales?saved=salesperson_added');
 }
 
+/**
+ * Upload a photo for a salesperson and store the public URL on their row.
+ * Called from a client component (not a form-action submission) so the UI can
+ * show inline progress / errors and refresh on success.
+ */
+export async function uploadSalespersonPhoto(
+  formData: FormData,
+): Promise<{ url: string } | { error: string }> {
+  await requireAdmin();
+
+  const id = String(formData.get('id') ?? '').trim();
+  if (!id) return { error: 'Missing salesperson id.' };
+
+  const file = formData.get('file');
+  if (!(file instanceof File)) return { error: 'No file provided.' };
+  if (file.size > 8 * 1024 * 1024) return { error: 'File is larger than 8 MB.' };
+  if (!file.type.startsWith('image/')) return { error: 'File must be an image.' };
+
+  const extFromName = file.name.includes('.')
+    ? file.name.split('.').pop()!.toLowerCase()
+    : '';
+  const extFromMime = file.type.split('/').pop()!.toLowerCase();
+  const ext = extFromName || extFromMime || 'png';
+  const filename = `${id}/${Date.now()}.${ext}`;
+
+  const supabase = await serverClient();
+  const { error: uploadError } = await supabase.storage
+    .from('salesperson-photos')
+    .upload(filename, file, { contentType: file.type, upsert: false });
+  if (uploadError) return { error: uploadError.message };
+
+  const { data: pub } = supabase.storage
+    .from('salesperson-photos')
+    .getPublicUrl(filename);
+
+  const { error: updateError } = await supabase
+    .from('salespeople')
+    .update({ photo_url: pub.publicUrl })
+    .eq('id', id);
+  if (updateError) return { error: updateError.message };
+
+  refreshAffectedPages();
+  revalidatePath('/hub/arborists');
+  revalidatePath('/hub/arborists/[slug]', 'page');
+  revalidatePath('/sales/[salespersonId]', 'page');
+  return { url: pub.publicUrl };
+}
+
 export async function updateSalesperson(formData: FormData): Promise<void> {
   await requireAdmin();
   const id = String(formData.get('id') ?? '');

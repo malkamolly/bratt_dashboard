@@ -42,12 +42,14 @@ export default async function SalespersonDetailPage({
   const supabase = await serverClient();
   const { data: person } = await supabase
     .from('salespeople')
-    .select('name')
+    .select('name, photo_url')
     .eq('id', salespersonId)
     .maybeSingle();
   const arborist = person?.name
     ? getArboristBySalespersonName(person.name)
     : null;
+  // Admin-uploaded photo wins; otherwise fall back to the markdown file's photo.
+  const photo = person?.photo_url ?? arborist?.photo ?? null;
 
   const breadcrumb = (
     <p className="bt-eyebrow">
@@ -69,12 +71,14 @@ export default async function SalespersonDetailPage({
       arborist={
         arborist
           ? {
-              photo: arborist.photo ?? null,
+              photo,
               certified: arborist.certified,
               isa_number: arborist.isa_number ?? null,
               manager: !!arborist.manager,
             }
-          : null
+          : photo
+            ? { photo, certified: false, isa_number: null, manager: false }
+            : null
       }
     />
   );
