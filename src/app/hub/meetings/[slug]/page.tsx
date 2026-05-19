@@ -42,7 +42,7 @@ export default async function MeetingDetailPage({
   );
 
   return (
-    <main className="mx-auto max-w-5xl px-6 py-10">
+    <main className="mx-auto max-w-6xl px-6 py-10">
       <Link
         href="/hub/meetings"
         className="bt-eyebrow inline-block hover:underline"

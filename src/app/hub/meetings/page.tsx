@@ -22,7 +22,7 @@ export default async function MeetingsListPage() {
   const canEdit = canEditMeetings(user.role);
 
   return (
-    <main className="mx-auto max-w-5xl px-6 py-10">
+    <main className="mx-auto max-w-6xl px-6 py-10">
       <p className="bt-eyebrow">
         <Link href="/hub" className="hover:underline">
           Sales Arborist Hub

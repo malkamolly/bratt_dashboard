@@ -24,7 +24,7 @@ export default async function LibraryPage() {
   const allTags = tagsRaw.map((t) => ({ label: t, slug: tagSlug(t) }));
 
   return (
-    <main className="mx-auto max-w-5xl px-6 py-10">
+    <main className="mx-auto max-w-6xl px-6 py-10">
       <p className="bt-eyebrow">
         <Link href="/hub" className="hover:underline">
           Sales Arborist Hub
