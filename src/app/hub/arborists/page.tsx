@@ -69,10 +69,10 @@ export default async function ArboristRosterPage() {
                     alt=""
                     width={72}
                     height={72}
-                    className="h-18 w-18 shrink-0 rounded-full object-cover ring-2 ring-paper-edge"
+                    className="h-18 w-18 shrink-0 rounded-full object-cover"
                   />
                 ) : (
-                  <div className="flex h-18 w-18 shrink-0 items-center justify-center rounded-full bg-bark text-cream font-display text-2xl uppercase ring-2 ring-paper-edge">
+                  <div className="flex h-18 w-18 shrink-0 items-center justify-center rounded-full bg-bark text-cream font-display text-2xl uppercase">
                     {a.name.slice(0, 1)}
                   </div>
                 )}

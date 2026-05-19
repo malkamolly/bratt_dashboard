@@ -140,11 +140,11 @@ export async function SalespersonDetail({
             src={arborist.photo}
             alt=""
             width={176}
-            height={213}
-            className="aspect-[440/533] w-40 shrink-0 rounded-3xl object-cover sm:w-44"
+            height={176}
+            className="aspect-square w-40 shrink-0 rounded-3xl object-cover sm:w-44"
           />
         ) : arborist ? (
-          <div className="flex aspect-[440/533] w-40 shrink-0 items-center justify-center rounded-3xl bg-bark text-cream font-display text-6xl uppercase sm:w-44">
+          <div className="flex aspect-square w-40 shrink-0 items-center justify-center rounded-3xl bg-bark text-cream font-display text-6xl uppercase sm:w-44">
             {person.name.slice(0, 1)}
           </div>
         ) : null}
