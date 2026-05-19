@@ -102,11 +102,14 @@ export function splitIntoSlides(
 ): Slide[] {
   if (!body || !body.trim()) return [];
 
-  const lines = body.split('\n');
+  // Split on either Unix (\n) or Windows (\r\n) line endings so content
+  // pasted from any editor / OS works the same.
+  const lines = body.split(/\r?\n/);
   const slides: Slide[] = [];
   let current: { title: string; bodyLines: string[] } | null = null;
 
-  for (const line of lines) {
+  for (const rawLine of lines) {
+    const line = rawLine.replace(/\r$/, '');
     const match = line.match(/^#\s+(.+)$/);
     if (match) {
       if (current) {
