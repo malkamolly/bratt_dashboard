@@ -10,8 +10,8 @@ import {
   updateCrewMember,
   saveAnnualProductionGoal,
   saveCrewBudgets,
-  saveProductionHistoricals,
 } from '../actions';
+import { HistoricalsForm } from './HistoricalsForm';
 import type { Crew, CrewMember } from '@/types';
 
 export const dynamic = 'force-dynamic';
@@ -50,7 +50,8 @@ export default async function ProductionAdminPage({
     crewMembersRes,
     yearlyTargetRes,
     budgetsRes,
-    historicalsRes,
+    memberHistoricalsRes,
+    crewHistoricalsRes,
   ] = await Promise.all([
     supabase
       .from('crews')
@@ -68,6 +69,11 @@ export default async function ProductionAdminPage({
     supabase
       .from('crew_monthly_budgets')
       .select('crew_id, budget_revenue')
+      .eq('year', year)
+      .eq('month', month),
+    supabase
+      .from('production_member_historicals')
+      .select('crew_member_id, crew_id, jobs, revenue')
       .eq('year', year)
       .eq('month', month),
     supabase
@@ -89,13 +95,39 @@ export default async function ProductionAdminPage({
   for (const b of budgetsRes.data ?? []) {
     budgetsByCrew[b.crew_id as string] = Number(b.budget_revenue);
   }
-  const histByCrew: Record<string, { jobs: number; revenue: number }> = {};
-  for (const h of historicalsRes.data ?? []) {
-    histByCrew[h.crew_id as string] = {
+  const memberHistRows = memberHistoricalsRes.data ?? [];
+  const histByMember: Record<
+    string,
+    { crew_id: string; jobs: number; revenue: number }
+  > = {};
+  for (const h of memberHistRows) {
+    histByMember[h.crew_member_id as string] = {
+      crew_id: h.crew_id as string,
       jobs: Number(h.jobs),
       revenue: Number(h.revenue),
     };
   }
+  // Crews with rolled-up historicals but no member-level rows (legacy or
+  // crews without crew_members) — pass these in as direct crew-level inputs.
+  const memberCrewIds = new Set(memberHistRows.map((r) => r.crew_id as string));
+  const histByCrewDirect: Record<string, { jobs: number; revenue: number }> = {};
+  for (const h of crewHistoricalsRes.data ?? []) {
+    const cid = h.crew_id as string;
+    if (memberCrewIds.has(cid)) continue;
+    histByCrewDirect[cid] = {
+      jobs: Number(h.jobs),
+      revenue: Number(h.revenue),
+    };
+  }
+  // For the historicals form we want active members PLUS any inactive members
+  // who already have data for this month (so old data stays editable).
+  const memberIdsWithData = new Set(
+    memberHistRows.map((r) => r.crew_member_id as string),
+  );
+  const allMembers = (crewMembersRes.data ?? []) as CrewMember[];
+  const historicalsMembers = allMembers.filter(
+    (m) => m.is_active || memberIdsWithData.has(m.id),
+  );
 
   return (
     <main className="mx-auto max-w-5xl px-6 py-10">
@@ -131,7 +163,9 @@ export default async function ProductionAdminPage({
           year={year}
           month={month}
           crews={activeCrews}
-          values={histByCrew}
+          members={historicalsMembers}
+          memberValues={histByMember}
+          crewValues={histByCrewDirect}
         />
         <CrewMembersSection crewMembers={crewMembers} crews={crewsAll.filter((c) => c.is_active)} />
       </div>
@@ -245,25 +279,34 @@ function CrewBudgetsSection({
 }
 
 // ---------------------------------------------------------------------------
-// Section 3: Production historicals (per crew jobs + revenue)
+// Section 3: Production historicals (per crew member jobs + revenue)
 // ---------------------------------------------------------------------------
+// Mirrors the daily entry form layout: one card per crew, with each crew
+// member's jobs + revenue input inside. Rolls up to per-crew totals live as
+// admins type, and to a Month Total at the bottom.
 function ProductionHistoricalsSection({
   year,
   month,
   crews,
-  values,
+  members,
+  memberValues,
+  crewValues,
 }: {
   year: number;
   month: number;
   crews: Crew[];
-  values: Record<string, { jobs: number; revenue: number }>;
+  members: CrewMember[];
+  memberValues: Record<string, { crew_id: string; jobs: number; revenue: number }>;
+  crewValues: Record<string, { jobs: number; revenue: number }>;
 }) {
-  const hasAny = Object.values(values).some((v) => v.revenue > 0 || v.jobs > 0);
+  const hasAny =
+    Object.keys(memberValues).length > 0 ||
+    Object.values(crewValues).some((v) => v.revenue > 0 || v.jobs > 0);
   return (
     <SectionCard
       eyebrow="3 — Historicals"
       title={`Monthly Totals — ${monthLabel(year, month)}`}
-      description="A closed month's rolled-up jobs and revenue per crew. Saving here marks the month as 'historical' on the dashboard."
+      description="A closed month's jobs and revenue per crew member. Type each member's monthly numbers; crew totals roll up live. Saving here marks the month as 'historical' on the dashboard."
       headerRight={<MonthPicker year={year} month={month} basePath="/admin/production" />}
     >
       {!hasAny && (
@@ -271,57 +314,14 @@ function ProductionHistoricalsSection({
           No historicals saved for {monthLabel(year, month)} yet.
         </p>
       )}
-      <form action={saveProductionHistoricals} className="space-y-4">
-        <input type="hidden" name="year" value={year} />
-        <input type="hidden" name="month" value={month} />
-
-        {/* Header row */}
-        <div className="grid grid-cols-[minmax(7rem,1fr)_4.5rem_minmax(6rem,1fr)] gap-2 px-2 text-[10px] font-extrabold uppercase tracking-ribbon text-fg-3">
-          <span>Crew</span>
-          <span className="text-right">Jobs</span>
-          <span className="text-right">Revenue ($)</span>
-        </div>
-        <div className="space-y-1.5">
-          {crews.map((c) => {
-            const v = values[c.id];
-            return (
-              <div
-                key={c.id}
-                className="grid grid-cols-[minmax(7rem,1fr)_4.5rem_minmax(6rem,1fr)] items-center gap-2 rounded-2 border-2 border-paper-edge bg-white px-2 py-1.5"
-              >
-                <span className="font-headline text-sm font-bold text-ink">
-                  {c.name}
-                </span>
-                <input
-                  type="text"
-                  inputMode="numeric"
-                  name={`histjobs__${c.id}`}
-                  defaultValue={v?.jobs ? String(v.jobs) : ''}
-                  placeholder="0"
-                  className="rounded-1 border border-transparent bg-transparent px-1 py-1 text-right font-headline text-sm focus:border-paper-edge focus:outline-none"
-                />
-                <div className="flex items-center">
-                  <span className="pr-1 text-fg-3">$</span>
-                  <input
-                    type="text"
-                    inputMode="decimal"
-                    name={`histrev__${c.id}`}
-                    defaultValue={v?.revenue ? String(v.revenue) : ''}
-                    placeholder="0"
-                    className="flex-1 rounded-1 border border-transparent bg-transparent px-1 py-1 text-right font-headline text-sm focus:border-paper-edge focus:outline-none"
-                  />
-                </div>
-              </div>
-            );
-          })}
-        </div>
-
-        <div className="flex justify-end">
-          <button type="submit" className="bt-btn bt-btn-primary">
-            Save Historicals
-          </button>
-        </div>
-      </form>
+      <HistoricalsForm
+        year={year}
+        month={month}
+        crews={crews}
+        members={members}
+        initialMemberRows={memberValues}
+        initialCrewRows={crewValues}
+      />
     </SectionCard>
   );
 }
