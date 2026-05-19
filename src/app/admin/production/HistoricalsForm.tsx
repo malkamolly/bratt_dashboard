@@ -236,7 +236,7 @@ export function HistoricalsForm({
           const sideSpan =
             row.length === 3 ? 0 : row.length === 2 ? 1 : row.length === 1 ? 2 : 0;
           return (
-            <div key={ri} className="grid grid-cols-1 gap-4 md:grid-cols-6">
+            <div key={ri} className="grid grid-cols-1 items-start gap-4 md:grid-cols-6">
               {sideSpan > 0 && (
                 <div
                   className={

@@ -87,6 +87,9 @@ export default async function ProductionAdminPage({
   const activeCrews = crewsAll.filter(
     (c) => c.is_active && c.kind !== 'unassigned',
   );
+  // Historicals: include the Unassigned bucket so members assigned to it
+  // (and any historical jobs/revenue logged against it) still show up.
+  const historicalsCrews = crewsAll.filter((c) => c.is_active);
   const crewMembers = (crewMembersRes.data ?? []) as CrewMember[];
   const annualProductionGoal = yearlyTargetRes.data?.annual_production_goal
     ? Number(yearlyTargetRes.data.annual_production_goal)
@@ -162,7 +165,7 @@ export default async function ProductionAdminPage({
         <ProductionHistoricalsSection
           year={year}
           month={month}
-          crews={activeCrews}
+          crews={historicalsCrews}
           members={historicalsMembers}
           memberValues={histByMember}
           crewValues={histByCrewDirect}
