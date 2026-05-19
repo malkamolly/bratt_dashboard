@@ -267,7 +267,7 @@ export async function SalespersonDetail({
               Prior Months ({year})
             </h2>
             <p className="font-headline text-xs font-extrabold uppercase tracking-ribbon text-fg-2">
-              Total{' '}
+              Closed-Month Total{' '}
               <span className="ml-1 text-base text-ink">
                 {fmtUsd(ytdFromHistoricals)}
               </span>
