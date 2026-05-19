@@ -338,67 +338,159 @@ export async function saveCrewBudgets(formData: FormData): Promise<void> {
 }
 
 // ----------------------------------------------------------------------------
-// 8. Production: monthly historicals
+// 8. Production: monthly historicals (per crew member)
 // ----------------------------------------------------------------------------
-export async function saveProductionHistoricals(formData: FormData): Promise<void> {
+// Mirrors the daily entry form: admins type jobs + revenue per member, plus
+// direct crew totals for crews with no members. We save the per-member rows
+// to `production_member_historicals` (used for member-level audit display)
+// AND a rolled-up per-crew row to `production_monthly_historicals` (which is
+// what the dashboard reads to recognize a "closed" historical month).
+// Replacement strategy: delete the month's existing rows in both tables, then
+// re-insert. Keeps state idempotent and handles members moving crews / data
+// being cleared.
+// ----------------------------------------------------------------------------
+export type ProdHistoricalsSaveResult =
+  | { ok: false; error: string }
+  | undefined;
+
+type MemberInput = { jobs: number; revenue: number; crewId: string };
+type CrewInput = { jobs: number; revenue: number };
+
+function parseJobsCount(raw: FormDataEntryValue | null): number | null {
+  if (raw == null) return null;
+  const s = String(raw).trim();
+  if (s === '') return 0;
+  const n = Number(s.replace(/[\s,]/g, ''));
+  if (!Number.isInteger(n) || n < 0) return null;
+  return n;
+}
+
+export async function saveProductionMemberHistoricals(
+  _prev: ProdHistoricalsSaveResult,
+  formData: FormData,
+): Promise<ProdHistoricalsSaveResult> {
   const user = await requireAdmin();
   const year = parseIntStrict(formData.get('year'));
   const month = parseIntStrict(formData.get('month'));
   if (year == null || month == null) {
-    redirect('/admin/production?error=invalid_prod_historicals');
+    return { ok: false, error: 'Missing year or month.' };
   }
 
-  type Pair = { jobs?: number; revenue?: number };
-  const byCrew = new Map<string, Pair>();
+  const memberInputs = new Map<string, MemberInput>();
+  const crewInputs = new Map<string, CrewInput>();
+
   for (const [key, value] of formData.entries()) {
-    if (key.startsWith('histjobs__')) {
-      const id = key.slice('histjobs__'.length);
-      const n = Number(String(value).trim().replace(/[\s,]/g, '') || '0');
-      if (!Number.isInteger(n) || n < 0) {
-        redirect('/admin/production?error=invalid_jobs');
-      }
-      byCrew.set(id, { ...(byCrew.get(id) ?? {}), jobs: n });
-    } else if (key.startsWith('histrev__')) {
-      const id = key.slice('histrev__'.length);
+    if (key.startsWith('jobs__member_')) {
+      const id = key.slice('jobs__member_'.length);
+      const n = parseJobsCount(value);
+      if (n == null) return { ok: false, error: 'Bad jobs count for a member.' };
+      const cur = memberInputs.get(id) ?? { jobs: 0, revenue: 0, crewId: '' };
+      memberInputs.set(id, { ...cur, jobs: n });
+    } else if (key.startsWith('revenue__member_')) {
+      const id = key.slice('revenue__member_'.length);
       const n = parseMoney(value);
-      if (n == null) {
-        redirect('/admin/production?error=invalid_revenue');
-      }
-      byCrew.set(id, { ...(byCrew.get(id) ?? {}), revenue: n! });
+      if (n == null) return { ok: false, error: 'Bad revenue for a member.' };
+      const cur = memberInputs.get(id) ?? { jobs: 0, revenue: 0, crewId: '' };
+      memberInputs.set(id, { ...cur, revenue: n });
+    } else if (key.startsWith('crew__member_')) {
+      const id = key.slice('crew__member_'.length);
+      const cid = String(value);
+      const cur = memberInputs.get(id) ?? { jobs: 0, revenue: 0, crewId: '' };
+      memberInputs.set(id, { ...cur, crewId: cid });
+    } else if (key.startsWith('jobs__crew_')) {
+      const id = key.slice('jobs__crew_'.length);
+      const n = parseJobsCount(value);
+      if (n == null) return { ok: false, error: 'Bad jobs count for a crew.' };
+      const cur = crewInputs.get(id) ?? { jobs: 0, revenue: 0 };
+      crewInputs.set(id, { ...cur, jobs: n });
+    } else if (key.startsWith('revenue__crew_')) {
+      const id = key.slice('revenue__crew_'.length);
+      const n = parseMoney(value);
+      if (n == null) return { ok: false, error: 'Bad revenue for a crew.' };
+      const cur = crewInputs.get(id) ?? { jobs: 0, revenue: 0 };
+      crewInputs.set(id, { ...cur, revenue: n });
     }
   }
-  if (byCrew.size === 0) {
-    redirect(`/admin/production?year=${year}&month=${month}&error=no_rows`);
-  }
 
-  type Row = {
+  const supabase = await serverClient();
+
+  const { error: delMembersErr } = await supabase
+    .from('production_member_historicals')
+    .delete()
+    .eq('year', year!)
+    .eq('month', month!);
+  if (delMembersErr) return { ok: false, error: delMembersErr.message };
+
+  const { error: delCrewsErr } = await supabase
+    .from('production_monthly_historicals')
+    .delete()
+    .eq('year', year!)
+    .eq('month', month!);
+  if (delCrewsErr) return { ok: false, error: delCrewsErr.message };
+
+  const memberRows: Array<{
     year: number;
     month: number;
+    crew_member_id: string;
     crew_id: string;
     jobs: number;
     revenue: number;
     source_note: string;
     created_by: string;
-  };
-  const rows: Row[] = [];
-  for (const [crew_id, p] of byCrew.entries()) {
-    rows.push({
+  }> = [];
+  for (const [id, input] of memberInputs.entries()) {
+    if (!input.crewId) continue;
+    if (input.jobs === 0 && input.revenue === 0) continue;
+    memberRows.push({
       year: year!,
       month: month!,
-      crew_id,
-      jobs: p.jobs ?? 0,
-      revenue: p.revenue ?? 0,
+      crew_member_id: id,
+      crew_id: input.crewId,
+      jobs: input.jobs,
+      revenue: input.revenue,
       source_note: 'Edited via admin form',
       created_by: user.email,
     });
   }
+  if (memberRows.length > 0) {
+    const { error } = await supabase
+      .from('production_member_historicals')
+      .insert(memberRows);
+    if (error) return { ok: false, error: error.message };
+  }
 
-  const supabase = await serverClient();
-  const { error } = await supabase
-    .from('production_monthly_historicals')
-    .upsert(rows, { onConflict: 'year,month,crew_id' });
-  if (error)
-    redirect(`/admin/production?error=${encodeURIComponent(error.message)}`);
+  const crewTotals = new Map<string, { jobs: number; revenue: number }>();
+  for (const r of memberRows) {
+    const cur = crewTotals.get(r.crew_id) ?? { jobs: 0, revenue: 0 };
+    crewTotals.set(r.crew_id, {
+      jobs: cur.jobs + r.jobs,
+      revenue: Math.round((cur.revenue + r.revenue) * 100) / 100,
+    });
+  }
+  for (const [crewId, input] of crewInputs.entries()) {
+    if (input.jobs === 0 && input.revenue === 0) continue;
+    const cur = crewTotals.get(crewId) ?? { jobs: 0, revenue: 0 };
+    crewTotals.set(crewId, {
+      jobs: cur.jobs + input.jobs,
+      revenue: Math.round((cur.revenue + input.revenue) * 100) / 100,
+    });
+  }
+
+  const crewRows = Array.from(crewTotals.entries()).map(([crew_id, t]) => ({
+    year: year!,
+    month: month!,
+    crew_id,
+    jobs: t.jobs,
+    revenue: t.revenue,
+    source_note: 'Edited via admin form',
+    created_by: user.email,
+  }));
+  if (crewRows.length > 0) {
+    const { error } = await supabase
+      .from('production_monthly_historicals')
+      .insert(crewRows);
+    if (error) return { ok: false, error: error.message };
+  }
 
   refreshAffectedPages();
   redirect(
