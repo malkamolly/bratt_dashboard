@@ -81,6 +81,18 @@ header.site nav button.signout:hover {
   border-bottom-color: var(--bt-orange);
 }
 
+/* On phones, center the brand + nav rather than left/right split. */
+@media (max-width: 640px) {
+  header.site .inner {
+    justify-content: center;
+    text-align: center;
+  }
+  header.site nav {
+    justify-content: center;
+    width: 100%;
+  }
+}
+
 /* ---------- Base ---------- */
 html { background: theme('colors.cream'); color: theme('colors.ink'); }
 body {

@@ -9,7 +9,7 @@ type Props = {
 };
 
 function subtitleFor(pathname: string): string | null {
-  if (pathname === '/') return 'Best & Baddest in Trees';
+  if (pathname === '/') return 'The Best & Baddest in Trees';
   if (
     pathname.startsWith('/pace') ||
     pathname.startsWith('/sales') ||
