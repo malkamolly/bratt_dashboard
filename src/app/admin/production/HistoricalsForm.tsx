@@ -369,7 +369,7 @@ function CrewCard({
           {members.map((mb, idx) => (
             <div
               key={mb.id}
-              className={`flex flex-wrap items-center gap-1.5 px-2 py-1.5 ${
+              className={`grid grid-cols-[minmax(0,1fr)_2.25rem_5.5rem_5.5rem] items-center gap-1.5 px-2 py-1.5 ${
                 idx % 2 === 0 ? 'bg-white/60' : 'bg-transparent'
               } ${!mb.is_active ? 'opacity-60' : ''}`}
             >
@@ -378,7 +378,7 @@ function CrewCard({
                 name={`crew__member_${mb.id}`}
                 value={memberAssignment[mb.id] ?? ''}
               />
-              <div className="flex min-w-0 flex-1 items-center gap-1">
+              <div className="flex min-w-0 items-center gap-1">
                 <span className="truncate font-headline text-xs font-bold text-ink">
                   {mb.name}
                 </span>
@@ -409,7 +409,7 @@ function CrewCard({
                 }
                 placeholder="0"
                 title="Jobs"
-                className="w-9 rounded-1 border border-paper-edge bg-white px-1.5 py-1 text-right font-headline text-sm focus:border-orange focus:outline-none"
+                className="w-full rounded-1 border border-paper-edge bg-white px-1.5 py-1 text-right font-headline text-sm focus:border-orange focus:outline-none"
               />
               <div className="flex items-center">
                 <span className="pr-0.5 text-[10px] font-bold text-fg-3">$</span>
@@ -423,7 +423,7 @@ function CrewCard({
                   }
                   placeholder="0"
                   title="Revenue"
-                  className="w-20 rounded-1 border border-paper-edge bg-white px-1.5 py-1 text-right font-headline text-sm focus:border-orange focus:outline-none"
+                  className="min-w-0 flex-1 rounded-1 border border-paper-edge bg-white px-1.5 py-1 text-right font-headline text-sm focus:border-orange focus:outline-none"
                 />
               </div>
               <select
@@ -435,7 +435,7 @@ function CrewCard({
                   }))
                 }
                 title="Crew this member contributed to for this month"
-                className="w-36 shrink-0 truncate rounded-1 border border-paper-edge bg-white py-1 pl-1 pr-1 font-headline text-[10px] font-extrabold uppercase tracking-ribbon text-ink focus:border-orange focus:outline-none"
+                className="w-full min-w-0 truncate rounded-1 border border-paper-edge bg-white py-1 pl-1 pr-1 font-headline text-[10px] font-extrabold uppercase tracking-ribbon text-ink focus:border-orange focus:outline-none"
               >
                 {allCrewsForReassignment.map((cr) => (
                   <option key={cr.id} value={cr.id}>
