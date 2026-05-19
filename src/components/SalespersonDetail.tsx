@@ -262,17 +262,9 @@ export async function SalespersonDetail({
       {/* Prior months in this year */}
       {priorMonths.length > 0 && (
         <section className="mt-10">
-          <div className="flex flex-wrap items-baseline justify-between gap-2">
-            <h2 className="font-headline text-xl font-black uppercase tracking-ribbon text-ink">
-              Prior Months ({year})
-            </h2>
-            <p className="font-headline text-xs font-extrabold uppercase tracking-ribbon text-fg-2">
-              Closed-Month Total{' '}
-              <span className="ml-1 text-base text-ink">
-                {fmtUsd(ytdFromHistoricals)}
-              </span>
-            </p>
-          </div>
+          <h2 className="font-headline text-xl font-black uppercase tracking-ribbon text-ink">
+            Prior Months ({year})
+          </h2>
           <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6">
             {priorMonths.map((p) => (
               <Link
