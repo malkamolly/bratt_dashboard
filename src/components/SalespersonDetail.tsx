@@ -149,7 +149,7 @@ export async function SalespersonDetail({
           </div>
         ) : null}
         <div className="flex-1">
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+          <div className="flex flex-col items-start gap-3 sm:flex-row sm:items-end sm:justify-between">
             <h1 className="font-display text-5xl uppercase tracking-wider text-ink">
               {person.name}
             </h1>

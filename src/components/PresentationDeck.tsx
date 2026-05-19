@@ -220,20 +220,20 @@ function ContentSlideView({ slide }: { slide: Slide }) {
     const [full, alt, url] = heroMatch;
     const remaining = slide.body.replace(full, '').trim();
     return (
-      <div className="mx-auto flex w-full max-w-4xl flex-col gap-6">
+      <div className="mx-auto flex w-full max-w-4xl flex-col items-center gap-6">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src={url}
           alt={alt}
-          className="max-h-[50vh] w-full rounded-2 object-cover"
+          className="max-h-[50vh] max-w-full rounded-2"
         />
         {slide.title && (
-          <h2 className="font-display text-3xl uppercase tracking-wider text-ink sm:text-4xl lg:text-5xl">
+          <h2 className="self-stretch font-display text-3xl uppercase tracking-wider text-ink sm:text-4xl lg:text-5xl">
             {slide.title}
           </h2>
         )}
         {remaining && (
-          <div className={PROSE_CLASSES}>
+          <div className={`self-stretch ${PROSE_CLASSES}`}>
             <ReactMarkdown remarkPlugins={[remarkGfm]}>
               {remaining}
             </ReactMarkdown>
@@ -248,12 +248,14 @@ function ContentSlideView({ slide }: { slide: Slide }) {
     const remaining = slide.body.replace(full, '').trim();
     return (
       <div className="mx-auto grid w-full max-w-5xl grid-cols-1 items-center gap-8 md:grid-cols-2">
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          src={url}
-          alt={alt}
-          className="max-h-[55vh] w-full rounded-2 object-cover"
-        />
+        <div className="flex justify-center">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={url}
+            alt={alt}
+            className="max-h-[55vh] max-w-full rounded-2"
+          />
+        </div>
         <div>
           {slide.title && (
             <h2 className="font-display text-3xl uppercase tracking-wider text-ink sm:text-4xl">
