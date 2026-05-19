@@ -262,57 +262,32 @@ export async function SalespersonDetail({
       {/* Prior months in this year */}
       {priorMonths.length > 0 && (
         <section className="mt-10">
-          <h2 className="font-headline text-xl font-black uppercase tracking-ribbon text-ink">
-            Prior Months ({year})
-          </h2>
-          <div className="mt-4 overflow-x-auto rounded-card border-[3px] border-lime bg-white">
-            <table className="min-w-full text-left text-sm">
-              <thead className="bg-paper-edge/40 text-fg-2">
-                <tr>
-                  <th className="whitespace-nowrap px-2 py-2 font-headline text-xs font-extrabold uppercase tracking-ribbon sm:px-4 sm:py-3">
-                    Month
-                  </th>
-                  <th className="whitespace-nowrap px-2 py-2 text-right font-headline text-xs font-extrabold uppercase tracking-ribbon sm:px-4 sm:py-3">
-                    Total
-                  </th>
-                  <th className="whitespace-nowrap px-2 py-2 text-right font-headline text-xs font-extrabold uppercase tracking-ribbon sm:px-4 sm:py-3" />
-                </tr>
-              </thead>
-              <tbody>
-                {priorMonths.map((p, idx) => (
-                  <tr
-                    key={p.month}
-                    className={idx % 2 === 0 ? 'bg-white' : 'bg-paper/40'}
-                  >
-                    <td className="whitespace-nowrap px-2 py-2 font-headline font-bold text-ink sm:px-4 sm:py-3">
-                      {monthLabel(year, p.month)}
-                    </td>
-                    <td className="whitespace-nowrap px-2 py-2 text-right font-headline font-bold sm:px-4 sm:py-3">
-                      {fmtUsd(p.total)}
-                    </td>
-                    <td className="whitespace-nowrap px-2 py-2 text-right sm:px-4 sm:py-3">
-                      <Link
-                        href={`${basePath}?year=${year}&month=${p.month}`}
-                        className="font-headline text-xs font-extrabold uppercase tracking-ribbon text-orange hover:underline"
-                      >
-                        View →
-                      </Link>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-              <tfoot>
-                <tr className="border-t-2 border-paper-edge bg-paper-edge/30">
-                  <td className="whitespace-nowrap px-2 py-2 font-headline text-sm font-extrabold uppercase tracking-ribbon text-fg-2 sm:px-4 sm:py-3">
-                    Prior-Month Total
-                  </td>
-                  <td className="whitespace-nowrap px-2 py-2 text-right font-headline text-lg font-black text-ink sm:px-4 sm:py-3">
-                    {fmtUsd(ytdFromHistoricals)}
-                  </td>
-                  <td />
-                </tr>
-              </tfoot>
-            </table>
+          <div className="flex flex-wrap items-baseline justify-between gap-2">
+            <h2 className="font-headline text-xl font-black uppercase tracking-ribbon text-ink">
+              Prior Months ({year})
+            </h2>
+            <p className="font-headline text-xs font-extrabold uppercase tracking-ribbon text-fg-2">
+              Total{' '}
+              <span className="ml-1 text-base text-ink">
+                {fmtUsd(ytdFromHistoricals)}
+              </span>
+            </p>
+          </div>
+          <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6">
+            {priorMonths.map((p) => (
+              <Link
+                key={p.month}
+                href={`${basePath}?year=${year}&month=${p.month}`}
+                className="block rounded-2 border-[3px] border-lime bg-white px-3 py-2.5 transition-colors hover:!border-orange"
+              >
+                <p className="font-headline text-[11px] font-extrabold uppercase tracking-ribbon text-fg-2">
+                  {monthLabel(year, p.month)}
+                </p>
+                <p className="mt-0.5 font-headline text-lg font-black text-ink lg:text-xl">
+                  {fmtUsd(p.total)}
+                </p>
+              </Link>
+            ))}
           </div>
         </section>
       )}
