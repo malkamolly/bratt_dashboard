@@ -190,7 +190,88 @@ function CoverSlideView({ cover }: { cover: CoverSlide }) {
   );
 }
 
+// Pattern that finds an inserted image with a layout modifier:
+//   ![alt text](url){hero}
+//   ![alt text](url){side}
+// Multiline so the m flag lets ^ / $ match at line boundaries.
+const HERO_RE = /^!\[([^\]]*)\]\(([^)\s]+)\)\{hero\}\s*$/m;
+const SIDE_RE = /^!\[([^\]]*)\]\(([^)\s]+)\)\{side\}\s*$/m;
+
+// Render whatever's left after we extract the hero/side image. Inline images
+// (plain ![alt](url) with no modifier) render here via ReactMarkdown's
+// default <img> output, styled by the custom components below.
+const PROSE_CLASSES =
+  'text-base leading-relaxed text-fg sm:text-lg ' +
+  '[&_a]:font-bold [&_a]:text-orange [&_a]:underline ' +
+  '[&_h2]:mt-6 [&_h2]:font-headline [&_h2]:text-xl [&_h2]:font-black [&_h2]:uppercase [&_h2]:tracking-ribbon [&_h2]:text-bark-deep ' +
+  '[&_h3]:mt-4 [&_h3]:font-headline [&_h3]:font-extrabold [&_h3]:uppercase [&_h3]:tracking-ribbon ' +
+  '[&_li]:mb-2 [&_p]:mb-4 ' +
+  '[&_strong]:font-bold [&_strong]:text-ink ' +
+  '[&_ul]:mt-2 [&_ul]:list-disc [&_ul]:space-y-2 [&_ul]:pl-6 ' +
+  '[&_img]:mx-auto [&_img]:my-4 [&_img]:max-h-[40vh] [&_img]:rounded-2';
+
 function ContentSlideView({ slide }: { slide: Slide }) {
+  if (!slide.title && !slide.body) return null;
+
+  const heroMatch = slide.body.match(HERO_RE);
+  const sideMatch = slide.body.match(SIDE_RE);
+  // Hero wins if both happen to be present.
+  if (heroMatch) {
+    const [full, alt, url] = heroMatch;
+    const remaining = slide.body.replace(full, '').trim();
+    return (
+      <div className="mx-auto flex w-full max-w-4xl flex-col gap-6">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src={url}
+          alt={alt}
+          className="max-h-[50vh] w-full rounded-2 object-cover"
+        />
+        {slide.title && (
+          <h2 className="font-display text-3xl uppercase tracking-wider text-ink sm:text-4xl lg:text-5xl">
+            {slide.title}
+          </h2>
+        )}
+        {remaining && (
+          <div className={PROSE_CLASSES}>
+            <ReactMarkdown remarkPlugins={[remarkGfm]}>
+              {remaining}
+            </ReactMarkdown>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  if (sideMatch) {
+    const [full, alt, url] = sideMatch;
+    const remaining = slide.body.replace(full, '').trim();
+    return (
+      <div className="mx-auto grid w-full max-w-5xl grid-cols-1 items-center gap-8 md:grid-cols-2">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src={url}
+          alt={alt}
+          className="max-h-[55vh] w-full rounded-2 object-cover"
+        />
+        <div>
+          {slide.title && (
+            <h2 className="font-display text-3xl uppercase tracking-wider text-ink sm:text-4xl">
+              {slide.title}
+            </h2>
+          )}
+          {remaining && (
+            <div className={`mt-4 ${PROSE_CLASSES}`}>
+              <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                {remaining}
+              </ReactMarkdown>
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="mx-auto w-full max-w-3xl">
       {slide.title && (
@@ -199,8 +280,10 @@ function ContentSlideView({ slide }: { slide: Slide }) {
         </h2>
       )}
       {slide.body && (
-        <div className="mt-8 text-base leading-relaxed text-fg sm:text-lg [&_a]:font-bold [&_a]:text-orange [&_a]:underline [&_h2]:mt-6 [&_h2]:font-headline [&_h2]:text-xl [&_h2]:font-black [&_h2]:uppercase [&_h2]:tracking-ribbon [&_h2]:text-bark-deep [&_h3]:mt-4 [&_h3]:font-headline [&_h3]:font-extrabold [&_h3]:uppercase [&_h3]:tracking-ribbon [&_li]:mb-2 [&_p]:mb-4 [&_strong]:font-bold [&_strong]:text-ink [&_ul]:mt-2 [&_ul]:list-disc [&_ul]:space-y-2 [&_ul]:pl-6">
-          <ReactMarkdown remarkPlugins={[remarkGfm]}>{slide.body}</ReactMarkdown>
+        <div className={`mt-8 ${PROSE_CLASSES}`}>
+          <ReactMarkdown remarkPlugins={[remarkGfm]}>
+            {slide.body}
+          </ReactMarkdown>
         </div>
       )}
     </div>

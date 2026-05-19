@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { ImageUploadButton } from './ImageUploadButton';
 import { TagInput } from './TagInput';
 
 type Meeting = {
@@ -72,9 +73,9 @@ export function MeetingForm({
           <p className="bt-eyebrow">Educational</p>
           <p className="mt-1 text-sm text-fg-2">
             The teaching portion of the meeting. This is what feeds the
-            training library. Use <code className="rounded bg-paper-edge px-1">#&nbsp;Heading</code>{' '}
-            on its own line to start a new slide.
+            training library.
           </p>
+          <FormattingHelp />
         </div>
 
         <label className="block">
@@ -103,7 +104,7 @@ export function MeetingForm({
           </div>
         </div>
 
-        <label className="block">
+        <div>
           <span className="block font-headline text-xs font-extrabold uppercase tracking-ribbon text-fg-2">
             Slides
           </span>
@@ -114,20 +115,20 @@ export function MeetingForm({
             placeholder={EXAMPLE_EDUCATIONAL}
             className={`${FIELD_CLASS} font-mono text-[13px] leading-relaxed`}
           />
-        </label>
+          <ImageUploadButton targetName="educational_body" />
+        </div>
       </section>
 
       <section className="bt-card space-y-4">
         <div>
           <p className="bt-eyebrow">Operational Updates</p>
           <p className="mt-1 text-sm text-fg-2">
-            Housekeeping, CRM updates, schedule changes, promos. Same{' '}
-            <code className="rounded bg-paper-edge px-1">#&nbsp;Heading</code>{' '}
-            rule for splitting into slides.
+            Housekeeping, CRM updates, schedule changes, promos. Same
+            formatting rules as above.
           </p>
         </div>
 
-        <label className="block">
+        <div>
           <span className="block font-headline text-xs font-extrabold uppercase tracking-ribbon text-fg-2">
             Slides
           </span>
@@ -138,7 +139,8 @@ export function MeetingForm({
             placeholder={EXAMPLE_OPERATIONAL}
             className={`${FIELD_CLASS} font-mono text-[13px] leading-relaxed`}
           />
-        </label>
+          <ImageUploadButton targetName="operational_body" />
+        </div>
       </section>
 
       <div className="flex flex-wrap gap-3">
@@ -150,6 +152,62 @@ export function MeetingForm({
         </Link>
       </div>
     </form>
+  );
+}
+
+function FormattingHelp() {
+  return (
+    <details className="mt-3 rounded-2 border-2 border-paper-edge bg-paper px-3 py-2 text-sm">
+      <summary className="cursor-pointer font-headline text-xs font-extrabold uppercase tracking-ribbon text-fg-2 [&::-webkit-details-marker]:hidden">
+        ⓘ Formatting cheat sheet
+      </summary>
+      <div className="mt-3 space-y-2 text-sm text-fg-2">
+        <p>
+          <code className="rounded bg-paper-edge px-1"># Heading</code> on its
+          own line starts a new slide; the heading becomes the slide title.
+        </p>
+        <p>
+          <code className="rounded bg-paper-edge px-1">## Subheading</code>,{' '}
+          <code className="rounded bg-paper-edge px-1">**bold**</code>,{' '}
+          <code className="rounded bg-paper-edge px-1">- bullet point</code>,
+          and{' '}
+          <code className="rounded bg-paper-edge px-1">1. numbered list</code>{' '}
+          all work inside a slide.
+        </p>
+        <p className="font-headline text-xs font-extrabold uppercase tracking-ribbon text-bark-deep">
+          Photos
+        </p>
+        <p>
+          Use the <strong>Add image</strong> buttons below the textarea to
+          upload. Each layout option inserts a different bit of markdown:
+        </p>
+        <ul className="ml-4 list-disc space-y-1">
+          <li>
+            <code className="rounded bg-paper-edge px-1">
+              ![alt](url)
+            </code>{' '}
+            — <strong>inline</strong>, image appears within the text flow.
+          </li>
+          <li>
+            <code className="rounded bg-paper-edge px-1">
+              ![alt](url)&#123;hero&#125;
+            </code>{' '}
+            — <strong>hero</strong>, large image fills the top of the slide.
+          </li>
+          <li>
+            <code className="rounded bg-paper-edge px-1">
+              ![alt](url)&#123;side&#125;
+            </code>{' '}
+            — <strong>side</strong>, image on the left half, slide text on the
+            right half.
+          </li>
+        </ul>
+        <p>
+          You can edit the alt text and modifier by hand after uploading. Only
+          one hero or side image per slide — extras render inline.
+        </p>
+      </div>
+    </details>
   );
 }
 

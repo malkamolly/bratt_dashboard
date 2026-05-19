@@ -132,6 +132,63 @@ export async function updateMeeting(formData: FormData): Promise<void> {
   redirect(`/hub/meetings/${newSlug}`);
 }
 
+/**
+ * Upload an image for a meeting slide. Returns the public URL on success or
+ * an error message on failure. Called from a client component, not from a
+ * form-action submission (because we need the URL back to insert into the
+ * textarea).
+ */
+export async function uploadMeetingImage(
+  formData: FormData,
+): Promise<{ url: string } | { error: string }> {
+  const u = await getAllowedUser();
+  if (!u || !canEditMeetings(u.role)) {
+    return { error: 'Not authorized to upload images.' };
+  }
+
+  const file = formData.get('file');
+  if (!(file instanceof File)) {
+    return { error: 'No file provided.' };
+  }
+  if (file.size > 8 * 1024 * 1024) {
+    return { error: 'File is larger than 8 MB.' };
+  }
+  if (!file.type.startsWith('image/')) {
+    return { error: 'File must be an image.' };
+  }
+
+  const extFromName = file.name.includes('.')
+    ? file.name.split('.').pop()!.toLowerCase()
+    : '';
+  const extFromMime = file.type.split('/').pop()!.toLowerCase();
+  const ext = extFromName || extFromMime || 'png';
+  const safeBase = file.name
+    .replace(/\.[^.]+$/, '')
+    .replace(/[^a-z0-9-]+/gi, '-')
+    .replace(/^-|-$/g, '')
+    .toLowerCase()
+    .slice(0, 40);
+  const filename = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}${safeBase ? '-' + safeBase : ''}.${ext}`;
+
+  const supabase = await serverClient();
+  const { error: uploadError } = await supabase.storage
+    .from('meeting-images')
+    .upload(filename, file, {
+      contentType: file.type,
+      upsert: false,
+    });
+
+  if (uploadError) {
+    return { error: uploadError.message };
+  }
+
+  const { data } = supabase.storage
+    .from('meeting-images')
+    .getPublicUrl(filename);
+
+  return { url: data.publicUrl };
+}
+
 export async function deleteMeeting(formData: FormData): Promise<void> {
   await requireMeetingEditor();
   const slug = String(formData.get('slug') ?? '').trim();
