@@ -133,7 +133,7 @@ export default async function ProductionAdminPage({
   );
 
   return (
-    <main className="mx-auto max-w-5xl px-6 py-10">
+    <main className="mx-auto max-w-6xl px-6 py-10">
       <p className="bt-eyebrow">
         <Link href="/admin" className="hover:underline">
           Admin
