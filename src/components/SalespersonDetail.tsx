@@ -134,7 +134,7 @@ export async function SalespersonDetail({
     <main className="mx-auto max-w-6xl px-4 py-6 sm:px-6 sm:py-10">
       {breadcrumb}
 
-      <section className="mt-4 flex flex-col gap-5 sm:flex-row sm:items-center">
+      <section className="mt-4 flex flex-col items-center gap-5 sm:flex-row sm:items-center">
         {arborist?.photo ? (
           <Image
             src={arborist.photo}
@@ -148,15 +148,15 @@ export async function SalespersonDetail({
             {person.name.slice(0, 1)}
           </div>
         ) : null}
-        <div className="flex-1">
-          <div className="flex flex-col items-start gap-3 sm:flex-row sm:items-end sm:justify-between">
+        <div className="flex-1 text-center sm:text-left">
+          <div className="flex flex-col items-center gap-3 sm:flex-row sm:items-end sm:justify-between">
             <h1 className="font-display text-5xl uppercase tracking-wider text-ink">
               {person.name}
             </h1>
             <MonthPicker year={year} month={month} basePath={basePath} />
           </div>
           {arborist && (
-            <div className="mt-2 flex flex-wrap items-center gap-2">
+            <div className="mt-2 flex flex-wrap items-center justify-center gap-2 sm:justify-start">
               {arborist.manager ? (
                 <span className="rounded-full bg-bark px-3 py-1 font-headline text-xs font-extrabold uppercase tracking-ribbon text-cream">
                   Sales Manager

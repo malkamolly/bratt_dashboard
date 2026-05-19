@@ -32,7 +32,7 @@ export default async function EditMeetingPage({
   if (!meeting) notFound();
 
   return (
-    <main className="mx-auto max-w-4xl px-6 py-10">
+    <main className="mx-auto max-w-5xl px-6 py-10">
       <p className="bt-eyebrow">
         <Link href="/hub" className="hover:underline">
           Sales Arborist Hub
