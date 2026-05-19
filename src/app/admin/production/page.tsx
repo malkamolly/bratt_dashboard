@@ -318,6 +318,7 @@ function ProductionHistoricalsSection({
         </p>
       )}
       <HistoricalsForm
+        key={`${year}-${month}`}
         year={year}
         month={month}
         crews={crews}
