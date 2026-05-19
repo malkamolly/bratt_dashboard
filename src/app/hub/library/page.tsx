@@ -2,7 +2,7 @@ import { Suspense } from 'react';
 import Link from 'next/link';
 import { requireHubAccess } from '@/lib/auth';
 import { HubSubNav } from '@/components/HubSubNav';
-import { listMeetings, listTags, tagSlug } from '@/lib/hub-content';
+import { listMeetings, listTags, tagSlug } from '@/lib/meeting-data';
 import { LibraryFilter } from './LibraryFilter';
 
 export const dynamic = 'force-dynamic';
@@ -10,18 +10,18 @@ export const dynamic = 'force-dynamic';
 export default async function LibraryPage() {
   await requireHubAccess('hub');
 
-  const meetings = listMeetings();
+  const [meetings, tagsRaw] = await Promise.all([listMeetings(), listTags()]);
   const topics = meetings
-    .filter((m) => m.educational?.title)
+    .filter((m) => m.educational_title)
     .map((m) => ({
       meetingSlug: m.slug,
       meetingDate: m.date,
-      title: m.educational!.title,
-      tags: m.educational!.tags ?? [],
-      tagSlugs: (m.educational!.tags ?? []).map(tagSlug),
+      title: m.educational_title!,
+      tags: m.educational_tags,
+      tagSlugs: m.educational_tags.map(tagSlug),
     }));
 
-  const allTags = listTags().map((t) => ({ label: t, slug: tagSlug(t) }));
+  const allTags = tagsRaw.map((t) => ({ label: t, slug: tagSlug(t) }));
 
   return (
     <main className="mx-auto max-w-5xl px-6 py-10">

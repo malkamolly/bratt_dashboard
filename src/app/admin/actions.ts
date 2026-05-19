@@ -403,7 +403,13 @@ export async function addAllowedEmail(formData: FormData): Promise<void> {
   if (!email || !email.includes('@')) {
     redirect(`/admin/access?error=${encodeURIComponent('Enter a valid email address.')}`);
   }
-  const VALID_ROLES = ['admin', 'user', 'sales_arborist', 'field_crew'];
+  const VALID_ROLES = [
+    'admin',
+    'user',
+    'sales_manager',
+    'sales_arborist',
+    'field_crew',
+  ];
   if (!VALID_ROLES.includes(role)) {
     redirect(`/admin/access?error=${encodeURIComponent('Invalid role.')}`);
   }
@@ -423,7 +429,13 @@ export async function updateAllowedEmailRole(formData: FormData): Promise<void> 
   const email = normalizeEmail(formData.get('email'));
   const role = String(formData.get('role') ?? '');
   if (!email) redirect(`/admin/access?error=${encodeURIComponent('Missing email.')}`);
-  const VALID_ROLES = ['admin', 'user', 'sales_arborist', 'field_crew'];
+  const VALID_ROLES = [
+    'admin',
+    'user',
+    'sales_manager',
+    'sales_arborist',
+    'field_crew',
+  ];
   if (!VALID_ROLES.includes(role)) {
     redirect(`/admin/access?error=${encodeURIComponent('Invalid role.')}`);
   }

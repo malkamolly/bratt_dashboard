@@ -24,7 +24,13 @@ type AllowedEmailRow = {
   added_at: string;
 };
 
-const ROLE_OPTIONS: Role[] = ['admin', 'user', 'sales_arborist', 'field_crew'];
+const ROLE_OPTIONS: Role[] = [
+  'admin',
+  'user',
+  'sales_manager',
+  'sales_arborist',
+  'field_crew',
+];
 
 export default async function AccessAdminPage({
   searchParams,

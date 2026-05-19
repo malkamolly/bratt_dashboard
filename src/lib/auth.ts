@@ -8,7 +8,12 @@
 import { redirect } from 'next/navigation';
 import { serverClient } from './supabase';
 
-export type Role = 'admin' | 'user' | 'sales_arborist' | 'field_crew';
+export type Role =
+  | 'admin'
+  | 'user'
+  | 'sales_manager'
+  | 'sales_arborist'
+  | 'field_crew';
 
 export type AllowedUser = {
   email: string;
@@ -18,17 +23,18 @@ export type AllowedUser = {
 export type Hub = 'pace' | 'hub' | 'crew';
 
 // Which roles can access which hubs. Admin sees everything; office staff
-// (user) can see all hubs; sales_arborist + field_crew are siloed to their
-// own hub.
+// (user) and the sales manager can see Pace + Hub; sales_arborist +
+// field_crew are siloed to their own hub.
 export const HUB_ACCESS: Record<Hub, ReadonlyArray<Role>> = {
-  pace: ['admin', 'user'],
-  hub: ['admin', 'user', 'sales_arborist'],
+  pace: ['admin', 'user', 'sales_manager'],
+  hub: ['admin', 'user', 'sales_manager', 'sales_arborist'],
   crew: ['admin', 'user', 'field_crew'],
 };
 
 export const ROLE_LABELS: Record<Role, string> = {
   admin: 'Admin',
   user: 'Office',
+  sales_manager: 'Sales Manager',
   sales_arborist: 'Sales Arborist',
   field_crew: 'Field Crew',
 };
@@ -36,9 +42,16 @@ export const ROLE_LABELS: Record<Role, string> = {
 export const ROLE_DESCRIPTIONS: Record<Role, string> = {
   admin: 'Full edit access to every hub and all admin settings.',
   user: 'Office staff — view + daily entry on Pace, view on the other hubs.',
+  sales_manager:
+    'Like Office, plus can create and edit weekly meetings on the Sales Arborist Hub.',
   sales_arborist: 'View-only access to the Sales Arborist Hub.',
   field_crew: 'View-only access to the Field Crew Hub.',
 };
+
+/** Can this role create or edit meetings on the Sales Arborist Hub? */
+export function canEditMeetings(role: Role): boolean {
+  return role === 'admin' || role === 'sales_manager';
+}
 
 /**
  * Returns the current user's email + role if they are signed in AND on the

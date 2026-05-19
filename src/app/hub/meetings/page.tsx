@@ -1,7 +1,7 @@
 import Link from 'next/link';
-import { requireHubAccess } from '@/lib/auth';
+import { canEditMeetings, requireHubAccess } from '@/lib/auth';
 import { HubSubNav } from '@/components/HubSubNav';
-import { listMeetings } from '@/lib/hub-content';
+import { listMeetings } from '@/lib/meeting-data';
 
 export const dynamic = 'force-dynamic';
 
@@ -17,8 +17,9 @@ function formatDate(iso: string): string {
 }
 
 export default async function MeetingsListPage() {
-  await requireHubAccess('hub');
-  const meetings = listMeetings();
+  const user = await requireHubAccess('hub');
+  const meetings = await listMeetings();
+  const canEdit = canEditMeetings(user.role);
 
   return (
     <main className="mx-auto max-w-4xl px-6 py-10">
@@ -29,9 +30,16 @@ export default async function MeetingsListPage() {
         <span className="mx-2 text-fg-3">/</span>
         Meetings
       </p>
-      <h1 className="mt-2 font-display text-5xl uppercase tracking-wider text-ink sm:text-6xl">
-        Meetings
-      </h1>
+      <div className="mt-2 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+        <h1 className="font-display text-5xl uppercase tracking-wider text-ink sm:text-6xl">
+          Meetings
+        </h1>
+        {canEdit && (
+          <Link href="/hub/meetings/new" className="bt-btn bt-btn-primary">
+            + New Meeting
+          </Link>
+        )}
+      </div>
       <p className="mt-3 max-w-2xl text-fg-2">
         Latest meeting at the top. Older meetings stay archived here and their
         educational topics also appear in the{' '}
@@ -46,7 +54,20 @@ export default async function MeetingsListPage() {
       </div>
 
       {meetings.length === 0 ? (
-        <p className="text-sm text-fg-2">No meetings posted yet.</p>
+        <div className="rounded-card border-2 border-dashed border-paper-edge bg-paper p-8 text-center text-sm text-fg-2">
+          No meetings yet.
+          {canEdit && (
+            <>
+              {' '}
+              <Link
+                href="/hub/meetings/new"
+                className="font-bold text-orange hover:underline"
+              >
+                Create the first one →
+              </Link>
+            </>
+          )}
+        </div>
       ) : (
         <ul className="divide-y-2 divide-paper-edge border-y-2 border-ink/80">
           {meetings.map((m) => (
@@ -59,11 +80,11 @@ export default async function MeetingsListPage() {
                   {formatDate(m.date)}
                 </p>
                 <p className="mt-1 font-headline text-xl font-black text-bark-deep">
-                  {m.title.replace(/&mdash;/g, '—')}
+                  {m.title}
                 </p>
-                {m.educational?.title && (
+                {m.educational_title && (
                   <p className="mt-1 text-sm text-fg-2">
-                    Topic: {m.educational.title}
+                    Topic: {m.educational_title}
                   </p>
                 )}
               </Link>

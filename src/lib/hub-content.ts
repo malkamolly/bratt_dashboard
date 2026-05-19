@@ -1,9 +1,10 @@
 // ============================================================================
-// Hub content loader
+// Hub arborist content loader
 // ============================================================================
-// Reads the markdown files in src/content/{arborists,meetings} at request
-// time and parses the YAML frontmatter. Modeled after the Jekyll site this
-// replaces, so editing one of those files is still the way to update the hub.
+// Reads the markdown files in src/content/arborists/ at request time and
+// parses the YAML frontmatter. The arborist roster lives in git (rare edits,
+// usually just a hire or a certification change). Meetings used to live here
+// too but are now stored in Supabase — see lib/meeting-data.ts.
 // ============================================================================
 
 import fs from 'node:fs';
@@ -22,19 +23,6 @@ export type Arborist = {
   photo?: string | null;
   salesperson_name?: string | null;
   body: string;
-};
-
-export type Meeting = {
-  slug: string;
-  date: string; // YYYY-MM-DD
-  title: string;
-  educational?: {
-    title: string;
-    tags?: string[];
-    body: string;
-  };
-  housekeeping?: string;
-  operations?: string;
 };
 
 function readDirSafe(dir: string): string[] {
@@ -83,17 +71,6 @@ export function listArborists(): Arborist[] {
     });
 }
 
-export function getArboristBySalespersonName(
-  salespersonName: string,
-): Arborist | null {
-  const target = salespersonName.toLowerCase();
-  return (
-    listArborists().find(
-      (a) => (a.salesperson_name ?? '').toLowerCase() === target,
-    ) ?? null
-  );
-}
-
 export function getArborist(slug: string): Arborist | null {
   const file = path.join(CONTENT_ROOT, 'arborists', `${slug}.md`);
   if (!fs.existsSync(file)) return null;
@@ -114,63 +91,13 @@ export function getArborist(slug: string): Arborist | null {
   };
 }
 
-export function listMeetings(): Meeting[] {
-  const dir = path.join(CONTENT_ROOT, 'meetings');
-  return readDirSafe(dir)
-    .map((file) => {
-      const raw = fs.readFileSync(path.join(dir, file), 'utf8');
-      const { data } = matter(raw);
-      return {
-        slug: slugFromFile(file),
-        date: String(data.date ?? ''),
-        title: String(data.title ?? ''),
-        educational: data.educational
-          ? {
-              title: String(data.educational.title ?? ''),
-              tags: Array.isArray(data.educational.tags)
-                ? data.educational.tags.map(String)
-                : [],
-              body: String(data.educational.body ?? ''),
-            }
-          : undefined,
-        housekeeping: data.housekeeping ? String(data.housekeeping) : undefined,
-        operations: data.operations ? String(data.operations) : undefined,
-      };
-    })
-    .sort((a, b) => (a.date < b.date ? 1 : -1));
-}
-
-export function getMeeting(slug: string): Meeting | null {
-  const file = path.join(CONTENT_ROOT, 'meetings', `${slug}.md`);
-  if (!fs.existsSync(file)) return null;
-  const raw = fs.readFileSync(file, 'utf8');
-  const { data } = matter(raw);
-  return {
-    slug,
-    date: String(data.date ?? ''),
-    title: String(data.title ?? ''),
-    educational: data.educational
-      ? {
-          title: String(data.educational.title ?? ''),
-          tags: Array.isArray(data.educational.tags)
-            ? data.educational.tags.map(String)
-            : [],
-          body: String(data.educational.body ?? ''),
-        }
-      : undefined,
-    housekeeping: data.housekeeping ? String(data.housekeeping) : undefined,
-    operations: data.operations ? String(data.operations) : undefined,
-  };
-}
-
-export function listTags(): string[] {
-  const tagSet = new Set<string>();
-  for (const m of listMeetings()) {
-    for (const t of m.educational?.tags ?? []) tagSet.add(t);
-  }
-  return Array.from(tagSet).sort();
-}
-
-export function tagSlug(tag: string): string {
-  return tag.toLowerCase().replace(/\s+/g, '-');
+export function getArboristBySalespersonName(
+  salespersonName: string,
+): Arborist | null {
+  const target = salespersonName.toLowerCase();
+  return (
+    listArborists().find(
+      (a) => (a.salesperson_name ?? '').toLowerCase() === target,
+    ) ?? null
+  );
 }

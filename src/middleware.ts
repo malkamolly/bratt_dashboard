@@ -81,6 +81,7 @@ export async function middleware(req: NextRequest) {
   const role = allowed.role as
     | 'admin'
     | 'user'
+    | 'sales_manager'
     | 'sales_arborist'
     | 'field_crew';
 
@@ -94,8 +95,8 @@ export async function middleware(req: NextRequest) {
   ];
 
   const HUB_ACCESS = {
-    pace: ['admin', 'user'] as const,
-    hub: ['admin', 'user', 'sales_arborist'] as const,
+    pace: ['admin', 'user', 'sales_manager'] as const,
+    hub: ['admin', 'user', 'sales_manager', 'sales_arborist'] as const,
     crew: ['admin', 'user', 'field_crew'] as const,
   };
 
