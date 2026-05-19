@@ -2,8 +2,8 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { canEditMeetings, requireHubAccess } from '@/lib/auth';
 import { HubSubNav } from '@/components/HubSubNav';
+import { DeleteMeetingButton } from '@/components/DeleteMeetingButton';
 import { getMeetingBySlug, splitIntoSlides } from '@/lib/meeting-data';
-import { deleteMeeting } from '../actions';
 
 export const dynamic = 'force-dynamic';
 
@@ -113,15 +113,7 @@ export default async function MeetingDetailPage({
 
       {canEdit && (
         <section className="mt-16 border-t-2 border-paper-edge pt-6">
-          <form action={deleteMeeting}>
-            <input type="hidden" name="slug" value={meeting.slug} />
-            <button
-              type="submit"
-              className="font-headline text-xs font-extrabold uppercase tracking-ribbon text-orange-press hover:underline"
-            >
-              Delete meeting
-            </button>
-          </form>
+          <DeleteMeetingButton slug={meeting.slug} title={meeting.title} />
         </section>
       )}
     </main>
