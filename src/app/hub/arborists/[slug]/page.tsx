@@ -43,15 +43,19 @@ export default async function ArboristDetailPage({
 
   // Resolve the matching salesperson row in the dashboard, if any.
   let salespersonId: string | null = null;
+  let salespersonPhotoUrl: string | null = null;
   if (a.salesperson_name) {
     const supabase = await serverClient();
     const { data: person } = await supabase
       .from('salespeople')
-      .select('id')
+      .select('id, photo_url')
       .ilike('name', a.salesperson_name)
       .maybeSingle();
     salespersonId = person?.id ?? null;
+    salespersonPhotoUrl = person?.photo_url ?? null;
   }
+  // Admin-uploaded photo wins over the markdown file's photo.
+  const photo = salespersonPhotoUrl ?? a.photo ?? null;
 
   const breadcrumb = (
     <>
@@ -97,7 +101,7 @@ export default async function ArboristDetailPage({
       breadcrumb={breadcrumb}
       basePath={`/hub/arborists/${a.slug}`}
       arborist={{
-        photo: a.photo ?? null,
+        photo,
         certified: a.certified,
         isa_number: a.isa_number ?? null,
         manager: !!a.manager,

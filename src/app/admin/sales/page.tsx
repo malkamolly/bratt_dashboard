@@ -5,6 +5,8 @@ import { serverClient } from '@/lib/supabase';
 import { fmtUsd, monthLabel } from '@/lib/format';
 import { MonthPicker } from '@/components/MonthPicker';
 import { SectionCard, FlashBanner } from '@/components/admin-shared';
+import { SalespersonPhotoUpload } from '@/components/SalespersonPhotoUpload';
+import { getArboristBySalespersonName } from '@/lib/hub-content';
 import {
   saveAnnualGoal,
   saveMonthlyGoals,
@@ -49,7 +51,7 @@ export default async function SalesAdminPage({
     await Promise.all([
       supabase
         .from('salespeople')
-        .select('id, name, display_order, is_active')
+        .select('id, name, display_order, is_active, photo_url')
         .order('display_order'),
       supabase
         .from('yearly_targets')
@@ -312,42 +314,56 @@ function RosterSection({ salespeople }: { salespeople: Salesperson[] }) {
       description="Edit names, change display order on the dashboard, or hide ex-employees. Salespeople are never deleted - flipping 'Active' off just hides them from new entries while keeping their history intact."
     >
       <div className="overflow-x-auto">
-        <div className="grid min-w-[480px] grid-cols-[minmax(8rem,2fr)_3.5rem_2.5rem_auto] items-center gap-1.5 text-xs">
+        <div className="grid min-w-[640px] grid-cols-[auto_minmax(8rem,2fr)_3.5rem_2.5rem_auto] items-center gap-1.5 text-xs">
+          <div className="bt-eyebrow text-fg-3">Photo</div>
           <div className="bt-eyebrow text-fg-3">Name</div>
           <div className="bt-eyebrow text-fg-3 text-right">Order</div>
           <div className="bt-eyebrow text-fg-3 text-center">Active</div>
           <div />
-          {salespeople.map((sp) => (
-            <form key={sp.id} action={updateSalesperson} className="contents [&>*]:my-0.5">
-              <input type="hidden" name="id" value={sp.id} />
-              <input
-                type="text"
-                name="name"
-                defaultValue={sp.name}
-                className="rounded-1 border border-paper-edge bg-bone px-2 py-1 font-headline text-sm focus:border-orange focus:outline-none"
-              />
-              <input
-                type="number"
-                name="display_order"
-                defaultValue={sp.display_order}
-                className="rounded-1 border border-paper-edge bg-bone px-1.5 py-1 text-right font-headline text-sm focus:border-orange focus:outline-none"
-              />
-              <div className="flex justify-center">
-                <input
-                  type="checkbox"
-                  name="is_active"
-                  defaultChecked={sp.is_active}
-                  className="h-4 w-4"
+          {salespeople.map((sp) => {
+            // Prefer the photo uploaded through admin; fall back to whatever the
+            // arborist markdown file lists (if a matching arborist exists).
+            const arborist = getArboristBySalespersonName(sp.name);
+            const photo = sp.photo_url ?? arborist?.photo ?? null;
+            return (
+              <div key={sp.id} className="contents [&>*]:my-0.5">
+                <SalespersonPhotoUpload
+                  salespersonId={sp.id}
+                  currentPhotoUrl={photo}
+                  fallbackInitial={sp.name.slice(0, 1)}
                 />
+                <form action={updateSalesperson} className="contents">
+                  <input type="hidden" name="id" value={sp.id} />
+                  <input
+                    type="text"
+                    name="name"
+                    defaultValue={sp.name}
+                    className="rounded-1 border border-paper-edge bg-bone px-2 py-1 font-headline text-sm focus:border-orange focus:outline-none"
+                  />
+                  <input
+                    type="number"
+                    name="display_order"
+                    defaultValue={sp.display_order}
+                    className="rounded-1 border border-paper-edge bg-bone px-1.5 py-1 text-right font-headline text-sm focus:border-orange focus:outline-none"
+                  />
+                  <div className="flex justify-center">
+                    <input
+                      type="checkbox"
+                      name="is_active"
+                      defaultChecked={sp.is_active}
+                      className="h-4 w-4"
+                    />
+                  </div>
+                  <button
+                    type="submit"
+                    className="rounded-full border-2 border-ink px-3 py-1 font-headline text-[10px] font-extrabold uppercase tracking-ribbon text-ink transition-colors hover:bg-ink hover:text-cream"
+                  >
+                    Save
+                  </button>
+                </form>
               </div>
-              <button
-                type="submit"
-                className="rounded-full border-2 border-ink px-3 py-1 font-headline text-[10px] font-extrabold uppercase tracking-ribbon text-ink transition-colors hover:bg-ink hover:text-cream"
-              >
-                Save
-              </button>
-            </form>
-          ))}
+            );
+          })}
         </div>
       </div>
 
