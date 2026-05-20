@@ -16,7 +16,8 @@ export type SavedJob = {
   id: string;
   category: Category;
   label: string;
-  revenue: number; // dollars, two decimals max
+  count: number;   // # of jobs this entry represents (>=1). Buckets > 1, individual = 1.
+  revenue: number; // total revenue across all `count` jobs
   days: number;    // integer >= 1
 };
 
@@ -52,7 +53,10 @@ function sanitizeJob(raw: unknown): SavedJob | null {
       : 0;
   const daysRaw = typeof j.days === 'number' ? j.days : Number(j.days);
   const days = Number.isFinite(daysRaw) && daysRaw >= 1 ? Math.floor(daysRaw) : 1;
-  return { id, category, label, revenue, days };
+  // count defaults to 1 for forward compat with pre-bucket saved rows.
+  const countRaw = j.count == null ? 1 : (typeof j.count === 'number' ? j.count : Number(j.count));
+  const count = Number.isFinite(countRaw) && countRaw >= 0 ? Math.floor(countRaw) : 1;
+  return { id, category, label, count, revenue, days };
 }
 
 export async function loadSchedule(
