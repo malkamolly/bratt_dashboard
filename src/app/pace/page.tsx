@@ -54,7 +54,7 @@ export default async function PaceHomePage() {
         />
       </section>
 
-      <section className="grid grid-cols-1 gap-6 md:grid-cols-2">
+      <section className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
         <Link href="/sales" className="bt-card group transition-colors hover:!border-orange">
           <p className="bt-eyebrow">Dashboard 1</p>
           <h2 className="mt-2 font-headline text-3xl font-black uppercase text-bark-deep">
@@ -75,6 +75,19 @@ export default async function PaceHomePage() {
           </h2>
           <p className="mt-3 text-sm text-fg-2">
             Production crews and Plant Healthcare side-by-side. Jobs, revenue, pacing, and average job size.
+          </p>
+          <p className="mt-6 font-headline text-xs font-extrabold uppercase tracking-ribbon text-orange">
+            Open dashboard &rarr;
+          </p>
+        </Link>
+
+        <Link href="/schedule" className="bt-card group transition-colors hover:!border-orange">
+          <p className="bt-eyebrow">Dashboard 3</p>
+          <h2 className="mt-2 font-headline text-3xl font-black uppercase text-bark-deep">
+            Tomorrow&rsquo;s Schedule
+          </h2>
+          <p className="mt-3 text-sm text-fg-2">
+            Build the next day&rsquo;s schedule one job at a time. The dashboard adds it up, splits multi-day jobs across days, and gives leadership a clean summary.
           </p>
           <p className="mt-6 font-headline text-xs font-extrabold uppercase tracking-ribbon text-orange">
             Open dashboard &rarr;
