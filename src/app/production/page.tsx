@@ -131,8 +131,8 @@ function LiveMonthView({
   });
 
   const c = result.combined;
-  // Pace status uses effective (booked + in-progress) MTD so a crew with a
-  // big open job doesn't show "behind" just because the job hasn't closed.
+  // Pace status uses effective (completed + in-progress) MTD so a crew with
+  // a big open job doesn't show "behind" just because the job hasn't closed.
   const companyStatus = paceStatus(
     c.effective_mtd_revenue,
     c.total_budget,
@@ -153,6 +153,19 @@ function LiveMonthView({
   );
   const stumpCrewRows = result.perCrew.filter((p) => stumpCrewIds.has(p.crew_id));
   const phcCrewRows = result.perCrew.filter((p) => phcCrewIds.has(p.crew_id));
+
+  // Subtotals for the Production / Stump / PHC breakdown shown at the top.
+  // Uses effective MTD (completed + in-progress) to match the company-wide
+  // status calculation.
+  const summarize = (rows: typeof result.perCrew) => {
+    const mtd = rows.reduce((s, r) => s + r.mtd_revenue, 0);
+    const wip = rows.reduce((s, r) => s + r.in_progress_revenue, 0);
+    const budget = rows.reduce((s, r) => s + r.budget, 0);
+    return { mtd, wip, effective: mtd + wip, budget };
+  };
+  const productionSummary = summarize(productionCrewRows);
+  const stumpSummary = summarize(stumpCrewRows);
+  const phcSummary = summarize(phcCrewRows);
 
   const weeks = workingWeeksInMonth(year, month, data.holidays);
   const revByDate = new Map<IsoDate, number>();
@@ -210,7 +223,7 @@ function LiveMonthView({
                   : '—'} of budget
               </p>
               <p className="mt-1 text-xs text-cream/60">
-                {fmtUsd(c.mtd_revenue)} booked
+                {fmtUsd(c.mtd_revenue)} completed
                 {c.in_progress_revenue > 0 && (
                   <> &middot; {fmtUsd(c.in_progress_revenue)} in progress</>
                 )}
@@ -232,7 +245,7 @@ function LiveMonthView({
             value={fmtUsd(c.total_pacing_revenue)}
             hint={
               c.in_progress_revenue > 0
-                ? "Booked run-rate + in-progress"
+                ? "Completed run-rate + in-progress"
                 : "If today's rate holds"
             }
           />
@@ -248,6 +261,12 @@ function LiveMonthView({
               c.budgeted_days_remaining === 1 ? '' : 's'
             } left`}
           />
+        </div>
+
+        <div className="mt-6 grid grid-cols-1 gap-4 border-t border-bark-deep pt-5 sm:grid-cols-3">
+          <KindBreakdown label="Production Crews" summary={productionSummary} />
+          <KindBreakdown label="Stump Grinding" summary={stumpSummary} />
+          <KindBreakdown label="PHC" summary={phcSummary} />
         </div>
       </section>
 
@@ -373,7 +392,7 @@ function CrewTable({
             <tr>
               <Th>Crew</Th>
               <Th align="right">Jobs</Th>
-              <Th align="right">Booked</Th>
+              <Th align="right">Completed</Th>
               <Th align="right">In Progress</Th>
               <Th align="right">Avg Job</Th>
               <Th align="right">Pacing</Th>
@@ -436,7 +455,7 @@ function CrewTable({
         </table>
       </div>
       <p className="mt-3 text-xs text-fg-3">
-        Click a crew name to see day-by-day numbers. Status uses booked + in-progress revenue.
+        Click a crew name to see day-by-day numbers. Status uses completed + in-progress revenue.
       </p>
     </section>
   );
@@ -742,6 +761,40 @@ function Stat({ label, value, hint }: { label: string; value: string; hint?: str
         </p>
       </div>
       {hint && <p className="mt-1 text-xs text-cream/70">{hint}</p>}
+    </div>
+  );
+}
+
+function KindBreakdown({
+  label,
+  summary,
+}: {
+  label: string;
+  summary: { mtd: number; wip: number; effective: number; budget: number };
+}) {
+  const pct = summary.budget > 0 ? summary.effective / summary.budget : null;
+  return (
+    <div>
+      <p className="font-headline text-[10px] font-extrabold uppercase tracking-ribbon text-lime">
+        {label}
+      </p>
+      <p className="mt-1 font-headline text-xl font-black sm:text-2xl">
+        {fmtUsd(summary.effective)}
+      </p>
+      <p className="mt-0.5 text-[11px] text-cream/70">
+        {summary.budget > 0 ? (
+          <>
+            of {fmtUsd(summary.budget)} &middot; {fmtPct(pct ?? 0)}
+          </>
+        ) : (
+          'no budget set'
+        )}
+      </p>
+      {summary.wip > 0 && (
+        <p className="mt-0.5 text-[11px] text-cream/60">
+          {fmtUsd(summary.mtd)} completed &middot; {fmtUsd(summary.wip)} in progress
+        </p>
+      )}
     </div>
   );
 }
