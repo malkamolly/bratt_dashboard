@@ -30,7 +30,7 @@ function isValidIsoDate(s: string): boolean {
 
 // Only same-origin paths are allowed. Anything else falls back to /sales so
 // we can't be used as an open redirect.
-export function safeReturnTo(raw: string | undefined, fallback: string): string {
+function safeReturnTo(raw: string | undefined, fallback: string): string {
   if (!raw) return fallback;
   if (!raw.startsWith('/')) return fallback;
   if (raw.startsWith('//')) return fallback;
