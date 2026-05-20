@@ -12,9 +12,13 @@ import { getAllowedUser } from '@/lib/auth';
 
 export type Category = 'field-crew' | 'phc' | 'stump' | 'clam-hauling';
 
+export type FieldCrewSub = 'tree-work' | 'removal' | 'rework';
+
 export type SavedJob = {
   id: string;
   category: Category;
+  // Only meaningful when category === 'field-crew'. Null/undefined for others.
+  subcategory: FieldCrewSub | null;
   label: string;
   count: number;   // # of jobs this entry represents (>=1). Buckets > 1, individual = 1.
   revenue: number; // total revenue across all `count` jobs
@@ -29,6 +33,7 @@ export type SavedSchedule = {
 };
 
 const VALID_CATEGORIES: Category[] = ['field-crew', 'phc', 'stump', 'clam-hauling'];
+const VALID_SUBCATEGORIES: FieldCrewSub[] = ['tree-work', 'removal', 'rework'];
 
 function isValidIsoDate(s: unknown): s is string {
   if (typeof s !== 'string') return false;
@@ -56,7 +61,15 @@ function sanitizeJob(raw: unknown): SavedJob | null {
   // count defaults to 1 for forward compat with pre-bucket saved rows.
   const countRaw = j.count == null ? 1 : (typeof j.count === 'number' ? j.count : Number(j.count));
   const count = Number.isFinite(countRaw) && countRaw >= 0 ? Math.floor(countRaw) : 1;
-  return { id, category, label, count, revenue, days };
+  // Subcategory only applies to Field Crew. For older saved rows without it,
+  // default to 'tree-work' so the entry has a home in the new bucket grid.
+  let subcategory: FieldCrewSub | null = null;
+  if (category === 'field-crew') {
+    subcategory = VALID_SUBCATEGORIES.includes(j.subcategory as FieldCrewSub)
+      ? (j.subcategory as FieldCrewSub)
+      : 'tree-work';
+  }
+  return { id, category, subcategory, label, count, revenue, days };
 }
 
 export async function loadSchedule(

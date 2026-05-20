@@ -1,34 +1,68 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState, useTransition } from 'react';
+import { Fragment, useEffect, useMemo, useRef, useState, useTransition } from 'react';
 import { fmtUsdCents } from '@/lib/format';
-import { loadSchedule, saveSchedule, type Category, type SavedJob } from './actions';
+import {
+  loadSchedule,
+  saveSchedule,
+  type Category,
+  type FieldCrewSub,
+  type SavedJob,
+} from './actions';
 
 // ============================================================================
 // Two kinds of entries the scheduler can record:
-//   1. A per-category SINGLE-DAY BUCKET: "PHC — 25 jobs — $5,581 total"
+//   1. A per-(sub)category SINGLE-DAY BUCKET: "PHC — 25 jobs — $5,581 total"
 //      (count >= 0, days = 1, no label)
-//   2. A MULTI-DAY JOB: "Smith oak removal — Field Crew — $7,083 — 2 days"
+//   2. A MULTI-DAY JOB: "Smith oak removal — Field Crew · Removal — $7,083 — 2 days"
 //      (count = 1, days >= 2)
-// Both shapes are stored in the same `daily_schedules.jobs` JSONB array as
-// `SavedJob` objects. They differ only in which fields are meaningful.
+// Field Crew entries carry a subcategory (Tree Work / Removal / Re-Work); other
+// categories don't.
+// Both shapes are stored together in the same daily_schedules.jobs JSONB array.
 // ============================================================================
 
-const CATEGORIES: { value: Category; label: string }[] = [
-  { value: 'field-crew', label: 'Field Crew' },
-  { value: 'phc', label: 'PHC' },
-  { value: 'stump', label: 'Stump Grinding' },
-  { value: 'clam-hauling', label: 'Clam / Hauling' },
+const CATEGORY_LABEL: Record<Category, string> = {
+  'field-crew': 'Field Crew',
+  phc: 'PHC',
+  stump: 'Stump Grinding',
+  'clam-hauling': 'Clam / Hauling',
+};
+
+const SUBCATEGORY_LABEL: Record<FieldCrewSub, string> = {
+  'tree-work': 'Tree Work',
+  removal: 'Removal',
+  rework: 'Re-Work',
+};
+
+const FIELD_CREW_SUBS: FieldCrewSub[] = ['tree-work', 'removal', 'rework'];
+
+// The fixed list of single-day buckets that always render in the form.
+// Field Crew is split into three sub-buckets; the others have one each.
+type BucketKey =
+  | { category: 'field-crew'; subcategory: FieldCrewSub }
+  | { category: Exclude<Category, 'field-crew'>; subcategory: null };
+
+const BUCKET_KEYS: BucketKey[] = [
+  { category: 'field-crew', subcategory: 'tree-work' },
+  { category: 'field-crew', subcategory: 'removal' },
+  { category: 'field-crew', subcategory: 'rework' },
+  { category: 'phc', subcategory: null },
+  { category: 'stump', subcategory: null },
+  { category: 'clam-hauling', subcategory: null },
 ];
 
-const CATEGORY_LABEL: Record<Category, string> = Object.fromEntries(
-  CATEGORIES.map((c) => [c.value, c.label]),
-) as Record<Category, string>;
+function bucketLabel(k: BucketKey): string {
+  if (k.category === 'field-crew') {
+    return `Field Crew · ${SUBCATEGORY_LABEL[k.subcategory]}`;
+  }
+  return CATEGORY_LABEL[k.category];
+}
 
 // ---- Form-state types (string inputs) --------------------------------------
 type BucketRow = {
   id: string;
   category: Category;
+  subcategory: FieldCrewSub | null;
   count: string;
   revenue: string;
 };
@@ -36,21 +70,29 @@ type BucketRow = {
 type MultiDayRow = {
   id: string;
   category: Category;
+  subcategory: FieldCrewSub | null;
   label: string;
   revenue: string;
   days: string;
 };
 
-function newBucket(category: Category): BucketRow {
-  return { id: crypto.randomUUID(), category, count: '', revenue: '' };
+function newBucket(k: BucketKey): BucketRow {
+  return {
+    id: crypto.randomUUID(),
+    category: k.category,
+    subcategory: k.subcategory,
+    count: '',
+    revenue: '',
+  };
 }
 function defaultBuckets(): BucketRow[] {
-  return CATEGORIES.map((c) => newBucket(c.value));
+  return BUCKET_KEYS.map(newBucket);
 }
 function newMultiDay(): MultiDayRow {
   return {
     id: crypto.randomUUID(),
     category: 'field-crew',
+    subcategory: 'tree-work',
     label: '',
     revenue: '',
     days: '2',
@@ -59,21 +101,24 @@ function newMultiDay(): MultiDayRow {
 
 // ---- Convert saved -> form state -------------------------------------------
 function splitSaved(jobs: SavedJob[]): { buckets: BucketRow[]; multi: MultiDayRow[] } {
-  // Buckets: one per category. If saved data has a bucket for a category use it,
-  // else create an empty one so the four bucket rows always render.
-  const buckets: BucketRow[] = CATEGORIES.map((c) => {
-    const saved = jobs.find(
-      (j) => j.category === c.value && j.days === 1 && !j.label,
+  const buckets: BucketRow[] = BUCKET_KEYS.map((k) => {
+    const match = jobs.find(
+      (j) =>
+        j.category === k.category &&
+        (j.subcategory ?? null) === k.subcategory &&
+        j.days === 1 &&
+        !j.label,
     );
-    if (saved) {
+    if (match) {
       return {
-        id: saved.id,
-        category: c.value,
-        count: saved.count > 0 ? String(saved.count) : '',
-        revenue: saved.revenue > 0 ? saved.revenue.toFixed(2) : '',
+        id: match.id,
+        category: k.category,
+        subcategory: k.subcategory,
+        count: match.count > 0 ? String(match.count) : '',
+        revenue: match.revenue > 0 ? match.revenue.toFixed(2) : '',
       };
     }
-    return newBucket(c.value);
+    return newBucket(k);
   });
 
   const multi: MultiDayRow[] = jobs
@@ -81,6 +126,10 @@ function splitSaved(jobs: SavedJob[]): { buckets: BucketRow[]; multi: MultiDayRo
     .map((j) => ({
       id: j.id,
       category: j.category,
+      subcategory:
+        j.category === 'field-crew'
+          ? (j.subcategory ?? 'tree-work')
+          : null,
       label: j.label,
       revenue: j.revenue > 0 ? j.revenue.toFixed(2) : '',
       days: String(j.days),
@@ -96,11 +145,11 @@ function buildPayload(buckets: BucketRow[], multi: MultiDayRow[]): SavedJob[] {
   for (const b of buckets) {
     const count = parseInt(b.count, 10);
     const revenue = parseMoney(b.revenue);
-    // Keep the bucket if there's anything in either field; otherwise drop noise.
     if ((Number.isFinite(count) && count > 0) || revenue > 0) {
       out.push({
         id: b.id,
         category: b.category,
+        subcategory: b.category === 'field-crew' ? b.subcategory : null,
         label: '',
         count: Number.isFinite(count) && count > 0 ? count : 0,
         revenue,
@@ -116,6 +165,10 @@ function buildPayload(buckets: BucketRow[], multi: MultiDayRow[]): SavedJob[] {
       out.push({
         id: m.id,
         category: m.category,
+        subcategory:
+          m.category === 'field-crew'
+            ? (m.subcategory ?? 'tree-work')
+            : null,
         label: m.label.trim(),
         count: 1,
         revenue,
@@ -127,7 +180,6 @@ function buildPayload(buckets: BucketRow[], multi: MultiDayRow[]): SavedJob[] {
   return out;
 }
 
-// ---- Number parsing --------------------------------------------------------
 function parseMoney(s: string): number {
   const n = parseFloat(s.replace(/[$,]/g, ''));
   return Number.isFinite(n) && n >= 0 ? n : 0;
@@ -137,7 +189,6 @@ function parseDays(s: string): number {
   return Number.isFinite(n) && n > 0 ? n : 1;
 }
 
-// ---- Date helpers ----------------------------------------------------------
 function tomorrowIso(): string {
   const d = new Date();
   d.setDate(d.getDate() + 1);
@@ -170,22 +221,23 @@ function formatSavedAt(iso: string): string {
   }
 }
 
-// ---- Dirty-check canonicalization ------------------------------------------
 function canonical(payload: SavedJob[]): string {
-  // Sort by category then label for stable comparison across reorderings.
   const norm = payload
     .map((j) => ({
       category: j.category,
+      subcategory: j.subcategory ?? null,
       label: j.label,
       count: j.count,
       revenue: j.revenue,
       days: j.days,
     }))
-    .sort((a, b) =>
-      a.category === b.category
-        ? a.label.localeCompare(b.label)
-        : a.category.localeCompare(b.category),
-    );
+    .sort((a, b) => {
+      if (a.category !== b.category) return a.category.localeCompare(b.category);
+      const sa = a.subcategory ?? '';
+      const sb = b.subcategory ?? '';
+      if (sa !== sb) return sa.localeCompare(sb);
+      return a.label.localeCompare(b.label);
+    });
   return JSON.stringify(norm);
 }
 
@@ -251,7 +303,21 @@ export default function ScheduleForm() {
     setBuckets((bs) => bs.map((b) => (b.id === id ? { ...b, ...patch } : b)));
   }
   function updateMulti(id: string, patch: Partial<MultiDayRow>) {
-    setMulti((ms) => ms.map((m) => (m.id === id ? { ...m, ...patch } : m)));
+    setMulti((ms) =>
+      ms.map((m) => {
+        if (m.id !== id) return m;
+        const next = { ...m, ...patch };
+        // Keep subcategory in sync with category. If category becomes
+        // Field Crew and there's no subcategory yet, default to tree-work.
+        // If category leaves Field Crew, clear subcategory.
+        if (next.category === 'field-crew' && !next.subcategory) {
+          next.subcategory = 'tree-work';
+        } else if (next.category !== 'field-crew') {
+          next.subcategory = null;
+        }
+        return next;
+      }),
+    );
   }
   function addMulti() {
     setMulti((ms) => [...ms, newMultiDay()]);
@@ -305,15 +371,30 @@ export default function ScheduleForm() {
     const grandTotal = enriched.reduce((s, j) => s + j.revenue, 0);
     const totalJobs = enriched.reduce((s, j) => s + j.count, 0);
 
-    const byCategory = CATEGORIES.map((c) => {
-      const inCat = enriched.filter((j) => j.category === c.value);
-      return {
-        value: c.value,
-        label: c.label,
-        count: inCat.reduce((s, j) => s + j.count, 0),
-        tomorrowRevenue: inCat.reduce((s, j) => s + j.todayShare, 0),
-      };
-    });
+    const byCategory = (['field-crew', 'phc', 'stump', 'clam-hauling'] as Category[]).map(
+      (cat) => {
+        const inCat = enriched.filter((j) => j.category === cat);
+        const subBreakdown =
+          cat === 'field-crew'
+            ? FIELD_CREW_SUBS.map((sub) => {
+                const inSub = inCat.filter((j) => j.subcategory === sub);
+                return {
+                  key: sub,
+                  label: SUBCATEGORY_LABEL[sub],
+                  count: inSub.reduce((s, j) => s + j.count, 0),
+                  tomorrowRevenue: inSub.reduce((s, j) => s + j.todayShare, 0),
+                };
+              })
+            : [];
+        return {
+          value: cat,
+          label: CATEGORY_LABEL[cat],
+          count: inCat.reduce((s, j) => s + j.count, 0),
+          tomorrowRevenue: inCat.reduce((s, j) => s + j.todayShare, 0),
+          subBreakdown,
+        };
+      },
+    );
 
     const multiDayJobs = enriched.filter((j) => j.days > 1);
 
@@ -379,7 +460,7 @@ export default function ScheduleForm() {
           )}
         </div>
 
-        {/* ---- Single-day buckets per category ---- */}
+        {/* ---- Single-day buckets per (sub)category ---- */}
         <div className="mt-7">
           <p className="font-headline text-xs font-extrabold uppercase tracking-ribbon text-fg-2">
             Single-day jobs (by category)
@@ -389,47 +470,61 @@ export default function ScheduleForm() {
           </p>
 
           <div className="mt-3 space-y-2">
-            {buckets.map((b) => (
-              <div
-                key={b.id}
-                className="rounded-md border-2 border-ink/10 bg-white/60 p-3"
-              >
-                <div className="grid grid-cols-[1fr_auto_auto] items-end gap-3 sm:grid-cols-[1fr_120px_160px]">
-                  <p className="font-headline font-extrabold uppercase tracking-ribbon text-sm text-bark-deep">
-                    {CATEGORY_LABEL[b.category]}
-                  </p>
+            {buckets.map((b) => {
+              const isFieldCrewSub = b.category === 'field-crew' && b.subcategory != null;
+              return (
+                <div
+                  key={b.id}
+                  className={
+                    isFieldCrewSub
+                      ? 'rounded-md border-2 border-ink/10 bg-white/60 p-3 sm:ml-6'
+                      : 'rounded-md border-2 border-ink/10 bg-white/60 p-3'
+                  }
+                >
+                  <div className="grid grid-cols-[1fr_auto_auto] items-end gap-3 sm:grid-cols-[1fr_120px_160px]">
+                    <p className="font-headline font-extrabold uppercase tracking-ribbon text-sm text-bark-deep">
+                      {isFieldCrewSub ? (
+                        <>
+                          <span className="text-fg-3">Field Crew · </span>
+                          {SUBCATEGORY_LABEL[b.subcategory as FieldCrewSub]}
+                        </>
+                      ) : (
+                        bucketLabel(b as BucketKey)
+                      )}
+                    </p>
 
-                  <label className="block">
-                    <span className="font-headline text-[11px] font-extrabold uppercase tracking-ribbon text-fg-2">
-                      How many?
-                    </span>
-                    <input
-                      type="number"
-                      min={0}
-                      step={1}
-                      value={b.count}
-                      onChange={(e) => updateBucket(b.id, { count: e.target.value })}
-                      placeholder="0"
-                      className="mt-1 block w-full rounded-md border-2 border-ink/20 bg-white px-2 py-1.5 font-headline text-sm focus:border-orange focus:outline-none"
-                    />
-                  </label>
+                    <label className="block">
+                      <span className="font-headline text-[11px] font-extrabold uppercase tracking-ribbon text-fg-2">
+                        How many?
+                      </span>
+                      <input
+                        type="number"
+                        min={0}
+                        step={1}
+                        value={b.count}
+                        onChange={(e) => updateBucket(b.id, { count: e.target.value })}
+                        placeholder="0"
+                        className="mt-1 block w-full rounded-md border-2 border-ink/20 bg-white px-2 py-1.5 font-headline text-sm focus:border-orange focus:outline-none"
+                      />
+                    </label>
 
-                  <label className="block">
-                    <span className="font-headline text-[11px] font-extrabold uppercase tracking-ribbon text-fg-2">
-                      Total revenue ($)
-                    </span>
-                    <input
-                      type="text"
-                      inputMode="decimal"
-                      value={b.revenue}
-                      onChange={(e) => updateBucket(b.id, { revenue: e.target.value })}
-                      placeholder="0.00"
-                      className="mt-1 block w-full rounded-md border-2 border-ink/20 bg-white px-2 py-1.5 font-headline text-sm focus:border-orange focus:outline-none"
-                    />
-                  </label>
+                    <label className="block">
+                      <span className="font-headline text-[11px] font-extrabold uppercase tracking-ribbon text-fg-2">
+                        Total revenue ($)
+                      </span>
+                      <input
+                        type="text"
+                        inputMode="decimal"
+                        value={b.revenue}
+                        onChange={(e) => updateBucket(b.id, { revenue: e.target.value })}
+                        placeholder="0.00"
+                        className="mt-1 block w-full rounded-md border-2 border-ink/20 bg-white px-2 py-1.5 font-headline text-sm focus:border-orange focus:outline-none"
+                      />
+                    </label>
+                  </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
 
@@ -482,26 +577,66 @@ export default function ScheduleForm() {
                           }
                           className="mt-1 block w-full rounded-md border-2 border-ink/20 bg-white px-2 py-1.5 font-headline text-sm focus:border-orange focus:outline-none"
                         >
-                          {CATEGORIES.map((c) => (
-                            <option key={c.value} value={c.value}>
-                              {c.label}
-                            </option>
-                          ))}
+                          {(['field-crew', 'phc', 'stump', 'clam-hauling'] as Category[]).map(
+                            (c) => (
+                              <option key={c} value={c}>
+                                {CATEGORY_LABEL[c]}
+                              </option>
+                            ),
+                          )}
                         </select>
                       </label>
 
-                      <label className="block">
-                        <span className="font-headline text-[11px] font-extrabold uppercase tracking-ribbon text-fg-2">
-                          Customer / label (optional)
-                        </span>
-                        <input
-                          type="text"
-                          value={m.label}
-                          onChange={(e) => updateMulti(m.id, { label: e.target.value })}
-                          placeholder="e.g. Smith — oak removal"
-                          className="mt-1 block w-full rounded-md border-2 border-ink/20 bg-white px-2 py-1.5 font-headline text-sm focus:border-orange focus:outline-none"
-                        />
-                      </label>
+                      {m.category === 'field-crew' ? (
+                        <label className="block">
+                          <span className="font-headline text-[11px] font-extrabold uppercase tracking-ribbon text-fg-2">
+                            Field Crew subcategory
+                          </span>
+                          <select
+                            value={m.subcategory ?? 'tree-work'}
+                            onChange={(e) =>
+                              updateMulti(m.id, {
+                                subcategory: e.target.value as FieldCrewSub,
+                              })
+                            }
+                            className="mt-1 block w-full rounded-md border-2 border-ink/20 bg-white px-2 py-1.5 font-headline text-sm focus:border-orange focus:outline-none"
+                          >
+                            {FIELD_CREW_SUBS.map((s) => (
+                              <option key={s} value={s}>
+                                {SUBCATEGORY_LABEL[s]}
+                              </option>
+                            ))}
+                          </select>
+                        </label>
+                      ) : (
+                        <label className="block">
+                          <span className="font-headline text-[11px] font-extrabold uppercase tracking-ribbon text-fg-2">
+                            Customer / label (optional)
+                          </span>
+                          <input
+                            type="text"
+                            value={m.label}
+                            onChange={(e) => updateMulti(m.id, { label: e.target.value })}
+                            placeholder="e.g. Smith — oak removal"
+                            className="mt-1 block w-full rounded-md border-2 border-ink/20 bg-white px-2 py-1.5 font-headline text-sm focus:border-orange focus:outline-none"
+                          />
+                        </label>
+                      )}
+
+                      {m.category === 'field-crew' && (
+                        <label className="block sm:col-span-2">
+                          <span className="font-headline text-[11px] font-extrabold uppercase tracking-ribbon text-fg-2">
+                            Customer / label (optional)
+                          </span>
+                          <input
+                            type="text"
+                            value={m.label}
+                            onChange={(e) => updateMulti(m.id, { label: e.target.value })}
+                            placeholder="e.g. Smith — oak removal"
+                            className="mt-1 block w-full rounded-md border-2 border-ink/20 bg-white px-2 py-1.5 font-headline text-sm focus:border-orange focus:outline-none"
+                          />
+                        </label>
+                      )}
 
                       <label className="block">
                         <span className="font-headline text-[11px] font-extrabold uppercase tracking-ribbon text-fg-2">
@@ -626,13 +761,27 @@ export default function ScheduleForm() {
             </thead>
             <tbody>
               {computed.byCategory.map((c) => (
-                <tr key={c.value} className="border-b border-ink/5">
-                  <td className="py-2 font-headline font-bold text-bark-deep">{c.label}</td>
-                  <td className="py-2">{c.count}</td>
-                  <td className="py-2 text-right font-headline font-bold">
-                    {fmtUsdCents(c.tomorrowRevenue)}
-                  </td>
-                </tr>
+                <Fragment key={c.value}>
+                  <tr className="border-b border-ink/5">
+                    <td className="py-2 font-headline font-bold text-bark-deep">{c.label}</td>
+                    <td className="py-2">{c.count}</td>
+                    <td className="py-2 text-right font-headline font-bold">
+                      {fmtUsdCents(c.tomorrowRevenue)}
+                    </td>
+                  </tr>
+                  {c.subBreakdown.map((sub) => (
+                    <tr key={sub.key} className="border-b border-ink/5">
+                      <td className="py-1 pl-4 text-xs text-fg-2">
+                        <span className="text-fg-3">↳ </span>
+                        {sub.label}
+                      </td>
+                      <td className="py-1 text-xs text-fg-2">{sub.count}</td>
+                      <td className="py-1 text-right text-xs text-fg-2">
+                        {fmtUsdCents(sub.tomorrowRevenue)}
+                      </td>
+                    </tr>
+                  ))}
+                </Fragment>
               ))}
               <tr>
                 <td className="pt-3 font-headline font-extrabold uppercase tracking-ribbon text-xs text-bark-deep">
@@ -653,24 +802,28 @@ export default function ScheduleForm() {
               Multi-day jobs
             </p>
             <ul className="mt-2 space-y-2">
-              {computed.multiDayJobs.map((j) => (
-                <li
-                  key={j.id}
-                  className="rounded-md border border-ink/10 bg-white/60 p-3 text-sm"
-                >
-                  <p className="font-headline font-bold text-bark-deep">
-                    {j.label || CATEGORY_LABEL[j.category]}
-                    <span className="ml-2 font-normal text-fg-2">
-                      ({CATEGORY_LABEL[j.category]})
-                    </span>
-                  </p>
-                  <p className="text-fg-2">
-                    {fmtUsdCents(j.revenue)} total over {j.days} days ={' '}
-                    <strong className="text-bark-deep">{fmtUsdCents(j.todayShare)}</strong>{' '}
-                    counted tomorrow.
-                  </p>
-                </li>
-              ))}
+              {computed.multiDayJobs.map((j) => {
+                const catLabel =
+                  j.category === 'field-crew' && j.subcategory
+                    ? `Field Crew · ${SUBCATEGORY_LABEL[j.subcategory]}`
+                    : CATEGORY_LABEL[j.category];
+                return (
+                  <li
+                    key={j.id}
+                    className="rounded-md border border-ink/10 bg-white/60 p-3 text-sm"
+                  >
+                    <p className="font-headline font-bold text-bark-deep">
+                      {j.label || catLabel}
+                      <span className="ml-2 font-normal text-fg-2">({catLabel})</span>
+                    </p>
+                    <p className="text-fg-2">
+                      {fmtUsdCents(j.revenue)} total over {j.days} days ={' '}
+                      <strong className="text-bark-deep">{fmtUsdCents(j.todayShare)}</strong>{' '}
+                      counted tomorrow.
+                    </p>
+                  </li>
+                );
+              })}
             </ul>
           </div>
         )}
