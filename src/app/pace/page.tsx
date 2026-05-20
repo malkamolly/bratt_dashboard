@@ -8,7 +8,8 @@ import { fmtUsd, fmtPct } from '@/lib/format';
 export const dynamic = 'force-dynamic';
 
 export default async function PaceHomePage() {
-  await requireHubAccess('pace');
+  const user = await requireHubAccess('pace');
+  const isAdmin = user.role === 'admin';
 
   const [salesYtd, productionYtd] = await Promise.all([
     loadYearToDate(),
@@ -54,7 +55,13 @@ export default async function PaceHomePage() {
         />
       </section>
 
-      <section className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
+      <section
+        className={
+          isAdmin
+            ? 'grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3'
+            : 'grid grid-cols-1 gap-6 md:grid-cols-2'
+        }
+      >
         <Link href="/sales" className="bt-card group transition-colors hover:!border-orange">
           <p className="bt-eyebrow">Dashboard 1</p>
           <h2 className="mt-2 font-headline text-3xl font-black uppercase text-bark-deep">
@@ -81,18 +88,20 @@ export default async function PaceHomePage() {
           </p>
         </Link>
 
-        <Link href="/schedule" className="bt-card group transition-colors hover:!border-orange">
-          <p className="bt-eyebrow">Dashboard 3</p>
-          <h2 className="mt-2 font-headline text-3xl font-black uppercase text-bark-deep">
-            Tomorrow&rsquo;s Schedule
-          </h2>
-          <p className="mt-3 text-sm text-fg-2">
-            Build the next day&rsquo;s schedule one job at a time. The dashboard adds it up, splits multi-day jobs across days, and gives leadership a clean summary.
-          </p>
-          <p className="mt-6 font-headline text-xs font-extrabold uppercase tracking-ribbon text-orange">
-            Open dashboard &rarr;
-          </p>
-        </Link>
+        {isAdmin && (
+          <Link href="/schedule" className="bt-card group transition-colors hover:!border-orange">
+            <p className="bt-eyebrow">Dashboard 3 · Admin only</p>
+            <h2 className="mt-2 font-headline text-3xl font-black uppercase text-bark-deep">
+              Tomorrow&rsquo;s Schedule
+            </h2>
+            <p className="mt-3 text-sm text-fg-2">
+              Build the next day&rsquo;s schedule one job at a time. The dashboard adds it up, splits multi-day jobs across days, and gives leadership a clean summary.
+            </p>
+            <p className="mt-6 font-headline text-xs font-extrabold uppercase tracking-ribbon text-orange">
+              Open dashboard &rarr;
+            </p>
+          </Link>
+        )}
       </section>
 
       <section className="mt-10 rounded-card bg-bark p-6 text-cream">

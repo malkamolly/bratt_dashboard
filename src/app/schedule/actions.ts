@@ -9,7 +9,6 @@
 
 import { serverClient } from '@/lib/supabase';
 import { getAllowedUser } from '@/lib/auth';
-import { canAccessHub } from '@/lib/auth';
 
 export type Category = 'field-crew' | 'phc' | 'stump' | 'clam-hauling';
 
@@ -62,7 +61,7 @@ export async function loadSchedule(
   if (!isValidIsoDate(date)) return null;
 
   const user = await getAllowedUser();
-  if (!user || !canAccessHub(user.role, 'pace')) return null;
+  if (!user || user.role !== 'admin') return null;
 
   const supabase = await serverClient();
   const { data, error } = await supabase
@@ -97,7 +96,7 @@ export async function saveSchedule(
   }
 
   const user = await getAllowedUser();
-  if (!user || !canAccessHub(user.role, 'pace')) {
+  if (!user || user.role !== 'admin') {
     return { ok: false, error: 'Not authorized.' };
   }
 

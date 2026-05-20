@@ -1,11 +1,14 @@
 import Link from 'next/link';
-import { requireHubAccess } from '@/lib/auth';
+import { redirect } from 'next/navigation';
+import { getAllowedUser } from '@/lib/auth';
 import ScheduleForm from './ScheduleForm';
 
 export const dynamic = 'force-dynamic';
 
 export default async function SchedulePage() {
-  await requireHubAccess('pace');
+  const user = await getAllowedUser();
+  if (!user) redirect('/login');
+  if (user.role !== 'admin') redirect('/access-denied');
 
   return (
     <main className="mx-auto max-w-6xl px-6 py-10">
