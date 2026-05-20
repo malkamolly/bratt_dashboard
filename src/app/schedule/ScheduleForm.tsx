@@ -58,6 +58,43 @@ function bucketLabel(k: BucketKey): string {
   return CATEGORY_LABEL[k.category];
 }
 
+// Combined category+subcategory dropdown options for multi-day jobs.
+// One dropdown shows everything ("Field Crew · Tree Work", "PHC", etc.) so
+// the form doesn't need a second conditional dropdown for Field Crew jobs.
+type CombinedKey =
+  | 'field-crew:tree-work'
+  | 'field-crew:removal'
+  | 'field-crew:rework'
+  | 'phc'
+  | 'stump'
+  | 'clam-hauling';
+
+const COMBINED_OPTIONS: { key: CombinedKey; label: string }[] = [
+  { key: 'field-crew:tree-work', label: 'Field Crew · Tree Work' },
+  { key: 'field-crew:removal', label: 'Field Crew · Removal' },
+  { key: 'field-crew:rework', label: 'Field Crew · Re-Work' },
+  { key: 'phc', label: 'PHC' },
+  { key: 'stump', label: 'Stump Grinding' },
+  { key: 'clam-hauling', label: 'Clam / Hauling' },
+];
+
+function combinedKeyFor(category: Category, subcategory: FieldCrewSub | null): CombinedKey {
+  if (category === 'field-crew') {
+    return `field-crew:${subcategory ?? 'tree-work'}` as CombinedKey;
+  }
+  return category as CombinedKey;
+}
+
+function parseCombinedKey(
+  key: string,
+): { category: Category; subcategory: FieldCrewSub | null } {
+  if (key.startsWith('field-crew:')) {
+    const sub = key.slice('field-crew:'.length) as FieldCrewSub;
+    return { category: 'field-crew', subcategory: sub };
+  }
+  return { category: key as Category, subcategory: null };
+}
+
 // ---- Form-state types (string inputs) --------------------------------------
 type BucketRow = {
   id: string;
@@ -488,7 +525,7 @@ export default function ScheduleForm() {
                   <p
                     className={
                       isFieldCrewSub
-                        ? 'pl-3 font-headline text-sm font-bold text-bark-deep'
+                        ? 'pl-3 font-headline text-sm font-extrabold uppercase tracking-ribbon text-bark-deep'
                         : 'font-headline text-sm font-extrabold uppercase tracking-ribbon text-bark-deep'
                     }
                   >
@@ -537,141 +574,94 @@ export default function ScheduleForm() {
               None yet. Each job&rsquo;s total revenue is divided by its days to figure out tomorrow&rsquo;s share.
             </p>
           ) : (
-            <div className="mt-2 space-y-2">
-              {multi.map((m, idx) => {
-                const revenue = parseMoney(m.revenue);
-                const days = parseDays(m.days);
-                const share = days > 0 ? revenue / days : 0;
-                return (
-                  <div
-                    key={m.id}
-                    className="rounded-md border-2 border-ink/10 bg-white/60 p-3"
-                  >
-                    <div className="flex items-center justify-between">
-                      <span className="font-headline text-xs font-extrabold uppercase tracking-ribbon text-fg-3">
-                        Multi-day job {idx + 1}
-                      </span>
-                      <button
-                        type="button"
-                        onClick={() => removeMulti(m.id)}
-                        className="text-xs font-bold text-orange hover:underline"
-                      >
-                        Remove
-                      </button>
-                    </div>
+            <>
+              {/* Column headers — shown once, not per row. */}
+              <div className="mt-2 grid grid-cols-[150px_minmax(0,1fr)_100px_56px_20px] items-end gap-2 px-2">
+                <span className="font-headline text-[10px] font-extrabold uppercase tracking-ribbon text-fg-3">
+                  Category
+                </span>
+                <span className="font-headline text-[10px] font-extrabold uppercase tracking-ribbon text-fg-3">
+                  Customer / label
+                </span>
+                <span className="text-right font-headline text-[10px] font-extrabold uppercase tracking-ribbon text-fg-3">
+                  Revenue
+                </span>
+                <span className="text-right font-headline text-[10px] font-extrabold uppercase tracking-ribbon text-fg-3">
+                  Days
+                </span>
+                <span />
+              </div>
 
-                    <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2">
-                      <label className="block">
-                        <span className="font-headline text-[11px] font-extrabold uppercase tracking-ribbon text-fg-2">
-                          Category
-                        </span>
+              <div className="mt-1 divide-y-2 divide-ink/5 rounded-md border-2 border-ink/10 bg-white/60">
+                {multi.map((m) => {
+                  const revenue = parseMoney(m.revenue);
+                  const days = parseDays(m.days);
+                  const share = days > 0 ? revenue / days : 0;
+                  const combinedKey = combinedKeyFor(m.category, m.subcategory);
+                  return (
+                    <div key={m.id} className="px-2 py-1.5">
+                      <div className="grid grid-cols-[150px_minmax(0,1fr)_100px_56px_20px] items-center gap-2">
                         <select
-                          value={m.category}
-                          onChange={(e) =>
-                            updateMulti(m.id, { category: e.target.value as Category })
-                          }
-                          className="mt-1 block w-full rounded-md border-2 border-ink/20 bg-white px-2 py-1.5 font-headline text-sm focus:border-orange focus:outline-none"
+                          value={combinedKey}
+                          onChange={(e) => {
+                            const parsed = parseCombinedKey(e.target.value);
+                            updateMulti(m.id, parsed);
+                          }}
+                          aria-label="Category"
+                          className="block w-full rounded-md border-2 border-ink/20 bg-white px-2 py-1 font-headline text-sm focus:border-orange focus:outline-none"
                         >
-                          {(['field-crew', 'phc', 'stump', 'clam-hauling'] as Category[]).map(
-                            (c) => (
-                              <option key={c} value={c}>
-                                {CATEGORY_LABEL[c]}
-                              </option>
-                            ),
-                          )}
+                          {COMBINED_OPTIONS.map((o) => (
+                            <option key={o.key} value={o.key}>
+                              {o.label}
+                            </option>
+                          ))}
                         </select>
-                      </label>
-
-                      {m.category === 'field-crew' ? (
-                        <label className="block">
-                          <span className="font-headline text-[11px] font-extrabold uppercase tracking-ribbon text-fg-2">
-                            Field Crew subcategory
-                          </span>
-                          <select
-                            value={m.subcategory ?? 'tree-work'}
-                            onChange={(e) =>
-                              updateMulti(m.id, {
-                                subcategory: e.target.value as FieldCrewSub,
-                              })
-                            }
-                            className="mt-1 block w-full rounded-md border-2 border-ink/20 bg-white px-2 py-1.5 font-headline text-sm focus:border-orange focus:outline-none"
-                          >
-                            {FIELD_CREW_SUBS.map((s) => (
-                              <option key={s} value={s}>
-                                {SUBCATEGORY_LABEL[s]}
-                              </option>
-                            ))}
-                          </select>
-                        </label>
-                      ) : (
-                        <label className="block">
-                          <span className="font-headline text-[11px] font-extrabold uppercase tracking-ribbon text-fg-2">
-                            Customer / label (optional)
-                          </span>
-                          <input
-                            type="text"
-                            value={m.label}
-                            onChange={(e) => updateMulti(m.id, { label: e.target.value })}
-                            placeholder="e.g. Smith — oak removal"
-                            className="mt-1 block w-full rounded-md border-2 border-ink/20 bg-white px-2 py-1.5 font-headline text-sm focus:border-orange focus:outline-none"
-                          />
-                        </label>
-                      )}
-
-                      {m.category === 'field-crew' && (
-                        <label className="block sm:col-span-2">
-                          <span className="font-headline text-[11px] font-extrabold uppercase tracking-ribbon text-fg-2">
-                            Customer / label (optional)
-                          </span>
-                          <input
-                            type="text"
-                            value={m.label}
-                            onChange={(e) => updateMulti(m.id, { label: e.target.value })}
-                            placeholder="e.g. Smith — oak removal"
-                            className="mt-1 block w-full rounded-md border-2 border-ink/20 bg-white px-2 py-1.5 font-headline text-sm focus:border-orange focus:outline-none"
-                          />
-                        </label>
-                      )}
-
-                      <label className="block">
-                        <span className="font-headline text-[11px] font-extrabold uppercase tracking-ribbon text-fg-2">
-                          Total job revenue ($)
-                        </span>
+                        <input
+                          type="text"
+                          value={m.label}
+                          onChange={(e) => updateMulti(m.id, { label: e.target.value })}
+                          placeholder="optional"
+                          aria-label="Customer / label"
+                          className="block w-full rounded-md border-2 border-ink/20 bg-white px-2 py-1 font-headline text-sm focus:border-orange focus:outline-none"
+                        />
                         <input
                           type="text"
                           inputMode="decimal"
                           value={m.revenue}
                           onChange={(e) => updateMulti(m.id, { revenue: e.target.value })}
                           placeholder="0.00"
-                          className="mt-1 block w-full rounded-md border-2 border-ink/20 bg-white px-2 py-1.5 font-headline text-sm focus:border-orange focus:outline-none"
+                          aria-label="Total job revenue"
+                          className="block w-full rounded-md border-2 border-ink/20 bg-white px-2 py-1 text-right font-headline text-sm focus:border-orange focus:outline-none"
                         />
-                      </label>
-
-                      <label className="block">
-                        <span className="font-headline text-[11px] font-extrabold uppercase tracking-ribbon text-fg-2">
-                          Total days for this job
-                        </span>
                         <input
                           type="number"
                           min={2}
                           step={1}
                           value={m.days}
                           onChange={(e) => updateMulti(m.id, { days: e.target.value })}
-                          className="mt-1 block w-full rounded-md border-2 border-ink/20 bg-white px-2 py-1.5 font-headline text-sm focus:border-orange focus:outline-none"
+                          aria-label="Total days"
+                          className="block w-full rounded-md border-2 border-ink/20 bg-white px-2 py-1 text-right font-headline text-sm focus:border-orange focus:outline-none"
                         />
-                      </label>
+                        <button
+                          type="button"
+                          onClick={() => removeMulti(m.id)}
+                          aria-label="Remove this job"
+                          className="text-lg font-bold leading-none text-orange hover:text-orange-press"
+                        >
+                          ×
+                        </button>
+                      </div>
+                      {revenue > 0 && days > 1 && (
+                        <p className="mt-1 pl-1 text-[11px] text-fg-2">
+                          {fmtUsdCents(revenue)} ÷ {days} days ={' '}
+                          <strong className="text-bark-deep">{fmtUsdCents(share)}</strong> for tomorrow.
+                        </p>
+                      )}
                     </div>
-
-                    {revenue > 0 && days > 1 && (
-                      <p className="mt-2 text-xs text-fg-2">
-                        {fmtUsdCents(revenue)} ÷ {days} days ={' '}
-                        <strong className="text-bark-deep">{fmtUsdCents(share)}</strong> for tomorrow.
-                      </p>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
+                  );
+                })}
+              </div>
+            </>
           )}
 
           <button
