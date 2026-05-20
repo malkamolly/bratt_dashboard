@@ -208,36 +208,36 @@ function LiveMonthView({
 
       <section className="mt-3 rounded-card bg-bark p-6 text-cream sm:p-8">
         <div className="grid grid-cols-1 gap-6 sm:grid-cols-4 sm:items-stretch">
-          <div className="flex flex-col justify-between border-b border-bark-deep pb-4 sm:border-b-0 sm:border-r sm:pb-0 sm:pr-6">
-            <div>
+          <div className="border-b border-bark-deep pb-4 sm:border-b-0 sm:border-r sm:pb-0 sm:pr-6">
+            <div className="flex items-start justify-between gap-3">
               <p className="font-headline text-xs font-extrabold uppercase tracking-ribbon text-lime">
                 Combined MTD
               </p>
-              <p className="mt-2 font-display text-5xl tracking-wider">
-                {fmtUsd(c.effective_mtd_revenue)}
-              </p>
-              <p className="mt-1 text-sm text-cream/80">
-                of {fmtUsd(c.total_budget)} &middot;{' '}
-                {c.total_budget > 0
-                  ? fmtPct(c.effective_mtd_revenue / c.total_budget)
-                  : '—'} of budget
-              </p>
-              <p className="mt-1 text-xs text-cream/60">
-                {fmtUsd(c.mtd_revenue)} completed
-                {c.in_progress_revenue > 0 && (
-                  <> &middot; {fmtUsd(c.in_progress_revenue)} in progress</>
-                )}
-              </p>
-              <p className="mt-1 text-xs text-cream/60">
-                {c.mtd_jobs} {c.mtd_jobs === 1 ? 'job' : 'jobs'} &middot; avg{' '}
-                {fmtUsd(c.avg_job_size)}/job
-              </p>
-            </div>
-            <div className="mt-3">
               <span className={statusChipClass(companyStatus)}>
                 {statusLabel(companyStatus)}
               </span>
             </div>
+            <p className="mt-2 font-display text-5xl tracking-wider">
+              {fmtUsd(c.effective_mtd_revenue)}
+            </p>
+            <p className="mt-1 text-sm text-cream/80">
+              of {fmtUsd(c.total_budget)} &middot;{' '}
+              {c.total_budget > 0
+                ? fmtPct(c.effective_mtd_revenue / c.total_budget)
+                : '—'} of budget
+            </p>
+            <p className="mt-1 text-xs text-cream/60">
+              {fmtUsd(c.mtd_revenue)} completed
+            </p>
+            {c.in_progress_revenue > 0 && (
+              <p className="mt-0.5 text-xs text-cream/60">
+                {fmtUsd(c.in_progress_revenue)} in progress
+              </p>
+            )}
+            <p className="mt-1 text-xs text-cream/60">
+              {c.mtd_jobs} {c.mtd_jobs === 1 ? 'job' : 'jobs'} &middot; avg{' '}
+              {fmtUsd(c.avg_job_size)}/job
+            </p>
           </div>
 
           <Stat
@@ -376,18 +376,7 @@ function CrewTable({
         {title}
       </h2>
       <div className="mt-4 overflow-x-auto rounded-card border-[3px] border-lime bg-white">
-        <table className="w-full min-w-[860px] table-fixed text-left text-sm">
-          <colgroup>
-            <col className="w-[16%]" />
-            <col className="w-[7%]" />
-            <col className="w-[12%]" />
-            <col className="w-[12%]" />
-            <col className="w-[10%]" />
-            <col className="w-[12%]" />
-            <col className="w-[12%]" />
-            <col className="w-[9%]" />
-            <col className="w-[10%]" />
-          </colgroup>
+        <table className="w-full min-w-[860px] text-left text-sm">
           <thead className="bg-paper-edge/40 text-fg-2">
             <tr>
               <Th>Crew</Th>
@@ -790,9 +779,12 @@ function KindBreakdown({
           'no budget set'
         )}
       </p>
+      <p className="mt-0.5 text-[11px] text-cream/60">
+        {fmtUsd(summary.mtd)} completed
+      </p>
       {summary.wip > 0 && (
         <p className="mt-0.5 text-[11px] text-cream/60">
-          {fmtUsd(summary.mtd)} completed &middot; {fmtUsd(summary.wip)} in progress
+          {fmtUsd(summary.wip)} in progress
         </p>
       )}
     </div>
@@ -808,7 +800,7 @@ function Th({
 }) {
   return (
     <th
-      className={`px-4 py-3 font-headline text-xs font-extrabold uppercase tracking-ribbon ${
+      className={`whitespace-nowrap px-4 py-3 font-headline text-xs font-extrabold uppercase tracking-ribbon ${
         align === 'right' ? 'text-right' : 'text-left'
       }`}
     >
