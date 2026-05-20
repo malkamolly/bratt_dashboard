@@ -422,12 +422,12 @@ export default function ScheduleForm() {
       {/* ============ Form ============ */}
       <section className="bt-card">
         <p className="bt-eyebrow">Step 1 — Enter the jobs</p>
-        <h2 className="mt-2 font-headline text-2xl font-black uppercase text-bark-deep">
+        <h2 className="mt-1 font-headline text-xl font-black uppercase text-bark-deep">
           Jobs on the schedule
         </h2>
 
         {/* Date picker */}
-        <div className="mt-5">
+        <div className="mt-4">
           <span className="font-headline text-xs font-extrabold uppercase tracking-ribbon text-fg-2">
             Schedule date
           </span>
@@ -461,67 +461,65 @@ export default function ScheduleForm() {
         </div>
 
         {/* ---- Single-day buckets per (sub)category ---- */}
-        <div className="mt-7">
+        <div className="mt-5">
           <p className="font-headline text-xs font-extrabold uppercase tracking-ribbon text-fg-2">
             Single-day jobs (by category)
           </p>
-          <p className="mt-1 text-xs text-fg-3">
-            Enter the count and the total revenue for all of those jobs combined.
-          </p>
 
-          <div className="mt-3 space-y-2">
+          {/* Column headers, shown once instead of per-row labels. */}
+          <div className="mt-2 grid grid-cols-[1fr_72px_120px] items-end gap-2 px-2 sm:grid-cols-[1fr_88px_140px]">
+            <span />
+            <span className="font-headline text-[10px] font-extrabold uppercase tracking-ribbon text-fg-3">
+              How many?
+            </span>
+            <span className="text-right font-headline text-[10px] font-extrabold uppercase tracking-ribbon text-fg-3">
+              Total revenue
+            </span>
+          </div>
+
+          <div className="mt-1 divide-y-2 divide-ink/5 rounded-md border-2 border-ink/10 bg-white/60">
             {buckets.map((b) => {
               const isFieldCrewSub = b.category === 'field-crew' && b.subcategory != null;
               return (
                 <div
                   key={b.id}
-                  className={
-                    isFieldCrewSub
-                      ? 'rounded-md border-2 border-ink/10 bg-white/60 p-3 sm:ml-6'
-                      : 'rounded-md border-2 border-ink/10 bg-white/60 p-3'
-                  }
+                  className="grid grid-cols-[1fr_72px_120px] items-center gap-2 px-2 py-1.5 sm:grid-cols-[1fr_88px_140px]"
                 >
-                  <div className="grid grid-cols-[1fr_auto_auto] items-end gap-3 sm:grid-cols-[1fr_120px_160px]">
-                    <p className="font-headline font-extrabold uppercase tracking-ribbon text-sm text-bark-deep">
-                      {isFieldCrewSub ? (
-                        <>
-                          <span className="text-fg-3">Field Crew · </span>
-                          {SUBCATEGORY_LABEL[b.subcategory as FieldCrewSub]}
-                        </>
-                      ) : (
-                        bucketLabel(b as BucketKey)
-                      )}
-                    </p>
-
-                    <label className="block">
-                      <span className="font-headline text-[11px] font-extrabold uppercase tracking-ribbon text-fg-2">
-                        How many?
-                      </span>
-                      <input
-                        type="number"
-                        min={0}
-                        step={1}
-                        value={b.count}
-                        onChange={(e) => updateBucket(b.id, { count: e.target.value })}
-                        placeholder="0"
-                        className="mt-1 block w-full rounded-md border-2 border-ink/20 bg-white px-2 py-1.5 font-headline text-sm focus:border-orange focus:outline-none"
-                      />
-                    </label>
-
-                    <label className="block">
-                      <span className="font-headline text-[11px] font-extrabold uppercase tracking-ribbon text-fg-2">
-                        Total revenue ($)
-                      </span>
-                      <input
-                        type="text"
-                        inputMode="decimal"
-                        value={b.revenue}
-                        onChange={(e) => updateBucket(b.id, { revenue: e.target.value })}
-                        placeholder="0.00"
-                        className="mt-1 block w-full rounded-md border-2 border-ink/20 bg-white px-2 py-1.5 font-headline text-sm focus:border-orange focus:outline-none"
-                      />
-                    </label>
-                  </div>
+                  <p
+                    className={
+                      isFieldCrewSub
+                        ? 'pl-3 font-headline text-sm font-bold text-bark-deep'
+                        : 'font-headline text-sm font-extrabold uppercase tracking-ribbon text-bark-deep'
+                    }
+                  >
+                    {isFieldCrewSub ? (
+                      <>
+                        <span className="text-fg-3">↳ </span>
+                        {SUBCATEGORY_LABEL[b.subcategory as FieldCrewSub]}
+                      </>
+                    ) : (
+                      bucketLabel(b as BucketKey)
+                    )}
+                  </p>
+                  <input
+                    type="number"
+                    min={0}
+                    step={1}
+                    value={b.count}
+                    onChange={(e) => updateBucket(b.id, { count: e.target.value })}
+                    placeholder="0"
+                    aria-label={`${bucketLabel(b as BucketKey)} — how many`}
+                    className="block w-full rounded-md border-2 border-ink/20 bg-white px-2 py-1 font-headline text-sm focus:border-orange focus:outline-none"
+                  />
+                  <input
+                    type="text"
+                    inputMode="decimal"
+                    value={b.revenue}
+                    onChange={(e) => updateBucket(b.id, { revenue: e.target.value })}
+                    placeholder="0.00"
+                    aria-label={`${bucketLabel(b as BucketKey)} — total revenue`}
+                    className="block w-full rounded-md border-2 border-ink/20 bg-white px-2 py-1 text-right font-headline text-sm focus:border-orange focus:outline-none"
+                  />
                 </div>
               );
             })}
@@ -529,20 +527,17 @@ export default function ScheduleForm() {
         </div>
 
         {/* ---- Multi-day individual jobs ---- */}
-        <div className="mt-7">
+        <div className="mt-5">
           <p className="font-headline text-xs font-extrabold uppercase tracking-ribbon text-fg-2">
             Multi-day jobs (one per row)
           </p>
-          <p className="mt-1 text-xs text-fg-3">
-            Each job&rsquo;s total revenue is divided by its days to figure out tomorrow&rsquo;s share.
-          </p>
 
           {multi.length === 0 ? (
-            <p className="mt-3 rounded-md border-2 border-dashed border-ink/15 p-4 text-center text-sm text-fg-2">
-              No multi-day jobs scheduled.
+            <p className="mt-2 text-xs text-fg-3">
+              None yet. Each job&rsquo;s total revenue is divided by its days to figure out tomorrow&rsquo;s share.
             </p>
           ) : (
-            <div className="mt-3 space-y-3">
+            <div className="mt-2 space-y-2">
               {multi.map((m, idx) => {
                 const revenue = parseMoney(m.revenue);
                 const days = parseDays(m.days);
