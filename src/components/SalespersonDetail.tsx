@@ -326,7 +326,8 @@ function DailyEntriesSection({
       ) : (
         <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5">
           {weeks.map((w) => {
-            const weekTotal = w.workingDays.reduce((s, d) => {
+            const workingDaySet = new Set(w.workingDays);
+            const weekTotal = w.daysInMonth.reduce((s, d) => {
               const e = entryByDate.get(d);
               return s + (e ? Number(e.amount) : 0);
             }, 0);
@@ -341,19 +342,28 @@ function DailyEntriesSection({
                   </p>
                 </header>
                 <ul className="divide-y divide-paper-edge/50">
-                  {w.workingDays.map((iso) => {
+                  {w.daysInMonth.map((iso) => {
                     const d = fromIsoDate(iso as IsoDate);
                     const dow = d.toLocaleDateString('en-US', {
                       weekday: 'short',
                     });
                     const e = entryByDate.get(iso);
+                    const isOffHours = !workingDaySet.has(iso);
                     return (
                       <li key={iso}>
                         <Link
                           href={`/sales/entry?date=${iso}`}
-                          className="flex items-baseline justify-between px-3 py-1.5 text-sm hover:bg-paper-edge/30"
+                          className={`flex items-baseline justify-between px-3 py-1.5 text-sm hover:bg-paper-edge/30 ${
+                            isOffHours ? 'bg-paper/30' : ''
+                          }`}
                         >
-                          <span className="font-headline font-bold text-ink">
+                          <span
+                            className={
+                              isOffHours
+                                ? 'font-headline font-bold text-fg-2'
+                                : 'font-headline font-bold text-ink'
+                            }
+                          >
                             <span className="mr-1.5 text-fg-3">{dow}</span>
                             {d.getDate()}
                           </span>
