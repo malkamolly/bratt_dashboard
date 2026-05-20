@@ -146,27 +146,34 @@ export type ProductionPaceInput = {
   budgetedDaysBeenThrough: number;
   crewBudgets: Record<string, number>;  // crew_id -> monthly $ budget
   crewIds: string[];
+  /** crew_id -> dollar value of work in progress (not yet booked). Optional;
+   *  any crew not in the map is treated as 0. */
+  crewInProgress?: Record<string, number>;
 };
 
 export type CrewPace = {
   crew_id: string;
   mtd_jobs: number;
-  mtd_revenue: number;
+  mtd_revenue: number;                // booked only
+  in_progress_revenue: number;        // work not yet booked
+  effective_mtd_revenue: number;      // booked + in-progress
   daily_avg_jobs: number;
   daily_avg_revenue: number;
   budget: number;
-  remaining_revenue_needed: number;
-  daily_budget_needed: number;       // remaining / days remaining
-  pacing_revenue: number;            // projected month-end revenue
-  avg_job_size: number;              // revenue / jobs
-  pct_to_budget: number;             // mtd_revenue / budget (0 if budget=0)
+  remaining_revenue_needed: number;   // budget - effective MTD
+  daily_budget_needed: number;        // remaining / days remaining
+  pacing_revenue: number;             // booked run-rate to month-end + WIP
+  avg_job_size: number;               // revenue / jobs
+  pct_to_budget: number;              // effective MTD / budget (0 if budget=0)
 };
 
 export type ProductionPaceResult = {
   perCrew: CrewPace[];
   combined: {
     mtd_jobs: number;
-    mtd_revenue: number;
+    mtd_revenue: number;                // booked only
+    in_progress_revenue: number;        // work not yet booked
+    effective_mtd_revenue: number;      // booked + in-progress
     daily_avg_jobs: number;
     daily_avg_revenue: number;
     total_budget: number;
@@ -190,10 +197,12 @@ export function calculateProductionPace(
     budgetedDaysBeenThrough,
     crewBudgets,
     crewIds,
+    crewInProgress,
   } = input;
 
   const daysRemaining = Math.max(0, budgetedDays - budgetedDaysBeenThrough);
   const adj = reconciliation?.adjustments ?? {};
+  const wip = crewInProgress ?? {};
 
   // Aggregate MTD jobs + revenue per crew
   const mtdJobs = new Map<string, number>();
@@ -214,24 +223,30 @@ export function calculateProductionPace(
   const perCrew: CrewPace[] = crewIds.map((id) => {
     const jobs = mtdJobs.get(id) ?? 0;
     const revenue = mtdRevenue.get(id) ?? 0;
+    const in_progress_revenue = wip[id] ?? 0;
+    const effective_mtd_revenue = revenue + in_progress_revenue;
     const budget = crewBudgets[id] ?? 0;
     const daily_avg_jobs =
       budgetedDaysBeenThrough > 0 ? jobs / budgetedDaysBeenThrough : 0;
     const daily_avg_revenue =
       budgetedDaysBeenThrough > 0 ? revenue / budgetedDaysBeenThrough : 0;
-    const remaining_revenue_needed = budget - revenue;
+    const remaining_revenue_needed = budget - effective_mtd_revenue;
     const daily_budget_needed =
       daysRemaining > 0 ? Math.max(0, remaining_revenue_needed) / daysRemaining : 0;
+    // Projection: book the booked-revenue run-rate forward to month-end, then
+    // add WIP as a one-time bump (it's not part of the daily rate).
     const pacing_revenue =
-      budgetedDaysBeenThrough > 0
+      (budgetedDaysBeenThrough > 0
         ? (revenue / budgetedDaysBeenThrough) * budgetedDays
-        : 0;
+        : 0) + in_progress_revenue;
     const avg_job_size = jobs > 0 ? revenue / jobs : 0;
-    const pct_to_budget = budget > 0 ? revenue / budget : 0;
+    const pct_to_budget = budget > 0 ? effective_mtd_revenue / budget : 0;
     return {
       crew_id: id,
       mtd_jobs: jobs,
       mtd_revenue: revenue,
+      in_progress_revenue,
+      effective_mtd_revenue,
       daily_avg_jobs,
       daily_avg_revenue,
       budget,
@@ -245,22 +260,26 @@ export function calculateProductionPace(
 
   const total_jobs = perCrew.reduce((s, c) => s + c.mtd_jobs, 0);
   const total_revenue = perCrew.reduce((s, c) => s + c.mtd_revenue, 0);
+  const total_in_progress = perCrew.reduce((s, c) => s + c.in_progress_revenue, 0);
+  const effective_total = total_revenue + total_in_progress;
   const total_budget = perCrew.reduce((s, c) => s + c.budget, 0);
-  const total_remaining_revenue = total_budget - total_revenue;
+  const total_remaining_revenue = total_budget - effective_total;
   const total_daily_budget_needed =
     daysRemaining > 0
       ? Math.max(0, total_remaining_revenue) / daysRemaining
       : 0;
   const total_pacing_revenue =
-    budgetedDaysBeenThrough > 0
+    (budgetedDaysBeenThrough > 0
       ? (total_revenue / budgetedDaysBeenThrough) * budgetedDays
-      : 0;
+      : 0) + total_in_progress;
 
   return {
     perCrew,
     combined: {
       mtd_jobs: total_jobs,
       mtd_revenue: total_revenue,
+      in_progress_revenue: total_in_progress,
+      effective_mtd_revenue: effective_total,
       daily_avg_jobs:
         budgetedDaysBeenThrough > 0 ? total_jobs / budgetedDaysBeenThrough : 0,
       daily_avg_revenue:

@@ -127,11 +127,14 @@ function LiveMonthView({
     budgetedDaysBeenThrough: data.ctx.budgetedDaysBeenThrough,
     crewBudgets: data.crewBudgets,
     crewIds: data.crews.map((c) => c.id),
+    crewInProgress: data.crewInProgress,
   });
 
   const c = result.combined;
+  // Pace status uses effective (booked + in-progress) MTD so a crew with a
+  // big open job doesn't show "behind" just because the job hasn't closed.
   const companyStatus = paceStatus(
-    c.mtd_revenue,
+    c.effective_mtd_revenue,
     c.total_budget,
     c.budgeted_days_been_through,
     c.budgeted_days,
@@ -198,13 +201,19 @@ function LiveMonthView({
                 Combined MTD
               </p>
               <p className="mt-2 font-display text-5xl tracking-wider">
-                {fmtUsd(c.mtd_revenue)}
+                {fmtUsd(c.effective_mtd_revenue)}
               </p>
               <p className="mt-1 text-sm text-cream/80">
                 of {fmtUsd(c.total_budget)} &middot;{' '}
                 {c.total_budget > 0
-                  ? fmtPct(c.mtd_revenue / c.total_budget)
+                  ? fmtPct(c.effective_mtd_revenue / c.total_budget)
                   : '—'} of budget
+              </p>
+              <p className="mt-1 text-xs text-cream/60">
+                {fmtUsd(c.mtd_revenue)} booked
+                {c.in_progress_revenue > 0 && (
+                  <> &middot; {fmtUsd(c.in_progress_revenue)} in progress</>
+                )}
               </p>
               <p className="mt-1 text-xs text-cream/60">
                 {c.mtd_jobs} {c.mtd_jobs === 1 ? 'job' : 'jobs'} &middot; avg{' '}
@@ -221,7 +230,11 @@ function LiveMonthView({
           <Stat
             label="Pacing to finish"
             value={fmtUsd(c.total_pacing_revenue)}
-            hint="If today's rate holds"
+            hint={
+              c.in_progress_revenue > 0
+                ? "Booked run-rate + in-progress"
+                : "If today's rate holds"
+            }
           />
           <Stat
             label="Daily avg so far"
@@ -344,22 +357,24 @@ function CrewTable({
         {title}
       </h2>
       <div className="mt-4 overflow-x-auto rounded-card border-[3px] border-lime bg-white">
-        <table className="w-full min-w-[768px] table-fixed text-left text-sm">
+        <table className="w-full min-w-[860px] table-fixed text-left text-sm">
           <colgroup>
-            <col className="w-[18%]" />
-            <col className="w-[8%]" />
-            <col className="w-[13%]" />
+            <col className="w-[16%]" />
+            <col className="w-[7%]" />
             <col className="w-[12%]" />
-            <col className="w-[13%]" />
-            <col className="w-[13%]" />
-            <col className="w-[11%]" />
             <col className="w-[12%]" />
+            <col className="w-[10%]" />
+            <col className="w-[12%]" />
+            <col className="w-[12%]" />
+            <col className="w-[9%]" />
+            <col className="w-[10%]" />
           </colgroup>
           <thead className="bg-paper-edge/40 text-fg-2">
             <tr>
               <Th>Crew</Th>
               <Th align="right">Jobs</Th>
-              <Th align="right">Revenue</Th>
+              <Th align="right">Booked</Th>
+              <Th align="right">In Progress</Th>
               <Th align="right">Avg Job</Th>
               <Th align="right">Pacing</Th>
               <Th align="right">Budget</Th>
@@ -372,7 +387,7 @@ function CrewTable({
               const status =
                 p.budget > 0
                   ? paceStatus(
-                      p.mtd_revenue,
+                      p.effective_mtd_revenue,
                       p.budget,
                       companyDaysComplete,
                       companyDays,
@@ -394,6 +409,13 @@ function CrewTable({
                   </Td>
                   <Td align="right">{p.mtd_jobs}</Td>
                   <Td align="right">{fmtUsd(p.mtd_revenue)}</Td>
+                  <Td align="right">
+                    {p.in_progress_revenue > 0 ? (
+                      fmtUsd(p.in_progress_revenue)
+                    ) : (
+                      <span className="text-fg-3">—</span>
+                    )}
+                  </Td>
                   <Td align="right">{p.mtd_jobs > 0 ? fmtUsd(p.avg_job_size) : '—'}</Td>
                   <Td align="right">{fmtUsd(p.pacing_revenue)}</Td>
                   <Td align="right">
@@ -414,7 +436,7 @@ function CrewTable({
         </table>
       </div>
       <p className="mt-3 text-xs text-fg-3">
-        Click a crew name to see day-by-day numbers.
+        Click a crew name to see day-by-day numbers. Status uses booked + in-progress revenue.
       </p>
     </section>
   );
@@ -638,12 +660,20 @@ function Header({
       </div>
       <div className="flex flex-wrap items-center gap-3">
         {showEntryButton && (
-          <Link
-            href="/production/entry"
-            className="inline-flex items-center rounded-full bg-orange px-5 py-2 font-headline text-xs font-extrabold uppercase tracking-ribbon text-white shadow-sh-1 transition-colors hover:bg-orange-hover"
-          >
-            Enter Today&apos;s Numbers
-          </Link>
+          <>
+            <Link
+              href="/production/entry"
+              className="inline-flex items-center rounded-full bg-orange px-5 py-2 font-headline text-xs font-extrabold uppercase tracking-ribbon text-white shadow-sh-1 transition-colors hover:bg-orange-hover"
+            >
+              Enter Today&apos;s Numbers
+            </Link>
+            <Link
+              href="/production/in-progress"
+              className="inline-flex items-center rounded-full border-2 border-bark bg-white px-4 py-2 font-headline text-xs font-extrabold uppercase tracking-ribbon text-bark transition-colors hover:bg-bark hover:text-cream"
+            >
+              In-Progress Jobs
+            </Link>
+          </>
         )}
         <MonthPicker year={year} month={month} />
       </div>

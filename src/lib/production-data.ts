@@ -40,6 +40,9 @@ export type ProductionMonthData = {
   historicals: Array<{ crew_id: string; jobs: number; revenue: number }>;
   crewBudgets: Record<string, number>;
   reconciliation: Record<string, { jobs: number; revenue: number }>;
+  /** Per-crew dollar value of work in progress (not yet booked). Snapshot, not
+   *  month-tied — see migration 017. Crews without a row are treated as 0. */
+  crewInProgress: Record<string, number>;
   holidays: Set<IsoDate>;
 };
 
@@ -77,6 +80,7 @@ export async function loadProductionMonth(
     holidayRes,
     entriesRes,
     historicalsRes,
+    inProgressRes,
   ] = await Promise.all([
     supabase
       .from('crews')
@@ -114,6 +118,9 @@ export async function loadProductionMonth(
       .select('crew_id, jobs, revenue')
       .eq('year', y)
       .eq('month', m),
+    supabase
+      .from('crew_in_progress')
+      .select('crew_id, amount'),
   ]);
 
   const holidays = new Set<IsoDate>(
@@ -128,6 +135,11 @@ export async function loadProductionMonth(
   const crewBudgets: Record<string, number> = {};
   for (const b of budgetsRes.data ?? []) {
     crewBudgets[b.crew_id as string] = Number(b.budget_revenue);
+  }
+
+  const crewInProgress: Record<string, number> = {};
+  for (const row of inProgressRes.data ?? []) {
+    crewInProgress[row.crew_id as string] = Number(row.amount);
   }
 
   return {
@@ -152,6 +164,7 @@ export async function loadProductionMonth(
     })),
     crewBudgets,
     reconciliation: normalizeReconciliation(reconRes.data?.adjustments),
+    crewInProgress,
     holidays,
   };
 }
