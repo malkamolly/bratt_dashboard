@@ -141,7 +141,7 @@ body {
   }
 
   /* Status chips */
-  .bt-status      { @apply inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-extrabold uppercase tracking-ribbon; }
+  .bt-status      { @apply inline-flex items-center gap-1.5 whitespace-nowrap rounded-full px-3 py-1 text-xs font-extrabold uppercase tracking-ribbon; }
   .bt-status-ahead   { @apply bt-status bg-green-dark text-white; }
   .bt-status-onpace  { @apply bt-status bg-green text-ink; }
   .bt-status-behind  { @apply bt-status bg-orange-press text-white; }
