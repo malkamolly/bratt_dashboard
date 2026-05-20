@@ -38,6 +38,9 @@ type Props = {
    *  e.g. "/sales/<id>" or "/hub/arborists/<slug>" (no query string). */
   basePath: string;
   arborist?: ArboristInfo | null;
+  /** When true, day rows are clickable to edit that single (date, person)
+   *  cell. When false, day rows render as plain (non-link) list items. */
+  canEdit?: boolean;
 };
 
 export async function SalespersonDetail({
@@ -47,6 +50,7 @@ export async function SalespersonDetail({
   breadcrumb,
   basePath,
   arborist,
+  canEdit = false,
 }: Props) {
   const supabase = await serverClient();
   const { start, end } = monthRange(year, month);
@@ -256,6 +260,9 @@ export async function SalespersonDetail({
           start={start}
           entries={entries}
           weeks={weeks}
+          salespersonId={salespersonId}
+          basePath={basePath}
+          canEdit={canEdit}
         />
       )}
 
@@ -293,6 +300,9 @@ function DailyEntriesSection({
   start,
   entries,
   weeks,
+  salespersonId,
+  basePath,
+  canEdit,
 }: {
   year: number;
   month: number;
@@ -303,9 +313,18 @@ function DailyEntriesSection({
     created_by: string | null;
   }>;
   weeks: WorkingWeek[];
+  salespersonId: string;
+  basePath: string;
+  canEdit: boolean;
 }) {
   const entryByDate = new Map<string, (typeof entries)[number]>();
   for (const e of entries) entryByDate.set(e.entry_date as string, e);
+
+  // Where to send the user back after they save/cancel/delete from the
+  // single-cell edit page. Keeps month-context intact.
+  const returnTo = `${basePath}?year=${year}&month=${month}`;
+  const cellHref = (iso: string) =>
+    `/sales/entry/cell?date=${iso}&salespersonId=${encodeURIComponent(salespersonId)}&returnTo=${encodeURIComponent(returnTo)}`;
 
   return (
     <section className="mt-8">
@@ -316,12 +335,14 @@ function DailyEntriesSection({
       {entries.length === 0 ? (
         <div className="mt-4 rounded-card border-2 border-dashed border-paper-edge bg-white/60 px-6 py-8 text-center text-fg-2">
           No entries yet for {monthLabel(year, month)}.{' '}
-          <Link
-            href={`/sales/entry?date=${start}`}
-            className="font-bold text-orange hover:underline"
-          >
-            Add some →
-          </Link>
+          {canEdit && (
+            <Link
+              href={cellHref(start)}
+              className="font-bold text-orange hover:underline"
+            >
+              Add some →
+            </Link>
+          )}
         </div>
       ) : (
         <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5">
@@ -349,34 +370,41 @@ function DailyEntriesSection({
                     });
                     const e = entryByDate.get(iso);
                     const isOffHours = !workingDaySet.has(iso);
+                    const rowClass = `flex items-baseline justify-between px-3 py-1.5 text-sm ${
+                      isOffHours ? 'bg-paper/30' : ''
+                    } ${canEdit ? 'hover:bg-paper-edge/30' : ''}`;
+                    const dayLabel = (
+                      <>
+                        <span
+                          className={
+                            isOffHours
+                              ? 'font-headline font-bold text-fg-2'
+                              : 'font-headline font-bold text-ink'
+                          }
+                        >
+                          <span className="mr-1.5 text-fg-3">{dow}</span>
+                          {d.getDate()}
+                        </span>
+                        <span
+                          className={
+                            e
+                              ? 'font-headline font-bold text-ink'
+                              : 'text-fg-3'
+                          }
+                        >
+                          {e ? fmtUsd(Number(e.amount)) : '—'}
+                        </span>
+                      </>
+                    );
                     return (
                       <li key={iso}>
-                        <Link
-                          href={`/sales/entry?date=${iso}`}
-                          className={`flex items-baseline justify-between px-3 py-1.5 text-sm hover:bg-paper-edge/30 ${
-                            isOffHours ? 'bg-paper/30' : ''
-                          }`}
-                        >
-                          <span
-                            className={
-                              isOffHours
-                                ? 'font-headline font-bold text-fg-2'
-                                : 'font-headline font-bold text-ink'
-                            }
-                          >
-                            <span className="mr-1.5 text-fg-3">{dow}</span>
-                            {d.getDate()}
-                          </span>
-                          <span
-                            className={
-                              e
-                                ? 'font-headline font-bold text-ink'
-                                : 'text-fg-3'
-                            }
-                          >
-                            {e ? fmtUsd(Number(e.amount)) : '—'}
-                          </span>
-                        </Link>
+                        {canEdit ? (
+                          <Link href={cellHref(iso)} className={rowClass}>
+                            {dayLabel}
+                          </Link>
+                        ) : (
+                          <div className={rowClass}>{dayLabel}</div>
+                        )}
                       </li>
                     );
                   })}

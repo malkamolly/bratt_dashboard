@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
-import { getAllowedUser } from '@/lib/auth';
+import { getAllowedUser, canAccessHub } from '@/lib/auth';
 import { serverClient } from '@/lib/supabase';
 import { SalespersonDetail } from '@/components/SalespersonDetail';
 import { getArboristBySalespersonName } from '@/lib/hub-content';
@@ -61,6 +61,8 @@ export default async function SalespersonDetailPage({
     </p>
   );
 
+  const canEdit = canAccessHub(user.role, 'pace');
+
   return (
     <SalespersonDetail
       salespersonId={salespersonId}
@@ -68,6 +70,7 @@ export default async function SalespersonDetailPage({
       month={month}
       breadcrumb={breadcrumb}
       basePath={`/sales/${salespersonId}`}
+      canEdit={canEdit}
       arborist={
         arborist
           ? {

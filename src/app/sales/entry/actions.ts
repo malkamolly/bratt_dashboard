@@ -11,7 +11,15 @@
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { serverClient } from '@/lib/supabase';
-import { getAllowedUser } from '@/lib/auth';
+import { getAllowedUser, canAccessHub } from '@/lib/auth';
+
+function safeReturnTo(raw: FormDataEntryValue | null, fallback: string): string {
+  if (!raw) return fallback;
+  const s = String(raw);
+  if (!s.startsWith('/')) return fallback;
+  if (s.startsWith('//')) return fallback;
+  return s;
+}
 
 // On success the action redirects, so the return type only models errors.
 export type SaveResult = { ok: false; error: string } | undefined;
@@ -107,4 +115,85 @@ export async function deleteSalesEntry(formData: FormData): Promise<void> {
   revalidatePath('/sales');
   revalidatePath('/sales/entry');
   redirect(`/sales/entry?date=${encodeURIComponent(date)}&deleted=1`);
+}
+
+// ----------------------------------------------------------------------------
+// Single-cell save + delete (used by /sales/entry/cell).
+// Saves or removes exactly one (date, salesperson) row, then bounces the user
+// back to whatever page sent them here (the arborist's detail page).
+// ----------------------------------------------------------------------------
+
+export type CellSaveResult = { ok: false; error: string } | undefined;
+
+export async function saveSalesCell(
+  _prev: CellSaveResult,
+  formData: FormData,
+): Promise<CellSaveResult> {
+  const user = await getAllowedUser();
+  if (!user) return { ok: false, error: 'Not signed in.' };
+  if (!canAccessHub(user.role, 'pace')) {
+    return { ok: false, error: 'You do not have permission to edit sales.' };
+  }
+
+  const date = String(formData.get('entry_date') ?? '');
+  const salespersonId = String(formData.get('salesperson_id') ?? '');
+  const returnTo = safeReturnTo(formData.get('return_to'), '/sales');
+
+  if (!isValidIsoDate(date)) {
+    return { ok: false, error: 'Please pick a valid date.' };
+  }
+  if (!salespersonId) {
+    return { ok: false, error: 'Missing salesperson.' };
+  }
+
+  const amount = parseAmount(formData.get('amount'));
+  if (amount == null) {
+    return { ok: false, error: 'Please enter a valid number.' };
+  }
+
+  const supabase = await serverClient();
+  const { error } = await supabase.from('sales_entries').upsert(
+    [
+      {
+        entry_date: date,
+        salesperson_id: salespersonId,
+        amount,
+        created_by: user.email,
+      },
+    ],
+    { onConflict: 'entry_date,salesperson_id' },
+  );
+
+  if (error) return { ok: false, error: error.message };
+
+  revalidatePath('/sales');
+  revalidatePath('/sales/entry');
+  revalidatePath(returnTo);
+  redirect(returnTo);
+}
+
+export async function deleteSalesCell(formData: FormData): Promise<void> {
+  const user = await getAllowedUser();
+  if (!user) redirect('/login');
+  if (!canAccessHub(user.role, 'pace')) redirect('/access-denied');
+
+  const date = String(formData.get('entry_date') ?? '');
+  const salespersonId = String(formData.get('salesperson_id') ?? '');
+  const returnTo = safeReturnTo(formData.get('return_to'), '/sales');
+
+  if (!isValidIsoDate(date) || !salespersonId) {
+    redirect(returnTo);
+  }
+
+  const supabase = await serverClient();
+  await supabase
+    .from('sales_entries')
+    .delete()
+    .eq('entry_date', date)
+    .eq('salesperson_id', salespersonId);
+
+  revalidatePath('/sales');
+  revalidatePath('/sales/entry');
+  revalidatePath(returnTo);
+  redirect(returnTo);
 }

@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { requireHubAccess } from '@/lib/auth';
+import { requireHubAccess, canAccessHub } from '@/lib/auth';
 import { serverClient } from '@/lib/supabase';
 import { SalespersonDetail } from '@/components/SalespersonDetail';
 import { HubSubNav } from '@/components/HubSubNav';
@@ -30,7 +30,10 @@ export default async function ArboristDetailPage({
   params: Params;
   searchParams: Search;
 }) {
-  await requireHubAccess('hub');
+  const user = await requireHubAccess('hub');
+  // Edit access on day cells = same roles that can edit Pace.
+  // Sales arborists see the page but day rows are non-clickable for them.
+  const canEdit = canAccessHub(user.role, 'pace');
   const { slug } = await params;
   const sp = await searchParams;
 
@@ -100,6 +103,7 @@ export default async function ArboristDetailPage({
       month={month}
       breadcrumb={breadcrumb}
       basePath={`/hub/arborists/${a.slug}`}
+      canEdit={canEdit}
       arborist={{
         photo,
         certified: a.certified,
