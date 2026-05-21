@@ -13,6 +13,7 @@ export type Role =
   | 'user'
   | 'sales_manager'
   | 'sales_arborist'
+  | 'field_manager'
   | 'field_crew';
 
 export type AllowedUser = {
@@ -24,11 +25,12 @@ export type Hub = 'pace' | 'hub' | 'crew';
 
 // Which roles can access which hubs. Admin sees everything; office staff
 // (user) and the sales manager can see Pace + Hub; sales_arborist +
-// field_crew are siloed to their own hub.
+// field_crew are siloed to their own hub. field_manager mirrors
+// sales_manager for the Field Crew Hub — view + edit on Crew only.
 export const HUB_ACCESS: Record<Hub, ReadonlyArray<Role>> = {
   pace: ['admin', 'user', 'sales_manager'],
   hub: ['admin', 'user', 'sales_manager', 'sales_arborist'],
-  crew: ['admin', 'user', 'field_crew'],
+  crew: ['admin', 'user', 'field_manager', 'field_crew'],
 };
 
 export const ROLE_LABELS: Record<Role, string> = {
@@ -36,6 +38,7 @@ export const ROLE_LABELS: Record<Role, string> = {
   user: 'Office',
   sales_manager: 'Sales Manager',
   sales_arborist: 'Sales Arborist',
+  field_manager: 'Field Manager',
   field_crew: 'Field Crew',
 };
 
@@ -45,12 +48,19 @@ export const ROLE_DESCRIPTIONS: Record<Role, string> = {
   sales_manager:
     'Like Office, plus can create and edit weekly meetings on the Sales Arborist Hub.',
   sales_arborist: 'View-only access to the Sales Arborist Hub.',
+  field_manager:
+    'View the Field Crew Hub, plus edit crew skill levels, trainings, development plans, and daily huddles.',
   field_crew: 'View-only access to the Field Crew Hub.',
 };
 
 /** Can this role create or edit meetings on the Sales Arborist Hub? */
 export function canEditMeetings(role: Role): boolean {
   return role === 'admin' || role === 'sales_manager';
+}
+
+/** Can this role create or edit Field Crew Hub data (skills, trainings, plans, huddles)? */
+export function canEditCrew(role: Role): boolean {
+  return role === 'admin' || role === 'field_manager';
 }
 
 /**

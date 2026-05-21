@@ -39,8 +39,8 @@ const HUB_CARDS: HubCard[] = [
     eyebrow: 'Hub 3',
     title: 'Field Crew Hub',
     description:
-      'Crew schedules, daily targets, and field resources. Coming soon.',
-    available: false,
+      'Skills, trainings, and development plans for the Bratt Tree field team.',
+    available: true,
   },
 ];
 
