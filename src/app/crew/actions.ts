@@ -350,6 +350,11 @@ export async function updateEmployeeProfile(formData: FormData): Promise<void> {
   const leadsCrew = formData.get('leads_crew') === 'on';
   const active = formData.get('active') === 'on';
   const notes = String(formData.get('notes') ?? '').trim() || null;
+  // Specialties — checkboxes share name="specialties", so getAll returns
+  // every value that was checked. De-dupe just in case.
+  const specialties = Array.from(
+    new Set(formData.getAll('specialties').map((v) => String(v))),
+  );
 
   const supabase = await serverClient();
 
@@ -361,6 +366,16 @@ export async function updateEmployeeProfile(formData: FormData): Promise<void> {
   if (readErr || !before) {
     redirect(`/crew/employees/${slug}?error=not_found`);
   }
+
+  // Read existing specialties so we can diff for the activity feed.
+  const { data: existingSpecRows } = await supabase
+    .from('field_crew_employee_specialties')
+    .select('specialty_key')
+    .eq('employee_slug', slug);
+  const beforeSpecs = new Set(
+    (existingSpecRows ?? []).map((r) => (r as { specialty_key: string }).specialty_key),
+  );
+  const afterSpecs = new Set(specialties);
 
   const { error } = await supabase
     .from('field_crew_employees')
@@ -375,6 +390,23 @@ export async function updateEmployeeProfile(formData: FormData): Promise<void> {
     .eq('slug', slug);
   if (error) {
     redirect(`/admin/crew/employees/${slug}?error=${encodeURIComponent(error.message)}`);
+  }
+
+  // Sync the specialties join table: delete what was removed, insert what
+  // was added. Anything still present in both sets is a no-op.
+  const toAdd = [...afterSpecs].filter((k) => !beforeSpecs.has(k));
+  const toRemove = [...beforeSpecs].filter((k) => !afterSpecs.has(k));
+  if (toRemove.length > 0) {
+    await supabase
+      .from('field_crew_employee_specialties')
+      .delete()
+      .eq('employee_slug', slug)
+      .in('specialty_key', toRemove);
+  }
+  if (toAdd.length > 0) {
+    await supabase
+      .from('field_crew_employee_specialties')
+      .insert(toAdd.map((k) => ({ employee_slug: slug, specialty_key: k })));
   }
 
   // Append meaningful changes to the activity log (skip notes — too noisy).
@@ -401,6 +433,23 @@ export async function updateEmployeeProfile(formData: FormData): Promise<void> {
   }
   if (before.leads_crew !== leadsCrew) {
     lines.push(leadsCrew ? 'Promoted to foreman.' : 'No longer foreman.');
+  }
+  if (toAdd.length > 0 || toRemove.length > 0) {
+    // Look up display names so the activity reads naturally.
+    const { data: specRows } = await supabase
+      .from('field_crew_specialties')
+      .select('key, display_name')
+      .in('key', [...toAdd, ...toRemove]);
+    const specName = new Map<string, string>();
+    for (const r of (specRows ?? []) as { key: string; display_name: string }[]) {
+      specName.set(r.key, r.display_name);
+    }
+    for (const k of toAdd) {
+      lines.push(`Added ${specName.get(k) ?? k} specialty.`);
+    }
+    for (const k of toRemove) {
+      lines.push(`Removed ${specName.get(k) ?? k} specialty.`);
+    }
   }
   for (const line of lines) {
     await logActivity(supabase, slug, today, line, user.email);

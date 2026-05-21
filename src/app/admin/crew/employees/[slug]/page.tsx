@@ -32,11 +32,13 @@ export default async function EditEmployeePage({
 
   const { slug } = await params;
   const sp = await searchParams;
-  const [employee, { positions }] = await Promise.all([
+  const [employee, { positions, specialties }] = await Promise.all([
     getEmployee(slug),
     getCatalogs(),
   ]);
   if (!employee) notFound();
+
+  const employeeSpecialties = new Set(employee.specialties);
 
   return (
     <main className="mx-auto max-w-2xl px-6 py-10">
@@ -138,6 +140,36 @@ export default async function EditEmployeePage({
               </span>
             </span>
           </label>
+        </div>
+
+        {/* ----- Specialties ----- */}
+        <div className="rounded-2 border border-paper-edge bg-paper p-4">
+          <p className="font-headline text-sm font-extrabold uppercase tracking-ribbon text-bark-deep">
+            Specialties
+          </p>
+          <p className="mt-1 text-xs text-fg-2">
+            Equipment-operator specialties show as pills next to the name on
+            the roster and profile. Pick any that apply (usually one or two).
+          </p>
+          <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
+            {specialties.map((s) => (
+              <label
+                key={s.key}
+                className="flex items-center gap-2 rounded-2 border border-paper-edge bg-cream px-3 py-2"
+              >
+                <input
+                  type="checkbox"
+                  name="specialties"
+                  value={s.key}
+                  defaultChecked={employeeSpecialties.has(s.key)}
+                  className="h-4 w-4 accent-orange"
+                />
+                <span className="font-headline text-xs font-extrabold uppercase tracking-ribbon text-bark-deep">
+                  {s.display_name}
+                </span>
+              </label>
+            ))}
+          </div>
         </div>
 
         {/* ----- Notes ----- */}
