@@ -17,6 +17,7 @@ import {
   listModuleQuestions,
   listAssignmentsForModule,
   listEmployees,
+  listPracticalItems,
 } from '@/lib/crew-data';
 import { countSlides, loadSourceText } from '@/lib/training-deck';
 import {
@@ -42,16 +43,19 @@ export default async function ModuleDetailPage({
   const mod = await getTrainingModule(slug);
   if (!mod) notFound();
 
-  const [questions, assignments, employees] = await Promise.all([
+  const [questions, assignments, employees, practicalItems] = await Promise.all([
     listModuleQuestions(slug),
     listAssignmentsForModule(slug),
     listEmployees({ activeOnly: true }),
+    listPracticalItems(slug),
   ]);
 
   const sourceText = await loadSourceText(slug);
   const slideCount = countSlides(sourceText);
   const hasDeck = slideCount > 0;
   const safetyCount = questions.filter((q) => q.safety_critical).length;
+  const practicalTotal = practicalItems.length;
+  const hasPractical = practicalTotal > 0;
 
   // Crew not yet assigned to this module — for the assignment form options.
   const assignedSlugs = new Set(assignments.map((a) => a.employee_slug));
@@ -82,6 +86,7 @@ export default async function ModuleDetailPage({
           <p className="mt-2 font-headline text-[10px] font-extrabold uppercase tracking-ribbon text-fg-3">
             v{mod.version} · {slideCount} slides · {questions.length} questions ·{' '}
             {safetyCount} safety-critical · Pass {mod.pass_threshold}%
+            {hasPractical ? ` · ${practicalTotal}-item practical` : ''}
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
@@ -149,8 +154,13 @@ export default async function ModuleDetailPage({
                     Employee
                   </th>
                   <th className="px-3 py-2 text-left font-headline text-[10px] font-extrabold uppercase tracking-ribbon text-fg-3">
-                    Status
+                    Written
                   </th>
+                  {hasPractical && (
+                    <th className="px-3 py-2 text-left font-headline text-[10px] font-extrabold uppercase tracking-ribbon text-fg-3">
+                      Practical
+                    </th>
+                  )}
                   <th className="px-3 py-2 text-left font-headline text-[10px] font-extrabold uppercase tracking-ribbon text-fg-3">
                     Score
                   </th>
@@ -198,6 +208,27 @@ export default async function ModuleDetailPage({
                           {status}
                         </span>
                       </td>
+                      {hasPractical && (
+                        <td className="px-3 py-2 text-fg-2">
+                          {(() => {
+                            const signed = a.practical_signed_count;
+                            const done = signed >= practicalTotal;
+                            return (
+                              <span
+                                className={`inline-flex items-center rounded-full px-2 py-0.5 font-headline text-[10px] font-extrabold uppercase tracking-ribbon ${
+                                  done
+                                    ? 'bg-green-dark text-white'
+                                    : signed > 0
+                                      ? 'bg-paper-edge text-bark-deep'
+                                      : 'bg-paper-edge text-fg-2'
+                                }`}
+                              >
+                                {signed} / {practicalTotal}
+                              </span>
+                            );
+                          })()}
+                        </td>
+                      )}
                       <td className="px-3 py-2 text-fg-2">
                         {a.latest_attempt?.score_total
                           ? `${a.latest_attempt.score_correct} / ${a.latest_attempt.score_total}`
@@ -219,6 +250,14 @@ export default async function ModuleDetailPage({
                                 Certificate
                               </Link>
                             ) : null}
+                            {hasPractical && (
+                              <Link
+                                href={`/crew/modules/${mod.slug}/practical/${a.id}`}
+                                className="bt-btn bt-btn-dark !text-[10px] !px-2 !py-1"
+                              >
+                                Practical
+                              </Link>
+                            )}
                             <form action={startTrainingAttempt}>
                               <input type="hidden" name="assignment_id" value={a.id} />
                               <button

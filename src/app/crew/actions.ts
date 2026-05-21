@@ -778,6 +778,118 @@ export async function updateEmployeeProfile(formData: FormData): Promise<void> {
 }
 
 // ============================================================================
+// Practical test-out signoffs
+// ============================================================================
+// Manager-only. The form on /crew/modules/[slug]/practical/[assignmentId]
+// posts here. For every checked-and-initialed item we insert a signoff
+// row; items that already had a signoff are left alone. After writing,
+// we ask Postgres to try issuing the certificate — it'll succeed only if
+// the written test has also passed and every item is now signed.
+// ============================================================================
+
+export async function signOffPracticalItems(formData: FormData): Promise<void> {
+  const user = await getAllowedUser();
+  if (!user) redirect('/login');
+  if (!canEditCrew(user.role)) redirect('/access-denied');
+
+  const assignmentId = String(formData.get('assignment_id') ?? '').trim();
+  const moduleSlug = String(formData.get('module_slug') ?? '').trim();
+  if (!assignmentId || !moduleSlug) {
+    redirect('/crew/modules?error=missing_assignment');
+  }
+  const back = `/crew/modules/${moduleSlug}/practical/${assignmentId}`;
+
+  // Each checked item posts pass_<itemId>=on. Initials are one shared
+  // value (the trainer types them once at the top of the form), since
+  // a single trainer typically signs off everything in one session.
+  const initials = String(formData.get('initials') ?? '').trim().toUpperCase();
+  if (!initials) {
+    redirect(`${back}?error=${encodeURIComponent('Enter your initials.')}`);
+  }
+  if (initials.length > 6) {
+    redirect(`${back}?error=${encodeURIComponent('Initials must be 6 characters or fewer.')}`);
+  }
+
+  const checkedItemIds: string[] = [];
+  for (const [k, v] of formData.entries()) {
+    if (k.startsWith('pass_') && String(v) === 'on') {
+      checkedItemIds.push(k.slice('pass_'.length));
+    }
+  }
+  if (checkedItemIds.length === 0) {
+    redirect(`${back}?error=${encodeURIComponent('Tick at least one item to sign off.')}`);
+  }
+
+  const supabase = await serverClient();
+
+  // Only insert signoffs for items that aren't already signed for this
+  // assignment, so we don't overwrite an earlier trainer's initials.
+  const { data: existing } = await supabase
+    .from('field_crew_training_practical_signoffs')
+    .select('item_id')
+    .eq('assignment_id', assignmentId);
+  const existingIds = new Set(((existing ?? []) as { item_id: string }[]).map((r) => r.item_id));
+  const toInsert = checkedItemIds
+    .filter((id) => !existingIds.has(id))
+    .map((id) => ({
+      assignment_id: assignmentId,
+      item_id: id,
+      trainer_initials: initials,
+      trainer_email: user.email,
+    }));
+
+  if (toInsert.length > 0) {
+    const { error } = await supabase
+      .from('field_crew_training_practical_signoffs')
+      .insert(toInsert);
+    if (error) {
+      redirect(`${back}?error=${encodeURIComponent(error.message)}`);
+    }
+  }
+
+  // Best-effort: ask Postgres to issue the cert if both halves are now done.
+  // The RPC is a no-op when the written test hasn't passed yet.
+  await supabase.rpc('field_crew_try_issue_certificate', { p_assignment_id: assignmentId });
+
+  revalidatePath(`/crew/modules/${moduleSlug}`);
+  revalidatePath(`/crew/modules/${moduleSlug}/practical/${assignmentId}`);
+  redirect(`${back}?saved=${toInsert.length}`);
+}
+
+/**
+ * Manager-only: undo a single signoff (typo in initials, wrong person, etc).
+ * If the assignment had a certificate issued because of this signoff, the
+ * cert stays on the attempt — we don't claw it back, that would require
+ * a separate "revoke certificate" flow.
+ */
+export async function undoPracticalSignoff(formData: FormData): Promise<void> {
+  const user = await getAllowedUser();
+  if (!user) redirect('/login');
+  if (!canEditCrew(user.role)) redirect('/access-denied');
+
+  const signoffId = String(formData.get('signoff_id') ?? '').trim();
+  const moduleSlug = String(formData.get('module_slug') ?? '').trim();
+  const assignmentId = String(formData.get('assignment_id') ?? '').trim();
+  if (!signoffId || !moduleSlug || !assignmentId) {
+    redirect('/crew/modules?error=missing_signoff');
+  }
+
+  const supabase = await serverClient();
+  const { error } = await supabase
+    .from('field_crew_training_practical_signoffs')
+    .delete()
+    .eq('id', signoffId);
+
+  const back = `/crew/modules/${moduleSlug}/practical/${assignmentId}`;
+  if (error) {
+    redirect(`${back}?error=${encodeURIComponent(error.message)}`);
+  }
+  revalidatePath(`/crew/modules/${moduleSlug}`);
+  revalidatePath(back);
+  redirect(`${back}?undone=1`);
+}
+
+// ============================================================================
 // Training-module settings (title + theme)
 // ============================================================================
 // Slide content is authored in /content/training-modules/<slug>.txt and only
