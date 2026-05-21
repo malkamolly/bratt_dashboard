@@ -19,7 +19,11 @@ import {
   listAssignmentsForModule,
   listEmployees,
 } from '@/lib/crew-data';
-import { assignTrainingModule, startTrainingAttempt } from '@/app/crew/actions';
+import {
+  assignTrainingModule,
+  startTrainingAttempt,
+  unassignTrainingModule,
+} from '@/app/crew/actions';
 
 export const dynamic = 'force-dynamic';
 
@@ -48,7 +52,7 @@ export default async function ModuleDetailPage({
   searchParams,
 }: {
   params: Promise<{ slug: string }>;
-  searchParams: Promise<{ assigned?: string; error?: string }>;
+  searchParams: Promise<{ assigned?: string; unassigned?: string; error?: string }>;
 }) {
   const user = await requireHubAccess('crew');
   const editable = canEditCrew(user.role);
@@ -119,6 +123,11 @@ export default async function ModuleDetailPage({
       {sp.assigned && (
         <p className="mt-5 rounded-2 bg-green/10 px-3 py-2 text-sm text-green-dark">
           Assigned to {sp.assigned} crew member{Number(sp.assigned) === 1 ? '' : 's'}.
+        </p>
+      )}
+      {sp.unassigned && (
+        <p className="mt-5 rounded-2 bg-green/10 px-3 py-2 text-sm text-green-dark">
+          Assignment removed.
         </p>
       )}
       {sp.error && (
@@ -228,7 +237,7 @@ export default async function ModuleDetailPage({
                       </td>
                       {editable && (
                         <td className="px-3 py-2">
-                          <div className="flex flex-wrap gap-2">
+                          <div className="flex flex-wrap items-center gap-2">
                             {a.latest_attempt?.certificate_number ? (
                               <Link
                                 href={`/crew/certificates/${a.latest_attempt.certificate_number}`}
@@ -246,6 +255,23 @@ export default async function ModuleDetailPage({
                                 {a.latest_attempt ? 'Retake' : 'Start test'}
                               </button>
                             </form>
+                            {passed !== true && (
+                              <form action={unassignTrainingModule}>
+                                <input type="hidden" name="assignment_id" value={a.id} />
+                                <input
+                                  type="hidden"
+                                  name="return_to"
+                                  value={`/crew/modules/${mod.slug}`}
+                                />
+                                <button
+                                  type="submit"
+                                  title="Remove this assignment"
+                                  className="font-headline text-[10px] font-extrabold uppercase tracking-ribbon text-fg-3 hover:text-orange-press"
+                                >
+                                  Unassign
+                                </button>
+                              </form>
+                            )}
                           </div>
                         </td>
                       )}
