@@ -264,7 +264,10 @@ export default async function FieldCrewHubPage() {
           Dig deeper
         </h2>
         <div className="mt-5 flex flex-wrap gap-3">
-          <Link href="/crew/skills" className="bt-btn bt-btn-primary">
+          <Link href="/crew/modules" className="bt-btn bt-btn-primary">
+            Training modules
+          </Link>
+          <Link href="/crew/skills" className="bt-btn bt-btn-dark">
             Skill catalog
           </Link>
           <Link href="/crew/trainings" className="bt-btn bt-btn-dark">
