@@ -742,6 +742,24 @@ export type AssignmentSummary = {
     score_total: number | null;
     certificate_number: string | null;
   } | null;
+  practical_signed_count: number;
+};
+
+export type PracticalItem = {
+  id: string;
+  module_slug: string;
+  position: number;
+  area: string;
+  task: string;
+};
+
+export type PracticalSignoff = {
+  id: string;
+  assignment_id: string;
+  item_id: string;
+  trainer_initials: string;
+  trainer_email: string;
+  signed_at: string;
 };
 
 export type CertificateRecord = {
@@ -765,6 +783,29 @@ export async function listTrainingModules(): Promise<TrainingModule[]> {
     .eq('is_active', true)
     .order('name');
   return (data ?? []) as TrainingModule[];
+}
+
+// ---------- Practical test-out (Slide #32 / signoff form) ----------
+
+export async function listPracticalItems(slug: string): Promise<PracticalItem[]> {
+  const supabase = await serverClient();
+  const { data } = await supabase
+    .from('field_crew_training_module_practical_items')
+    .select('*')
+    .eq('module_slug', slug)
+    .order('position');
+  return (data ?? []) as PracticalItem[];
+}
+
+export async function listPracticalSignoffsForAssignment(
+  assignmentId: string,
+): Promise<PracticalSignoff[]> {
+  const supabase = await serverClient();
+  const { data } = await supabase
+    .from('field_crew_training_practical_signoffs')
+    .select('*')
+    .eq('assignment_id', assignmentId);
+  return (data ?? []) as PracticalSignoff[];
 }
 
 export async function getTrainingModule(slug: string): Promise<TrainingModule | null> {
@@ -829,15 +870,25 @@ async function hydrateAssignments(rows: AssignmentRow[]): Promise<AssignmentSumm
   if (rows.length === 0) return [];
   const ids = rows.map((r) => r.id);
   const supabase = await serverClient();
-  const { data: attempts } = await supabase
-    .from('field_crew_training_attempts')
-    .select('id, assignment_id, submitted_at, passed, score_correct, score_total, certificate_number')
-    .in('assignment_id', ids)
-    .order('started_at', { ascending: false });
+  const [{ data: attempts }, { data: signoffs }] = await Promise.all([
+    supabase
+      .from('field_crew_training_attempts')
+      .select('id, assignment_id, submitted_at, passed, score_correct, score_total, certificate_number')
+      .in('assignment_id', ids)
+      .order('started_at', { ascending: false }),
+    supabase
+      .from('field_crew_training_practical_signoffs')
+      .select('assignment_id')
+      .in('assignment_id', ids),
+  ]);
 
   const latestByAssignment = new Map<string, AttemptRow>();
   for (const a of (attempts ?? []) as AttemptRow[]) {
     if (!latestByAssignment.has(a.assignment_id)) latestByAssignment.set(a.assignment_id, a);
+  }
+  const signedByAssignment = new Map<string, number>();
+  for (const s of (signoffs ?? []) as { assignment_id: string }[]) {
+    signedByAssignment.set(s.assignment_id, (signedByAssignment.get(s.assignment_id) ?? 0) + 1);
   }
 
   return rows.map((r) => {
@@ -865,6 +916,7 @@ async function hydrateAssignments(rows: AssignmentRow[]): Promise<AssignmentSumm
             certificate_number: a.certificate_number,
           }
         : null,
+      practical_signed_count: signedByAssignment.get(r.id) ?? 0,
     };
   });
 }
