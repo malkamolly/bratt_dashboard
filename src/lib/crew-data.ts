@@ -712,7 +712,6 @@ export type TrainingModule = {
   requires_all_safety: boolean;
   version: string;
   is_active: boolean;
-  source_text: string | null;
   theme: string;
 };
 

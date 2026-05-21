@@ -1,15 +1,38 @@
 // ============================================================================
 // Training-deck helpers
 // ============================================================================
-// Small server-side utilities for the designed slide deck. The actual
-// rendering happens in the browser via /public/training-deck/module-renderer.js
-// (loaded inside an iframe), but we need:
-//   - countSlides(): count slides for the module detail page
-//   - moduleConfigFor(): build the meta object the renderer wants
-//   - DEFAULT_SOURCE_TEXT: an empty-deck starter for the editor
+// Slide content for each training module is authored in plain text files at
+// /content/training-modules/<slug>.txt. The renderer in
+// /public/training-deck/ parses the text into 23 named layouts at runtime.
+//
+// We expose:
+//   - loadSourceText(slug): read the module's .txt file from disk
+//   - countSlides(): count @layout blocks
+//   - moduleMetaFor(): build the meta object the renderer wants
 // ============================================================================
 
+import { readFile } from 'node:fs/promises';
+import path from 'node:path';
 import type { TrainingModule } from './crew-data';
+
+const CONTENT_ROOT = path.join(process.cwd(), 'content', 'training-modules');
+
+/**
+ * Reads a module's source text from /content/training-modules/<slug>.txt.
+ * Returns null if the file is missing or unreadable. Slugs are checked
+ * against a safe character set so a malicious caller can't traverse the
+ * filesystem.
+ */
+export async function loadSourceText(slug: string): Promise<string | null> {
+  if (!/^[a-z0-9_-]+$/i.test(slug)) return null;
+  try {
+    const filePath = path.join(CONTENT_ROOT, `${slug}.txt`);
+    const text = await readFile(filePath, 'utf8');
+    return text;
+  } catch {
+    return null;
+  }
+}
 
 /**
  * Counts how many `@layout` blocks appear in a module's source text.
@@ -53,28 +76,3 @@ export type Theme = (typeof VALID_THEMES)[number];
 export function isValidTheme(t: string): t is Theme {
   return (VALID_THEMES as readonly string[]).includes(t);
 }
-
-export const DEFAULT_SOURCE_TEXT = `# Edit this to author a new training module.
-# Each slide starts with @layout-name. See pattern reference in the help tab.
-
-@cover
-eyebrow: Operator Training
-unit: New Module
-subtitle: Replace with your module subtitle
-tagline: Replace tagline one.
-tagline: Replace tagline two.
-meta-left: Bratt Tree · Training Series
-meta-right: Version 1.0
-
-@welcome
-eyebrow: Welcome
-title: Welcome.
-subtitle: Write a one-line module intro here.
-body: Replace this with a short paragraph that frames what the trainee is about to learn.
-quote: A memorable line that sets the tone.
-
-@closing
-mark: BT
-title: Thanks.
-subtitle: Customize this closing slide.
-`;

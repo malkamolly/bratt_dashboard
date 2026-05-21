@@ -778,41 +778,42 @@ export async function updateEmployeeProfile(formData: FormData): Promise<void> {
 }
 
 // ============================================================================
-// Training-module deck editor
+// Training-module settings (title + theme)
+// ============================================================================
+// Slide content is authored in /content/training-modules/<slug>.txt and only
+// changes when those repo files change. This action only edits the module's
+// display title and visual theme.
 // ============================================================================
 
-/**
- * Manager-only: save the source text + theme for a training module.
- *
- * The source text is the canonical slide content (DSL with `@layout` blocks).
- * The presenter renders it via the vanilla-JS renderer in /public/training-deck/.
- * The 20-question test is authored separately and is not touched here.
- */
-export async function saveTrainingModuleSource(formData: FormData): Promise<void> {
+export async function saveTrainingModuleSettings(formData: FormData): Promise<void> {
   const user = await getAllowedUser();
   if (!user) redirect('/login');
   if (!canEditCrew(user.role)) redirect('/access-denied');
 
   const slug = String(formData.get('module_slug') ?? '').trim();
-  const sourceText = String(formData.get('source_text') ?? '');
+  const name = String(formData.get('name') ?? '').trim();
   const themeInput = String(formData.get('theme') ?? 'bark-cream').trim();
   const theme = isValidTheme(themeInput) ? themeInput : 'bark-cream';
 
   if (!slug) redirect('/crew/modules?error=missing_module');
+  const back = `/crew/modules/${slug}/edit`;
+  if (!name) {
+    redirect(`${back}?error=${encodeURIComponent('Module title is required.')}`);
+  }
 
   const supabase = await serverClient();
   const { error } = await supabase
     .from('field_crew_training_modules')
-    .update({ source_text: sourceText, theme })
+    .update({ name, theme })
     .eq('slug', slug);
 
   if (error) {
-    const back = `/crew/modules/${slug}/edit`;
     redirect(`${back}?error=${encodeURIComponent(error.message)}`);
   }
 
+  revalidatePath('/crew/modules');
   revalidatePath(`/crew/modules/${slug}`);
   revalidatePath(`/crew/modules/${slug}/edit`);
   revalidatePath(`/crew/modules/${slug}/present`);
-  redirect(`/crew/modules/${slug}/edit?saved=1`);
+  redirect(`${back}?saved=1`);
 }
