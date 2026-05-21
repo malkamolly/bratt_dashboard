@@ -10,6 +10,7 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { requireHubAccess } from '@/lib/auth';
 import { getTrainingModule } from '@/lib/crew-data';
+import { loadSourceText } from '@/lib/training-deck';
 
 export const dynamic = 'force-dynamic';
 
@@ -23,7 +24,8 @@ export default async function PresenterPage({
 
   const mod = await getTrainingModule(slug);
   if (!mod) notFound();
-  if (!mod.source_text || mod.source_text.trim().length === 0) notFound();
+  const source = await loadSourceText(slug);
+  if (!source || source.trim().length === 0) notFound();
 
   return (
     <div className="fixed inset-0 bg-black">

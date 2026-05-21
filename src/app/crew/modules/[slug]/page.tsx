@@ -18,7 +18,7 @@ import {
   listAssignmentsForModule,
   listEmployees,
 } from '@/lib/crew-data';
-import { countSlides } from '@/lib/training-deck';
+import { countSlides, loadSourceText } from '@/lib/training-deck';
 import {
   assignTrainingModule,
   startTrainingAttempt,
@@ -48,7 +48,8 @@ export default async function ModuleDetailPage({
     listEmployees({ activeOnly: true }),
   ]);
 
-  const slideCount = countSlides(mod.source_text);
+  const sourceText = await loadSourceText(slug);
+  const slideCount = countSlides(sourceText);
   const hasDeck = slideCount > 0;
   const safetyCount = questions.filter((q) => q.safety_critical).length;
 

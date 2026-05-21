@@ -6,6 +6,10 @@ const nextConfig = {
       bodySizeLimit: '10mb',
     },
   },
+  outputFileTracingIncludes: {
+    '/api/training-deck/**': ['./content/training-modules/**/*.txt'],
+    '/crew/modules/**': ['./content/training-modules/**/*.txt'],
+  },
   images: {
     remotePatterns: [
       {
