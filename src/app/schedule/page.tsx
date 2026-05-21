@@ -8,7 +8,7 @@ export const dynamic = 'force-dynamic';
 export default async function SchedulePage() {
   const user = await getAllowedUser();
   if (!user) redirect('/login');
-  if (user.role !== 'admin') redirect('/access-denied');
+  if (user.role !== 'admin' && user.role !== 'user') redirect('/access-denied');
 
   return (
     <main className="mx-auto max-w-6xl px-6 py-10">

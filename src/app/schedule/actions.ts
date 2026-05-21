@@ -78,7 +78,7 @@ export async function loadSchedule(
   if (!isValidIsoDate(date)) return null;
 
   const user = await getAllowedUser();
-  if (!user || user.role !== 'admin') return null;
+  if (!user || (user.role !== 'admin' && user.role !== 'user')) return null;
 
   const supabase = await serverClient();
   const { data, error } = await supabase
@@ -113,7 +113,7 @@ export async function saveSchedule(
   }
 
   const user = await getAllowedUser();
-  if (!user || user.role !== 'admin') {
+  if (!user || (user.role !== 'admin' && user.role !== 'user')) {
     return { ok: false, error: 'Not authorized.' };
   }
 
