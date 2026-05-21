@@ -60,6 +60,7 @@ export default async function PresenterPage({
     <TrainingPresenter
       moduleName={mod.name}
       sectionLabel={SECTION_LABELS[section] ?? section}
+      sectionKey={section}
       slides={slides.map((s) => ({
         id: s.id,
         position: s.position,
