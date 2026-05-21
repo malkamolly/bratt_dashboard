@@ -24,6 +24,8 @@ import {
   listPlansForEmployee,
   listTrainingSessionsForEmployee,
   getHoursByTrainingForEmployee,
+  listCertificatesForEmployee,
+  listAssignmentsForEmployee,
   type TrainingSession,
 } from '@/lib/crew-data';
 import { SkillLevelCard } from '@/components/crew/SkillLevelCard';
@@ -53,12 +55,16 @@ export default async function EmployeeProfilePage({
     plans,
     sessions,
     hoursByTraining,
+    certificates,
+    assignments,
   ] = await Promise.all([
     getCatalogs(),
     listActivity({ slug, limit: 50 }),
     listPlansForEmployee(slug),
     listTrainingSessionsForEmployee(slug),
     getHoursByTrainingForEmployee(slug),
+    listCertificatesForEmployee(slug),
+    listAssignmentsForEmployee(slug),
   ]);
 
   const positionName =
@@ -338,6 +344,89 @@ export default async function EmployeeProfilePage({
       </section>
 
       {/* (Log-training form lives next to Recent activity at the top of the page.) */}
+
+      {/* ---------- Training modules + certificates ---------- */}
+      <section className="mt-12">
+        <h2 className="font-display text-3xl uppercase tracking-wider text-ink">
+          Training modules
+        </h2>
+        {assignments.length === 0 && certificates.length === 0 ? (
+          <p className="mt-3 text-sm text-fg-3">
+            No training modules assigned.{' '}
+            <Link href="/crew/modules" className="text-orange hover:underline">
+              Browse modules &rarr;
+            </Link>
+          </p>
+        ) : (
+          <div className="mt-4 space-y-6">
+            {certificates.length > 0 && (
+              <div>
+                <h3 className="font-headline text-xs font-extrabold uppercase tracking-ribbon text-fg-3">
+                  Certificates earned
+                </h3>
+                <ul className="mt-2 space-y-2">
+                  {certificates.map((c) => (
+                    <li
+                      key={c.certificate_number}
+                      className="flex flex-wrap items-baseline justify-between gap-3 rounded-card border border-paper-edge bg-paper p-3 text-sm"
+                    >
+                      <div>
+                        <Link
+                          href={`/crew/certificates/${c.certificate_number}`}
+                          className="font-headline font-extrabold text-bark-deep hover:underline"
+                        >
+                          {c.module_name}
+                        </Link>
+                        <span className="ml-2 text-fg-2">
+                          {c.score_correct} / {c.score_total} ·{' '}
+                          {c.passed_on ? format(parseISO(c.passed_on), 'MMM d, yyyy') : '—'}
+                        </span>
+                      </div>
+                      <span className="font-mono text-xs text-fg-3">{c.certificate_number}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+            {assignments.length > 0 && (
+              <div>
+                <h3 className="font-headline text-xs font-extrabold uppercase tracking-ribbon text-fg-3">
+                  Assignments
+                </h3>
+                <ul className="mt-2 space-y-2">
+                  {assignments.map((a) => {
+                    const passed = a.latest_attempt?.passed;
+                    const status =
+                      passed === true
+                        ? 'Passed'
+                        : passed === false
+                          ? 'Failed'
+                          : a.latest_attempt
+                            ? 'In progress'
+                            : 'Assigned';
+                    return (
+                      <li
+                        key={a.id}
+                        className="flex flex-wrap items-baseline justify-between gap-3 rounded-card border border-paper-edge bg-paper p-3 text-sm"
+                      >
+                        <Link
+                          href={`/crew/modules/${a.module_slug}`}
+                          className="font-headline font-extrabold text-bark-deep hover:underline"
+                        >
+                          {a.module_name}
+                        </Link>
+                        <span className="font-headline text-[10px] font-extrabold uppercase tracking-ribbon text-fg-3">
+                          {status}
+                        </span>
+                      </li>
+                    );
+                  })}
+                </ul>
+              </div>
+            )}
+          </div>
+        )}
+      </section>
 
       {/* ---------- Plans ---------- */}
       <section className="mt-12">

@@ -303,6 +303,179 @@ function describeChanges(
   return parts.length === 0 ? 'updated' : parts.join('; ');
 }
 
+// ============================================================================
+// Training module assignments + grading
+// ============================================================================
+
+export async function assignTrainingModule(formData: FormData): Promise<void> {
+  const user = await getAllowedUser();
+  if (!user) redirect('/login');
+  if (!canEditCrew(user.role)) redirect('/access-denied');
+
+  const moduleSlug = String(formData.get('module_slug') ?? '').trim();
+  const employeeSlugs = formData.getAll('employee_slug').map((v) => String(v));
+  if (!moduleSlug) redirect('/crew/modules?error=missing_module');
+  if (employeeSlugs.length === 0) {
+    redirect(`/crew/modules/${moduleSlug}?error=no_employees`);
+  }
+
+  const supabase = await serverClient();
+  const { data: mod } = await supabase
+    .from('field_crew_training_modules')
+    .select('slug, name')
+    .eq('slug', moduleSlug)
+    .maybeSingle();
+  if (!mod) redirect('/crew/modules?error=module_not_found');
+
+  // Upsert assignment rows (one per employee). Existing assignments are
+  // kept as-is so prior attempts stay reachable.
+  const { error } = await supabase
+    .from('field_crew_training_assignments')
+    .upsert(
+      employeeSlugs.map((slug) => ({
+        module_slug: moduleSlug,
+        employee_slug: slug,
+        assigned_by: user.email,
+      })),
+      { onConflict: 'module_slug,employee_slug', ignoreDuplicates: false },
+    );
+  if (error) {
+    redirect(`/crew/modules/${moduleSlug}?error=${encodeURIComponent(error.message)}`);
+  }
+
+  const today = new Date().toISOString().slice(0, 10);
+  const { data: modRow } = await supabase
+    .from('field_crew_training_modules')
+    .select('name')
+    .eq('slug', moduleSlug)
+    .maybeSingle();
+  const moduleName = (modRow as { name?: string } | null)?.name ?? moduleSlug;
+  for (const slug of employeeSlugs) {
+    await logActivity(supabase, slug, today, `Assigned ${moduleName} training.`, user.email);
+  }
+
+  revalidatePath(`/crew/modules/${moduleSlug}`);
+  revalidatePath('/crew/modules');
+  redirect(`/crew/modules/${moduleSlug}?assigned=${employeeSlugs.length}`);
+}
+
+/**
+ * Crew opens the test page → we create an empty attempt row (or reuse the
+ * latest unsubmitted one) so the answers have somewhere to land as they
+ * pick. The action returns the attempt id via redirect to the take URL.
+ */
+export async function startTrainingAttempt(formData: FormData): Promise<void> {
+  const user = await getAllowedUser();
+  if (!user) redirect('/login');
+  if (!canEditCrew(user.role)) redirect('/access-denied');
+
+  const assignmentId = String(formData.get('assignment_id') ?? '').trim();
+  if (!assignmentId) redirect('/crew/modules?error=missing_assignment');
+
+  const supabase = await serverClient();
+
+  // If there's an open (unsubmitted) attempt, reuse it; else create one.
+  const { data: existing } = await supabase
+    .from('field_crew_training_attempts')
+    .select('id, submitted_at')
+    .eq('assignment_id', assignmentId)
+    .is('submitted_at', null)
+    .order('started_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  let attemptId = (existing as { id?: string } | null)?.id;
+  if (!attemptId) {
+    const { data, error } = await supabase
+      .from('field_crew_training_attempts')
+      .insert({ assignment_id: assignmentId, proctor_email: user.email })
+      .select('id')
+      .single();
+    if (error || !data) {
+      redirect(
+        `/crew/modules?error=${encodeURIComponent(error?.message ?? 'attempt_failed')}`,
+      );
+    }
+    attemptId = data.id;
+  }
+
+  redirect(`/crew/modules/take/${attemptId}`);
+}
+
+/**
+ * Crew submits the test. We persist all answers, then call the
+ * SECURITY DEFINER `field_crew_grade_attempt` function which reads the
+ * answer key with elevated privileges, computes pass/fail, writes the
+ * attempt result, logs activity, and (on pass) marks the linked training
+ * as completed for the employee.
+ */
+export async function submitTrainingAttempt(input: {
+  attempt_id: string;
+  answers: { question_id: string; chosen: 'A' | 'B' | 'C' | 'D' | null }[];
+}): Promise<
+  | {
+      ok: true;
+      passed: boolean;
+      score_correct: number;
+      score_total: number;
+      missed_safety_critical: boolean;
+      certificate_number: string | null;
+    }
+  | { ok: false; error: string }
+> {
+  const user = await getAllowedUser();
+  if (!user) return { ok: false, error: 'Not signed in.' };
+  if (!canEditCrew(user.role)) {
+    return { ok: false, error: 'Only managers and admins can submit attempts.' };
+  }
+
+  const supabase = await serverClient();
+
+  // Persist each answer (one row per question). Upsert so re-submits land
+  // on the same row.
+  const rows = input.answers
+    .filter((a) => a.chosen != null)
+    .map((a) => ({
+      attempt_id: input.attempt_id,
+      question_id: a.question_id,
+      chosen: a.chosen,
+    }));
+  if (rows.length > 0) {
+    const { error } = await supabase
+      .from('field_crew_training_attempt_answers')
+      .upsert(rows, { onConflict: 'attempt_id,question_id' });
+    if (error) return { ok: false, error: error.message };
+  }
+
+  // Grade.
+  const { data: result, error } = await supabase.rpc('field_crew_grade_attempt', {
+    p_attempt_id: input.attempt_id,
+  });
+  if (error) return { ok: false, error: error.message };
+
+  type GradeResult = {
+    passed: boolean;
+    score_correct: number;
+    score_total: number;
+    missed_safety_critical: boolean;
+    certificate_number: string | null;
+  };
+  const r = result as GradeResult;
+
+  revalidatePath('/crew');
+  revalidatePath('/crew/reports/feed');
+  // The result page does its own revalidation when navigated to.
+
+  return {
+    ok: true,
+    passed: r.passed,
+    score_correct: r.score_correct,
+    score_total: r.score_total,
+    missed_safety_critical: r.missed_safety_critical,
+    certificate_number: r.certificate_number,
+  };
+}
+
 async function logActivity(
   supabase: Awaited<ReturnType<typeof serverClient>>,
   employee_slug: string,

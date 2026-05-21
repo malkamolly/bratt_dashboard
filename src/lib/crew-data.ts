@@ -680,6 +680,310 @@ export async function listTrainingEmployeeRecords(
     });
 }
 
+// ---------- Training modules ----------
+
+export type TrainingModule = {
+  slug: string;
+  name: string;
+  description: string | null;
+  training_key: string | null;
+  pass_threshold: number;
+  requires_all_safety: boolean;
+  version: string;
+  is_active: boolean;
+};
+
+export type ModuleSlide = {
+  id: string;
+  module_slug: string;
+  position: number;
+  section: string | null;
+  title: string | null;
+  body: string | null;
+};
+
+export type ModuleQuestion = {
+  id: string;
+  module_slug: string;
+  position: number;
+  section: string | null;
+  prompt: string;
+  safety_critical: boolean;
+  choices: { letter: 'A' | 'B' | 'C' | 'D'; text: string }[];
+};
+
+export type AssignmentSummary = {
+  id: string;
+  module_slug: string;
+  module_name: string;
+  employee_slug: string;
+  employee_name: string;
+  assigned_at: string;
+  assigned_by: string | null;
+  latest_attempt: {
+    id: string;
+    submitted_at: string | null;
+    passed: boolean | null;
+    score_correct: number | null;
+    score_total: number | null;
+    certificate_number: string | null;
+  } | null;
+};
+
+export type CertificateRecord = {
+  certificate_number: string;
+  attempt_id: string;
+  module_slug: string;
+  module_name: string;
+  employee_slug: string;
+  employee_name: string;
+  passed_on: string;
+  score_correct: number;
+  score_total: number;
+  proctor_email: string | null;
+};
+
+export async function listTrainingModules(): Promise<TrainingModule[]> {
+  const supabase = await serverClient();
+  const { data } = await supabase
+    .from('field_crew_training_modules')
+    .select('*')
+    .eq('is_active', true)
+    .order('name');
+  return (data ?? []) as TrainingModule[];
+}
+
+export async function getTrainingModule(slug: string): Promise<TrainingModule | null> {
+  const supabase = await serverClient();
+  const { data } = await supabase
+    .from('field_crew_training_modules')
+    .select('*')
+    .eq('slug', slug)
+    .maybeSingle();
+  return (data as TrainingModule) ?? null;
+}
+
+export async function listModuleSlides(slug: string): Promise<ModuleSlide[]> {
+  const supabase = await serverClient();
+  const { data } = await supabase
+    .from('field_crew_training_module_slides')
+    .select('*')
+    .eq('module_slug', slug)
+    .order('position');
+  return (data ?? []) as ModuleSlide[];
+}
+
+export async function listModuleQuestions(slug: string): Promise<ModuleQuestion[]> {
+  const supabase = await serverClient();
+  const { data: questions } = await supabase
+    .from('field_crew_training_module_questions')
+    .select('id, module_slug, position, section, prompt, safety_critical')
+    .eq('module_slug', slug)
+    .order('position');
+
+  const qs = (questions ?? []) as Omit<ModuleQuestion, 'choices'>[];
+  if (qs.length === 0) return [];
+
+  const { data: choices } = await supabase
+    .from('field_crew_training_module_choices')
+    .select('question_id, letter, text')
+    .in('question_id', qs.map((q) => q.id));
+
+  const byQ = new Map<string, { letter: 'A' | 'B' | 'C' | 'D'; text: string }[]>();
+  for (const c of (choices ?? []) as { question_id: string; letter: string; text: string }[]) {
+    const arr = byQ.get(c.question_id) ?? [];
+    arr.push({ letter: c.letter as 'A' | 'B' | 'C' | 'D', text: c.text });
+    byQ.set(c.question_id, arr);
+  }
+  for (const arr of byQ.values()) arr.sort((a, b) => a.letter.localeCompare(b.letter));
+
+  return qs.map((q) => ({ ...q, choices: byQ.get(q.id) ?? [] }));
+}
+
+type AssignmentRow = {
+  id: string;
+  module_slug: string;
+  employee_slug: string;
+  assigned_at: string;
+  assigned_by: string | null;
+  field_crew_training_modules: { name: string } | { name: string }[] | null;
+  field_crew_employees: { name: string } | { name: string }[] | null;
+};
+
+type AttemptRow = {
+  id: string;
+  assignment_id: string;
+  submitted_at: string | null;
+  passed: boolean | null;
+  score_correct: number | null;
+  score_total: number | null;
+  certificate_number: string | null;
+};
+
+async function hydrateAssignments(rows: AssignmentRow[]): Promise<AssignmentSummary[]> {
+  if (rows.length === 0) return [];
+  const ids = rows.map((r) => r.id);
+  const supabase = await serverClient();
+  const { data: attempts } = await supabase
+    .from('field_crew_training_attempts')
+    .select('id, assignment_id, submitted_at, passed, score_correct, score_total, certificate_number')
+    .in('assignment_id', ids)
+    .order('started_at', { ascending: false });
+
+  const latestByAssignment = new Map<string, AttemptRow>();
+  for (const a of (attempts ?? []) as AttemptRow[]) {
+    if (!latestByAssignment.has(a.assignment_id)) latestByAssignment.set(a.assignment_id, a);
+  }
+
+  return rows.map((r) => {
+    const moduleName = unwrapJoin(r.field_crew_training_modules)?.name ?? r.module_slug;
+    const employeeName = unwrapJoin(r.field_crew_employees)?.name ?? r.employee_slug;
+    const a = latestByAssignment.get(r.id);
+    return {
+      id: r.id,
+      module_slug: r.module_slug,
+      module_name: moduleName,
+      employee_slug: r.employee_slug,
+      employee_name: employeeName,
+      assigned_at: r.assigned_at,
+      assigned_by: r.assigned_by,
+      latest_attempt: a
+        ? {
+            id: a.id,
+            submitted_at: a.submitted_at,
+            passed: a.passed,
+            score_correct: a.score_correct,
+            score_total: a.score_total,
+            certificate_number: a.certificate_number,
+          }
+        : null,
+    };
+  });
+}
+
+export async function listAssignmentsForModule(slug: string): Promise<AssignmentSummary[]> {
+  const supabase = await serverClient();
+  const { data } = await supabase
+    .from('field_crew_training_assignments')
+    .select(
+      'id, module_slug, employee_slug, assigned_at, assigned_by,' +
+        ' field_crew_training_modules!inner(name),' +
+        ' field_crew_employees!inner(name)',
+    )
+    .eq('module_slug', slug)
+    .order('assigned_at', { ascending: false });
+  return hydrateAssignments((data ?? []) as unknown as AssignmentRow[]);
+}
+
+export async function listAssignmentsForEmployee(slug: string): Promise<AssignmentSummary[]> {
+  const supabase = await serverClient();
+  const { data } = await supabase
+    .from('field_crew_training_assignments')
+    .select(
+      'id, module_slug, employee_slug, assigned_at, assigned_by,' +
+        ' field_crew_training_modules!inner(name),' +
+        ' field_crew_employees!inner(name)',
+    )
+    .eq('employee_slug', slug)
+    .order('assigned_at', { ascending: false });
+  return hydrateAssignments((data ?? []) as unknown as AssignmentRow[]);
+}
+
+export async function getAssignment(id: string): Promise<AssignmentSummary | null> {
+  const supabase = await serverClient();
+  const { data } = await supabase
+    .from('field_crew_training_assignments')
+    .select(
+      'id, module_slug, employee_slug, assigned_at, assigned_by,' +
+        ' field_crew_training_modules!inner(name),' +
+        ' field_crew_employees!inner(name)',
+    )
+    .eq('id', id)
+    .maybeSingle();
+  if (!data) return null;
+  const [row] = await hydrateAssignments([data as unknown as AssignmentRow]);
+  return row ?? null;
+}
+
+type CertJoinedRow = {
+  id: string;
+  certificate_number: string;
+  submitted_at: string | null;
+  score_correct: number | null;
+  score_total: number | null;
+  proctor_email: string | null;
+  field_crew_training_assignments:
+    | {
+        module_slug: string;
+        employee_slug: string;
+        field_crew_training_modules: { name: string } | { name: string }[] | null;
+        field_crew_employees: { name: string } | { name: string }[] | null;
+      }
+    | {
+        module_slug: string;
+        employee_slug: string;
+        field_crew_training_modules: { name: string } | { name: string }[] | null;
+        field_crew_employees: { name: string } | { name: string }[] | null;
+      }[]
+    | null;
+};
+
+function buildCert(row: CertJoinedRow): CertificateRecord | null {
+  const assignment = Array.isArray(row.field_crew_training_assignments)
+    ? row.field_crew_training_assignments[0]
+    : row.field_crew_training_assignments;
+  if (!assignment) return null;
+  return {
+    certificate_number: row.certificate_number,
+    attempt_id: row.id,
+    module_slug: assignment.module_slug,
+    module_name: unwrapJoin(assignment.field_crew_training_modules)?.name ?? assignment.module_slug,
+    employee_slug: assignment.employee_slug,
+    employee_name: unwrapJoin(assignment.field_crew_employees)?.name ?? assignment.employee_slug,
+    passed_on: row.submitted_at ?? '',
+    score_correct: row.score_correct ?? 0,
+    score_total: row.score_total ?? 0,
+    proctor_email: row.proctor_email,
+  };
+}
+
+export async function getCertificateByNumber(num: string): Promise<CertificateRecord | null> {
+  const supabase = await serverClient();
+  const { data } = await supabase
+    .from('field_crew_training_attempts')
+    .select(
+      'id, certificate_number, submitted_at, score_correct, score_total, proctor_email,' +
+        ' field_crew_training_assignments!inner(' +
+        '   module_slug, employee_slug,' +
+        '   field_crew_training_modules!inner(name),' +
+        '   field_crew_employees!inner(name)' +
+        ' )',
+    )
+    .eq('certificate_number', num)
+    .maybeSingle();
+  if (!data) return null;
+  return buildCert(data as unknown as CertJoinedRow);
+}
+
+export async function listCertificatesForEmployee(slug: string): Promise<CertificateRecord[]> {
+  const supabase = await serverClient();
+  const { data } = await supabase
+    .from('field_crew_training_attempts')
+    .select(
+      'id, certificate_number, submitted_at, score_correct, score_total, proctor_email,' +
+        ' field_crew_training_assignments!inner(' +
+        '   module_slug, employee_slug,' +
+        '   field_crew_training_modules!inner(name),' +
+        '   field_crew_employees!inner(name)' +
+        ' )',
+    )
+    .eq('passed', true)
+    .eq('field_crew_training_assignments.employee_slug', slug)
+    .order('submitted_at', { ascending: false });
+  const rows = (data ?? []) as unknown as CertJoinedRow[];
+  return rows.map(buildCert).filter((r): r is CertificateRecord => r !== null);
+}
+
 // ---------- Aggregations for the homepage ----------
 
 export type SkillSummary = {
