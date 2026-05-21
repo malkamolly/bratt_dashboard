@@ -8,6 +8,7 @@
 // ============================================================================
 
 import { revalidatePath } from 'next/cache';
+import { redirect } from 'next/navigation';
 import { getAllowedUser, canEditCrew } from '@/lib/auth';
 import { serverClient } from '@/lib/supabase';
 
@@ -315,4 +316,98 @@ async function logActivity(
     description,
     created_by,
   });
+}
+
+// ============================================================================
+// Employee profile editing — used by /admin/crew/employees/[slug]
+// ============================================================================
+// Form-action that takes a FormData (so the admin page can be a plain
+// server component) and writes back to field_crew_employees. Significant
+// changes also append a line to the activity feed so we can see what
+// changed and when.
+//
+// Editable here:
+//   - active (deactivate / reactivate)
+//   - hire_date
+//   - position_key
+//   - leads_crew (foreman toggle)
+//   - notes
+// ============================================================================
+
+export async function updateEmployeeProfile(formData: FormData): Promise<void> {
+  const user = await getAllowedUser();
+  if (!user) redirect('/login');
+  if (!canEditCrew(user.role)) {
+    redirect('/access-denied');
+  }
+
+  const slug = String(formData.get('slug') ?? '').trim();
+  if (!slug) redirect('/crew?error=missing_slug');
+
+  // Pull the form fields. Empty string → null where appropriate.
+  const positionKey = String(formData.get('position_key') ?? '').trim() || null;
+  const hireDate = String(formData.get('hire_date') ?? '').trim() || null;
+  const leadsCrew = formData.get('leads_crew') === 'on';
+  const active = formData.get('active') === 'on';
+  const notes = String(formData.get('notes') ?? '').trim() || null;
+
+  const supabase = await serverClient();
+
+  const { data: before, error: readErr } = await supabase
+    .from('field_crew_employees')
+    .select('slug, name, active, hire_date, position_key, leads_crew, notes')
+    .eq('slug', slug)
+    .maybeSingle();
+  if (readErr || !before) {
+    redirect(`/crew/employees/${slug}?error=not_found`);
+  }
+
+  const { error } = await supabase
+    .from('field_crew_employees')
+    .update({
+      active,
+      hire_date: hireDate,
+      position_key: positionKey,
+      leads_crew: leadsCrew,
+      notes,
+      updated_at: new Date().toISOString(),
+    })
+    .eq('slug', slug);
+  if (error) {
+    redirect(`/admin/crew/employees/${slug}?error=${encodeURIComponent(error.message)}`);
+  }
+
+  // Append meaningful changes to the activity log (skip notes — too noisy).
+  const today = new Date().toISOString().slice(0, 10);
+  const lines: string[] = [];
+  if (before.active !== active) {
+    lines.push(active ? 'Reactivated.' : 'Marked inactive.');
+  }
+  if (before.hire_date !== hireDate) {
+    lines.push(
+      hireDate ? `Hire date set to ${hireDate}.` : 'Hire date cleared.',
+    );
+  }
+  if (before.position_key !== positionKey) {
+    const { data: posRow } = await supabase
+      .from('field_crew_positions')
+      .select('display_name')
+      .eq('key', positionKey ?? '')
+      .maybeSingle();
+    const posName = positionKey
+      ? (posRow as { display_name?: string } | null)?.display_name ?? positionKey
+      : 'unassigned';
+    lines.push(`Position → ${posName}.`);
+  }
+  if (before.leads_crew !== leadsCrew) {
+    lines.push(leadsCrew ? 'Promoted to foreman.' : 'No longer foreman.');
+  }
+  for (const line of lines) {
+    await logActivity(supabase, slug, today, line, user.email);
+  }
+
+  revalidatePath(`/crew/employees/${slug}`);
+  revalidatePath('/crew');
+  revalidatePath('/crew/reports/feed');
+  redirect(`/crew/employees/${slug}?saved=1`);
 }
