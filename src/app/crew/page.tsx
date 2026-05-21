@@ -19,6 +19,7 @@ import {
   buildCoverage,
   summarizeSkills,
   type Employee,
+  type Position,
 } from '@/lib/crew-data';
 import { SkillBadge } from '@/components/crew/SkillBadge';
 import { ForemanPill, SpecialtyPill } from '@/components/crew/CrewPills';
@@ -70,23 +71,38 @@ export default async function FieldCrewHubPage() {
         Field Crew Hub
       </p>
 
-      {/* ---------- Hero ---------- */}
+      {/* ---------- Hero ----------
+          Hand-rolled (not bt-card) so the dark gradient actually wins over
+          bt-card's cream gradient. */}
       <section className="mt-3 grid grid-cols-1 gap-6 lg:grid-cols-[2fr_1fr]">
-        <div className="bt-card bg-bark text-cream border-bark">
-          <p className="bt-eyebrow !text-lime">Field training</p>
-          <h1 className="mt-2 font-display text-5xl uppercase tracking-wider sm:text-6xl">
-            Sharper crew. <span className="text-orange">Stronger trees.</span>
+        <div
+          className="relative overflow-hidden rounded-card border-[3px] border-bark-deep p-8 text-cream"
+          style={{
+            background:
+              'linear-gradient(135deg, #1A0E05 0%, #26190E 55%, #3D2B14 100%)',
+          }}
+        >
+          <p className="font-headline font-extrabold uppercase tracking-ribbon text-xs text-lime">
+            Field training
+          </p>
+          <h1 className="mt-3 font-display text-5xl leading-[0.95] uppercase tracking-wider sm:text-6xl">
+            Sharper crew.
+            <br />
+            <span className="text-orange">Stronger trees.</span>
           </h1>
-          <p className="mt-4 max-w-xl text-cream/85">
+          <p className="mt-5 max-w-xl text-sm leading-relaxed text-cream/85">
             Skills, trainings, and development plans for the Bratt Tree field
             team. Updated by the head trainer; readable by any leader with
             access.
           </p>
-          <div className="mt-6 flex flex-wrap gap-3">
+          <div className="mt-7 flex flex-wrap gap-3">
             <a href="#roster" className="bt-btn bt-btn-primary">
               View the crew
             </a>
-            <Link href="/crew/plans" className="bt-btn bt-btn-ghost !ring-cream !text-cream hover:!bg-cream hover:!text-ink">
+            <Link
+              href="/crew/plans"
+              className="bt-btn bg-transparent text-cream ring-2 ring-inset ring-cream/70 hover:bg-cream hover:text-ink hover:ring-0"
+            >
               Active plans &rarr;
             </Link>
           </div>
@@ -165,8 +181,13 @@ export default async function FieldCrewHubPage() {
         )}
       </section>
 
-      {/* ---------- Roster ---------- */}
-      <section id="roster" className="mt-10 space-y-8">
+      {/* ---------- Roster ----------
+          Two-column grid, row-first flow:
+            row 1 → Climbers | Equipment Operators
+            row 2 → Bucket   | Nifty
+            row 3 → PHC      | (empty)
+          The "Needs Primary Position" callout spans full width on top. */}
+      <section id="roster" className="mt-10">
         <div>
           <p className="bt-eyebrow">The crew</p>
           <h2 className="mt-1 font-display text-4xl uppercase tracking-wider text-ink">
@@ -175,33 +196,37 @@ export default async function FieldCrewHubPage() {
         </div>
 
         {unassigned.length > 0 && (
-          <PositionSection
-            title="Needs Primary Position"
-            tone="warn"
-            note="Crew members below haven't been assigned to a primary discipline yet. Open the profile and set their position."
-            employees={unassigned}
-            columns={[]}
-            allSkillKeys={skills.map((s) => s.key)}
-            specialtyByKey={specialtyByKey}
-            summaryColumn
-          />
-        )}
-
-        {otherPositions.map((p) => {
-          const list = employeesByPosition.get(p.key) ?? [];
-          if (list.length === 0) return null;
-          const cols = skillsByPosition.get(p.key) ?? [];
-          return (
+          <div className="mt-6">
             <PositionSection
-              key={p.key}
-              title={`${p.display_name}s`}
-              employees={list}
-              columns={cols}
+              title="Needs Primary Position"
+              tone="warn"
+              note="Crew members below haven't been assigned to a primary discipline yet. Open the profile and set their position."
+              employees={unassigned}
+              columns={[]}
               allSkillKeys={skills.map((s) => s.key)}
               specialtyByKey={specialtyByKey}
+              summaryColumn
             />
-          );
-        })}
+          </div>
+        )}
+
+        <div className="mt-6 grid grid-cols-1 gap-6 xl:grid-cols-2">
+          {gridOrderedPositions(otherPositions).map((p) => {
+            const list = employeesByPosition.get(p.key) ?? [];
+            if (list.length === 0) return null;
+            const cols = skillsByPosition.get(p.key) ?? [];
+            return (
+              <PositionSection
+                key={p.key}
+                title={`${p.display_name}s`}
+                employees={list}
+                columns={cols}
+                allSkillKeys={skills.map((s) => s.key)}
+                specialtyByKey={specialtyByKey}
+              />
+            );
+          })}
+        </div>
       </section>
 
       {/* ---------- Team coverage ---------- */}
@@ -259,6 +284,28 @@ export default async function FieldCrewHubPage() {
 
 // ----- helpers -----
 
+/**
+ * Order the position list so the two-column grid lays out as:
+ *   row 1 → Climber | Equipment Operator
+ *   row 2 → Bucket  | Nifty
+ *   row 3 → PHC     | -
+ * Anything not in this list falls to the end in its original order.
+ */
+function gridOrderedPositions(positions: Position[]): Position[] {
+  const PREFERRED = [
+    'climber',
+    'equipment_operator',
+    'bucket_crew',
+    'nifty_crew',
+    'phc_technician',
+  ];
+  const known = PREFERRED.map((k) => positions.find((p) => p.key === k)).filter(
+    (p): p is Position => Boolean(p),
+  );
+  const others = positions.filter((p) => !PREFERRED.includes(p.key));
+  return [...known, ...others];
+}
+
 function PositionSection({
   title,
   tone,
@@ -280,8 +327,8 @@ function PositionSection({
 }) {
   const borderClass = tone === 'warn' ? 'border-orange' : 'border-lime';
   return (
-    <div className={`rounded-card border-[3px] ${borderClass} bg-paper p-5`}>
-      <h3 className="font-headline text-lg font-black uppercase tracking-ribbon text-bark-deep">
+    <div className={`flex h-full flex-col rounded-card border-[3px] ${borderClass} bg-paper p-4 sm:p-5`}>
+      <h3 className="font-headline text-base font-black uppercase tracking-ribbon text-bark-deep">
         {title}{' '}
         <span className="ml-1 inline-flex items-center rounded-full bg-bark px-2 py-0.5 font-headline text-[10px] font-extrabold uppercase tracking-ribbon text-cream">
           {employees.length}
@@ -289,23 +336,23 @@ function PositionSection({
       </h3>
       {note && <p className="mt-2 text-sm text-fg-2">{note}</p>}
 
-      <div className="mt-4 overflow-x-auto">
+      <div className="mt-3 overflow-x-auto">
         <table className="w-full border-collapse text-sm">
           <thead>
             <tr className="border-b border-paper-edge text-left">
-              <th className="py-2 pr-3 font-headline text-xs font-extrabold uppercase tracking-ribbon text-fg-3">
+              <th className="py-1.5 pr-2 font-headline text-[10px] font-extrabold uppercase tracking-ribbon text-fg-3">
                 Name
               </th>
               {columns.map((c) => (
                 <th
                   key={c.key}
-                  className="py-2 px-2 font-headline text-xs font-extrabold uppercase tracking-ribbon text-fg-3"
+                  className="py-1.5 px-1.5 font-headline text-[10px] font-extrabold uppercase tracking-ribbon text-fg-3"
                 >
                   {c.label}
                 </th>
               ))}
               {summaryColumn && (
-                <th className="py-2 px-2 font-headline text-xs font-extrabold uppercase tracking-ribbon text-fg-3">
+                <th className="py-1.5 px-1.5 font-headline text-[10px] font-extrabold uppercase tracking-ribbon text-fg-3">
                   Skill summary · L1 / L2 / L3
                 </th>
               )}
@@ -317,29 +364,33 @@ function PositionSection({
                 key={e.slug}
                 className="border-b border-paper-edge/60 last:border-0"
               >
-                <td className="py-2 pr-3">
+                <td className="py-1.5 pr-2">
                   <Link
                     href={`/crew/employees/${e.slug}`}
                     className="font-headline font-extrabold text-bark-deep hover:underline"
                   >
                     {e.name}
-                  </Link>{' '}
-                  {e.leads_crew && <ForemanPill />}{' '}
-                  {e.specialties.map((sp) => (
-                    <SpecialtyPill
-                      key={sp}
-                      specialtyKey={sp}
-                      label={specialtyByKey.get(sp) ?? sp}
-                    />
-                  ))}
+                  </Link>
+                  {(e.leads_crew || e.specialties.length > 0) && (
+                    <span className="ml-1.5 inline-flex flex-wrap items-center gap-1">
+                      {e.leads_crew && <ForemanPill />}
+                      {e.specialties.map((sp) => (
+                        <SpecialtyPill
+                          key={sp}
+                          specialtyKey={sp}
+                          label={specialtyByKey.get(sp) ?? sp}
+                        />
+                      ))}
+                    </span>
+                  )}
                 </td>
                 {columns.map((c) => (
-                  <td key={c.key} className="py-2 px-2">
+                  <td key={c.key} className="py-1.5 px-1.5">
                     <SkillBadge level={e.skills[c.key] ?? null} />
                   </td>
                 ))}
                 {summaryColumn && (
-                  <td className="py-2 px-2">
+                  <td className="py-1.5 px-1.5">
                     {(() => {
                       const s = summarizeSkills(e, allSkillKeys);
                       return (
