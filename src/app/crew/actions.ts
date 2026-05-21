@@ -11,6 +11,7 @@ import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { getAllowedUser, canEditCrew } from '@/lib/auth';
 import { serverClient } from '@/lib/supabase';
+import { isValidTheme } from '@/lib/training-deck';
 
 export type TrainingSessionEntryInput = {
   training_key: string;
@@ -774,4 +775,44 @@ export async function updateEmployeeProfile(formData: FormData): Promise<void> {
   revalidatePath('/crew');
   revalidatePath('/crew/reports/feed');
   redirect(`/crew/employees/${slug}?saved=1`);
+}
+
+// ============================================================================
+// Training-module deck editor
+// ============================================================================
+
+/**
+ * Manager-only: save the source text + theme for a training module.
+ *
+ * The source text is the canonical slide content (DSL with `@layout` blocks).
+ * The presenter renders it via the vanilla-JS renderer in /public/training-deck/.
+ * The 20-question test is authored separately and is not touched here.
+ */
+export async function saveTrainingModuleSource(formData: FormData): Promise<void> {
+  const user = await getAllowedUser();
+  if (!user) redirect('/login');
+  if (!canEditCrew(user.role)) redirect('/access-denied');
+
+  const slug = String(formData.get('module_slug') ?? '').trim();
+  const sourceText = String(formData.get('source_text') ?? '');
+  const themeInput = String(formData.get('theme') ?? 'bark-cream').trim();
+  const theme = isValidTheme(themeInput) ? themeInput : 'bark-cream';
+
+  if (!slug) redirect('/crew/modules?error=missing_module');
+
+  const supabase = await serverClient();
+  const { error } = await supabase
+    .from('field_crew_training_modules')
+    .update({ source_text: sourceText, theme })
+    .eq('slug', slug);
+
+  if (error) {
+    const back = `/crew/modules/${slug}/edit`;
+    redirect(`${back}?error=${encodeURIComponent(error.message)}`);
+  }
+
+  revalidatePath(`/crew/modules/${slug}`);
+  revalidatePath(`/crew/modules/${slug}/edit`);
+  revalidatePath(`/crew/modules/${slug}/present`);
+  redirect(`/crew/modules/${slug}/edit?saved=1`);
 }

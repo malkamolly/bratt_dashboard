@@ -1,0 +1,532 @@
+-- ============================================================================
+-- 028_training_module_source_text.sql
+-- ============================================================================
+-- Switch training-module slide content over to the designed deck system.
+--
+-- A module now stores ONE big source-text blob (`source_text`) authored in
+-- the Bratt Tree training-module DSL (`@layout` blocks). The deck presenter
+-- renders that blob via the JS renderer in /public/training-deck/.
+--
+-- The existing `field_crew_training_module_slides` rows from migration 024
+-- are no longer used by the presenter, but we leave them in place so old
+-- attempt-history pages don't blow up if anything still references them.
+--
+-- The 20-question test (questions / choices / answer key) is unchanged —
+-- it lives in its own tables and is authored separately from the slides.
+-- ============================================================================
+
+begin;
+
+-- 1. New columns -------------------------------------------------------------
+alter table field_crew_training_modules
+  add column if not exists source_text text,
+  add column if not exists theme text not null default 'bark-cream';
+
+-- Restrict theme to the three values the renderer ships with.
+do $$
+begin
+  if not exists (
+    select 1 from pg_constraint where conname = 'field_crew_training_modules_theme_check'
+  ) then
+    alter table field_crew_training_modules
+      add constraint field_crew_training_modules_theme_check
+      check (theme in ('bark-cream', 'bark-heavy', 'field-manual'));
+  end if;
+end$$;
+
+-- 2. Seed Avant 528 with the designed deck ----------------------------------
+update field_crew_training_modules
+set
+  theme = 'bark-cream',
+  source_text = $BTMOD$# ============================================================
+# BRATT TREE TRAINING MODULE — Source Content
+# This file is plain text. Edit it to author a new training module.
+#
+# SYNTAX (short version):
+#   @layout-name          starts a new slide. See pattern-reference.txt
+#                         for every available layout.
+#   key: value            a single field on the current slide
+#   key: value | value    multi-part value (split by |)
+#   - item                a list item (used for agenda/checklist/mistakes)
+#   # or //               a comment, ignored by the parser
+#
+# Tips:
+#   • Repeat keys to make a list (e.g. multiple tagline: lines).
+#   • Use **bold** and *italic* in text.
+#   • Blank lines are optional and only for readability.
+# ============================================================
+
+@cover
+eyebrow: Operator Training
+unit: Avant 528
+subtitle: with the Branch Manager Attachment
+tagline: Move heavy debris.
+tagline: Protect your crew.
+tagline: Respect the machine.
+meta-left: Bratt Tree · New Hire Training Series
+meta-right: Version 1.0 · Issued 2026
+
+@welcome
+eyebrow: Welcome
+title: Welcome to the crew.
+subtitle: This unit moves a lot of weight. Treat it that way.
+body: The Avant 528 is one of our most-used tools at Bratt Tree. Paired with the Branch Manager grapple, it's how we move trees, logs, and brush off jobsites quickly and safely.
+body: By the end of this training you'll know how to run this machine confidently — and just as importantly, when **NOT** to run it. Safety isn't a chapter in this deck. It's every chapter.
+quote: Every shift ends with everyone going home — including the machine.
+
+@agenda
+eyebrow: Course Agenda
+title: What you'll learn today
+subtitle: Six sections, one practical test-out, one written test.
+- Equipment Overview | The 528, the Branch Manager grapple, why we use this combo
+- Safety | PPE, ROPS, stability, overhead hazards, bystander rules
+- Operations | Startup, driving, hydraulics, grappling, loading, shutdown
+- Maintenance | Daily checks, greasing, service intervals
+- Best Practices | Jobsite flow, crew communication, efficiency
+- Test-Out | Practical checklist on the machine + written test (85% to pass)
+
+@section-divider
+number: 01
+title: Equipment
+tagline: Know what you're sitting in. Know what's hanging off the front.
+
+@hero-stats
+eyebrow: Section 1 · Equipment
+title: Meet the Avant 528
+subtitle: Compact articulated loader. Big lift, small footprint.
+stat: 2,094 | lbs | Lift Capacity
+stat: 9' 2" |  | Lift Height
+stat: 26 | hp | Kubota Diesel
+panel-title: Why we run the 528
+point: **Articulated chassis with a rigid joint** — low center of gravity, no side-sway in the pivot, great stability when carrying loads.
+point: **Telescopic boom (24 in)** — extra reach when loading trucks or stacking debris piles.
+point: **Hydrostatic Avant Optidrive®** — single foot pedal, smooth direction changes, easy to feather under load.
+point: **Fits through standard 4-ft gates** — width 44.5 in. Goes in residential yards where skid steers can't.
+
+@table
+eyebrow: Section 1 · Equipment
+title: Specifications you should know cold
+subtitle: These numbers decide what you can and can't pick up.
+cols: Specification | Value
+row: Machine weight (ROPS) | 3,131 lbs  (1,420 kg)
+row: Lift capacity (tipping load) | ~2,094 lbs  (950 kg)
+row: Max lift height | 9 ft 2 in  (2,790 mm)
+row: Drive speed | ~7.5 mph  (12 km/h)
+row: Engine | Kubota D1105 Stage V Diesel
+row: Engine output | 26 hp  (19 kW) @ 2,200 rpm
+row: Aux. hydraulic flow / pressure | ~9.5 gpm  /  2,900 psi  (36 L/min / 200 bar)
+row: Telescopic boom extension | ~24 in  (600 mm)
+row: Width / Length / Height | 44.5" / 102.8" / 78"  (1,130 / 2,610 / 1,980 mm)
+row: Turning radius (outside) | ~6 ft 9 in  (2,050 mm)
+row: Tires | 23 x 10.50-12  (Tractor/Grass tread)
+row: Transmission | Hydrostatic — Avant Optidrive®
+tip: If you can't recite the lift capacity and max lift height from memory, you're not ready to test out.
+
+@two-column
+eyebrow: Section 1 · Equipment
+title: Why articulated matters
+subtitle: It changes how the machine behaves — for better AND worse.
+left-header: The Good
+left-icon: ✓
+left: **Tight turning radius** — pivots in half the space a skid steer needs.
+left: **Low center of gravity** — driver sits in the front chassis, weight is low.
+left: **Rigid pivot joint** — no side-to-side swing. Stable in all directions.
+left: **Smooth on lawns** — turf tires don't tear up customer grass like tracks do.
+right-header: The Watch-Outs
+right-icon: !
+right: **Pivot pinch point** — NEVER stand or kneel in the articulation joint. Crush hazard.
+right: **Stability drops when boom is raised** — keep loads low when traveling.
+right: **Side-hill driving** — going across a slope is more dangerous than going straight up or down it.
+right: **Counterweight effect of attachment** — load swings outboard as you articulate. Slow your inputs.
+takeaway: Articulated is not a skid steer. Move slower, plan your line, and respect the pivot.
+
+@quick-facts
+eyebrow: Section 1 · Equipment
+title: The Branch Manager grapple
+subtitle: Our go-to attachment for moving debris — trees, logs, and brush.
+panel-title: Attachment Quick Facts
+fact: Opening | 56 in opening — large enough for most yard trees
+fact: Weight | ~239–299 lbs depending on rotation type
+fact: Rotation | 360° (manual knock-around OR powered)
+fact: Hydraulics | Single aux. circuit + 12V electric oil diverter for rotator
+fact: Mount | Custom Avant mounting plate (NOT a universal skid-steer plate)
+fact: Features | Tree pusher, grapple bollard, hitch receiver
+list-title: What it does for us
+- Picks up cut logs and trunks without a hand crew lifting them
+- Grabs brush piles and feeds the chipper
+- Drags felled trees out of tight backyards
+- Loads trucks and dumpsters from the side
+- Pushes leaners with the back of the grapple (carefully)
+- Rotates to orient logs lengthwise for stacking
+- Reduces hand-injury risk for the ground crew
+
+@section-divider
+number: 02
+title: Safety
+tagline: If you're rushing, you're already wrong. Slow is smooth, smooth is safe.
+
+@ppe-grid
+eyebrow: Section 2 · Safety
+title: Required PPE — every time, no exceptions
+subtitle: If you don't have it on, you don't sit in the seat.
+item: Hard Hat | Class E or G. Worn whenever you're outside the cab on a tree job — and we recommend in the open ROPS too.
+item: Safety Glasses | ANSI Z87.1. Sawdust, woodchips, and flying bark are constant. No exceptions.
+item: Hearing Protection | Earplugs or muffs. NRR 25+. The 528 + chipper + chainsaws will damage hearing over time.
+item: High-Vis Shirt/Vest | Lime or orange. So the ground crew sees you, and you see them.
+item: Steel/Composite Toe Boots | ASTM-rated. Logs roll. Branches drop. Your toes will lose.
+item: Cut-Resistant Gloves | Required when handling chains, hooks, or debris.
+item: Long Pants, No Loose Clothing | No drawstrings or open hoodies near the articulation point or hydraulics.
+item: Seatbelt | Not optional. See the next slide. We mean it.
+
+@checklist
+eyebrow: Section 2 · Safety
+title: Pre-operation safety checklist
+subtitle: Walk around the machine before you touch the key. Every shift.
+- Tire pressure looks even — no flats or visible damage
+- No fluid leaks under the machine (oil, hydraulic, coolant, diesel)
+- Boom pivot pins and attachment locking pins fully seated
+- Hydraulic hoses on the attachment are not chafed, kinked, or weeping
+- Quick-attach lever is locked and secured
+- Seatbelt buckle works — latch in, latch out
+- ROPS bolts visibly tight, no cracks in the frame
+- Beacon, work lights, and reverse beeper function
+- Fire extinguisher present and in-date (cab option)
+- Path is clear of bystanders, pets, garden hoses, low branches
+- Overhead clear — power lines, eaves, soffits, low-hanging limbs
+- You know where the jobsite muster point is in case of incident
+
+@big-stat
+eyebrow: Section 2 · Safety
+title: ROPS + seatbelt — the non-negotiable
+subtitle: The rollover bar alone doesn't save you. The seatbelt is what keeps you inside it.
+stat: 99%
+stat-caption: effective at preventing death and serious injury — when ROPS is used **with** a seatbelt.
+source: Source: industry rollover protection studies
+panel-title: The Rules
+- **Seatbelt ON** before you turn the key
+- **Never disable, modify, or remove** the ROPS frame
+- **If the machine starts to tip — DO NOT JUMP.** Brace your feet, grip the steering wheel, stay in the seat.
+- **Open ROPS = no overhead protection.** Wear your hard hat even in the seat when working under trees.
+- **Any damage to the ROPS = machine is OUT of service** until inspected. Don't weld or drill it yourself.
+
+@hazard-grid
+eyebrow: Section 2 · Safety
+title: Overhead hazards
+subtitle: What's above the machine will kill you faster than what's in front of it.
+hero: POWER LINES: assume every line is energized. Keep a minimum 10-ft clearance — more for higher voltage. If unsure, call the utility BEFORE work begins.
+item: Tree Being Felled | Never position the 528 under a tree that's actively being cut. If you can't see the climber, you're too close.
+item: Dead / Hanging Limbs | Widow-makers fall straight down. Inspect the canopy before driving under.
+item: Roofs, Eaves, Soffits | Boom up = boom over the gutter. Measure clearance before you raise.
+item: Garage Doors, Awnings | Folded mast height of the 528 is ~6 ft 6 in. Telescope + boom + load can hit doorways fast.
+item: Other Crew in the Tree | Climber overhead = grapple stays grounded. Confirm by radio before any boom movement.
+item: Chipper Feed Chute | When loading the chipper, your grapple swings into the operator's lane. Eye contact + verbal call BEFORE swinging.
+
+@three-rules
+eyebrow: Section 2 · Safety
+title: Stability, slopes & load handling
+subtitle: Three rules that keep this machine rubber-side-down.
+rule: Max Slope: 15° | Don't drive across slopes greater than 15° (about a 27% grade). When in doubt, take the loaded path STRAIGHT up or straight down — never across. Empty the grapple before traversing a steep grade.
+rule: Load Low When Moving | Carry the load 6–12 inches off the ground while traveling. A raised boom moves the center of gravity UP and OUT. Only lift to dump or load. Never travel with the boom fully extended.
+rule: Respect the 2,094 lb Tip Load | Tipping load is measured at 16 in from the coupling, attachment weight included. A long log far from the pivot weighs MORE on the machine than the same weight up close. If the rear wheels lift, you're past the limit — drop the load NOW.
+
+@two-column
+eyebrow: Section 2 · Safety
+title: Bystanders, pinch points & shutdown lockout
+subtitle: The most predictable injuries happen at the moments you least expect.
+left-header: Bystander & Crew Rules
+left-icon: ✓
+left: No one within the grapple swing arc when boom is moving
+left: Never carry a person on, in, or under the grapple
+left: Maintain eye contact with the ground crew before every swing
+left: Use a spotter when backing up or loading the truck
+left: Pets and homeowners stay inside or behind tape
+left: Pinch points: articulation joint, boom pivots, grapple jaws
+left: NEVER stand between the grapple and a fixed object
+right-header: Proper Shutdown — Every Time
+right-icon: 7
+right: Park on level ground
+right: Lower the boom and grapple FULLY to the ground
+right: Set the parking brake / lock
+right: Throttle to idle, run 30 seconds (turbo cool-down)
+right: Key off, remove key
+right: Cycle hydraulic controls to release residual pressure
+right: Walk around — leaks, damage, anything off? Report it.
+
+@section-divider
+number: 03
+title: Operations
+tagline: Now we turn the key — but only after Section 2 is muscle memory.
+
+@steps
+eyebrow: Section 3 · Operations
+title: Starting the machine
+subtitle: Cold-start sequence — same every time.
+step: Pre-op walk-around | Use the checklist from earlier. Don't skip it. Not even once.
+step: Mount safely | Three points of contact. Face the machine — never jump in or out.
+step: Adjust seat & buckle in | Adjust seat so you reach all controls comfortably. Seatbelt before anything else.
+step: Controls in neutral | Drive lever centered, hand throttle low, aux. hydraulics in detent.
+step: Glow plugs | Turn key to PREHEAT. Wait for the indicator light to go out (5–10 sec in cold).
+step: Crank to start | Turn to START. Release as soon as the engine catches. Never crank longer than 10 sec.
+step: Warm up | Low idle for 1–2 minutes (longer in cold). Check oil pressure, charge, temp.
+step: Cycle hydraulics | Slowly raise/lower the boom, extend/retract telescope, open/close the grapple.
+
+@two-column
+eyebrow: Section 3 · Operations
+title: Driving the 528 — Avant Optidrive®
+subtitle: Hydrostatic = one pedal forward, one pedal reverse. Smooth wins.
+left-header: Do
+left-icon: ✓
+left: Engine RPM higher when you need hydraulic power (lifting, grapple force)
+left: Feather the pedal — abrupt starts/stops shock the load and the machine
+left: Steer SLOWLY when loaded — the load swings outboard at the pivot
+left: Brake by easing off the pedal (hydrostatic braking) — service brake for emergencies/parking
+left: Reverse only with mirrors AND a glance over the shoulder
+left: Always travel with boom DOWN (6–12 inches off ground, attachment tilted back)
+right-header: Don't
+right-icon: ×
+right: Slam the pedal from forward to reverse — gets expensive fast
+right: Travel with the boom raised more than knee height
+right: High-RPM idle for long periods — wastes fuel and overheats hydraulics
+right: Turn sharply on a slope — articulated machines roll predictably when you violate this
+right: Drive with one hand or your head out the side
+right: Let anyone ride along — single seat, single operator
+
+@quick-facts
+eyebrow: Section 3 · Operations
+title: Boom, telescope & aux hydraulics
+subtitle: Three control axes that work together. Practice until your hands know.
+panel-title: Control Map
+fact: Boom Up/Down | Joystick fore/aft. Raises and lowers the main lift arm.
+fact: Boom Tilt | Joystick left/right. Rolls the attachment toward you (crowd) or away (dump).
+fact: Telescope | Aux switch on the joystick. Extends up to ~24 in. Retract fully before driving.
+fact: Aux Hydraulics | Flow lever / thumb roller. Opens and closes the grapple jaws.
+fact: Rotator (12V) | Press the diverter button to swap aux. flow from jaws to rotator.
+fact: Hand Throttle | Sets engine RPM. Higher RPM = faster hydraulics + more force.
+list-title: Always remember
+- Travel with boom DOWN (6–12 in off the ground)
+- Retract telescope fully before any driving
+- Match RPM to the task — don't run wide-open all the time
+- Stop motion first, then change direction
+- One control axis at a time when you're learning
+
+@steps
+eyebrow: Section 3 · Operations
+title: Attaching the Branch Manager
+subtitle: Get the mechanical connection RIGHT before any hydraulic connection.
+step: Level ground, engine OFF | Park on level ground. Key removed.
+step: Tilt forward, hook the plate | Approach slowly. Coupler hooks engage the top lip of the Avant plate.
+step: Tilt back to roll into position | Rotate the coupler back to seat the attachment.
+step: Drop the locking pins | OUT of the seat. Lower pins by hand. Confirm fully seated through the hole.
+step: Visually confirm lock | Both sides of the quick-attach must be locked.
+step: Connect hydraulics | Engine OFF. Cycle joystick to relieve pressure. Connect couplers — clean threads.
+step: Plug in 12V harness | For the rotator diverter.
+step: Test from the cab | Start engine. Cycle jaws & rotator. Confirm operation before leaving the yard.
+
+@technique
+eyebrow: Section 3 · Operations
+title: Grappling debris — technique that works
+subtitle: Power matters, but position matters more.
+lead: Approach low and slow. Set the jaws to engage the center of mass. Close. Tilt back. Lift only as much as you need to.
+card: Logs | Grab near the center of mass — usually slightly toward the butt end. Long logs: balance is everything. Roll them with the rotator before lifting if you need to change orientation.
+card: Whole Tree Sections | If the limb structure is uneven, expect 'dogleg' swing when you lift. Pause, let it settle, then move. NEVER swing over the crew.
+card: Brush Piles | Bury the lower jaw, close slowly. Compress the pile before lifting. Smaller bites = less fall-out on the drive to the chipper.
+card: Odd Shapes (Rootballs, Stumps) | Use the rotator to find a flat purchase point. Approach from the side that minimizes overhang past the grapple.
+card: Pushing (Not Lifting) | Use the BACK of the grapple to push leaners or debris. Never push with the open jaws — they bend.
+card: Awkward Lifts | If it doesn't sit balanced in the grapple, set it down. Re-grab. Lifting an unbalanced load is how grapples die.
+warn: Shock-loading (slamming jaws onto a log), prying out buried debris with hydraulic force, lifting anchored or rooted material.
+
+@two-column
+eyebrow: Section 3 · Operations
+title: Loading trucks, dumpsters & chippers
+subtitle: Highest-risk phase of the job. Slow down. Make eye contact.
+left-header: Trucks & Dumpsters
+left-icon: ✓
+left: Confirm truck/dumpster is on level ground and chocked if needed
+left: Confirm no one is in the bed, on top of the pile, or behind the truck
+left: Confirm load fits inside the bed (length AND height) — log overhang is illegal
+left: Approach square to the truck, not at an angle
+left: Lift high enough to clear the rails, NOT higher
+left: Open jaws slowly to drop — never shake the grapple to dump
+right-header: Chipper Feeding
+right-icon: !
+right: Chipper operator runs the chipper — you DON'T
+right: Verbal call + eye contact before any boom swing toward the chute
+right: Stay BEHIND the operator's working zone; never swing across their lane
+right: Feed butt-end first, small bites — let the chipper pull, don't shove
+right: If a piece is too big or odd-shaped, set it down and let it be cut smaller
+right: STOP immediately if you hear the chipper bog, scream, or change pitch
+
+@section-divider
+number: 04
+title: Maintenance
+tagline: A clean, greased machine doesn't break down on a customer's lawn.
+
+@checklist
+eyebrow: Section 4 · Maintenance
+title: Daily pre-op inspection
+subtitle: Two minutes of checking saves two hours of breakdown.
+- **Tires** — pressure even, no cuts or embedded debris, lug nuts visible/tight
+- **Attachment pins** — quick-attach locking pins fully seated; safety clips in place
+- **Hydraulic hoses** — no leaks, no chafing, couplers clean and dry
+- **Boom pivots** — greased; wipe extruded grease; check pin retainers
+- **Engine oil** — dipstick between MIN and MAX. Top up if low. NEVER overfill.
+- **Coolant** — sight glass between MIN and MAX. Engine COLD only.
+- **Diesel fuel** — top off at start of shift, never run below 1/4 tank
+- **Air filter indicator** — visual indicator clear; if popped, change filter before starting
+- **Battery** — terminals clean and tight; no corrosion or swelling
+- **Lights / beacon / beeper** — all function before leaving the yard
+- **Seat, belt, ROPS** — belt latches; no cracks in ROPS; all bolts visible
+- **Attachment grease points** — grapple pivots, rotator — fresh grease film visible
+
+@quick-facts
+eyebrow: Section 4 · Maintenance
+title: Greasing schedule & points
+subtitle: Grease cheap. Pivot pins expensive.
+panel-title: When to Grease
+fact: Daily | Boom pivot & cylinder pins
+fact: Daily | Attachment quick-coupler pivots
+fact: Daily | Grapple pivot pins (very high cycle)
+fact: 50 hrs | Articulation joint
+fact: 50 hrs | Steering cylinder pins
+fact: 50 hrs | Drive shaft U-joints
+fact: Weekly | Wheel hub seals (light wipe)
+list-title: Do it right
+- Use NLGI #2 multi-purpose lithium grease (or what the dealer specifies)
+- Wipe the zerk fitting clean BEFORE coupling
+- 2–3 shots per zerk — until you see fresh grease extrude
+- Wipe excess immediately (it picks up grit otherwise)
+- If a zerk won't take grease, report it — don't force it
+- Replace any missing or damaged zerks before next shift
+
+@interval-table
+eyebrow: Section 4 · Maintenance
+title: Periodic service intervals
+subtitle: Operator-level vs. shop-level. Know the line.
+cols: Interval | Operator Tasks | Shop Tasks
+row: Daily | Walk-around, fluids, grease daily points, clean radiator screen | —
+row: Every 10 hrs | Tire pressure check, more thorough grease pass, clean cab | —
+row: Every 50 hrs | All grease points, check belt tension, drain water from fuel filter | Inspect hydraulic hoses, torque check on attachment plate
+row: Every 250 hrs | Replace engine oil & filter, replace fuel filter, check coolant | Hydraulic filter, valve clearance check
+row: Every 500 hrs | Inspect all electrical connections, log into service tracker | Replace hydraulic oil, replace air filter, full diagnostic
+row: Annually | Bring to shop on schedule — don't wait for failures | Full inspection, ROPS bolts torque, brake system, A/C service
+note: If a fault light, unusual noise, leak, or performance change appears between intervals — STOP the machine and report it. Don't 'run it through the shift.'
+
+@section-divider
+number: 05
+title: Best Practices
+tagline: Habits that separate a green operator from a Bratt Tree operator.
+
+@technique
+eyebrow: Section 5 · Best Practices
+title: Jobsite efficiency
+subtitle: Move debris in a flow, not in fits and starts.
+lead: A clean drop zone and a clear path are worth more than horsepower. Set them up first.
+card: Plan Your Drop Zone First | Before any cutting starts, decide where logs and brush will land. Mark the path from drop zone to truck/chipper. Move obstacles BEFORE you need to drive over them.
+card: Stage by Size | Logs in one pile, brush in another, contractor-grade debris in a third. Mixing piles = sorting later = wasted minutes per load.
+card: Full Bites, Not Nibbles | Match the grapple to the load. Half-full grapples mean double the trips. Don't OVERLOAD either — see the 2,094 lb lift limit.
+card: Drive with Purpose | Pick a path and commit. Constant micro-adjusting wastes time and chews up the lawn.
+card: Protect the Turf | Avoid hard turns on grass. If the homeowner cares about the yard (most do), lay plywood under the wheels in soft areas.
+card: Staging the Chipper | Position the chipper so the prevailing wind blows chips AWAY from cars, windows, and customers. Re-stage once if the wind shifts.
+
+@hand-signals
+eyebrow: Section 5 · Best Practices
+title: Communication on a tree job
+subtitle: Two-way radio, eye contact, hand signals. In that order.
+signal: Stop | Both arms straight up, palms forward
+signal: Go / OK | Single thumbs up — paired with eye contact
+signal: Raise Boom | Index finger pointed up, circling motion
+signal: Lower Boom | Index finger pointed down, circling motion
+signal: Open Grapple | Two flat hands moving apart, palms out
+signal: Close Grapple | Two flat hands moving together
+signal: Back Up | Hand waving over shoulder, repeated
+signal: All Clear / Done | Fist tapped on top of hard hat
+footnote: Radio protocol: clear, brief, one transmission per thought. Use names. Repeat back critical instructions. "Affirmative" and "Negative" — not "yeah" or "nope."
+
+@mistakes
+eyebrow: Section 5 · Best Practices
+title: Common rookie mistakes
+subtitle: Don't be that operator. Every one of these has happened — don't add yours to the list.
+- Driving with the boom raised because it 'felt fine in the yard'
+- Skipping the seatbelt because you're 'just moving it 20 feet'
+- Articulating fast on a slope with a heavy log — side-roll waiting to happen
+- Forgetting to lock the quick-attach pin — attachment drops at full extension
+- Slamming forward-to-reverse on the Optidrive pedal — burns the pump out
+- Running the engine at idle for an hour — wastes fuel, glazes the cylinders
+- Pushing with the open jaws — bends the structural arms
+- Not topping fuel at end of shift — water condensation overnight
+- Loading the truck so high that overhang catches the gate frame
+- Greasing through a dirty zerk — packing grit into the bearing
+- Driving over the hydraulic hose you forgot to recoil
+- Standing in the articulation pivot to fix the wiring — biggest crush risk on the machine
+
+@section-divider
+number: 06
+title: Test-Out
+tagline: Show the trainer you can do it. Then take the written test.
+
+@test-checklist
+eyebrow: Section 6 · Test-Out
+title: Practical test-out — on the machine
+subtitle: Trainer signs off each item. You must complete ALL before the written test.
+cols: Area | Task | Pass | Trainer Initials
+row: Pre-Op | Complete a full pre-op walk-around verbally narrating each check | ☐ |
+row: Pre-Op | Verify and document fluid levels (engine oil, coolant, hydraulic) | ☐ |
+row: Pre-Op | Attach the Branch Manager grapple from a cold start (no shortcuts) | ☐ |
+row: Startup | Mount the machine with proper three points of contact | ☐ |
+row: Startup | Complete the cold-start sequence and warm-up correctly | ☐ |
+row: Driving | Drive a figure-8 course without articulation correction errors | ☐ |
+row: Driving | Travel with boom DOWN and demonstrate slow direction change | ☐ |
+row: Driving | Reverse with spotter using verbal + hand signals | ☐ |
+row: Grapple | Pick up a single log, rotate 180°, set it on a target | ☐ |
+row: Grapple | Move a brush pile to a marked drop zone in 3 bites or fewer | ☐ |
+row: Loading | Load a designated debris item into a truck bed without striking the sides | ☐ |
+row: Loading | Demonstrate proper chipper feeding etiquette with a partner | ☐ |
+row: Shutdown | Perform full shutdown sequence and lockout | ☐ |
+row: Shutdown | Detach the grapple and stage it safely | ☐ |
+row: Recovery | Identify the 5 most common failure points by sight on the machine | ☐ |
+
+@quiz
+eyebrow: Section 6 · Test-Out
+title: Knowledge check — 5 sample questions
+subtitle: Try these as a warm-up. Full 20-question test is in your training packet.
+q: Maximum lift capacity (tipping load) of the Avant 528 is: | 1,100 lbs | 2,094 lbs | 3,131 lbs | 5,512 lbs
+q: When traveling with a load, the grapple should be: | Fully raised for visibility | Tilted forward, jaws open | 6–12 inches off the ground, tilted back | Wherever feels balanced
+q: Maximum slope to drive ACROSS with the 528 is approximately: | 30° | 25° | 15° | No limit if you go slowly
+q: If the machine begins to tip, the correct response is: | Jump clear immediately | Brace and stay in the seat | Open the door and lean out | Drop the boom fast to counter
+q: Before connecting hydraulic couplers to the Branch Manager, you should: | Connect with engine running for pressure | Engine OFF and cycle joystick to relieve pressure | Spray with lubricant | Plug in the 12V harness first
+
+@quiz-answers
+eyebrow: Section 6 · Test-Out
+title: Sample question answers
+subtitle: Check your work, then ask the trainer if anything is unclear.
+a: B) 2,094 lbs | Tipping load is ~2,094 lbs (950 kg) measured at 16 in from the coupling, including attachment weight. This is the limit — don't fight it.
+a: C) 6–12 inches off the ground, tilted back | A raised boom raises the center of gravity AND swings the load further outboard when articulating. Keep it low.
+a: C) 15° | 15° is the recommended limit. Above that, even articulated machines roll. Empty the grapple before any steep traverse.
+a: B) Brace and stay in the seat | ROPS + seatbelt = 99% effective. Outside the cage you're in the crush zone. The ONLY safe place is in the seat, belted.
+a: B) Engine OFF and cycle joystick to relieve pressure | Trapped pressure makes couplers impossible to connect AND can inject hydraulic oil into your skin. Always relieve pressure first.
+
+@resources
+eyebrow: Wrap-Up
+title: Resources & sign-off
+subtitle: Where to go next — and what we need from you.
+panel-title: Reference Materials
+link: Avant 528 Product Page | avanttecno.com/loader/avant-528/
+link: Avant Operator's Manual (523/528/530) | manuals.avanttecno.com
+link: Branch Manager Attachments | branchmanagerusa.com
+link: Internal SOP — Tree Debris Removal | See ops binder
+link: Maintenance log & checkout sheet | Yard office
+link: Emergency contacts | Posted in every truck
+signature-statement: I have completed the Avant 528 training course. I understand the safety requirements, operational procedures, and maintenance expectations.
+field: Operator name (print)
+field: Operator signature
+field: Trainer signature
+field: Date
+
+@closing
+mark: BT
+title: Welcome to the Bratt Tree crew.
+subtitle: Run the machine right. Watch out for each other. Get home safe.
+$BTMOD$
+where slug = 'avant_528_operator';
+
+commit;
