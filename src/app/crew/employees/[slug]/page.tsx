@@ -34,11 +34,14 @@ export const dynamic = 'force-dynamic';
 
 export default async function EmployeeProfilePage({
   params,
+  searchParams,
 }: {
   params: Promise<{ slug: string }>;
+  searchParams: Promise<{ saved?: string }>;
 }) {
   const user = await requireHubAccess('crew');
   const { slug } = await params;
+  const { saved } = await searchParams;
   const editable = canEditCrew(user.role);
 
   const employee = await getEmployee(slug);
@@ -96,9 +99,6 @@ export default async function EmployeeProfilePage({
                 size="md"
               />
             ))}
-            <span className="font-headline text-xs font-extrabold uppercase tracking-ribbon text-fg-3">
-              Code {employee.code}
-            </span>
             {!employee.active && (
               <span className="rounded-full bg-paper-edge px-3 py-1 font-headline text-[10px] font-extrabold uppercase tracking-ribbon text-fg-2">
                 Inactive
@@ -122,13 +122,18 @@ export default async function EmployeeProfilePage({
       </header>
 
       {editable && (
-        <div className="mt-4">
+        <div className="mt-4 flex flex-wrap items-center gap-3">
           <Link
             href={`/admin/crew/employees/${employee.slug}`}
             className="bt-btn bt-btn-dark text-xs"
           >
             Edit profile &rarr;
           </Link>
+          {saved && (
+            <span className="rounded-full bg-green/15 px-3 py-1 font-headline text-[10px] font-extrabold uppercase tracking-ribbon text-green-dark">
+              Saved
+            </span>
+          )}
         </div>
       )}
 
