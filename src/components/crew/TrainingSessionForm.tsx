@@ -102,57 +102,49 @@ export function TrainingSessionForm({
   }
 
   return (
-    <form onSubmit={handleSubmit} className="bt-card">
-      <div className="flex flex-wrap items-baseline justify-between gap-3">
-        <div>
-          <p className="bt-eyebrow">Log training</p>
-          <h2 className="mt-1 font-headline text-xl font-black uppercase text-bark-deep">
-            New session for {employeeName}
-          </h2>
-        </div>
-      </div>
-
-      <div className="mt-5 grid grid-cols-1 gap-4 sm:grid-cols-[auto_1fr]">
-        <label className="block">
-          <span className="block font-headline text-[11px] font-extrabold uppercase tracking-ribbon text-fg-3">
-            Date
-          </span>
-          <input
-            type="date"
-            value={sessionDate}
-            onChange={(e) => setSessionDate(e.target.value)}
-            required
-            className="mt-1 block rounded-2 border border-paper-edge bg-cream px-3 py-2 text-sm focus:border-orange focus:outline-none"
-          />
-        </label>
-        <label className="block">
-          <span className="block font-headline text-[11px] font-extrabold uppercase tracking-ribbon text-fg-3">
-            Notes (optional)
-          </span>
-          <textarea
-            value={notes}
-            onChange={(e) => setNotes(e.target.value)}
-            rows={2}
-            placeholder="What was covered, who was there, anything to remember..."
-            className="mt-1 block w-full rounded-2 border border-paper-edge bg-cream px-3 py-2 text-sm focus:border-orange focus:outline-none"
-          />
-        </label>
-      </div>
-
-      <div className="mt-6">
-        <span className="block font-headline text-[11px] font-extrabold uppercase tracking-ribbon text-fg-3">
-          Trainings logged in this session
+    <form onSubmit={handleSubmit} className="rounded-card border-[3px] border-lime bg-paper p-4">
+      <div className="flex items-baseline justify-between gap-3">
+        <p className="font-headline text-xs font-extrabold uppercase tracking-ribbon text-orange">
+          Log training
+        </p>
+        <span className="font-headline text-[10px] font-extrabold uppercase tracking-ribbon text-fg-3">
+          {employeeName}
         </span>
-        <ul className="mt-2 space-y-2">
+      </div>
+
+      <div className="mt-3 flex items-center gap-2">
+        <input
+          type="date"
+          value={sessionDate}
+          onChange={(e) => setSessionDate(e.target.value)}
+          required
+          aria-label="Session date"
+          className="rounded-2 border border-paper-edge bg-cream px-2 py-1 text-xs focus:border-orange focus:outline-none"
+        />
+        <input
+          type="text"
+          value={notes}
+          onChange={(e) => setNotes(e.target.value)}
+          placeholder="Notes (optional)"
+          aria-label="Session notes"
+          className="flex-1 rounded-2 border border-paper-edge bg-cream px-2 py-1 text-xs focus:border-orange focus:outline-none"
+        />
+      </div>
+
+      <div className="mt-3">
+        <span className="block font-headline text-[10px] font-extrabold uppercase tracking-ribbon text-fg-3">
+          Trainings
+        </span>
+        <ul className="mt-1.5 space-y-1.5">
           {rows.map((row) => (
             <li
               key={row.rid}
-              className="grid grid-cols-1 gap-2 sm:grid-cols-[1fr_120px_auto] sm:items-center"
+              className="grid grid-cols-[1fr_72px_auto] items-center gap-1.5"
             >
               <select
                 value={row.training_key}
                 onChange={(e) => updateRow(row.rid, { training_key: e.target.value })}
-                className="rounded-2 border border-paper-edge bg-cream px-3 py-2 text-sm focus:border-orange focus:outline-none"
+                className="rounded-2 border border-paper-edge bg-cream px-2 py-1 text-xs focus:border-orange focus:outline-none"
               >
                 <option value="">Select training…</option>
                 {trainings.map((t) => (
@@ -166,19 +158,19 @@ export function TrainingSessionForm({
                 inputMode="decimal"
                 step="0.25"
                 min="0"
-                placeholder="Hours"
+                placeholder="Hrs"
                 value={row.hours}
                 onChange={(e) => updateRow(row.rid, { hours: e.target.value })}
-                className="rounded-2 border border-paper-edge bg-cream px-3 py-2 text-sm focus:border-orange focus:outline-none"
+                className="rounded-2 border border-paper-edge bg-cream px-2 py-1 text-xs focus:border-orange focus:outline-none"
               />
               <button
                 type="button"
                 onClick={() => removeRow(row.rid)}
                 disabled={rows.length === 1}
-                className="rounded-full px-2 py-1 font-headline text-[10px] font-extrabold uppercase tracking-ribbon text-fg-3 hover:bg-paper-edge disabled:opacity-30"
+                className="rounded-full px-1.5 py-1 font-headline text-[9px] font-extrabold uppercase tracking-ribbon text-fg-3 hover:bg-paper-edge disabled:opacity-30"
                 aria-label="Remove this training row"
               >
-                Remove
+                ×
               </button>
             </li>
           ))}
@@ -186,28 +178,28 @@ export function TrainingSessionForm({
         <button
           type="button"
           onClick={addRow}
-          className="mt-3 font-headline text-xs font-extrabold uppercase tracking-ribbon text-orange hover:underline"
+          className="mt-2 font-headline text-[10px] font-extrabold uppercase tracking-ribbon text-orange hover:underline"
         >
-          + Add another training
+          + Add training
         </button>
       </div>
 
       {error && (
-        <p className="mt-4 rounded-2 bg-orange/10 px-3 py-2 text-sm text-orange-press">
+        <p className="mt-2 rounded-2 bg-orange/10 px-2 py-1 text-xs text-orange-press">
           {error}
         </p>
       )}
       {success && !error && (
-        <p className="mt-4 rounded-2 bg-green/10 px-3 py-2 text-sm text-green-dark">
-          Saved. The entries are live in the log and the activity feed.
+        <p className="mt-2 rounded-2 bg-green/10 px-2 py-1 text-xs text-green-dark">
+          Saved.
         </p>
       )}
 
-      <div className="mt-5 flex flex-wrap gap-3">
+      <div className="mt-3">
         <button
           type="submit"
           disabled={isPending}
-          className="bt-btn bt-btn-primary disabled:opacity-60"
+          className="bt-btn bt-btn-primary !text-[11px] !px-4 !py-2 disabled:opacity-60"
         >
           {isPending ? 'Saving…' : 'Save session'}
         </button>

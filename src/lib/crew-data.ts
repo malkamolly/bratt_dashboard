@@ -556,6 +556,130 @@ export async function getHoursByTrainingForEmployee(
   return result;
 }
 
+// ---------- Per-training detail ----------
+
+export type TrainingEmployeeRecord = {
+  employee_slug: string;
+  employee_name: string;
+  position_key: string | null;
+  position_name: string | null;
+  active: boolean;
+  // Completion-based fields (null for hours-based trainings).
+  completed: string | null;
+  card_received: string | null;
+  status: string | null;
+  notes: string | null;
+  // Hours-based fields.
+  hours_total: number;
+  last_logged: string | null;
+};
+
+export async function getTraining(key: string): Promise<Training | null> {
+  const supabase = await serverClient();
+  const { data } = await supabase
+    .from('field_crew_trainings')
+    .select('*')
+    .eq('key', key)
+    .maybeSingle();
+  return (data as Training) ?? null;
+}
+
+/**
+ * For a given training, return ONE row per active employee that captures
+ * everything we need to render + edit on the per-training detail page.
+ * Inactive employees are omitted (they won't earn new trainings).
+ */
+export async function listTrainingEmployeeRecords(
+  trainingKey: string,
+): Promise<TrainingEmployeeRecord[]> {
+  const supabase = await serverClient();
+
+  const [{ data: employees }, { data: records }, { data: sessionEntries }, { data: positions }] =
+    await Promise.all([
+      supabase
+        .from('field_crew_employees')
+        .select('slug, name, position_key, active')
+        .order('name'),
+      supabase
+        .from('field_crew_employee_trainings')
+        .select('employee_slug, completed, card_received, status, notes')
+        .eq('training_key', trainingKey),
+      supabase
+        .from('field_crew_training_session_entries')
+        .select(
+          'hours, training_key, field_crew_training_sessions!inner(employee_slug, session_date)',
+        )
+        .eq('training_key', trainingKey),
+      supabase.from('field_crew_positions').select('key, display_name'),
+    ]);
+
+  const positionName = new Map<string, string>();
+  for (const p of (positions ?? []) as { key: string; display_name: string }[]) {
+    positionName.set(p.key, p.display_name);
+  }
+
+  const recordBySlug = new Map<
+    string,
+    { completed: string | null; card_received: string | null; status: string | null; notes: string | null }
+  >();
+  for (const r of (records ?? []) as {
+    employee_slug: string;
+    completed: string | null;
+    card_received: string | null;
+    status: string | null;
+    notes: string | null;
+  }[]) {
+    recordBySlug.set(r.employee_slug, {
+      completed: r.completed,
+      card_received: r.card_received,
+      status: r.status,
+      notes: r.notes,
+    });
+  }
+
+  type SessionEntryRow = {
+    hours: string | number;
+    field_crew_training_sessions:
+      | { employee_slug: string; session_date: string }
+      | { employee_slug: string; session_date: string }[]
+      | null;
+  };
+  const hoursBySlug = new Map<string, { total: number; lastLogged: string | null }>();
+  for (const e of (sessionEntries ?? []) as SessionEntryRow[]) {
+    const joined = Array.isArray(e.field_crew_training_sessions)
+      ? e.field_crew_training_sessions[0]
+      : e.field_crew_training_sessions;
+    if (!joined) continue;
+    const cur = hoursBySlug.get(joined.employee_slug) ?? { total: 0, lastLogged: null };
+    cur.total += Number(e.hours);
+    if (!cur.lastLogged || joined.session_date > cur.lastLogged) {
+      cur.lastLogged = joined.session_date;
+    }
+    hoursBySlug.set(joined.employee_slug, cur);
+  }
+
+  type EmpRow = { slug: string; name: string; position_key: string | null; active: boolean };
+  return ((employees ?? []) as EmpRow[])
+    .filter((e) => e.active)
+    .map((e) => {
+      const rec = recordBySlug.get(e.slug);
+      const hrs = hoursBySlug.get(e.slug);
+      return {
+        employee_slug: e.slug,
+        employee_name: e.name,
+        position_key: e.position_key,
+        position_name: e.position_key ? positionName.get(e.position_key) ?? null : null,
+        active: e.active,
+        completed: rec?.completed ?? null,
+        card_received: rec?.card_received ?? null,
+        status: rec?.status ?? null,
+        notes: rec?.notes ?? null,
+        hours_total: hrs?.total ?? 0,
+        last_logged: hrs?.lastLogged ?? null,
+      };
+    });
+}
+
 // ---------- Aggregations for the homepage ----------
 
 export type SkillSummary = {
