@@ -17,7 +17,7 @@ import { format, parseISO } from 'date-fns';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { requireHubAccess, canEditCrew } from '@/lib/auth';
-import { startTrainingAttempt } from '@/app/crew/actions';
+import { startTrainingAttempt, unassignTrainingModule } from '@/app/crew/actions';
 import {
   getCatalogs,
   getEmployee,
@@ -452,6 +452,23 @@ export default async function EmployeeProfilePage({
                                 className="bt-btn bt-btn-primary !text-[10px] !px-2.5 !py-1"
                               >
                                 {a.latest_attempt ? 'Retake' : 'Take test'}
+                              </button>
+                            </form>
+                          )}
+                          {editable && passed !== true && (
+                            <form action={unassignTrainingModule}>
+                              <input type="hidden" name="assignment_id" value={a.id} />
+                              <input
+                                type="hidden"
+                                name="return_to"
+                                value={`/crew/employees/${employee.slug}`}
+                              />
+                              <button
+                                type="submit"
+                                title="Remove this assignment"
+                                className="font-headline text-[10px] font-extrabold uppercase tracking-ribbon text-fg-3 hover:text-orange-press"
+                              >
+                                Unassign
                               </button>
                             </form>
                           )}

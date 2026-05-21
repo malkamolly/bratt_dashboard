@@ -365,6 +365,91 @@ export async function assignTrainingModule(formData: FormData): Promise<void> {
  * pick. The action returns the attempt id via redirect to the take URL.
  */
 /**
+ * Manager-only: remove a training-module assignment from one crew member.
+ * Guard: we refuse if the latest attempt is a PASS — that would cascade-
+ * delete the certificate row, which we never want to lose. To revoke a
+ * pass, an admin should clear the linked training record via the
+ * per-training editor instead.
+ */
+export async function unassignTrainingModule(formData: FormData): Promise<void> {
+  const user = await getAllowedUser();
+  if (!user) redirect('/login');
+  if (!canEditCrew(user.role)) redirect('/access-denied');
+
+  const assignmentId = String(formData.get('assignment_id') ?? '').trim();
+  const returnTo = String(formData.get('return_to') ?? '').trim();
+  if (!assignmentId) redirect(returnTo || '/crew/modules?error=missing_assignment');
+
+  const supabase = await serverClient();
+
+  // Pull the assignment + module name + employee for logging, plus the
+  // latest attempt to make sure we're not deleting a pass.
+  const { data: assignment } = await supabase
+    .from('field_crew_training_assignments')
+    .select(
+      'id, module_slug, employee_slug,' +
+        ' field_crew_training_modules!inner(name),' +
+        ' field_crew_employees!inner(name)',
+    )
+    .eq('id', assignmentId)
+    .maybeSingle();
+  if (!assignment) {
+    redirect(`${returnTo || '/crew/modules'}?error=assignment_not_found`);
+  }
+  const a = assignment as unknown as {
+    id: string;
+    module_slug: string;
+    employee_slug: string;
+    field_crew_training_modules: { name: string } | { name: string }[] | null;
+    field_crew_employees: { name: string } | { name: string }[] | null;
+  };
+  const moduleName = (Array.isArray(a.field_crew_training_modules)
+    ? a.field_crew_training_modules[0]
+    : a.field_crew_training_modules
+  )?.name ?? a.module_slug;
+
+  const { data: passedAttempt } = await supabase
+    .from('field_crew_training_attempts')
+    .select('id')
+    .eq('assignment_id', assignmentId)
+    .eq('passed', true)
+    .limit(1)
+    .maybeSingle();
+  if (passedAttempt) {
+    redirect(
+      `${returnTo || `/crew/modules/${a.module_slug}`}?error=${encodeURIComponent(
+        'Already passed — clear the training row to revoke it.',
+      )}`,
+    );
+  }
+
+  const { error } = await supabase
+    .from('field_crew_training_assignments')
+    .delete()
+    .eq('id', assignmentId);
+  if (error) {
+    redirect(
+      `${returnTo || `/crew/modules/${a.module_slug}`}?error=${encodeURIComponent(error.message)}`,
+    );
+  }
+
+  // Activity entry so the timeline shows the unassignment.
+  const today = new Date().toISOString().slice(0, 10);
+  await logActivity(
+    supabase,
+    a.employee_slug,
+    today,
+    `Unassigned from ${moduleName} training.`,
+    user.email,
+  );
+
+  revalidatePath(`/crew/modules/${a.module_slug}`);
+  revalidatePath(`/crew/employees/${a.employee_slug}`);
+  revalidatePath('/crew');
+  redirect(returnTo || `/crew/modules/${a.module_slug}?unassigned=1`);
+}
+
+/**
  * Authorize an attempt action: admins and field managers can act on any
  * assignment; a field_crew user can only act on their own.
  */
