@@ -14,6 +14,7 @@ function subtitleFor(pathname: string): string | null {
     pathname.startsWith('/pace') ||
     pathname.startsWith('/sales') ||
     pathname.startsWith('/production') ||
+    pathname.startsWith('/schedule') ||
     pathname.startsWith('/admin')
   ) {
     return 'Pace Dashboard';
@@ -31,6 +32,7 @@ function sectionFor(pathname: string): Section {
     pathname.startsWith('/pace') ||
     pathname.startsWith('/sales') ||
     pathname.startsWith('/production') ||
+    pathname.startsWith('/schedule') ||
     pathname.startsWith('/admin')
   ) {
     return 'pace';
