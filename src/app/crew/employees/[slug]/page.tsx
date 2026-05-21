@@ -247,7 +247,14 @@ export default async function EmployeeProfilePage({
                 const hoursAgg = hoursByTraining[t.key];
                 return (
                   <tr key={t.key} className="border-t border-paper-edge/60">
-                    <td className="px-4 py-2 text-ink">{t.display_name}</td>
+                    <td className="px-4 py-2 text-ink">
+                      <Link
+                        href={`/crew/trainings/${t.key}`}
+                        className="hover:underline"
+                      >
+                        {t.display_name}
+                      </Link>
+                    </td>
                     <td className="px-3 py-2">
                       <TrainingStatus
                         rec={rec}

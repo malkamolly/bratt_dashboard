@@ -53,8 +53,13 @@ export default async function TrainingsCatalogPage() {
           <tbody>
             {trainings.map((t) => (
               <tr key={t.key} className="border-t border-paper-edge/60">
-                <td className="px-4 py-2 font-headline font-extrabold text-bark-deep">
-                  {t.display_name}
+                <td className="px-4 py-2">
+                  <Link
+                    href={`/crew/trainings/${t.key}`}
+                    className="font-headline font-extrabold text-bark-deep hover:underline"
+                  >
+                    {t.display_name}
+                  </Link>
                 </td>
                 <td className="px-4 py-2 font-mono text-xs text-fg-3">{t.key}</td>
                 <td className="px-4 py-2">
