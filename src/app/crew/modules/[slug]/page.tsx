@@ -14,11 +14,11 @@ import { format, parseISO } from 'date-fns';
 import { requireHubAccess, canEditCrew } from '@/lib/auth';
 import {
   getTrainingModule,
-  listModuleSlides,
   listModuleQuestions,
   listAssignmentsForModule,
   listEmployees,
 } from '@/lib/crew-data';
+import { countSlides } from '@/lib/training-deck';
 import {
   assignTrainingModule,
   startTrainingAttempt,
@@ -26,26 +26,6 @@ import {
 } from '@/app/crew/actions';
 
 export const dynamic = 'force-dynamic';
-
-const SECTION_LABELS: Record<string, string> = {
-  intro: 'Intro',
-  equipment: 'Equipment',
-  safety: 'Safety',
-  operations: 'Operations',
-  maintenance: 'Maintenance',
-  best_practices: 'Best Practices',
-  closing: 'Closing',
-};
-
-const SECTION_ORDER = [
-  'intro',
-  'equipment',
-  'safety',
-  'operations',
-  'maintenance',
-  'best_practices',
-  'closing',
-];
 
 export default async function ModuleDetailPage({
   params,
@@ -62,21 +42,14 @@ export default async function ModuleDetailPage({
   const mod = await getTrainingModule(slug);
   if (!mod) notFound();
 
-  const [slides, questions, assignments, employees] = await Promise.all([
-    listModuleSlides(slug),
+  const [questions, assignments, employees] = await Promise.all([
     listModuleQuestions(slug),
     listAssignmentsForModule(slug),
     listEmployees({ activeOnly: true }),
   ]);
 
-  // Bucket slides by section so we can show counts.
-  const slidesBySection = new Map<string, number>();
-  for (const s of slides) {
-    const sec = s.section ?? 'intro';
-    slidesBySection.set(sec, (slidesBySection.get(sec) ?? 0) + 1);
-  }
-  const presentSections = SECTION_ORDER.filter((s) => slidesBySection.get(s));
-
+  const slideCount = countSlides(mod.source_text);
+  const hasDeck = slideCount > 0;
   const safetyCount = questions.filter((q) => q.safety_critical).length;
 
   // Crew not yet assigned to this module — for the assignment form options.
@@ -106,18 +79,28 @@ export default async function ModuleDetailPage({
             <p className="mt-3 max-w-2xl text-fg-2">{mod.description}</p>
           )}
           <p className="mt-2 font-headline text-[10px] font-extrabold uppercase tracking-ribbon text-fg-3">
-            v{mod.version} · {slides.length} slides · {questions.length} questions ·{' '}
+            v{mod.version} · {slideCount} slides · {questions.length} questions ·{' '}
             {safetyCount} safety-critical · Pass {mod.pass_threshold}%
           </p>
         </div>
-        {slides.length > 0 && presentSections[0] && (
-          <Link
-            href={`/crew/modules/${mod.slug}/present/${presentSections[0]}`}
-            className="bt-btn bt-btn-primary"
-          >
-            Present deck →
-          </Link>
-        )}
+        <div className="flex flex-wrap items-center gap-2">
+          {editable && (
+            <Link
+              href={`/crew/modules/${mod.slug}/edit`}
+              className="bt-btn bt-btn-dark"
+            >
+              Edit deck
+            </Link>
+          )}
+          {hasDeck && (
+            <Link
+              href={`/crew/modules/${mod.slug}/present`}
+              className="bt-btn bt-btn-primary"
+            >
+              Present deck →
+            </Link>
+          )}
+        </div>
       </header>
 
       {sp.assigned && (
@@ -136,29 +119,18 @@ export default async function ModuleDetailPage({
         </p>
       )}
 
-      {/* ---------- Sections of the deck ---------- */}
-      <section className="mt-10">
-        <h2 className="font-display text-3xl uppercase tracking-wider text-ink">
-          Deck sections
-        </h2>
-        <ul className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
-          {presentSections.map((sec) => (
-            <li key={sec}>
-              <Link
-                href={`/crew/modules/${mod.slug}/present/${sec}`}
-                className="block rounded-card border-2 border-paper-edge bg-paper p-3 hover:border-orange"
-              >
-                <p className="font-headline text-[10px] font-extrabold uppercase tracking-ribbon text-fg-3">
-                  {slidesBySection.get(sec)} slides
-                </p>
-                <p className="mt-0.5 font-headline text-sm font-extrabold uppercase tracking-ribbon text-bark-deep">
-                  {SECTION_LABELS[sec] ?? sec}
-                </p>
-              </Link>
-            </li>
-          ))}
-        </ul>
-      </section>
+      {/* ---------- Deck status ---------- */}
+      {!hasDeck && (
+        <section className="mt-10 bt-card">
+          <h2 className="font-headline text-lg font-black uppercase text-bark-deep">
+            No deck yet
+          </h2>
+          <p className="mt-1 text-sm text-fg-2">
+            This module doesn&apos;t have slide content authored yet.
+            {editable ? ' Click "Edit deck" above to add slides.' : ''}
+          </p>
+        </section>
+      )}
 
       {/* ---------- Assignments ---------- */}
       <section className="mt-10">

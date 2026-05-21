@@ -712,15 +712,8 @@ export type TrainingModule = {
   requires_all_safety: boolean;
   version: string;
   is_active: boolean;
-};
-
-export type ModuleSlide = {
-  id: string;
-  module_slug: string;
-  position: number;
-  section: string | null;
-  title: string | null;
-  body: string | null;
+  source_text: string | null;
+  theme: string;
 };
 
 export type ModuleQuestion = {
@@ -783,16 +776,6 @@ export async function getTrainingModule(slug: string): Promise<TrainingModule | 
     .eq('slug', slug)
     .maybeSingle();
   return (data as TrainingModule) ?? null;
-}
-
-export async function listModuleSlides(slug: string): Promise<ModuleSlide[]> {
-  const supabase = await serverClient();
-  const { data } = await supabase
-    .from('field_crew_training_module_slides')
-    .select('*')
-    .eq('module_slug', slug)
-    .order('position');
-  return (data ?? []) as ModuleSlide[];
 }
 
 export async function listModuleQuestions(slug: string): Promise<ModuleQuestion[]> {
