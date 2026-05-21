@@ -132,40 +132,62 @@ export default async function EmployeeProfilePage({
         </div>
       )}
 
-      {/* ---------- Recent activity + notes ---------- */}
-      <section className="mt-8 bt-card">
-        <h2 className="font-headline text-sm font-extrabold uppercase tracking-ribbon text-fg-3">
-          Recent activity &amp; notes
-        </h2>
-        {activity.length === 0 && !employee.notes ? (
-          <p className="mt-3 text-sm text-fg-3">No activity logged yet.</p>
-        ) : (
-          <>
-            {activity.length > 0 && (
-              <ul className="mt-3 space-y-2 text-sm">
-                {activity.map((a) => (
-                  <li key={a.id} className="flex gap-3">
-                    <span className="mt-0.5 shrink-0 font-headline text-[11px] font-extrabold uppercase tracking-ribbon text-fg-3">
-                      {format(parseISO(a.occurred_on), 'MMM d, yyyy')}
-                    </span>
-                    <span className="text-ink">{a.description}</span>
-                  </li>
-                ))}
-              </ul>
-            )}
-            {employee.notes && (
-              <div className="mt-5 border-t border-paper-edge pt-4">
-                <h3 className="font-headline text-xs font-extrabold uppercase tracking-ribbon text-fg-3">
-                  Notes
-                </h3>
-                <div className="prose prose-sm mt-2 max-w-none text-fg-1">
-                  <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                    {employee.notes}
-                  </ReactMarkdown>
+      {/* ---------- Recent activity + log-training form ----------
+          Side-by-side on lg+ screens for editors (admins / field_manager);
+          activity expands to full width for view-only users since the form
+          isn't rendered. */}
+      <section
+        className={
+          editable
+            ? 'mt-8 grid grid-cols-1 gap-6 lg:grid-cols-2 lg:items-start'
+            : 'mt-8'
+        }
+      >
+        <div className="bt-card">
+          <h2 className="font-headline text-sm font-extrabold uppercase tracking-ribbon text-fg-3">
+            Recent activity &amp; notes
+          </h2>
+          {activity.length === 0 && !employee.notes ? (
+            <p className="mt-3 text-sm text-fg-3">No activity logged yet.</p>
+          ) : (
+            <>
+              {activity.length > 0 && (
+                <ul className="mt-3 space-y-2 text-sm">
+                  {activity.map((a) => (
+                    <li key={a.id} className="flex gap-3">
+                      <span className="mt-0.5 shrink-0 font-headline text-[11px] font-extrabold uppercase tracking-ribbon text-fg-3">
+                        {format(parseISO(a.occurred_on), 'MMM d, yyyy')}
+                      </span>
+                      <span className="text-ink">{a.description}</span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+              {employee.notes && (
+                <div className="mt-5 border-t border-paper-edge pt-4">
+                  <h3 className="font-headline text-xs font-extrabold uppercase tracking-ribbon text-fg-3">
+                    Notes
+                  </h3>
+                  <div className="prose prose-sm mt-2 max-w-none text-fg-1">
+                    <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                      {employee.notes}
+                    </ReactMarkdown>
+                  </div>
                 </div>
-              </div>
-            )}
-          </>
+              )}
+            </>
+          )}
+        </div>
+
+        {editable && (
+          <TrainingSessionForm
+            employeeSlug={employee.slug}
+            employeeName={employee.name}
+            trainings={trainings.map((t) => ({
+              key: t.key,
+              display_name: t.display_name,
+            }))}
+          />
         )}
       </section>
 
@@ -303,19 +325,7 @@ export default async function EmployeeProfilePage({
         )}
       </section>
 
-      {/* ---------- New session form (editors only) ---------- */}
-      {editable && (
-        <section className="mt-8">
-          <TrainingSessionForm
-            employeeSlug={employee.slug}
-            employeeName={employee.name}
-            trainings={trainings.map((t) => ({
-              key: t.key,
-              display_name: t.display_name,
-            }))}
-          />
-        </section>
-      )}
+      {/* (Log-training form lives next to Recent activity at the top of the page.) */}
 
       {/* ---------- Plans ---------- */}
       <section className="mt-12">
