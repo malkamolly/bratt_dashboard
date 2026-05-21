@@ -28,7 +28,6 @@ export default async function TakeTestPage({
 }) {
   const user = await getAllowedUser();
   if (!user) redirect('/login');
-  if (!canEditCrew(user.role)) redirect('/access-denied');
 
   const { attemptId } = await params;
 
@@ -39,7 +38,7 @@ export default async function TakeTestPage({
       'id, assignment_id, submitted_at,' +
         ' field_crew_training_assignments!inner(' +
         '   module_slug, employee_slug,' +
-        '   field_crew_employees!inner(name)' +
+        '   field_crew_employees!inner(name, auth_email)' +
         ' )',
     )
     .eq('id', attemptId)
@@ -47,6 +46,7 @@ export default async function TakeTestPage({
 
   if (!attempt) notFound();
 
+  type EmpJoin = { name: string; auth_email: string | null };
   type AttemptRow = {
     id: string;
     assignment_id: string;
@@ -55,12 +55,12 @@ export default async function TakeTestPage({
       | {
           module_slug: string;
           employee_slug: string;
-          field_crew_employees: { name: string } | { name: string }[] | null;
+          field_crew_employees: EmpJoin | EmpJoin[] | null;
         }
       | {
           module_slug: string;
           employee_slug: string;
-          field_crew_employees: { name: string } | { name: string }[] | null;
+          field_crew_employees: EmpJoin | EmpJoin[] | null;
         }[]
       | null;
   };
@@ -69,6 +69,18 @@ export default async function TakeTestPage({
     ? row.field_crew_training_assignments[0]
     : row.field_crew_training_assignments;
   if (!a) notFound();
+  const emp = Array.isArray(a.field_crew_employees)
+    ? a.field_crew_employees[0]
+    : a.field_crew_employees;
+
+  // Auth: admin / field_manager always; field_crew only if the assignment
+  // is theirs (auth_email matches their JWT email).
+  const isManager = canEditCrew(user.role);
+  const isSelf =
+    user.role === 'field_crew' &&
+    !!emp?.auth_email &&
+    emp.auth_email.toLowerCase() === user.email.toLowerCase();
+  if (!isManager && !isSelf) redirect('/access-denied');
 
   // If this attempt is already submitted, send the user to the result page
   // — we don't allow editing answers after grading.
@@ -76,9 +88,7 @@ export default async function TakeTestPage({
     redirect(`/crew/modules/${a.module_slug}/result/${row.id}`);
   }
 
-  const employeeName = Array.isArray(a.field_crew_employees)
-    ? a.field_crew_employees[0]?.name ?? a.employee_slug
-    : a.field_crew_employees?.name ?? a.employee_slug;
+  const employeeName = emp?.name ?? a.employee_slug;
 
   const [mod, questions] = await Promise.all([
     getTrainingModule(a.module_slug),

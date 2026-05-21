@@ -65,6 +65,7 @@ export type Employee = {
   hire_date: string | null;
   active: boolean;
   notes: string | null;
+  auth_email: string | null;
   specialties: string[];
   skills: Record<string, SkillLevel>;
   trainings: Record<string, EmployeeTraining>;
@@ -164,6 +165,7 @@ type EmployeeRow = {
   hire_date: string | null;
   active: boolean;
   notes: string | null;
+  auth_email: string | null;
 };
 
 type SpecialtyRow = { employee_slug: string; specialty_key: string };
@@ -238,19 +240,19 @@ async function hydrateEmployees(rows: EmployeeRow[]): Promise<Employee[]> {
     hire_date: r.hire_date,
     active: r.active,
     notes: r.notes,
+    auth_email: r.auth_email,
     specialties: specBySlug.get(r.slug) ?? [],
     skills: skillsBySlug.get(r.slug) ?? {},
     trainings: trainingsBySlug.get(r.slug) ?? {},
   }));
 }
 
+const EMPLOYEE_COLS =
+  'slug, code, name, position_key, leads_crew, hire_date, active, notes, auth_email';
+
 export async function listEmployees(opts: { activeOnly?: boolean } = {}): Promise<Employee[]> {
   const supabase = await serverClient();
-  let q = supabase
-    .from('field_crew_employees')
-    .select(
-      'slug, code, name, position_key, leads_crew, hire_date, active, notes',
-    );
+  let q = supabase.from('field_crew_employees').select(EMPLOYEE_COLS);
   if (opts.activeOnly) q = q.eq('active', true);
   q = q.order('name');
   const { data } = await q;
@@ -261,14 +263,33 @@ export async function getEmployee(slug: string): Promise<Employee | null> {
   const supabase = await serverClient();
   const { data } = await supabase
     .from('field_crew_employees')
-    .select(
-      'slug, code, name, position_key, leads_crew, hire_date, active, notes',
-    )
+    .select(EMPLOYEE_COLS)
     .eq('slug', slug)
     .maybeSingle();
   if (!data) return null;
   const [hydrated] = await hydrateEmployees([data as EmployeeRow]);
   return hydrated ?? null;
+}
+
+/**
+ * Look up the employee record whose auth_email matches the currently
+ * signed-in user. Returns the slug (URL handle) or null if no record /
+ * not signed in. Used by the landing page to auto-route field_crew users.
+ */
+export async function getCurrentEmployeeSlug(): Promise<string | null> {
+  const supabase = await serverClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user?.email) return null;
+
+  const { data } = await supabase
+    .from('field_crew_employees')
+    .select('slug')
+    .ilike('auth_email', user.email)
+    .eq('active', true)
+    .maybeSingle();
+  return (data as { slug?: string } | null)?.slug ?? null;
 }
 
 // ---------- Activity ----------
@@ -716,6 +737,7 @@ export type AssignmentSummary = {
   id: string;
   module_slug: string;
   module_name: string;
+  module_training_key: string | null;
   employee_slug: string;
   employee_name: string;
   assigned_at: string;
@@ -800,13 +822,14 @@ export async function listModuleQuestions(slug: string): Promise<ModuleQuestion[
   return qs.map((q) => ({ ...q, choices: byQ.get(q.id) ?? [] }));
 }
 
+type AssignmentModuleJoin = { name: string; training_key: string | null };
 type AssignmentRow = {
   id: string;
   module_slug: string;
   employee_slug: string;
   assigned_at: string;
   assigned_by: string | null;
-  field_crew_training_modules: { name: string } | { name: string }[] | null;
+  field_crew_training_modules: AssignmentModuleJoin | AssignmentModuleJoin[] | null;
   field_crew_employees: { name: string } | { name: string }[] | null;
 };
 
@@ -836,13 +859,16 @@ async function hydrateAssignments(rows: AssignmentRow[]): Promise<AssignmentSumm
   }
 
   return rows.map((r) => {
-    const moduleName = unwrapJoin(r.field_crew_training_modules)?.name ?? r.module_slug;
+    const moduleJoin = unwrapJoin(r.field_crew_training_modules);
+    const moduleName = moduleJoin?.name ?? r.module_slug;
+    const moduleTrainingKey = moduleJoin?.training_key ?? null;
     const employeeName = unwrapJoin(r.field_crew_employees)?.name ?? r.employee_slug;
     const a = latestByAssignment.get(r.id);
     return {
       id: r.id,
       module_slug: r.module_slug,
       module_name: moduleName,
+      module_training_key: moduleTrainingKey,
       employee_slug: r.employee_slug,
       employee_name: employeeName,
       assigned_at: r.assigned_at,
@@ -867,7 +893,7 @@ export async function listAssignmentsForModule(slug: string): Promise<Assignment
     .from('field_crew_training_assignments')
     .select(
       'id, module_slug, employee_slug, assigned_at, assigned_by,' +
-        ' field_crew_training_modules!inner(name),' +
+        ' field_crew_training_modules!inner(name, training_key),' +
         ' field_crew_employees!inner(name)',
     )
     .eq('module_slug', slug)
@@ -881,7 +907,7 @@ export async function listAssignmentsForEmployee(slug: string): Promise<Assignme
     .from('field_crew_training_assignments')
     .select(
       'id, module_slug, employee_slug, assigned_at, assigned_by,' +
-        ' field_crew_training_modules!inner(name),' +
+        ' field_crew_training_modules!inner(name, training_key),' +
         ' field_crew_employees!inner(name)',
     )
     .eq('employee_slug', slug)
@@ -895,7 +921,7 @@ export async function getAssignment(id: string): Promise<AssignmentSummary | nul
     .from('field_crew_training_assignments')
     .select(
       'id, module_slug, employee_slug, assigned_at, assigned_by,' +
-        ' field_crew_training_modules!inner(name),' +
+        ' field_crew_training_modules!inner(name, training_key),' +
         ' field_crew_employees!inner(name)',
     )
     .eq('id', id)

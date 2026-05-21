@@ -17,6 +17,7 @@ import { format, parseISO } from 'date-fns';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { requireHubAccess, canEditCrew } from '@/lib/auth';
+import { startTrainingAttempt } from '@/app/crew/actions';
 import {
   getCatalogs,
   getEmployee,
@@ -48,6 +49,12 @@ export default async function EmployeeProfilePage({
 
   const employee = await getEmployee(slug);
   if (!employee) notFound();
+
+  // Is the signed-in user viewing their own profile? Used to surface the
+  // "Take test" button to a field_crew user looking at their own page.
+  const isSelf =
+    !!employee.auth_email &&
+    employee.auth_email.toLowerCase() === user.email.toLowerCase();
 
   const [
     { positions, skills, trainings, specialties },
@@ -256,6 +263,13 @@ export default async function EmployeeProfilePage({
               {trainings.map((t) => {
                 const rec = employee.trainings[t.key];
                 const hoursAgg = hoursByTraining[t.key];
+                // If a module is assigned for this training and the latest
+                // attempt hasn't passed yet, force the status to "In progress".
+                const linkedAssignment = assignments.find(
+                  (a) => a.module_training_key === t.key,
+                );
+                const openAssignment =
+                  !!linkedAssignment && linkedAssignment.latest_attempt?.passed !== true;
                 return (
                   <tr key={t.key} className="border-t border-paper-edge/60">
                     <td className="px-4 py-2 text-ink">
@@ -272,6 +286,7 @@ export default async function EmployeeProfilePage({
                         hoursBased={t.is_hours_based}
                         cardRequired={t.card_required}
                         hoursLogged={hoursAgg?.total ?? 0}
+                        openAssignment={openAssignment}
                       />
                     </td>
                     <td className="px-3 py-2 text-fg-2">
@@ -290,8 +305,6 @@ export default async function EmployeeProfilePage({
                         )
                       ) : rec?.completed ? (
                         format(parseISO(rec.completed), 'MMM d, yyyy')
-                      ) : rec?.status === 'completed_date_tbd' ? (
-                        <span className="text-fg-3">TBD</span>
                       ) : (
                         <span className="text-fg-3">—</span>
                       )}
@@ -401,13 +414,23 @@ export default async function EmployeeProfilePage({
                         ? 'Passed'
                         : passed === false
                           ? 'Failed'
-                          : a.latest_attempt
-                            ? 'In progress'
-                            : 'Assigned';
+                          : 'In progress';
+                    const statusColor =
+                      passed === true
+                        ? 'bg-green-dark text-white'
+                        : passed === false
+                          ? 'bg-orange-press text-white'
+                          : 'bg-paper-edge text-fg-2';
+                    // The "Take test" button shows when:
+                    //   - viewer is admin / field_manager (canEdit), OR
+                    //   - viewer's email matches the profile owner (self).
+                    // We don't render it once a passing attempt exists —
+                    // there's nothing to take.
+                    const canTake = (editable || isSelf) && passed !== true;
                     return (
                       <li
                         key={a.id}
-                        className="flex flex-wrap items-baseline justify-between gap-3 rounded-card border border-paper-edge bg-paper p-3 text-sm"
+                        className="flex flex-wrap items-center justify-between gap-3 rounded-card border border-paper-edge bg-paper p-3 text-sm"
                       >
                         <Link
                           href={`/crew/modules/${a.module_slug}`}
@@ -415,9 +438,24 @@ export default async function EmployeeProfilePage({
                         >
                           {a.module_name}
                         </Link>
-                        <span className="font-headline text-[10px] font-extrabold uppercase tracking-ribbon text-fg-3">
-                          {status}
-                        </span>
+                        <div className="flex items-center gap-3">
+                          <span
+                            className={`inline-flex items-center rounded-full px-2 py-0.5 font-headline text-[10px] font-extrabold uppercase tracking-ribbon ${statusColor}`}
+                          >
+                            {status}
+                          </span>
+                          {canTake && (
+                            <form action={startTrainingAttempt}>
+                              <input type="hidden" name="assignment_id" value={a.id} />
+                              <button
+                                type="submit"
+                                className="bt-btn bt-btn-primary !text-[10px] !px-2.5 !py-1"
+                              >
+                                {a.latest_attempt ? 'Retake' : 'Take test'}
+                              </button>
+                            </form>
+                          )}
+                        </div>
                       </li>
                     );
                   })}
@@ -491,6 +529,7 @@ function TrainingStatus({
   hoursBased,
   cardRequired,
   hoursLogged,
+  openAssignment,
 }: {
   rec:
     | {
@@ -503,6 +542,7 @@ function TrainingStatus({
   hoursBased: boolean;
   cardRequired: boolean;
   hoursLogged: number;
+  openAssignment: boolean;
 }) {
   // Hours-based trainings: derived purely from the session log.
   if (hoursBased) {
@@ -510,6 +550,13 @@ function TrainingStatus({
       return (
         <span className="inline-flex items-center rounded-full bg-green/30 px-2 py-0.5 font-headline text-[10px] font-extrabold uppercase tracking-ribbon text-green-dark">
           Logging hours
+        </span>
+      );
+    }
+    if (openAssignment) {
+      return (
+        <span className="inline-flex items-center rounded-full bg-status-warn/30 px-2 py-0.5 font-headline text-[10px] font-extrabold uppercase tracking-ribbon text-orange-press">
+          In progress
         </span>
       );
     }
@@ -522,6 +569,13 @@ function TrainingStatus({
 
   // Completion-based trainings: fall back to the existing record state.
   if (!rec) {
+    if (openAssignment) {
+      return (
+        <span className="inline-flex items-center rounded-full bg-status-warn/30 px-2 py-0.5 font-headline text-[10px] font-extrabold uppercase tracking-ribbon text-orange-press">
+          In progress
+        </span>
+      );
+    }
     return (
       <span className="inline-flex items-center rounded-full bg-paper-edge px-2 py-0.5 font-headline text-[10px] font-extrabold uppercase tracking-ribbon text-fg-3">
         Not yet
@@ -542,23 +596,12 @@ function TrainingStatus({
       </span>
     );
   }
-  if (rec.status === 'completed_date_tbd') {
-    return (
-      <span className="inline-flex items-center rounded-full bg-status-warn/30 px-2 py-0.5 font-headline text-[10px] font-extrabold uppercase tracking-ribbon text-orange-press">
-        Completed · date TBD
-      </span>
-    );
-  }
-  if (rec.status === 'card_pending') {
-    return (
-      <span className="inline-flex items-center rounded-full bg-status-warn/30 px-2 py-0.5 font-headline text-[10px] font-extrabold uppercase tracking-ribbon text-orange-press">
-        Card pending
-      </span>
-    );
-  }
+  // Anything else (status='completed_date_tbd', 'card_pending',
+  // 'in_progress', etc.) means "we're working on it" — render uniformly
+  // as "In progress" so the table reads consistently.
   return (
     <span className="inline-flex items-center rounded-full bg-status-warn/30 px-2 py-0.5 font-headline text-[10px] font-extrabold uppercase tracking-ribbon text-orange-press">
-      {rec.status?.replace(/_/g, ' ') ?? 'In progress'}
+      In progress
     </span>
   );
 }

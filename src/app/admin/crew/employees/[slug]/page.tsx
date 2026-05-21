@@ -104,6 +104,28 @@ export default async function EditEmployeePage({
           </span>
         </label>
 
+        {/* ----- Sign-in email -----
+            Links this employee to a login. When they sign in with this
+            email, the landing page sends them straight to this profile.
+            Must also be added to /admin/access with the field_crew role. */}
+        <label className="block">
+          <span className="block font-headline text-[11px] font-extrabold uppercase tracking-ribbon text-fg-3">
+            Sign-in email
+          </span>
+          <input
+            type="email"
+            name="auth_email"
+            defaultValue={employee.auth_email ?? ''}
+            placeholder="name@bratttree.com"
+            className="mt-1 block w-full rounded-2 border border-paper-edge bg-cream px-3 py-2 text-sm focus:border-orange focus:outline-none"
+          />
+          <span className="mt-1 block text-xs text-fg-3">
+            Optional. Lets {employee.name} sign in and land on this page.
+            The same email must also be on the allowlist (Admin → Access)
+            with the Field Crew role.
+          </span>
+        </label>
+
         {/* ----- Toggles ----- */}
         <div className="space-y-3 rounded-2 border border-paper-edge bg-paper p-4">
           <label className="flex items-start gap-3">
