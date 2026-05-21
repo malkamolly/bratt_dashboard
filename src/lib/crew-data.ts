@@ -100,6 +100,25 @@ export type Plan = PlanSummary & {
 
 export type Huddle = { date: string; body: string };
 
+export type TrainingSessionEntry = {
+  id: string;
+  training_key: string;
+  training_name: string;
+  hours: number;
+};
+
+export type TrainingSession = {
+  id: string;
+  employee_slug: string;
+  session_date: string;
+  notes: string | null;
+  created_by: string | null;
+  entries: TrainingSessionEntry[];
+};
+
+/** Total hours logged per training_key (via session entries), keyed for lookup. */
+export type HoursByTraining = Record<string, { total: number; lastLogged: string | null }>;
+
 // ---------- Catalogs ----------
 
 export async function getCatalogs() {
@@ -432,6 +451,109 @@ export async function getLatestHuddle(): Promise<Huddle | null> {
     .limit(1)
     .maybeSingle();
   return (data as Huddle) ?? null;
+}
+
+// ---------- Training sessions ----------
+
+type SessionRow = {
+  id: string;
+  employee_slug: string;
+  session_date: string;
+  notes: string | null;
+  created_by: string | null;
+};
+type EntryRow = {
+  id: string;
+  session_id: string;
+  training_key: string;
+  hours: string | number;
+};
+
+export async function listTrainingSessionsForEmployee(
+  slug: string,
+): Promise<TrainingSession[]> {
+  const supabase = await serverClient();
+  const { data: sessions } = await supabase
+    .from('field_crew_training_sessions')
+    .select('id, employee_slug, session_date, notes, created_by')
+    .eq('employee_slug', slug)
+    .order('session_date', { ascending: false })
+    .order('created_at', { ascending: false });
+
+  const sessionList = (sessions ?? []) as SessionRow[];
+  if (sessionList.length === 0) return [];
+
+  const ids = sessionList.map((s) => s.id);
+  const [{ data: entries }, { data: trainings }] = await Promise.all([
+    supabase
+      .from('field_crew_training_session_entries')
+      .select('id, session_id, training_key, hours')
+      .in('session_id', ids),
+    supabase.from('field_crew_trainings').select('key, display_name'),
+  ]);
+
+  const nameByKey = new Map<string, string>();
+  for (const t of (trainings ?? []) as { key: string; display_name: string }[]) {
+    nameByKey.set(t.key, t.display_name);
+  }
+
+  const entriesBySession = new Map<string, TrainingSessionEntry[]>();
+  for (const e of (entries ?? []) as EntryRow[]) {
+    const arr = entriesBySession.get(e.session_id) ?? [];
+    arr.push({
+      id: e.id,
+      training_key: e.training_key,
+      training_name: nameByKey.get(e.training_key) ?? e.training_key,
+      hours: Number(e.hours),
+    });
+    entriesBySession.set(e.session_id, arr);
+  }
+
+  return sessionList.map((s) => ({
+    id: s.id,
+    employee_slug: s.employee_slug,
+    session_date: s.session_date,
+    notes: s.notes,
+    created_by: s.created_by,
+    entries: entriesBySession.get(s.id) ?? [],
+  }));
+}
+
+/** Sums all session-entry hours per training_key for one employee. */
+export async function getHoursByTrainingForEmployee(
+  slug: string,
+): Promise<HoursByTraining> {
+  const supabase = await serverClient();
+  const { data } = await supabase
+    .from('field_crew_training_session_entries')
+    .select(
+      'training_key, hours, field_crew_training_sessions!inner(employee_slug, session_date)',
+    )
+    .eq('field_crew_training_sessions.employee_slug', slug);
+
+  type Row = {
+    training_key: string;
+    hours: string | number;
+    field_crew_training_sessions:
+      | { employee_slug: string; session_date: string }
+      | { employee_slug: string; session_date: string }[]
+      | null;
+  };
+
+  const result: HoursByTraining = {};
+  for (const r of (data ?? []) as Row[]) {
+    const joined = Array.isArray(r.field_crew_training_sessions)
+      ? r.field_crew_training_sessions[0]
+      : r.field_crew_training_sessions;
+    const cur = result[r.training_key] ?? { total: 0, lastLogged: null };
+    cur.total += Number(r.hours);
+    const sessionDate = joined?.session_date ?? null;
+    if (sessionDate && (!cur.lastLogged || sessionDate > cur.lastLogged)) {
+      cur.lastLogged = sessionDate;
+    }
+    result[r.training_key] = cur;
+  }
+  return result;
 }
 
 // ---------- Aggregations for the homepage ----------

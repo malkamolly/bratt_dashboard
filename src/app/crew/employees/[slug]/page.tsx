@@ -1,13 +1,19 @@
 // ============================================================================
 // Employee profile — /crew/employees/[slug]
 // ============================================================================
-// Mirrors the Jekyll employee.html layout: header with position/hire/status,
-// recent activity, skill table, training table, active development plans.
+// Layout, top to bottom:
+//   1. Breadcrumb + header (name, foreman/specialty pills, position meta)
+//   2. Recent activity & notes
+//   3. Skills — compact card grid showing current level for every skill
+//   4. Trainings — table with hours aggregated from logged sessions
+//   5. Training session log (most-recent first)
+//   6. Log-new-session form (admin / field_manager only)
+//   7. Development plans
 // ============================================================================
 
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { format } from 'date-fns';
+import { format, parseISO } from 'date-fns';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { requireHubAccess, canEditCrew } from '@/lib/auth';
@@ -16,9 +22,13 @@ import {
   getEmployee,
   listActivity,
   listPlansForEmployee,
+  listTrainingSessionsForEmployee,
+  getHoursByTrainingForEmployee,
+  type TrainingSession,
 } from '@/lib/crew-data';
-import { SkillBadge } from '@/components/crew/SkillBadge';
+import { SkillLevelCard } from '@/components/crew/SkillLevelCard';
 import { ForemanPill, SpecialtyPill } from '@/components/crew/CrewPills';
+import { TrainingSessionForm } from '@/components/crew/TrainingSessionForm';
 
 export const dynamic = 'force-dynamic';
 
@@ -34,12 +44,19 @@ export default async function EmployeeProfilePage({
   const employee = await getEmployee(slug);
   if (!employee) notFound();
 
-  const [{ positions, skills, trainings, specialties }, activity, plans] =
-    await Promise.all([
-      getCatalogs(),
-      listActivity({ slug, limit: 50 }),
-      listPlansForEmployee(slug),
-    ]);
+  const [
+    { positions, skills, trainings, specialties },
+    activity,
+    plans,
+    sessions,
+    hoursByTraining,
+  ] = await Promise.all([
+    getCatalogs(),
+    listActivity({ slug, limit: 50 }),
+    listPlansForEmployee(slug),
+    listTrainingSessionsForEmployee(slug),
+    getHoursByTrainingForEmployee(slug),
+  ]);
 
   const positionName =
     positions.find((p) => p.key === employee.position_key)?.display_name ??
@@ -49,7 +66,8 @@ export default async function EmployeeProfilePage({
   const completedPlans = plans.filter((p) => p.status === 'completed');
 
   return (
-    <main className="mx-auto max-w-5xl px-6 py-10">
+    <main className="mx-auto max-w-6xl px-6 py-10">
+      {/* ---------- Breadcrumb ---------- */}
       <p className="bt-eyebrow">
         <Link href="/" className="hover:underline">
           Bratt Tree
@@ -62,7 +80,7 @@ export default async function EmployeeProfilePage({
         Crew profile
       </p>
 
-      {/* ---------- Profile header ---------- */}
+      {/* ---------- Header ---------- */}
       <header className="mt-3 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <h1 className="font-display text-5xl uppercase tracking-wider text-ink sm:text-6xl">
@@ -95,7 +113,7 @@ export default async function EmployeeProfilePage({
             label="Hire date"
             value={
               employee.hire_date
-                ? format(new Date(employee.hire_date), 'MMM d, yyyy')
+                ? format(parseISO(employee.hire_date), 'MMM d, yyyy')
                 : 'TBD'
             }
           />
@@ -127,8 +145,8 @@ export default async function EmployeeProfilePage({
               <ul className="mt-3 space-y-2 text-sm">
                 {activity.map((a) => (
                   <li key={a.id} className="flex gap-3">
-                    <span className="shrink-0 font-headline text-[11px] font-extrabold uppercase tracking-ribbon text-fg-3 mt-0.5">
-                      {format(new Date(a.occurred_on), 'MMM d, yyyy')}
+                    <span className="mt-0.5 shrink-0 font-headline text-[11px] font-extrabold uppercase tracking-ribbon text-fg-3">
+                      {format(parseISO(a.occurred_on), 'MMM d, yyyy')}
                     </span>
                     <span className="text-ink">{a.description}</span>
                   </li>
@@ -151,120 +169,156 @@ export default async function EmployeeProfilePage({
         )}
       </section>
 
-      {/* ---------- Skills + Trainings grids ---------- */}
-      <div className="mt-8 grid grid-cols-1 gap-6 lg:grid-cols-2">
-        {/* Skills */}
-        <section>
+      {/* ---------- Skills (compact card grid) ---------- */}
+      <section className="mt-10">
+        <div className="flex items-baseline justify-between">
           <h2 className="font-display text-3xl uppercase tracking-wider text-ink">
             Skills
           </h2>
-          <div className="mt-3 overflow-hidden rounded-card border border-paper-edge bg-paper">
-            <table className="w-full text-sm">
-              <thead className="bg-bone">
-                <tr>
-                  <th className="px-4 py-2 text-left font-headline text-xs font-extrabold uppercase tracking-ribbon text-fg-3">
-                    Skill
-                  </th>
-                  <th className="px-4 py-2 text-left font-headline text-xs font-extrabold uppercase tracking-ribbon text-fg-3">
-                    Level
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {skills.map((s) => (
-                  <tr key={s.key} className="border-t border-paper-edge/60">
-                    <td className="px-4 py-2 text-ink">{s.display_name}</td>
-                    <td className="px-4 py-2">
-                      <SkillBadge level={employee.skills[s.key] ?? null} verbose />
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </section>
+          <p className="font-headline text-[10px] font-extrabold uppercase tracking-ribbon text-fg-3">
+            {employee.name}&apos;s current ratings
+          </p>
+        </div>
+        <div className="mt-4 grid grid-cols-2 gap-2.5 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6">
+          {skills.map((s) => (
+            <SkillLevelCard
+              key={s.key}
+              skillName={s.display_name}
+              level={employee.skills[s.key] ?? null}
+            />
+          ))}
+        </div>
+      </section>
 
-        {/* Trainings */}
-        <section>
+      {/* ---------- Trainings ---------- */}
+      <section className="mt-10">
+        <div className="flex items-baseline justify-between">
           <h2 className="font-display text-3xl uppercase tracking-wider text-ink">
             Trainings
           </h2>
-          <div className="mt-3 overflow-hidden rounded-card border border-paper-edge bg-paper">
-            <table className="w-full text-sm">
-              <thead className="bg-bone">
-                <tr>
-                  <th className="px-3 py-2 text-left font-headline text-xs font-extrabold uppercase tracking-ribbon text-fg-3">
-                    Training
-                  </th>
-                  <th className="px-3 py-2 text-left font-headline text-xs font-extrabold uppercase tracking-ribbon text-fg-3">
-                    Status
-                  </th>
-                  <th className="px-3 py-2 text-left font-headline text-xs font-extrabold uppercase tracking-ribbon text-fg-3">
-                    Date / Hours
-                  </th>
-                  <th className="px-3 py-2 text-left font-headline text-xs font-extrabold uppercase tracking-ribbon text-fg-3">
-                    Card
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {trainings.map((t) => {
-                  const rec = employee.trainings[t.key];
-                  return (
-                    <tr key={t.key} className="border-t border-paper-edge/60">
-                      <td className="px-3 py-2 text-ink">{t.display_name}</td>
-                      <td className="px-3 py-2">
-                        <TrainingStatus rec={rec} hoursBased={t.is_hours_based} cardRequired={t.card_required} />
-                      </td>
-                      <td className="px-3 py-2 text-fg-2">
-                        {t.is_hours_based && rec?.hours != null ? (
+          <p className="font-headline text-[10px] font-extrabold uppercase tracking-ribbon text-fg-3">
+            Hours-based totals come from the session log below
+          </p>
+        </div>
+
+        <div className="mt-4 overflow-hidden rounded-card border border-paper-edge bg-paper">
+          <table className="w-full text-sm">
+            <thead className="bg-bone">
+              <tr>
+                <th className="px-4 py-2 text-left font-headline text-xs font-extrabold uppercase tracking-ribbon text-fg-3">
+                  Training
+                </th>
+                <th className="px-3 py-2 text-left font-headline text-xs font-extrabold uppercase tracking-ribbon text-fg-3">
+                  Status
+                </th>
+                <th className="px-3 py-2 text-left font-headline text-xs font-extrabold uppercase tracking-ribbon text-fg-3">
+                  Date / Hours
+                </th>
+                <th className="px-3 py-2 text-left font-headline text-xs font-extrabold uppercase tracking-ribbon text-fg-3">
+                  Card
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {trainings.map((t) => {
+                const rec = employee.trainings[t.key];
+                const hoursAgg = hoursByTraining[t.key];
+                return (
+                  <tr key={t.key} className="border-t border-paper-edge/60">
+                    <td className="px-4 py-2 text-ink">{t.display_name}</td>
+                    <td className="px-3 py-2">
+                      <TrainingStatus
+                        rec={rec}
+                        hoursBased={t.is_hours_based}
+                        cardRequired={t.card_required}
+                        hoursLogged={hoursAgg?.total ?? 0}
+                      />
+                    </td>
+                    <td className="px-3 py-2 text-fg-2">
+                      {t.is_hours_based ? (
+                        hoursAgg && hoursAgg.total > 0 ? (
                           <>
-                            {rec.hours} hrs
-                            {rec.last_updated && (
+                            {formatHours(hoursAgg.total)} hrs
+                            {hoursAgg.lastLogged && (
                               <span className="ml-1 text-xs text-fg-3">
-                                (as of {format(new Date(rec.last_updated), 'MMM d, yyyy')})
+                                (last {format(parseISO(hoursAgg.lastLogged), 'MMM d, yyyy')})
                               </span>
                             )}
                           </>
-                        ) : rec?.completed ? (
-                          format(new Date(rec.completed), 'MMM d, yyyy')
-                        ) : rec?.status === 'completed_date_tbd' ? (
-                          <span className="text-fg-3">TBD</span>
                         ) : (
                           <span className="text-fg-3">—</span>
-                        )}
-                      </td>
-                      <td className="px-3 py-2">
-                        {t.card_required ? (
-                          rec?.card_received ? (
-                            <span className="inline-flex items-center rounded-full bg-green-dark px-2 py-0.5 font-headline text-[10px] font-extrabold uppercase tracking-ribbon text-white">
-                              {format(new Date(rec.card_received), 'MMM yyyy')}
-                            </span>
-                          ) : rec?.status === 'card_pending' ||
-                            rec?.status === 'completed_date_tbd' ? (
-                            <span className="inline-flex items-center rounded-full bg-status-warn/30 px-2 py-0.5 font-headline text-[10px] font-extrabold uppercase tracking-ribbon text-orange-press">
-                              Pending
-                            </span>
-                          ) : (
-                            <span className="inline-flex items-center rounded-full bg-paper-edge px-2 py-0.5 font-headline text-[10px] font-extrabold uppercase tracking-ribbon text-fg-3">
-                              Not received
-                            </span>
-                          )
+                        )
+                      ) : rec?.completed ? (
+                        format(parseISO(rec.completed), 'MMM d, yyyy')
+                      ) : rec?.status === 'completed_date_tbd' ? (
+                        <span className="text-fg-3">TBD</span>
+                      ) : (
+                        <span className="text-fg-3">—</span>
+                      )}
+                    </td>
+                    <td className="px-3 py-2">
+                      {t.card_required ? (
+                        rec?.card_received ? (
+                          <span className="inline-flex items-center rounded-full bg-green-dark px-2 py-0.5 font-headline text-[10px] font-extrabold uppercase tracking-ribbon text-white">
+                            {format(parseISO(rec.card_received), 'MMM yyyy')}
+                          </span>
+                        ) : rec?.status === 'card_pending' ||
+                          rec?.status === 'completed_date_tbd' ? (
+                          <span className="inline-flex items-center rounded-full bg-status-warn/30 px-2 py-0.5 font-headline text-[10px] font-extrabold uppercase tracking-ribbon text-orange-press">
+                            Pending
+                          </span>
                         ) : (
-                          <span className="text-fg-3">—</span>
-                        )}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
+                          <span className="inline-flex items-center rounded-full bg-paper-edge px-2 py-0.5 font-headline text-[10px] font-extrabold uppercase tracking-ribbon text-fg-3">
+                            Not received
+                          </span>
+                        )
+                      ) : (
+                        <span className="text-fg-3">—</span>
+                      )}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      {/* ---------- Training session log ---------- */}
+      <section className="mt-10">
+        <h2 className="font-display text-3xl uppercase tracking-wider text-ink">
+          Training log
+        </h2>
+        {sessions.length === 0 ? (
+          <p className="mt-3 text-sm text-fg-3">
+            No training sessions logged yet.{' '}
+            {editable && 'Use the form below to add the first one.'}
+          </p>
+        ) : (
+          <ul className="mt-4 space-y-3">
+            {sessions.map((s) => (
+              <SessionLogRow key={s.id} session={s} />
+            ))}
+          </ul>
+        )}
+      </section>
+
+      {/* ---------- New session form (editors only) ---------- */}
+      {editable && (
+        <section className="mt-8">
+          <TrainingSessionForm
+            employeeSlug={employee.slug}
+            employeeName={employee.name}
+            trainings={trainings.map((t) => ({
+              key: t.key,
+              display_name: t.display_name,
+            }))}
+          />
         </section>
-      </div>
+      )}
 
       {/* ---------- Plans ---------- */}
-      <section className="mt-10">
+      <section className="mt-12">
         <h2 className="font-display text-3xl uppercase tracking-wider text-ink">
           Development plans
         </h2>
@@ -325,11 +379,37 @@ function TrainingStatus({
   rec,
   hoursBased,
   cardRequired,
+  hoursLogged,
 }: {
-  rec: { completed: string | null; card_received: string | null; hours: number | null; status: string | null } | undefined;
+  rec:
+    | {
+        completed: string | null;
+        card_received: string | null;
+        hours: number | null;
+        status: string | null;
+      }
+    | undefined;
   hoursBased: boolean;
   cardRequired: boolean;
+  hoursLogged: number;
 }) {
+  // Hours-based trainings: derived purely from the session log.
+  if (hoursBased) {
+    if (hoursLogged > 0) {
+      return (
+        <span className="inline-flex items-center rounded-full bg-green/30 px-2 py-0.5 font-headline text-[10px] font-extrabold uppercase tracking-ribbon text-green-dark">
+          Logging hours
+        </span>
+      );
+    }
+    return (
+      <span className="inline-flex items-center rounded-full bg-paper-edge px-2 py-0.5 font-headline text-[10px] font-extrabold uppercase tracking-ribbon text-fg-3">
+        Not yet
+      </span>
+    );
+  }
+
+  // Completion-based trainings: fall back to the existing record state.
   if (!rec) {
     return (
       <span className="inline-flex items-center rounded-full bg-paper-edge px-2 py-0.5 font-headline text-[10px] font-extrabold uppercase tracking-ribbon text-fg-3">
@@ -341,13 +421,6 @@ function TrainingStatus({
     return (
       <span className="inline-flex items-center rounded-full bg-green-dark px-2 py-0.5 font-headline text-[10px] font-extrabold uppercase tracking-ribbon text-white">
         Completed
-      </span>
-    );
-  }
-  if (hoursBased && rec.hours != null) {
-    return (
-      <span className="inline-flex items-center rounded-full bg-green/30 px-2 py-0.5 font-headline text-[10px] font-extrabold uppercase tracking-ribbon text-green-dark">
-        Logging hours
       </span>
     );
   }
@@ -372,17 +445,40 @@ function TrainingStatus({
       </span>
     );
   }
-  if (rec.status === 'in_progress') {
-    return (
-      <span className="inline-flex items-center rounded-full bg-status-warn/30 px-2 py-0.5 font-headline text-[10px] font-extrabold uppercase tracking-ribbon text-orange-press">
-        In progress
-      </span>
-    );
-  }
   return (
     <span className="inline-flex items-center rounded-full bg-status-warn/30 px-2 py-0.5 font-headline text-[10px] font-extrabold uppercase tracking-ribbon text-orange-press">
       {rec.status?.replace(/_/g, ' ') ?? 'In progress'}
     </span>
+  );
+}
+
+function SessionLogRow({ session }: { session: TrainingSession }) {
+  const total = session.entries.reduce((sum, e) => sum + e.hours, 0);
+  return (
+    <li className="rounded-card border border-paper-edge bg-paper p-4">
+      <div className="flex flex-wrap items-baseline justify-between gap-3">
+        <p className="font-headline text-sm font-extrabold uppercase tracking-ribbon text-bark-deep">
+          {format(parseISO(session.session_date), 'EEEE, MMM d, yyyy')}
+        </p>
+        <p className="font-headline text-xs font-extrabold uppercase tracking-ribbon text-orange">
+          {formatHours(total)} hrs total
+        </p>
+      </div>
+      <ul className="mt-2 flex flex-wrap gap-1.5">
+        {session.entries.map((e) => (
+          <li
+            key={e.id}
+            className="inline-flex items-center rounded-full border border-paper-edge bg-cream px-2.5 py-0.5 font-headline text-[11px] font-extrabold uppercase tracking-ribbon text-bark-deep"
+          >
+            {e.training_name}
+            <span className="ml-1.5 text-orange">{formatHours(e.hours)}h</span>
+          </li>
+        ))}
+      </ul>
+      {session.notes && (
+        <p className="mt-3 text-sm text-fg-2">{session.notes}</p>
+      )}
+    </li>
   );
 }
 
@@ -409,9 +505,13 @@ function PlanListItem({
       <span className="text-fg-2">
         — L{plan.current_level} → L{plan.target_level}
         {plan.target_date && plan.status === 'active' && (
-          <>, target {format(new Date(plan.target_date), 'MMM d, yyyy')}</>
+          <>, target {format(parseISO(plan.target_date), 'MMM d, yyyy')}</>
         )}
       </span>
     </li>
   );
+}
+
+function formatHours(n: number): string {
+  return Number.isInteger(n) ? String(n) : Number(n.toFixed(2)).toString();
 }
