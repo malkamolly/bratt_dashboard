@@ -364,15 +364,55 @@ export async function assignTrainingModule(formData: FormData): Promise<void> {
  * latest unsubmitted one) so the answers have somewhere to land as they
  * pick. The action returns the attempt id via redirect to the take URL.
  */
+/**
+ * Authorize an attempt action: admins and field managers can act on any
+ * assignment; a field_crew user can only act on their own.
+ */
+async function canActOnAssignment(
+  supabase: Awaited<ReturnType<typeof serverClient>>,
+  user: { email: string; role: string },
+  assignmentId: string,
+): Promise<{ ok: true; employeeSlug: string } | { ok: false }> {
+  const { data } = await supabase
+    .from('field_crew_training_assignments')
+    .select('employee_slug, field_crew_employees!inner(auth_email)')
+    .eq('id', assignmentId)
+    .maybeSingle();
+  if (!data) return { ok: false };
+  const row = data as unknown as {
+    employee_slug: string;
+    field_crew_employees:
+      | { auth_email: string | null }
+      | { auth_email: string | null }[]
+      | null;
+  };
+  const emp = Array.isArray(row.field_crew_employees)
+    ? row.field_crew_employees[0]
+    : row.field_crew_employees;
+  if (user.role === 'admin' || user.role === 'field_manager') {
+    return { ok: true, employeeSlug: row.employee_slug };
+  }
+  if (
+    user.role === 'field_crew' &&
+    emp?.auth_email &&
+    emp.auth_email.toLowerCase() === user.email.toLowerCase()
+  ) {
+    return { ok: true, employeeSlug: row.employee_slug };
+  }
+  return { ok: false };
+}
+
 export async function startTrainingAttempt(formData: FormData): Promise<void> {
   const user = await getAllowedUser();
   if (!user) redirect('/login');
-  if (!canEditCrew(user.role)) redirect('/access-denied');
 
   const assignmentId = String(formData.get('assignment_id') ?? '').trim();
   if (!assignmentId) redirect('/crew/modules?error=missing_assignment');
 
   const supabase = await serverClient();
+
+  const auth = await canActOnAssignment(supabase, user, assignmentId);
+  if (!auth.ok) redirect('/access-denied');
 
   // If there's an open (unsubmitted) attempt, reuse it; else create one.
   const { data: existing } = await supabase
@@ -425,11 +465,25 @@ export async function submitTrainingAttempt(input: {
 > {
   const user = await getAllowedUser();
   if (!user) return { ok: false, error: 'Not signed in.' };
-  if (!canEditCrew(user.role)) {
-    return { ok: false, error: 'Only managers and admins can submit attempts.' };
-  }
 
   const supabase = await serverClient();
+
+  // Auth: managers can submit any attempt; field_crew can only submit
+  // their own.
+  const { data: attempt } = await supabase
+    .from('field_crew_training_attempts')
+    .select('assignment_id')
+    .eq('id', input.attempt_id)
+    .maybeSingle();
+  if (!attempt) return { ok: false, error: 'Attempt not found.' };
+  const auth = await canActOnAssignment(
+    supabase,
+    user,
+    (attempt as { assignment_id: string }).assignment_id,
+  );
+  if (!auth.ok) {
+    return { ok: false, error: 'You do not have permission to submit this attempt.' };
+  }
 
   // Persist each answer (one row per question). Upsert so re-submits land
   // on the same row.
@@ -523,6 +577,8 @@ export async function updateEmployeeProfile(formData: FormData): Promise<void> {
   const leadsCrew = formData.get('leads_crew') === 'on';
   const active = formData.get('active') === 'on';
   const notes = String(formData.get('notes') ?? '').trim() || null;
+  const authEmail =
+    String(formData.get('auth_email') ?? '').trim().toLowerCase() || null;
   // Specialties — checkboxes share name="specialties", so getAll returns
   // every value that was checked. De-dupe just in case.
   const specialties = Array.from(
@@ -533,7 +589,7 @@ export async function updateEmployeeProfile(formData: FormData): Promise<void> {
 
   const { data: before, error: readErr } = await supabase
     .from('field_crew_employees')
-    .select('slug, name, active, hire_date, position_key, leads_crew, notes')
+    .select('slug, name, active, hire_date, position_key, leads_crew, notes, auth_email')
     .eq('slug', slug)
     .maybeSingle();
   if (readErr || !before) {
@@ -558,6 +614,7 @@ export async function updateEmployeeProfile(formData: FormData): Promise<void> {
       position_key: positionKey,
       leads_crew: leadsCrew,
       notes,
+      auth_email: authEmail,
       updated_at: new Date().toISOString(),
     })
     .eq('slug', slug);

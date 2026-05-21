@@ -2,6 +2,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { allowedHubsFor, getAllowedUser, type Hub } from '@/lib/auth';
+import { getCurrentEmployeeSlug } from '@/lib/crew-data';
 
 export const dynamic = 'force-dynamic';
 
@@ -47,6 +48,15 @@ const HUB_CARDS: HubCard[] = [
 export default async function LandingPage() {
   const user = await getAllowedUser();
   if (!user) redirect('/login');
+
+  // Field crew users skip the hub picker entirely and land on their own
+  // profile, where they can see their assigned trainings and take any
+  // open tests. If their email isn't linked to an employee record yet,
+  // they fall through to the normal one-hub redirect below.
+  if (user.role === 'field_crew') {
+    const slug = await getCurrentEmployeeSlug();
+    if (slug) redirect(`/crew/employees/${slug}`);
+  }
 
   const myHubs = allowedHubsFor(user.role);
 
