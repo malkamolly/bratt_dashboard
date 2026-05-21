@@ -10,6 +10,7 @@ export const dynamic = 'force-dynamic';
 export default async function PaceHomePage() {
   const user = await requireHubAccess('pace');
   const isAdmin = user.role === 'admin';
+  const canSeeSchedule = user.role === 'admin' || user.role === 'user';
 
   const [salesYtd, productionYtd] = await Promise.all([
     loadYearToDate(),
@@ -88,9 +89,9 @@ export default async function PaceHomePage() {
           </p>
         </Link>
 
-        {isAdmin && (
+        {canSeeSchedule && (
           <Link href="/schedule" className="bt-card group transition-colors hover:!border-orange">
-            <p className="bt-eyebrow">Dashboard 3 · Admin only</p>
+            <p className="bt-eyebrow">Dashboard 3</p>
             <h2 className="mt-2 font-headline text-3xl font-black uppercase text-bark-deep">
               Tomorrow&rsquo;s Schedule
             </h2>
