@@ -7,16 +7,38 @@
 
 import Link from 'next/link';
 import { requireHubAccess } from '@/lib/auth';
-import { getCatalogs } from '@/lib/crew-data';
+import { getCatalogs, listEmployees } from '@/lib/crew-data';
 
 export const dynamic = 'force-dynamic';
 
 export default async function SkillCatalogPage() {
   await requireHubAccess('crew');
-  const { skills } = await getCatalogs();
+  const [{ skills }, employees] = await Promise.all([
+    getCatalogs(),
+    listEmployees({ activeOnly: true }),
+  ]);
+
+  // Per-skill counts: L3 / L2 / L1 / Unrated.
+  const counts = new Map<
+    string,
+    { l1: number; l2: number; l3: number; unrated: number; total: number }
+  >();
+  for (const s of skills) {
+    counts.set(s.key, { l1: 0, l2: 0, l3: 0, unrated: 0, total: employees.length });
+  }
+  for (const e of employees) {
+    for (const s of skills) {
+      const v = e.skills[s.key];
+      const c = counts.get(s.key)!;
+      if (v === 1) c.l1 += 1;
+      else if (v === 2) c.l2 += 1;
+      else if (v === 3) c.l3 += 1;
+      else c.unrated += 1;
+    }
+  }
 
   return (
-    <main className="mx-auto max-w-4xl px-6 py-10">
+    <main className="mx-auto max-w-6xl px-6 py-10">
       <p className="bt-eyebrow">
         <Link href="/crew" className="hover:underline">
           Field Crew Hub
@@ -37,30 +59,35 @@ export default async function SkillCatalogPage() {
         <LevelExplainer level={3} title="Expert" body="Can train others; trusted with hardest cases." />
       </ul>
 
-      <div className="mt-8 overflow-hidden rounded-card border border-paper-edge bg-paper">
-        <table className="w-full text-sm">
-          <thead className="bg-bone">
-            <tr>
-              <th className="px-4 py-2 text-left font-headline text-xs font-extrabold uppercase tracking-ribbon text-fg-3">
-                Skill
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            {skills.map((s) => (
-              <tr key={s.key} className="border-t border-paper-edge/60">
-                <td className="px-4 py-2">
-                  <Link
-                    href={`/crew/skills/${s.key}`}
-                    className="font-headline font-extrabold text-bark-deep hover:underline"
-                  >
-                    {s.display_name}
-                  </Link>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+      <div className="mt-8 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        {skills.map((s) => {
+          const c = counts.get(s.key)!;
+          return (
+            <Link
+              key={s.key}
+              href={`/crew/skills/${s.key}`}
+              className="group bt-card flex flex-col justify-between transition-colors hover:!border-orange"
+            >
+              <div>
+                <h3 className="font-headline text-xl font-black uppercase text-bark-deep group-hover:text-orange-press">
+                  {s.display_name}
+                </h3>
+                <p className="mt-1 font-headline text-[10px] font-extrabold uppercase tracking-ribbon text-fg-3">
+                  {c.l1 + c.l2 + c.l3} of {c.total} rated
+                </p>
+              </div>
+              <div className="mt-4 flex flex-wrap gap-1.5">
+                <SkillCountChip value={c.l3} label="L3" tone="green-dark" />
+                <SkillCountChip value={c.l2} label="L2" tone="green" />
+                <SkillCountChip value={c.l1} label="L1" tone="orange" />
+                <SkillCountChip value={c.unrated} label="—" tone="muted" />
+              </div>
+              <p className="mt-4 font-headline text-xs font-extrabold uppercase tracking-ribbon text-orange">
+                View &amp; edit ratings &rarr;
+              </p>
+            </Link>
+          );
+        })}
       </div>
 
       <p className="mt-6 text-xs text-fg-3">
@@ -72,6 +99,33 @@ export default async function SkillCatalogPage() {
         records formal completion. They&apos;re tracked separately on purpose.
       </p>
     </main>
+  );
+}
+
+function SkillCountChip({
+  value,
+  label,
+  tone,
+}: {
+  value: number;
+  label: string;
+  tone: 'green-dark' | 'green' | 'orange' | 'muted';
+}) {
+  const color =
+    tone === 'green-dark'
+      ? 'bg-green-dark text-white'
+      : tone === 'green'
+        ? 'bg-green text-white'
+        : tone === 'orange'
+          ? 'bg-orange text-white'
+          : 'bg-paper-edge text-fg-2';
+  return (
+    <span
+      className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 font-headline text-[10px] font-extrabold uppercase tracking-ribbon ${color}`}
+    >
+      <span className="text-sm">{value}</span>
+      <span>{label}</span>
+    </span>
   );
 }
 

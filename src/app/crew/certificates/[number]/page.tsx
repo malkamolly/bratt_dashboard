@@ -48,7 +48,7 @@ export default async function CertificatePage({
         }
       `}</style>
 
-      <main className="mx-auto max-w-3xl px-6 py-10">
+      <main className="mx-auto max-w-6xl px-6 py-10">
         {/* Top nav strip — hidden when printing */}
         <div className="no-print flex flex-wrap items-center justify-between gap-3">
           <p className="bt-eyebrow">

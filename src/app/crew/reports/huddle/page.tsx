@@ -18,7 +18,7 @@ export default async function LatestHuddlePage() {
 
   const editable = canEditCrew(user.role);
   return (
-    <main className="mx-auto max-w-3xl px-6 py-10">
+    <main className="mx-auto max-w-6xl px-6 py-10">
       <p className="bt-eyebrow">
         <Link href="/crew" className="hover:underline">
           Field Crew Hub

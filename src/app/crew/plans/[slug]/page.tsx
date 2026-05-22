@@ -31,7 +31,7 @@ export default async function PlanDetailPage({
         : 'bg-paper-edge text-fg-2';
 
   return (
-    <main className="mx-auto max-w-4xl px-6 py-10">
+    <main className="mx-auto max-w-6xl px-6 py-10">
       <p className="bt-eyebrow">
         <Link href="/crew" className="hover:underline">
           Field Crew Hub
