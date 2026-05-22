@@ -18,6 +18,10 @@ Treat me as **very capable but a beginner**. I can follow detailed instructions,
 - I do **not** have access to manage DNS for `brattree.com` — assume this is a hard constraint unless I tell you otherwise
 - Magic-link email currently flows through **Gmail SMTP** (personal Gmail with app password), not a dedicated transactional ESP. This is intentional for our scale.
 
+## Naming convention for people
+
+Always store and display people's names as **First Name + Last Initial** (e.g. `Taylor M`, `Shay S`, `Sean B`). Never use full last names anywhere in the database, UI, or seed data. When two people share a first name + initial, extend the initial (e.g. `Sean B`, `Sean-Paul`) — don't fall back to a full last name. This applies to crew members, salespeople, arborists, and any other person record.
+
 ## When I'm stuck or frustrated
 
 Ask one specific clarifying question rather than offering 3 options. If I've already rejected the "proper" path once in a conversation, don't re-suggest it.
