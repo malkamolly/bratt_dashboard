@@ -186,4 +186,15 @@ alter table production_member_historicals
 alter table sales_addon_attributions
   alter column employee_slug set not null;
 
+-- And drop NOT NULL on the legacy crew_member_id columns so the new
+-- application code (which only writes employee_slug) doesn't trip the
+-- old constraint while both columns coexist. The columns themselves
+-- go away in 035.
+alter table production_member_entries
+  alter column crew_member_id drop not null;
+alter table production_member_historicals
+  alter column crew_member_id drop not null;
+alter table sales_addon_attributions
+  alter column crew_member_id drop not null;
+
 commit;
