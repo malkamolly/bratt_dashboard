@@ -908,6 +908,26 @@ deck-stage > section {
   background: linear-gradient(180deg, #34251A 0%, #20140A 100%);
 }
 [data-theme="field-manual"] .ppe-card { background: #FFF; border: 2px solid var(--bt-ink); }
+.ppe-icon--image {
+  width: 100%;
+  height: 120px;
+  border-radius: 12px;
+  background: #FFFFFF;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 14px;
+  box-sizing: border-box;
+  overflow: hidden;
+}
+.ppe-icon--image img {
+  max-width: 100%;
+  max-height: 100%;
+  width: auto;
+  height: auto;
+  object-fit: contain;
+  display: block;
+}
 .ppe-icon {
   width: 64px; height: 64px;
   border-radius: 12px;
