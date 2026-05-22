@@ -194,18 +194,16 @@ function LiveMonthView({
       {/* Company hero */}
       <section className="mt-3 rounded-card bg-bark p-6 text-cream sm:p-8">
         <div className="grid grid-cols-1 gap-6 sm:grid-cols-4 sm:items-stretch">
-          <div className="flex flex-col justify-between border-b border-bark-deep pb-4 sm:border-b-0 sm:border-r sm:pb-0 sm:pr-6">
-            <div>
-              <p className="font-headline text-xs font-extrabold uppercase tracking-ribbon text-lime">
-                Company MTD
-              </p>
-              <p className="mt-2 font-display text-5xl tracking-wider">
-                {fmtUsd(c.mtd_total)}
-              </p>
-              <p className="mt-1 text-sm text-cream/80">
-                of {fmtUsd(c.goal)} &middot; {fmtPct(c.pct_to_goal)} of plan
-              </p>
-            </div>
+          <div className="border-b border-bark-deep pb-4 sm:border-b-0 sm:border-r sm:pb-0 sm:pr-6">
+            <p className="font-headline text-xs font-extrabold uppercase tracking-ribbon text-lime">
+              Company MTD
+            </p>
+            <p className="mt-2 font-display text-5xl tracking-wider">
+              {fmtUsd(c.mtd_total)}
+            </p>
+            <p className="mt-1 text-sm text-cream/80">
+              of {fmtUsd(c.goal)} &middot; {fmtPct(c.pct_to_goal)} of plan
+            </p>
             <div className="mt-3">
               <span className={statusChipClass(companyStatus)}>
                 {statusLabel(companyStatus)}
@@ -605,15 +603,13 @@ function Stat({
   hint?: string;
 }) {
   return (
-    <div className="flex flex-col justify-between border-b border-bark-deep pb-4 last:border-b-0 last:pb-0 sm:border-b-0 sm:border-r sm:pb-0 sm:pr-6 sm:last:border-r-0 sm:last:pr-0">
-      <div>
-        <p className="font-headline text-[11px] font-extrabold uppercase tracking-ribbon text-lime">
-          {label}
-        </p>
-        <p className="mt-2 font-headline text-2xl font-black sm:text-3xl">
-          {value}
-        </p>
-      </div>
+    <div className="border-b border-bark-deep pb-4 last:border-b-0 last:pb-0 sm:border-b-0 sm:border-r sm:pb-0 sm:pr-6 sm:last:border-r-0 sm:last:pr-0">
+      <p className="font-headline text-[11px] font-extrabold uppercase tracking-ribbon text-lime">
+        {label}
+      </p>
+      <p className="mt-2 font-headline text-2xl font-black sm:text-3xl">
+        {value}
+      </p>
       {hint && <p className="mt-1 text-xs text-cream/70">{hint}</p>}
     </div>
   );
