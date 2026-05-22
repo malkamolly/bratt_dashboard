@@ -25,7 +25,13 @@ export default async function SalesEntryPage({
   const date =
     params.date && isValidIsoDate(params.date) ? params.date : today;
 
-  const { salespeople, entriesByPerson } = await loadSalesEntriesForDate(date);
+  const {
+    salespeople,
+    entriesByPerson,
+    crewMembers,
+    addonAttributions,
+    addonsSalespersonId,
+  } = await loadSalesEntriesForDate(date);
 
   const dateObj = fromIsoDate(date);
   const dayLabel = dateObj.toLocaleDateString('en-US', {
@@ -57,6 +63,9 @@ export default async function SalesEntryPage({
           date={date}
           salespeople={salespeople}
           initialAmounts={entriesByPerson}
+          crewMembers={crewMembers}
+          initialAddonAttributions={addonAttributions}
+          addonsSalespersonId={addonsSalespersonId}
         />
       </div>
     </main>
