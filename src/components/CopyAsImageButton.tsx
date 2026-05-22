@@ -50,13 +50,35 @@ export function CopyAsImageButton({ targetId, label = 'Copy as image', className
     setState('copying');
     try {
       const html2canvas = (await import('html2canvas')).default;
-      const canvas = await html2canvas(target, {
+      const inner = await html2canvas(target, {
         scale: 2, // retina-sharp output when pasted into Slack/email
-        backgroundColor: '#FFFFFF',
+        backgroundColor: '#FFF8EC', // bratt cream — matches the page
         useCORS: true,
       });
+
+      // Composite onto a slightly larger canvas to add a cream "matte" and
+      // a thin border around the content. Gives the screenshot a finished,
+      // card-like look without forcing those styles onto the live page.
+      const PAD = 64; // ~32 CSS px (we render at 2x)
+      const BORDER = 4;
+      const out = document.createElement('canvas');
+      out.width = inner.width + PAD * 2;
+      out.height = inner.height + PAD * 2;
+      const ctx = out.getContext('2d');
+      if (!ctx) throw new Error('Could not get 2d context');
+      // Cream backdrop
+      ctx.fillStyle = '#FFF8EC';
+      ctx.fillRect(0, 0, out.width, out.height);
+      // Drop the content into the centre
+      ctx.drawImage(inner, PAD, PAD);
+      // Thin bark border just inside the edge so the matte has a defined frame
+      ctx.strokeStyle = '#3D2B14'; // bark-deep
+      ctx.lineWidth = BORDER;
+      const half = BORDER / 2;
+      ctx.strokeRect(half, half, out.width - BORDER, out.height - BORDER);
+
       const blob = await new Promise<Blob | null>((resolve) =>
-        canvas.toBlob((b) => resolve(b), 'image/png'),
+        out.toBlob((b) => resolve(b), 'image/png'),
       );
       if (!blob) throw new Error('Could not encode image');
       if (
