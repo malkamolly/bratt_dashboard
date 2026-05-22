@@ -697,6 +697,82 @@ export async function setEmployeeSkillLevel(input: {
   return { ok: true, level: newLevel };
 }
 
+// ============================================================================
+// Applicator's License status — used by the PHC card on /crew
+// ============================================================================
+// Stores into field_crew_employee_trainings under training_key
+// 'applicators_license'. Four states map onto the same columns the rest
+// of the trainings system uses:
+//   passed       → completed = today, status = null
+//   in_progress  → completed = null,  status = 'in_progress'
+//   failed       → completed = null,  status = 'failed'
+//   not_yet      → row deleted
+// Activity-feed line is written so the change shows up on the
+// employee's profile.
+// ============================================================================
+
+export type LicenseStatus = 'not_yet' | 'in_progress' | 'passed' | 'failed';
+
+export async function setApplicatorsLicenseStatus(input: {
+  employee_slug: string;
+  status: LicenseStatus;
+}): Promise<{ ok: true } | { ok: false; error: string }> {
+  const user = await getAllowedUser();
+  if (!user) return { ok: false, error: 'Not signed in.' };
+  if (!canEditCrew(user.role)) return { ok: false, error: 'Not authorized.' };
+
+  const supabase = await serverClient();
+  const { data: emp } = await supabase
+    .from('field_crew_employees')
+    .select('slug, name')
+    .eq('slug', input.employee_slug)
+    .maybeSingle();
+  if (!emp) return { ok: false, error: 'Employee not found.' };
+
+  const today = new Date().toISOString().slice(0, 10);
+
+  if (input.status === 'not_yet') {
+    const { error } = await supabase
+      .from('field_crew_employee_trainings')
+      .delete()
+      .eq('employee_slug', input.employee_slug)
+      .eq('training_key', 'applicators_license');
+    if (error) return { ok: false, error: error.message };
+  } else {
+    const row = {
+      employee_slug: input.employee_slug,
+      training_key: 'applicators_license',
+      completed: input.status === 'passed' ? today : null,
+      status: input.status === 'passed' ? null : input.status,
+      notes: null,
+      card_received: null,
+    };
+    const { error } = await supabase
+      .from('field_crew_employee_trainings')
+      .upsert(row, { onConflict: 'employee_slug,training_key' });
+    if (error) return { ok: false, error: error.message };
+  }
+
+  const labelByStatus: Record<LicenseStatus, string> = {
+    not_yet: 'cleared',
+    in_progress: 'In progress',
+    passed: 'Passed',
+    failed: 'Failed',
+  };
+  await logActivity(
+    supabase,
+    input.employee_slug,
+    today,
+    `Applicator's License: ${labelByStatus[input.status]}.`,
+    user.email,
+  );
+
+  revalidatePath('/crew');
+  revalidatePath('/crew/trainings/applicators_license');
+  revalidatePath(`/crew/employees/${input.employee_slug}`);
+  return { ok: true };
+}
+
 async function logActivity(
   supabase: Awaited<ReturnType<typeof serverClient>>,
   employee_slug: string,
