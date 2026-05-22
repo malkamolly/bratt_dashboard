@@ -14,6 +14,7 @@ import {
 import { fmtUsd, fmtPct, monthLabel } from '@/lib/format';
 import { workingWeeksInMonth, toIsoDate, type IsoDate } from '@/lib/dates';
 import { MonthPicker } from '@/components/MonthPicker';
+import { CopyAsImageButton } from '@/components/CopyAsImageButton';
 import type { Crew } from '@/types';
 
 export const dynamic = 'force-dynamic';
@@ -189,6 +190,7 @@ function LiveMonthView({
 
   return (
     <main className="mx-auto max-w-6xl px-6 py-10">
+      <div id="production-pace-snapshot">
       <Header
         year={year}
         month={month}
@@ -353,6 +355,7 @@ function LiveMonthView({
           companyDaysComplete={c.budgeted_days_been_through}
         />
       )}
+      </div>{/* /#production-pace-snapshot */}
     </main>
   );
 }
@@ -505,6 +508,7 @@ function HistoricalMonthView({
 
   return (
     <main className="mx-auto max-w-6xl px-6 py-10">
+      <div id="production-pace-snapshot">
       <Header
         year={year}
         month={month}
@@ -570,6 +574,7 @@ function HistoricalMonthView({
           month={month}
         />
       )}
+      </div>{/* /#production-pace-snapshot */}
     </main>
   );
 }
@@ -667,6 +672,7 @@ function Header({
         </p>
       </div>
       <div className="flex flex-wrap items-center gap-3">
+        <CopyAsImageButton targetId="production-pace-snapshot" />
         {showEntryButton && (
           <>
             <Link
