@@ -32,16 +32,15 @@ quote: Every shift ends with everyone going home.
 
 
 @welcome
-eyebrow: About Us
-title: New look, same great company.
-subtitle: Bratt Tree has a refreshed brand — same crew, same standards.
-body: You may see older logos and truck wraps still in service while we transition.
-body: Don't be surprised if a client mentions one of our prior names — all of these are part of Bratt Tree now. If a client mentions one, it's a good thing — they remember us.
-collage: Bratt Tree | /brand/logo.png
-collage: Emery's |
-collage: Logs and Limbs |
-collage: Heartwood |
-collage: Urban Foresters |
+eyebrow: Our Brand
+title: The cutest tree company on the planet.
+subtitle: Same crew. Same standards. Killer new look.
+body: You'll see the Bratt brand everywhere — on trucks, shirts, business cards, and jobsite signs. Wear it proudly.
+body: If a client comments on the mascot or the new look, take it as a compliment. We earned it.
+collage: | /brand/logo.png
+collage: | /brand/mascot.png
+collage: | /brand/mascot-circle.png
+collage: | /brand/logotype.png
 
 
 @section-divider

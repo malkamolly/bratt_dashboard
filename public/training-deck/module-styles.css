@@ -344,33 +344,37 @@ deck-stage > section {
 }
 
 .welcome-quote--collage {
-  padding: 36px;
+  padding: 32px;
+  display: flex;
+  align-items: center;
 }
+.welcome-quote--collage::before { content: none; }
 .welcome-collage-grid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
-  gap: 18px;
+  gap: 20px;
   width: 100%;
 }
 .welcome-collage-cell {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 6px;
-  background: rgba(255,255,255,0.06);
+  gap: 8px;
+  background: var(--bt-cream);
   border-radius: var(--r-card);
-  padding: 14px;
+  padding: 18px;
+  aspect-ratio: 1 / 1;
+  justify-content: center;
 }
 .welcome-collage-cell img {
   width: 100%;
-  height: 110px;
+  height: 100%;
   object-fit: contain;
-  background: var(--bt-cream);
-  border-radius: 8px;
+  display: block;
 }
 .welcome-collage-cell image-slot {
   width: 100%;
-  height: 110px;
+  height: 100%;
 }
 .welcome-collage-label {
   font-family: var(--font-headline);
@@ -378,7 +382,7 @@ deck-stage > section {
   font-size: 13px;
   letter-spacing: 0.06em;
   text-transform: uppercase;
-  color: var(--bt-cream);
+  color: var(--bt-ink);
   text-align: center;
   opacity: 0.85;
 }
