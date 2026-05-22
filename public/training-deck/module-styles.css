@@ -335,6 +335,53 @@ deck-stage > section {
   width: 580px;
   height: 580px;
 }
+.cover-image-fixed {
+  width: 580px;
+  height: 580px;
+  border-radius: 50%;
+  object-fit: contain;
+  display: block;
+}
+
+.welcome-quote--collage {
+  padding: 36px;
+}
+.welcome-collage-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 18px;
+  width: 100%;
+}
+.welcome-collage-cell {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  background: rgba(255,255,255,0.06);
+  border-radius: var(--r-card);
+  padding: 14px;
+}
+.welcome-collage-cell img {
+  width: 100%;
+  height: 110px;
+  object-fit: contain;
+  background: var(--bt-cream);
+  border-radius: 8px;
+}
+.welcome-collage-cell image-slot {
+  width: 100%;
+  height: 110px;
+}
+.welcome-collage-label {
+  font-family: var(--font-headline);
+  font-weight: 800;
+  font-size: 13px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--bt-cream);
+  text-align: center;
+  opacity: 0.85;
+}
 
 .cover-meta {
   position: absolute;

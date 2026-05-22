@@ -17,6 +17,7 @@ subtitle: Your first days, the tools you'll use, and how we work.
 tagline: Start strong.
 tagline: Stay safe.
 tagline: Take care of your crew.
+image: /training-deck/assets/mascot-circle-color.png
 meta-left: Bratt Tree · Field Crew Onboarding
 meta-right: Day 1
 
@@ -34,8 +35,13 @@ quote: Every shift ends with everyone going home.
 eyebrow: About Us
 title: New look, same great company.
 subtitle: Bratt Tree has a refreshed brand — same crew, same standards.
-body: You may see older logos and truck wraps still in service while we transition. Don't be surprised if a client mentions one of our prior names — **Emery's**, **Logs and Limbs**, **Heartwood Tree Surgeons (Tim's Tree Service)**, or **Urban Foresters**.
-body: All of these are part of Bratt Tree now. If a client mentions one, it's a good thing — they remember us.
+body: You may see older logos and truck wraps still in service while we transition.
+body: Don't be surprised if a client mentions one of our prior names — all of these are part of Bratt Tree now. If a client mentions one, it's a good thing — they remember us.
+collage: Bratt Tree | /brand/logo.png
+collage: Emery's |
+collage: Logs and Limbs |
+collage: Heartwood |
+collage: Urban Foresters |
 
 
 @section-divider
@@ -47,49 +53,34 @@ tagline: What to expect on Day 1 — and what's coming next.
 @agenda
 eyebrow: First Week Agenda
 title: Day 1
-subtitle: The fun stuff first.
+subtitle: We'll knock out the essentials together.
 - New Hire Paperwork | Work through the packet with the onboarding admin
-- Meet Your Manager | Get connected, exchange contact info
 - Company Systems & Procedures | A walk-through of how we work
-- MN Medical Card | The credential that lets you drive company vehicles
 - Intro to Arboriculture | Self-directed TCIA training on the app
 - Lunch at the Office | With your manager and other team members
-- ServiceTitan | Our mobile software system — get logged in
-- Meet a Crew | Your manager will pair you with a crew in the afternoon
+- MN Medical Card | The credential that lets you drive company vehicles
 
 
-@agenda
-eyebrow: First Week Agenda
-title: Days 2 – 5
-subtitle: Mornings start with training. Afternoons you ride with a crew.
-- 7 – 8 AM | Arboriculture & Safety Training, led by Caleb Olson (Training & Safety Leader)
-- Hand-off | From Training to your Manager each morning
-- Debrief | With your Manager — review training and the previous day
-- Ride With a Crew | Your manager will connect you with a crew to learn the work
-
-
-@checklist
+@ppe-grid
 eyebrow: Apps
 title: Apps to download
 subtitle: Get these set up so they're ready when you need them.
-- **ADP Run** — payroll and time clock (if you haven't already)
-- **TCIA Training App** — Intro to Arboriculture and ongoing training
-- **Slack** — our main communication tool
-- **ServiceTitan** — work orders, job info, mobile field tool
-- **Vestwell** — 401(k) retirement
-- **FuelCloud** *(future)* — track fuel usage at the fill station
+item: ADP Run | Payroll and time clock. You'll punch in and out from your phone.
+item: TCIA | Intro to Arboriculture and your ongoing training.
+item: Slack | Our main communication tool — chat, forms, and workflows.
+item: ServiceTitan | Work orders, job info, and our mobile field tool.
+item: Vestwell | Our 401(k) retirement provider.
 
 
-@checklist
+@ppe-grid
 eyebrow: Paperwork
 title: New Hire Paperwork
-subtitle: Work through the packet at your own pace.
-- Fill out **every item** in the folder — go in order
-- Bring **two (2) copies of ID** (required by HR)
-- Save **Benefits** for last — knock everything else out first
-- Use the **1-pager** in your packet — it answers most common questions
-- Your **contact person** is your go-to for anything that comes up
-- If you're not sure, **just ask**
+subtitle: Work through the packet at your own pace — your contact person is your go-to.
+item: Whole Packet | Fill out every item in the folder, in order.
+item: Two Copies of ID | Required by HR — bring them in on day one.
+item: Benefits Last | Knock everything else out first, then tackle benefits.
+item: Contact Person | Your go-to for anything that comes up during onboarding.
+item: Ask Questions | If you're not sure, just ask — that's what we're here for.
 
 
 @steps
@@ -104,84 +95,6 @@ step: Clock in | From this point on, you'll use ADP Run to clock in and out for 
 
 @section-divider
 number: 02
-title: Fuel & Equipment
-tagline: How to refuel, where to find tools, and how to get repairs done.
-
-
-@welcome
-eyebrow: FuelCloud *(future)*
-title: How we manage refueling.
-subtitle: A smart fuel system that tracks who's using what.
-body: Bratt Tree uses **FuelCloud** to manage our refueling. You'll use the app to tell the system **who you are** and **which item you're refueling** — a truck, a saw, a piece of equipment.
-body: This matters because Minnesota has different tax rates for **on-road** and **off-road** diesel. FuelCloud lets us track this accurately and keep us compliant.
-
-
-@steps
-eyebrow: FuelCloud Setup *(future)*
-title: Getting you into FuelCloud
-subtitle: Give the onboarding admin this info to get set up.
-step: Share your info | First name, last name, email, and cell phone number.
-step: Pick a 5-digit PIN | Choose a number unique to you — you'll use it every time you refuel.
-step: Admin enters you | They'll confirm your PIN isn't already taken and add you to the system.
-step: We'll show you in person | During your tour, someone will walk you through actually using the system.
-
-
-@welcome
-eyebrow: Fill Station
-title: The Bratt Tree Fill Station
-subtitle: Set up like a gas station — for trucks, equipment, and saws.
-body: The Fill Station was built to make truck and equipment servicing **easy and efficient**. You're expected to **fill all your trucks and equipment at the end of each shift** — don't leave it for the morning.
-body: Treat the space like you would a public gas station. Remove trash and debris from your truck daily, and use the dumpster at the Fill Station. We're always working to improve this space.
-
-
-@checklist
-eyebrow: Fill Station
-title: Diesel, Gasoline & Fluids
-subtitle: What's available, and how it's tracked.
-- **Diesel** and **87 Octane** are monitored by FuelCloud *(future)*
-- **DEF Tote** — pump/hose available, or grab a separate 5-gallon single-use container
-- **Coolant** — 55-gallon drum, with individual containers to fill your truck or equipment
-- **Windshield Washer Fluid** — 55-gallon drum, individual containers available
-- **Leave empty containers behind** so the team can refill them
-
-
-@checklist
-eyebrow: Fill Station
-title: Mixed-Gas & Bar Oil
-subtitle: For handheld saws and other small equipment.
-- **Mixed-Gas** — for handheld machines, **hand-crank** to fill your canister
-- **Bar Oil** — 55-gallon drum, individual containers available to fill your saws
-- **Leave empty containers behind** so the team can refill them
-
-
-@checklist
-eyebrow: Saws
-title: Chain saw items
-subtitle: Where chains live, and how to handle repairs.
-- **Sharp chains** are in the garage next to the shop — grab sharp ones, hang dull ones back up
-- Our team uses an **automatic chain sharpener** for precision — **no field sharpening**
-- **Repairs** — submit via Slack using the repair request workflow
-- **Shed** — set the broken item in the shed for the team to pick up
-- The team will repair it and return it to your crew
-- **Don't attempt repairs yourself** — we have backup saws available
-
-
-@checklist
-eyebrow: Shed
-title: What you'll find in the Shed
-subtitle: Your everyday gear lives here.
-- Rakes and shovels
-- Bungee cords and ratchet straps
-- Saw wrenches
-- Green totes to haul debris
-- Washer fluid jugs
-- Safety masks
-- Nitrile gloves
-- **Broken saws** — set here after submitting a Slack repair request
-
-
-@section-divider
-number: 03
 title: Daily Operations
 tagline: How we run the day-to-day — clock-in, safety, communication.
 
@@ -204,7 +117,7 @@ body: Show up on time and engaged. These meetings exist because they save people
 
 
 @section-divider
-number: 04
+number: 03
 title: Slack & Reporting
 tagline: One app, lots of workflows. Here's what to use it for.
 
@@ -217,7 +130,7 @@ subtitle: Slack is one of our main communication tools — and it powers a lot o
 - **Incident reports** — any damage, any time
 - **Clam pick-up requests**
 - **Time-punch corrections** when you forget to punch in or out
-- **Small engine repair** requests
+- **Equipment repair** requests
 - **Equipment breakdown** workflows
 - **PTO and call-out** forms
 - General team communication
@@ -229,22 +142,6 @@ title: Time off and calling out — use Slack.
 subtitle: We get it: things come up.
 body: We want you to take vacations as your PTO allows. Just don't be excessive with **call-outs** — they affect the whole crew.
 body: When you need to **call out**, use the Calling-Out form in Slack. When you need to **request time off**, use the PTO form in Slack. Both go to the right people automatically.
-
-
-@welcome
-eyebrow: Small Engine Repairs
-title: Saw broken? Leaf blower won't start?
-subtitle: Use the Slack workflow — don't try to fix it yourself.
-body: When a saw or leaf blower breaks down, fill out the **small engine repair** workflow in Slack. This tells the team what's wrong and gets the item into the repair queue.
-body: Put the broken item in the **Shed** so the team can find it. We'll repair it and get it back to your crew.
-
-
-@welcome
-eyebrow: Incident Reports
-title: Any damage — fill it out.
-subtitle: Every time, no matter how small.
-body: Anytime there is **any type of damage to anything**, an incident report is **required**. You'll find the form in Slack.
-body: Include all the details — **names, times, photos**. The more we know, the better we can prevent it from happening again. Our goal is to reduce incidents to zero.
 
 
 @two-column
@@ -263,6 +160,22 @@ right: **Don't call Brandon** to ask him to fix something
 right: **Don't walk up** and add to his queue verbally
 right: **Don't skip the workflow** — undocumented repairs slow everyone down
 takeaway: Brandon does great work because we let the system feed him the right priorities. Trust it.
+
+
+@welcome
+eyebrow: Repairs
+title: Something break down? Slack it.
+subtitle: We have a workflow for that — don't try to fix it yourself.
+body: Anytime a piece of equipment isn't working right, use the appropriate **repair workflow in Slack**. This tells the team what's wrong and gets the item into the queue.
+body: Put the broken item where the team expects to find it, and let the workflow do the rest. We'll repair it and get it back to your crew.
+
+
+@welcome
+eyebrow: Incident Reports
+title: Any damage — fill it out.
+subtitle: Every time, no matter how small.
+body: Anytime there is **any type of damage to anything**, an incident report is **required**. You'll find the form in Slack.
+body: Include all the details — **names, times, photos**. The more we know, the better we can prevent it from happening again. Our goal is to reduce incidents to zero.
 
 
 @closing
