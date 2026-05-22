@@ -13,7 +13,19 @@ import {
   workingDaysBeenThrough,
   type IsoDate,
 } from './dates';
-import type { Salesperson } from '@/types';
+import type { Salesperson, CrewMember } from '@/types';
+
+/** Name of the special salesperson row that aggregates add-on technicians.
+ *  Per-crew-member breakdown lives in sales_addon_attributions. */
+export const ADDONS_SALESPERSON_NAME = 'Add-Ons';
+
+export type AddonAttribution = {
+  id: string;
+  entry_date: IsoDate;
+  crew_member_id: string;
+  amount: number;
+  note: string | null;
+};
 
 export type SalesMonthContext = {
   year: number;
@@ -224,30 +236,95 @@ export async function loadYearToDate(year?: number): Promise<YearToDateData> {
 /**
  * Load just the active salespeople plus existing entries for a single date.
  * Used by the entry form to pre-fill values.
+ *
+ * Also returns the active field-crew-member roster and the per-member
+ * Add-Ons attributions for the date, so the form can render the Add-Ons
+ * editor inline.
  */
 export async function loadSalesEntriesForDate(date: IsoDate): Promise<{
   salespeople: Salesperson[];
   entriesByPerson: Record<string, number>;
+  crewMembers: CrewMember[];
+  addonAttributions: AddonAttribution[];
+  addonsSalespersonId: string | null;
 }> {
   const supabase = await serverClient();
-  const [salespeopleRes, entriesRes] = await Promise.all([
-    supabase
-      .from('salespeople')
-      .select('id, name, display_order, is_active')
-      .eq('is_active', true)
-      .order('display_order'),
-    supabase
-      .from('sales_entries')
-      .select('salesperson_id, amount')
-      .eq('entry_date', date),
-  ]);
+  const [salespeopleRes, entriesRes, crewMembersRes, addonsRes] =
+    await Promise.all([
+      supabase
+        .from('salespeople')
+        .select('id, name, display_order, is_active')
+        .eq('is_active', true)
+        .order('display_order'),
+      supabase
+        .from('sales_entries')
+        .select('salesperson_id, amount')
+        .eq('entry_date', date),
+      supabase
+        .from('crew_members')
+        .select('id, name, home_crew_id, is_foreman, display_order, is_active')
+        .eq('is_active', true)
+        .order('display_order'),
+      supabase
+        .from('sales_addon_attributions')
+        .select('id, entry_date, crew_member_id, amount, note, created_at')
+        .eq('entry_date', date)
+        .order('created_at', { ascending: true }),
+    ]);
 
   const entriesByPerson: Record<string, number> = {};
   for (const row of entriesRes.data ?? []) {
     entriesByPerson[row.salesperson_id as string] = Number(row.amount);
   }
+  const salespeople = (salespeopleRes.data ?? []) as Salesperson[];
+  const addonsSalesperson =
+    salespeople.find((s) => s.name === ADDONS_SALESPERSON_NAME) ?? null;
   return {
-    salespeople: (salespeopleRes.data ?? []) as Salesperson[],
+    salespeople,
     entriesByPerson,
+    crewMembers: (crewMembersRes.data ?? []) as CrewMember[],
+    addonAttributions: (addonsRes.data ?? []).map((r) => ({
+      id: r.id as string,
+      entry_date: r.entry_date as IsoDate,
+      crew_member_id: r.crew_member_id as string,
+      amount: Number(r.amount),
+      note: (r.note as string | null) ?? null,
+    })),
+    addonsSalespersonId: addonsSalesperson?.id ?? null,
+  };
+}
+
+/** Load all Add-Ons attributions for a date range, plus the active crew
+ *  member roster for naming. Used by the Add-Ons detail page. */
+export async function loadAddonAttributionsForRange(
+  start: IsoDate,
+  end: IsoDate,
+): Promise<{
+  attributions: AddonAttribution[];
+  crewMembers: CrewMember[];
+}> {
+  const supabase = await serverClient();
+  const [attributionsRes, crewMembersRes] = await Promise.all([
+    supabase
+      .from('sales_addon_attributions')
+      .select('id, entry_date, crew_member_id, amount, note')
+      .gte('entry_date', start)
+      .lte('entry_date', end)
+      .order('entry_date', { ascending: true }),
+    supabase
+      .from('crew_members')
+      .select('id, name, home_crew_id, is_foreman, display_order, is_active')
+      .order('display_order'),
+  ]);
+
+  return {
+    attributions: (attributionsRes.data ?? []).map((r) => ({
+      id: r.id as string,
+      entry_date: r.entry_date as IsoDate,
+      crew_member_id: r.crew_member_id as string,
+      amount: Number(r.amount),
+      note: (r.note as string | null) ?? null,
+    })),
+    crewMembers: (crewMembersRes.data ?? []) as CrewMember[],
   };
 }

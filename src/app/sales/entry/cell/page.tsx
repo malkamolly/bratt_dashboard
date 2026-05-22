@@ -67,6 +67,13 @@ export default async function CellEntryPage({
 
   if (!personRes.data) redirect('/sales');
 
+  // Add-Ons is driven by per-crew-member attributions — the single-amount
+  // cell editor would just overwrite that sum. Send the user to the full
+  // daily-entry page instead so they can edit attribution rows.
+  if (personRes.data.name === 'Add-Ons') {
+    redirect(`/sales/entry?date=${encodeURIComponent(sp.date)}`);
+  }
+
   const returnTo = safeReturnTo(sp.returnTo, '/sales');
   const dayLabel = fromIsoDate(sp.date).toLocaleDateString('en-US', {
     weekday: 'long',
