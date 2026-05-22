@@ -264,7 +264,7 @@ export async function loadSalesEntriesForDate(date: IsoDate): Promise<{
         .from('crew_members')
         .select('id, name, home_crew_id, is_foreman, display_order, is_active')
         .eq('is_active', true)
-        .order('display_order'),
+        .order('name'),
       supabase
         .from('sales_addon_attributions')
         .select('id, entry_date, crew_member_id, amount, note, created_at')
