@@ -169,6 +169,45 @@ export async function loadProductionMonth(
   };
 }
 
+// ----------------------------------------------------------------------------
+// Admin: who last saved entries for a given date?
+// ----------------------------------------------------------------------------
+// The save flow wipes + reinserts both production_member_entries and
+// production_entries for the date, so the most-recent created_at across
+// both tables for that date IS the "last saved" event.
+
+export async function loadProductionEntryAuditForDate(
+  date: IsoDate,
+): Promise<{ savedBy: string; savedAt: string } | null> {
+  const supabase = await serverClient();
+  const [memberRes, crewRes] = await Promise.all([
+    supabase
+      .from('production_member_entries')
+      .select('created_by, created_at')
+      .eq('entry_date', date)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle(),
+    supabase
+      .from('production_entries')
+      .select('created_by, created_at')
+      .eq('entry_date', date)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle(),
+  ]);
+  const candidates = [memberRes.data, crewRes.data].filter(
+    (r): r is { created_by: string | null; created_at: string } => !!r && !!r.created_at,
+  );
+  if (candidates.length === 0) return null;
+  candidates.sort((a, b) => (a.created_at < b.created_at ? 1 : -1));
+  const latest = candidates[0];
+  return {
+    savedBy: latest.created_by ?? 'unknown',
+    savedAt: latest.created_at,
+  };
+}
+
 export async function loadProductionEntriesForDate(date: IsoDate): Promise<{
   crews: Crew[];
   members: CrewMember[];

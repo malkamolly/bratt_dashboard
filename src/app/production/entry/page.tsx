@@ -1,6 +1,10 @@
 import { redirect } from 'next/navigation';
+import { format, parseISO } from 'date-fns';
 import { getAllowedUser } from '@/lib/auth';
-import { loadProductionEntriesForDate } from '@/lib/production-data';
+import {
+  loadProductionEntriesForDate,
+  loadProductionEntryAuditForDate,
+} from '@/lib/production-data';
 import { toIsoDate, fromIsoDate, isWeekend } from '@/lib/dates';
 import { EntryForm } from './EntryForm';
 
@@ -28,6 +32,11 @@ export default async function ProductionEntryPage({
   const { crews, members, memberEntries, crewEntries } =
     await loadProductionEntriesForDate(date);
 
+  const audit =
+    user.role === 'admin'
+      ? await loadProductionEntryAuditForDate(date)
+      : null;
+
   const d = fromIsoDate(date);
   const dayLabel = d.toLocaleDateString('en-US', {
     weekday: 'long',
@@ -51,6 +60,12 @@ export default async function ProductionEntryPage({
           </span>
         )}
       </p>
+      {audit && (
+        <p className="mt-2 font-headline text-[10px] font-extrabold uppercase tracking-ribbon text-fg-3">
+          Last saved by {audit.savedBy} ·{' '}
+          {format(parseISO(audit.savedAt), 'MMM d, yyyy h:mm a')}
+        </p>
+      )}
 
       <div className="mt-8">
         <EntryForm
