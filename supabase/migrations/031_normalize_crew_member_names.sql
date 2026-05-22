@@ -31,7 +31,7 @@ update crew_members set name = 'Nolan M'   where name = 'Nolan';
 update crew_members set name = 'Meghan G'  where name = 'Meghan';
 update crew_members set name = 'Jackson S' where name = 'Jackson';
 update crew_members set name = 'Braeden R' where name = 'Braeden';
-update crew_members set name = 'Sean Paul M' where name = 'Sean-Paul';
+update crew_members set name = 'Sean-Paul M' where name = 'Sean-Paul';
 update crew_members set name = 'Tim P'     where name = 'Tim';
 update crew_members set name = 'Scott M'   where name = 'Scott';
 update crew_members set name = 'Eric S'    where name = 'Eric Schwagel';
