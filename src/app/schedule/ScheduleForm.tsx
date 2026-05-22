@@ -2,6 +2,7 @@
 
 import { Fragment, useEffect, useMemo, useRef, useState, useTransition } from 'react';
 import { fmtUsdCents } from '@/lib/format';
+import { nextWorkdayIso } from '@/lib/workdays';
 import {
   loadSchedule,
   saveSchedule,
@@ -226,13 +227,10 @@ function parseDays(s: string): number {
   return Number.isFinite(n) && n > 0 ? n : 1;
 }
 
+// "Tomorrow" for scheduling purposes — the next actual workday after today,
+// skipping weekends and observed holidays. See src/lib/workdays.ts.
 function tomorrowIso(): string {
-  const d = new Date();
-  d.setDate(d.getDate() + 1);
-  const yyyy = d.getFullYear();
-  const mm = String(d.getMonth() + 1).padStart(2, '0');
-  const dd = String(d.getDate()).padStart(2, '0');
-  return `${yyyy}-${mm}-${dd}`;
+  return nextWorkdayIso();
 }
 function formatLongDate(iso: string): string {
   if (!iso) return '';
