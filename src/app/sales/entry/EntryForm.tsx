@@ -355,7 +355,7 @@ function AddonsSection({
             and the dollar amount. You can add as many rows as you need.
           </p>
         </div>
-        <p className="font-headline text-lg font-black text-ink">
+        <p className="whitespace-nowrap font-headline text-base font-black text-ink">
           Subtotal: {total}
         </p>
       </div>
