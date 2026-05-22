@@ -10,6 +10,7 @@ import {
 import { fmtUsd, fmtPct, monthLabel } from '@/lib/format';
 import { workingWeeksInMonth, toIsoDate, type IsoDate } from '@/lib/dates';
 import { MonthPicker } from '@/components/MonthPicker';
+import { CopyAsImageButton } from '@/components/CopyAsImageButton';
 
 export const dynamic = 'force-dynamic';
 
@@ -172,6 +173,7 @@ function LiveMonthView({
 
   return (
     <main className="mx-auto max-w-6xl px-4 py-6 sm:px-6 sm:py-10">
+      <div id="sales-pace-snapshot">
       <DashboardHeader
         year={year}
         month={month}
@@ -316,6 +318,7 @@ function LiveMonthView({
           Click a week to see and edit the daily entries that make up its total.
         </p>
       </section>
+      </div>{/* /#sales-pace-snapshot */}
 
       {/* Per-salesperson */}
       <section className="mt-10">
@@ -430,6 +433,7 @@ function HistoricalMonthView({
 
   return (
     <main className="mx-auto max-w-6xl px-4 py-6 sm:px-6 sm:py-10">
+      <div id="sales-pace-snapshot">
       <DashboardHeader
         year={year}
         month={month}
@@ -505,6 +509,7 @@ function HistoricalMonthView({
           </table>
         </div>
       </section>
+      </div>{/* /#sales-pace-snapshot */}
     </main>
   );
 }
@@ -536,6 +541,7 @@ function DashboardHeader({
         </p>
       </div>
       <div className="flex flex-wrap items-center gap-3">
+        <CopyAsImageButton targetId="sales-pace-snapshot" />
         {showEntryButton && (
           <Link
             href="/sales/entry"
