@@ -186,6 +186,10 @@
     const right = f(s, 'meta-right') || meta.version || 'Version 1.0';
     const imgId = f(s, 'image-id') || 'cover-image';
     const imgPlaceholder = f(s, 'image-placeholder') || 'Drop unit/equipment photo here';
+    // Optional: bake in a fixed image so the cover isn't a drop target.
+    // When `image` is set, render a plain <img> instead of the user-fillable
+    // image-slot — this is how the onboarding cover pins the mascot.
+    const imgSrc = f(s, 'image');
     return `
       <section class="slide slide--cover" data-screen-label="Cover · ${esc(unit)}">
         <div class="cover-text">
@@ -195,7 +199,9 @@
           ${taglines.length ? `<div class="cover-taglines">${taglines.map(t => `<div class="cover-tagline">${esc(t)}</div>`).join('')}</div>` : ''}
         </div>
         <div class="cover-imagery">
-          <image-slot id="${esc(imgId)}" shape="circle" placeholder="${esc(imgPlaceholder)}"></image-slot>
+          ${imgSrc
+            ? `<img class="cover-image-fixed" src="${esc(imgSrc)}" alt="${esc(unit)}">`
+            : `<image-slot id="${esc(imgId)}" shape="circle" placeholder="${esc(imgPlaceholder)}"></image-slot>`}
         </div>
         <div class="cover-meta">
           <span>${esc(left)}</span>
@@ -209,8 +215,30 @@
   layouts['welcome'] = (s, idx, meta) => {
     const bodies = fa(s, 'body');
     const quote = f(s, 'quote');
+    // Optional: render a collage of logos/images in the right column instead
+    // of a quote. Each "collage" line is "Label | url"; if the url is blank
+    // the cell renders as an empty image-slot (drag-and-drop placeholder).
+    const collage = fa(s, 'collage').map((row, i) => {
+      const [label, url] = splitPipe(row);
+      const slotId = `welcome-collage-${idx}-${i}`;
+      if (url && url.trim()) {
+        return `
+          <div class="welcome-collage-cell">
+            <img src="${esc(url.trim())}" alt="${esc(label || '')}">
+            ${label ? `<div class="welcome-collage-label">${esc(label)}</div>` : ''}
+          </div>`;
+      }
+      return `
+        <div class="welcome-collage-cell">
+          <image-slot id="${esc(slotId)}" shape="rounded" placeholder="${esc(label || 'Drop logo')}"></image-slot>
+          ${label ? `<div class="welcome-collage-label">${esc(label)}</div>` : ''}
+        </div>`;
+    }).join('');
+    // No quote and no collage → go single-column so the empty brown panel
+    // doesn't show up on slides that are just a welcome message.
+    const hasSidePanel = !!quote || collage.length > 0;
     return `
-      <section class="slide slide--welcome" data-screen-label="Welcome">
+      <section class="slide slide--welcome${hasSidePanel ? '' : ' slide--welcome-solo'}" data-screen-label="Welcome"${hasSidePanel ? '' : ' style="grid-template-columns:1fr"'}>
         ${topRail(s, meta)}
         <div class="welcome-body">
           ${eyebrowEl(s)}
@@ -219,9 +247,12 @@
           <div style="height:32px"></div>
           ${bodies.map(b => `<p>${inline(b)}</p>`).join('')}
         </div>
-        <div class="welcome-quote">
-          ${quote ? `<blockquote>${inline(quote)}</blockquote>` : ''}
-        </div>
+        ${hasSidePanel ? `
+          <div class="welcome-quote${collage ? ' welcome-quote--collage' : ''}">
+            ${collage
+              ? `<div class="welcome-collage-grid">${collage}</div>`
+              : (quote ? `<blockquote>${inline(quote)}</blockquote>` : '')}
+          </div>` : ''}
         ${footer(s, idx, meta)}
       </section>
     `;
