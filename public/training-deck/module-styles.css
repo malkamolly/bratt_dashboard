@@ -528,6 +528,133 @@ deck-stage > section {
   margin: 4px 0 0;
 }
 
+/* ---- DAY AGENDA (1 feature + 4 small) ---- */
+.slide--day-agenda { display: flex; flex-direction: column; }
+.day-agenda-grid {
+  margin-top: var(--gap-title);
+  display: grid;
+  grid-template-columns: 1.1fr 1fr;
+  gap: 28px;
+  flex: 1;
+  min-height: 0;
+}
+.day-agenda-feature {
+  background: var(--surface-card);
+  background: linear-gradient(180deg, var(--surface-card-grad-start) 0%, var(--surface-card-grad-end) 100%);
+  border: var(--keyline-width) solid var(--keyline);
+  border-radius: var(--r-card);
+  padding: 36px 40px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+[data-theme="bark-heavy"] .day-agenda-feature {
+  background: linear-gradient(180deg, #34251A 0%, #20140A 100%);
+  border-color: var(--bt-lime);
+}
+[data-theme="field-manual"] .day-agenda-feature {
+  background: #FFF;
+  border: 2px solid var(--bt-ink);
+}
+.day-agenda-feature-num {
+  font-family: var(--font-display);
+  font-size: 88px;
+  line-height: 1;
+  color: var(--bt-orange);
+}
+.day-agenda-feature-name {
+  font-family: var(--font-headline);
+  font-weight: 900;
+  font-size: 36px;
+  color: var(--ink-1);
+  text-transform: uppercase;
+  line-height: 1.05;
+  margin: 0;
+}
+.day-agenda-feature-desc {
+  font-family: var(--font-body);
+  font-size: 20px;
+  line-height: 1.35;
+  color: var(--ink-2);
+  margin: 0;
+}
+.day-agenda-feature-details {
+  list-style: none;
+  margin: 8px 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.day-agenda-feature-details li {
+  font-family: var(--font-body);
+  font-size: 17px;
+  line-height: 1.4;
+  color: var(--ink-2);
+  padding-left: 18px;
+  position: relative;
+}
+.day-agenda-feature-details li::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 9px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--bt-orange);
+}
+.day-agenda-feature-details strong {
+  font-family: var(--font-headline);
+  font-weight: 900;
+  color: var(--ink-1);
+  letter-spacing: 0.01em;
+}
+.day-agenda-items {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  grid-auto-rows: 1fr;
+  gap: 20px;
+}
+.day-agenda-item {
+  background: var(--surface-card);
+  background: linear-gradient(180deg, var(--surface-card-grad-start) 0%, var(--surface-card-grad-end) 100%);
+  border: var(--keyline-width) solid var(--keyline);
+  border-radius: var(--r-card);
+  padding: 22px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+[data-theme="bark-heavy"] .day-agenda-item {
+  background: linear-gradient(180deg, #34251A 0%, #20140A 100%);
+  border-color: var(--bt-lime);
+}
+[data-theme="field-manual"] .day-agenda-item {
+  background: #FFF;
+  border: 2px solid var(--bt-ink);
+}
+.day-agenda-item-num {
+  font-family: var(--font-display);
+  font-size: 44px;
+  line-height: 1;
+  color: var(--bt-orange);
+}
+.day-agenda-item-name {
+  font-family: var(--font-headline);
+  font-weight: 900;
+  font-size: 20px;
+  color: var(--ink-1);
+  text-transform: uppercase;
+  line-height: 1.05;
+}
+.day-agenda-item-desc {
+  font-family: var(--font-body);
+  font-size: 15px;
+  line-height: 1.35;
+  color: var(--ink-2);
+}
+
 /* ============================================================
    4. SECTION DIVIDER
    ============================================================ */

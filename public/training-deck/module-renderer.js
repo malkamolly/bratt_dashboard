@@ -280,6 +280,46 @@
     `;
   };
 
+  // -------- 3b. DAY AGENDA (1 feature card + 4 small items) --------
+  // Asymmetric agenda used for "Day 1" — the lead item is expanded into a
+  // tall feature card on the left (with optional sub-points), while the
+  // remaining items render as a 2×2 grid on the right.
+  layouts['day-agenda'] = (s, idx, meta) => {
+    const featureNum = f(s, 'feature-num') || '01';
+    const featureName = f(s, 'feature-name') || '';
+    const featureDesc = f(s, 'feature-desc') || '';
+    const featureDetails = fa(s, 'feature-detail').map((row) => {
+      const [name, desc] = splitPipe(row);
+      return `<li>${name ? `<strong>${inline(name)}</strong>${desc ? ' — ' : ''}` : ''}${desc ? inline(desc) : ''}</li>`;
+    }).join('');
+    const items = s.items.map((row, i) => {
+      const [name, desc] = splitPipe(row);
+      const n = String(i + 2).padStart(2, '0');
+      return `
+        <div class="day-agenda-item">
+          <div class="day-agenda-item-num">${n}</div>
+          <div class="day-agenda-item-name">${inline(name || '')}</div>
+          ${desc ? `<div class="day-agenda-item-desc">${inline(desc)}</div>` : ''}
+        </div>`;
+    }).join('');
+    return `
+      <section class="slide slide--day-agenda" data-screen-label="${esc(f(s, 'title') || 'Day Agenda')}">
+        ${topRail(s, meta)}
+        ${titleBlock(s)}
+        <div class="day-agenda-grid">
+          <div class="day-agenda-feature">
+            <div class="day-agenda-feature-num">${esc(featureNum)}</div>
+            ${featureName ? `<h3 class="day-agenda-feature-name">${inline(featureName)}</h3>` : ''}
+            ${featureDesc ? `<p class="day-agenda-feature-desc">${inline(featureDesc)}</p>` : ''}
+            ${featureDetails ? `<ul class="day-agenda-feature-details">${featureDetails}</ul>` : ''}
+          </div>
+          <div class="day-agenda-items">${items}</div>
+        </div>
+        ${footer(s, idx, meta)}
+      </section>
+    `;
+  };
+
   // -------- 4. SECTION DIVIDER --------
   layouts['section-divider'] = (s, idx, meta) => {
     const num = f(s, 'number') || '00';

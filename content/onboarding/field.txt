@@ -49,11 +49,18 @@ title: Your First Week
 tagline: What to expect on Day 1 — and what's coming next.
 
 
-@agenda
+@day-agenda
 eyebrow: First Week Agenda
 title: Day 1
 subtitle: We'll knock out the essentials together.
-- New Hire Paperwork | Work through the packet with the onboarding admin
+feature-num: 01
+feature-name: New Hire Paperwork
+feature-desc: Work through the packet at your own pace with the onboarding admin.
+feature-detail: Whole Packet | Fill out every item in the folder, in order
+feature-detail: Two Copies of ID | Required by HR — bring them on day one
+feature-detail: Benefits Last | Knock everything else out first, then tackle benefits
+feature-detail: Contact Person | Your go-to for anything that comes up during onboarding
+feature-detail: Ask Questions | If you're not sure, just ask — that's what we're here for
 - Company Systems & Procedures | A walk-through of how we work
 - Intro to Arboriculture | Self-directed TCIA training on the app
 - Lunch at the Office | With your manager and other team members
@@ -69,17 +76,6 @@ item: TCIA | Intro to Arboriculture and your ongoing training. | /brand/tcia.web
 item: Slack | Our main communication tool — chat, forms, and workflows. | /brand/slack.png
 item: ServiceTitan | Work orders, job info, and our mobile field tool. | /brand/servicetitan.webp
 item: Vestwell | Our 401(k) retirement provider. | /brand/vestwell.jpg
-
-
-@ppe-grid
-eyebrow: Paperwork
-title: New Hire Paperwork
-subtitle: Work through the packet at your own pace — your contact person is your go-to.
-item: Whole Packet | Fill out every item in the folder, in order.
-item: Two Copies of ID | Required by HR — bring them in on day one.
-item: Benefits Last | Knock everything else out first, then tackle benefits.
-item: Contact Person | Your go-to for anything that comes up during onboarding.
-item: Ask Questions | If you're not sure, just ask — that's what we're here for.
 
 
 @steps
