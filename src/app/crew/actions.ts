@@ -822,6 +822,16 @@ export async function updateEmployeeProfile(formData: FormData): Promise<void> {
   const notes = String(formData.get('notes') ?? '').trim() || null;
   const authEmail =
     String(formData.get('auth_email') ?? '').trim().toLowerCase() || null;
+  // Applicator's License (PHC only). Empty string means "no change /
+  // not applicable"; explicit values are handled after the main save.
+  const licenseStatusRaw = String(formData.get('applicators_license') ?? '').trim();
+  const licenseStatus: LicenseStatus | null =
+    licenseStatusRaw === 'passed' ||
+    licenseStatusRaw === 'in_progress' ||
+    licenseStatusRaw === 'failed' ||
+    licenseStatusRaw === 'not_yet'
+      ? (licenseStatusRaw as LicenseStatus)
+      : null;
   // Specialties — checkboxes share name="specialties", so getAll returns
   // every value that was checked. De-dupe just in case.
   const specialties = Array.from(
@@ -926,6 +936,15 @@ export async function updateEmployeeProfile(formData: FormData): Promise<void> {
   }
   for (const line of lines) {
     await logActivity(supabase, slug, today, line, user.email);
+  }
+
+  // Applicator's License status (PHC only). Done after the main save so
+  // the license update happens against the freshly-set position.
+  if (licenseStatus !== null) {
+    await setApplicatorsLicenseStatus({
+      employee_slug: slug,
+      status: licenseStatus,
+    });
   }
 
   revalidatePath(`/crew/employees/${slug}`);

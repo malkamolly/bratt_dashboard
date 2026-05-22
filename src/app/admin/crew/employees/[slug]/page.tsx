@@ -14,6 +14,7 @@ import { redirect, notFound } from 'next/navigation';
 import { getAllowedUser, canEditCrew } from '@/lib/auth';
 import { getCatalogs, getEmployee } from '@/lib/crew-data';
 import { updateEmployeeProfile } from '@/app/crew/actions';
+import { serverClient } from '@/lib/supabase';
 
 export const dynamic = 'force-dynamic';
 
@@ -39,6 +40,23 @@ export default async function EditEmployeePage({
   if (!employee) notFound();
 
   const employeeSpecialties = new Set(employee.specialties);
+
+  // Applicator's License (only visible for PHC techs). Read the current
+  // training row so the dropdown can default to the right value.
+  const isPhc = employee.position_key === 'phc_technician';
+  let currentLicense: 'passed' | 'in_progress' | 'failed' | 'not_yet' = 'not_yet';
+  if (isPhc) {
+    const supabase = await serverClient();
+    const { data } = await supabase
+      .from('field_crew_employee_trainings')
+      .select('completed, status')
+      .eq('employee_slug', employee.slug)
+      .eq('training_key', 'applicators_license')
+      .maybeSingle();
+    if (data?.completed) currentLicense = 'passed';
+    else if (data?.status === 'failed') currentLicense = 'failed';
+    else if (data?.status) currentLicense = 'in_progress';
+  }
 
   return (
     <main className="mx-auto max-w-2xl px-6 py-10">
@@ -87,6 +105,28 @@ export default async function EditEmployeePage({
             ))}
           </select>
         </label>
+
+        {/* ----- Applicator's License (PHC only) ----- */}
+        {isPhc && (
+          <label className="block">
+            <span className="block font-headline text-[11px] font-extrabold uppercase tracking-ribbon text-fg-3">
+              Applicator&rsquo;s License
+            </span>
+            <select
+              name="applicators_license"
+              defaultValue={currentLicense}
+              className="mt-1 block w-full rounded-2 border border-paper-edge bg-cream px-3 py-2 text-sm focus:border-orange focus:outline-none"
+            >
+              <option value="not_yet">Not yet</option>
+              <option value="in_progress">In progress</option>
+              <option value="passed">Passed</option>
+              <option value="failed">Failed</option>
+            </select>
+            <span className="mt-1 block text-xs text-fg-3">
+              Only Plant Healthcare technicians need this credential.
+            </span>
+          </label>
+        )}
 
         {/* ----- Hire date ----- */}
         <label className="block">

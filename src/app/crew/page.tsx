@@ -24,7 +24,6 @@ import {
 } from '@/lib/crew-data';
 import { SkillBadge } from '@/components/crew/SkillBadge';
 import { ForemanPill, SpecialtyPill } from '@/components/crew/CrewPills';
-import { ApplicatorsLicenseEditor } from '@/components/crew/ApplicatorsLicenseEditor';
 import { serverClient } from '@/lib/supabase';
 
 type LicenseStatus = 'passed' | 'in_progress' | 'failed' | null;
@@ -251,7 +250,6 @@ export default async function FieldCrewHubPage() {
                   employees={list}
                   licenseByEmployee={phcLicenseByEmployee}
                   specialtyByKey={specialtyByKey}
-                  editable={editable}
                 />
               );
             }
@@ -459,13 +457,11 @@ function PhcSection({
   employees,
   licenseByEmployee,
   specialtyByKey,
-  editable,
 }: {
   title: string;
   employees: Employee[];
   licenseByEmployee: Map<string, LicenseStatus>;
   specialtyByKey: Map<string, string>;
-  editable: boolean;
 }) {
   return (
     <div className="flex h-full flex-col rounded-card border-[3px] border-lime bg-paper p-4 sm:p-5">
@@ -513,11 +509,7 @@ function PhcSection({
                   )}
                 </td>
                 <td className="py-1.5 px-1.5">
-                  <ApplicatorsLicenseEditor
-                    employeeSlug={e.slug}
-                    current={licenseByEmployee.get(e.slug) ?? null}
-                    editable={editable}
-                  />
+                  <LicenseBadge status={licenseByEmployee.get(e.slug) ?? null} />
                 </td>
               </tr>
             ))}
@@ -525,6 +517,23 @@ function PhcSection({
         </table>
       </div>
     </div>
+  );
+}
+
+function LicenseBadge({ status }: { status: LicenseStatus }) {
+  const map = {
+    passed: { label: 'Passed', cls: 'bg-green-dark text-white' },
+    in_progress: { label: 'In progress', cls: 'bg-status-warn/30 text-orange-press' },
+    failed: { label: 'Failed', cls: 'bg-orange-press text-white' },
+    null: { label: 'Not yet', cls: 'bg-paper-edge text-fg-2' },
+  } as const;
+  const cfg = status ? map[status] : map.null;
+  return (
+    <span
+      className={`inline-flex items-center rounded-full px-2 py-0.5 font-headline text-[10px] font-extrabold uppercase tracking-ribbon ${cfg.cls}`}
+    >
+      {cfg.label}
+    </span>
   );
 }
 
