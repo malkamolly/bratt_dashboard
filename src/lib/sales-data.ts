@@ -22,7 +22,7 @@ export const ADDONS_SALESPERSON_NAME = 'Add-Ons';
 export type AddonAttribution = {
   id: string;
   entry_date: IsoDate;
-  crew_member_id: string;
+  employee_slug: string;
   amount: number;
   note: string | null;
 };
@@ -261,13 +261,13 @@ export async function loadSalesEntriesForDate(date: IsoDate): Promise<{
         .select('salesperson_id, amount')
         .eq('entry_date', date),
       supabase
-        .from('crew_members')
-        .select('id, name, home_crew_id, is_foreman, display_order, is_active')
-        .eq('is_active', true)
+        .from('field_crew_employees')
+        .select('slug, name, home_crew_id, leads_crew, display_order, active')
+        .eq('active', true)
         .order('name'),
       supabase
         .from('sales_addon_attributions')
-        .select('id, entry_date, crew_member_id, amount, note, created_at')
+        .select('id, entry_date, employee_slug, amount, note, created_at')
         .eq('entry_date', date)
         .order('created_at', { ascending: true }),
     ]);
@@ -282,16 +282,36 @@ export async function loadSalesEntriesForDate(date: IsoDate): Promise<{
   return {
     salespeople,
     entriesByPerson,
-    crewMembers: (crewMembersRes.data ?? []) as CrewMember[],
+    crewMembers: fceToCrewMembers(crewMembersRes.data ?? []),
     addonAttributions: (addonsRes.data ?? []).map((r) => ({
       id: r.id as string,
       entry_date: r.entry_date as IsoDate,
-      crew_member_id: r.crew_member_id as string,
+      employee_slug: r.employee_slug as string,
       amount: Number(r.amount),
       note: (r.note as string | null) ?? null,
     })),
     addonsSalespersonId: addonsSalesperson?.id ?? null,
   };
+}
+
+type FceRow = {
+  slug: string;
+  name: string;
+  home_crew_id: string | null;
+  leads_crew: boolean;
+  display_order: number;
+  active: boolean;
+};
+
+function fceToCrewMembers(rows: unknown[]): CrewMember[] {
+  return (rows as FceRow[]).map((r) => ({
+    slug: r.slug,
+    name: r.name,
+    home_crew_id: r.home_crew_id,
+    is_foreman: r.leads_crew,
+    display_order: r.display_order,
+    is_active: r.active,
+  }));
 }
 
 /** Load all Add-Ons attributions for a date range, plus the active crew
@@ -307,13 +327,13 @@ export async function loadAddonAttributionsForRange(
   const [attributionsRes, crewMembersRes] = await Promise.all([
     supabase
       .from('sales_addon_attributions')
-      .select('id, entry_date, crew_member_id, amount, note')
+      .select('id, entry_date, employee_slug, amount, note')
       .gte('entry_date', start)
       .lte('entry_date', end)
       .order('entry_date', { ascending: true }),
     supabase
-      .from('crew_members')
-      .select('id, name, home_crew_id, is_foreman, display_order, is_active')
+      .from('field_crew_employees')
+      .select('slug, name, home_crew_id, leads_crew, display_order, active')
       .order('display_order'),
   ]);
 
@@ -321,10 +341,10 @@ export async function loadAddonAttributionsForRange(
     attributions: (attributionsRes.data ?? []).map((r) => ({
       id: r.id as string,
       entry_date: r.entry_date as IsoDate,
-      crew_member_id: r.crew_member_id as string,
+      employee_slug: r.employee_slug as string,
       amount: Number(r.amount),
       note: (r.note as string | null) ?? null,
     })),
-    crewMembers: (crewMembersRes.data ?? []) as CrewMember[],
+    crewMembers: fceToCrewMembers(crewMembersRes.data ?? []),
   };
 }

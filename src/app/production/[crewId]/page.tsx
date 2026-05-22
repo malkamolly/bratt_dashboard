@@ -91,14 +91,14 @@ export default async function CrewDetailPage({
     // Per-member daily entries for this crew during this month (live months)
     supabase
       .from('production_member_entries')
-      .select('crew_member_id, jobs, revenue, crew_members(name, is_foreman)')
+      .select('employee_slug, jobs, revenue, field_crew_employees(name, leads_crew)')
       .eq('crew_id', crewId)
       .gte('entry_date', start)
       .lte('entry_date', end),
     // Per-member historicals for this crew this month (closed months)
     supabase
       .from('production_member_historicals')
-      .select('crew_member_id, jobs, revenue, crew_members(name, is_foreman)')
+      .select('employee_slug, jobs, revenue, field_crew_employees(name, leads_crew)')
       .eq('crew_id', crewId)
       .eq('year', year)
       .eq('month', month),
@@ -143,25 +143,27 @@ export default async function CrewDetailPage({
   // For a historical month, use production_member_historicals (one row per
   // member/month already aggregated). For a live month, sum the daily
   // production_member_entries rows for this crew.
-  type MemberRow = { id: string; name: string; isForeman: boolean; jobs: number; revenue: number };
+  type MemberRow = { slug: string; name: string; isForeman: boolean; jobs: number; revenue: number };
   const memberMap = new Map<string, MemberRow>();
   const memberSource = isHistorical
     ? memberHistoricalsRes.data ?? []
     : memberEntriesRes.data ?? [];
   for (const row of memberSource) {
-    const id = row.crew_member_id as string;
-    const cm = (row as { crew_members?: { name?: string; is_foreman?: boolean } | null })
-      .crew_members;
-    const cur = memberMap.get(id) ?? {
-      id,
-      name: cm?.name ?? id,
-      isForeman: !!cm?.is_foreman,
+    const slug = row.employee_slug as string;
+    const fceJoin = (
+      row as { field_crew_employees?: { name?: string; leads_crew?: boolean } | { name?: string; leads_crew?: boolean }[] | null }
+    ).field_crew_employees;
+    const fce = Array.isArray(fceJoin) ? fceJoin[0] : fceJoin;
+    const cur = memberMap.get(slug) ?? {
+      slug,
+      name: fce?.name ?? slug,
+      isForeman: !!fce?.leads_crew,
       jobs: 0,
       revenue: 0,
     };
     cur.jobs += Number(row.jobs);
     cur.revenue += Number(row.revenue);
-    memberMap.set(id, cur);
+    memberMap.set(slug, cur);
   }
   const memberRows = Array.from(memberMap.values()).sort(
     (a, b) => b.revenue - a.revenue,
@@ -354,7 +356,7 @@ export default async function CrewDetailPage({
               <tbody>
                 {memberRows.map((m, idx) => (
                   <tr
-                    key={m.id}
+                    key={m.slug}
                     className={idx % 2 === 0 ? 'bg-white' : 'bg-paper/40'}
                   >
                     <td className="px-4 py-3 font-headline font-bold text-ink">

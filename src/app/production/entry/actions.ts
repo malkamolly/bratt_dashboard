@@ -111,10 +111,12 @@ export async function saveProductionEntries(
     .eq('entry_date', date);
   if (delCrewsErr) return { ok: false, error: delCrewsErr.message };
 
-  // Insert member entries (only members with any non-zero values)
+  // Insert member entries (only members with any non-zero values).
+  // `id` here is the field_crew_employees.slug (form field names are
+  // jobs__member_<slug> / revenue__member_<slug> / crew__member_<slug>).
   const memberRows: Array<{
     entry_date: string;
-    crew_member_id: string;
+    employee_slug: string;
     crew_id: string;
     jobs: number;
     revenue: number;
@@ -125,7 +127,7 @@ export async function saveProductionEntries(
     if (input.jobs === 0 && input.revenue === 0) continue;
     memberRows.push({
       entry_date: date,
-      crew_member_id: id,
+      employee_slug: id,
       crew_id: input.crewId,
       jobs: input.jobs,
       revenue: input.revenue,

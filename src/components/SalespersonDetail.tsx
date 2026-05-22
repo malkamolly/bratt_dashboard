@@ -456,27 +456,27 @@ function AddonsBreakdownSection({
   attributions: Array<{
     id: string;
     entry_date: string;
-    crew_member_id: string;
+    employee_slug: string;
     amount: number;
     note: string | null;
   }>;
-  crewMembers: Array<{ id: string; name: string }>;
+  crewMembers: Array<{ slug: string; name: string }>;
   canEdit: boolean;
 }) {
-  const nameById = new Map(crewMembers.map((c) => [c.id, c.name]));
+  const nameBySlug = new Map(crewMembers.map((c) => [c.slug, c.name]));
 
   // Per-crew-member roll-up for the whole month.
   const totalsByMember = new Map<string, number>();
   for (const a of attributions) {
     totalsByMember.set(
-      a.crew_member_id,
-      (totalsByMember.get(a.crew_member_id) ?? 0) + a.amount,
+      a.employee_slug,
+      (totalsByMember.get(a.employee_slug) ?? 0) + a.amount,
     );
   }
   const memberRows = Array.from(totalsByMember.entries())
-    .map(([id, total]) => ({
-      id,
-      name: nameById.get(id) ?? '(unknown)',
+    .map(([slug, total]) => ({
+      slug,
+      name: nameBySlug.get(slug) ?? '(unknown)',
       total,
     }))
     .sort((a, b) => b.total - a.total);
@@ -534,7 +534,7 @@ function AddonsBreakdownSection({
               <tbody>
                 {memberRows.map((r, idx) => (
                   <tr
-                    key={r.id}
+                    key={r.slug}
                     className={idx % 2 === 0 ? 'bg-white' : 'bg-paper/40'}
                   >
                     <td className="px-4 py-3 font-headline font-bold text-ink">
@@ -612,7 +612,7 @@ function AddonsBreakdownSection({
                       >
                         <div className="flex flex-col">
                           <span className="font-headline font-bold text-ink">
-                            {nameById.get(r.crew_member_id) ?? '(unknown)'}
+                            {nameBySlug.get(r.employee_slug) ?? '(unknown)'}
                           </span>
                           {r.note && (
                             <span className="text-xs text-fg-3">{r.note}</span>

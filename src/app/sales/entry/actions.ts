@@ -71,15 +71,15 @@ export async function saveSalesEntries(
   }
 
   // Add-Ons attribution rows. Field naming:
-  //   addon_key__<rowKey>             (presence marker — gives us the row id)
-  //   addon_crew_member_id__<rowKey>  (selected crew member uuid)
-  //   addon_amount__<rowKey>          (dollar amount)
-  //   addon_note__<rowKey>            (optional note)
+  //   addon_key__<rowKey>           (presence marker — gives us the row id)
+  //   addon_employee_slug__<rowKey> (selected crew member slug)
+  //   addon_amount__<rowKey>        (dollar amount)
+  //   addon_note__<rowKey>          (optional note)
   // Rows with no crew member selected AND no amount are silently dropped
   // so the user can leave an empty "Add another" row dangling.
   const addonRows: {
     entry_date: string;
-    crew_member_id: string;
+    employee_slug: string;
     amount: number;
     note: string | null;
     created_by: string;
@@ -91,19 +91,19 @@ export async function saveSalesEntries(
     if (seenKeys.has(rowKey)) continue;
     seenKeys.add(rowKey);
 
-    const crewMemberId = String(
-      formData.get(`addon_crew_member_id__${rowKey}`) ?? '',
+    const employeeSlug = String(
+      formData.get(`addon_employee_slug__${rowKey}`) ?? '',
     ).trim();
     const amount = parseAmount(formData.get(`addon_amount__${rowKey}`));
     const noteRaw = String(formData.get(`addon_note__${rowKey}`) ?? '').trim();
 
-    const isEmpty = !crewMemberId && (amount == null || amount === 0);
+    const isEmpty = !employeeSlug && (amount == null || amount === 0);
     if (isEmpty) continue;
 
     if (amount == null) {
       return { ok: false, error: 'Bad number for one of the add-on rows.' };
     }
-    if (!crewMemberId) {
+    if (!employeeSlug) {
       return {
         ok: false,
         error: 'Pick a crew member for every add-on row, or remove it.',
@@ -112,7 +112,7 @@ export async function saveSalesEntries(
 
     addonRows.push({
       entry_date: date,
-      crew_member_id: crewMemberId,
+      employee_slug: employeeSlug,
       amount,
       note: noteRaw === '' ? null : noteRaw,
       created_by: user.email,

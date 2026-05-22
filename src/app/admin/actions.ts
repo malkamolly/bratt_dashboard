@@ -243,6 +243,11 @@ export async function updateSalesperson(formData: FormData): Promise<void> {
 // ----------------------------------------------------------------------------
 // 5. Crew members (production roster)
 // ----------------------------------------------------------------------------
+// Adds a new field crew employee from the production-admin form. The
+// Field Crew Hub manages name/position/skills/etc. via /admin/crew; this
+// is the lightweight form that only sets the operational fields (home
+// crew + foreman + display order). Generates a slug from the name; the
+// admin can rename via /admin/crew/employees later.
 export async function addCrewMember(formData: FormData): Promise<void> {
   await requireAdmin();
   const name = String(formData.get('name') ?? '').trim();
@@ -251,13 +256,30 @@ export async function addCrewMember(formData: FormData): Promise<void> {
   const displayOrder = parseIntStrict(formData.get('display_order')) ?? 999;
   if (!name) redirect('/admin/production?error=missing_name');
 
+  const slug = name
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/(^-|-$)/g, '');
+  if (!slug) redirect('/admin/production?error=invalid_name');
+
+  // Code: first letter of first and last word, plus a stable 4-char hash
+  // so two people with the same initials don't collide.
+  const words = name.split(/\s+/).filter(Boolean);
+  const initials =
+    (words[0]?.[0] ?? '') + (words[words.length - 1]?.[0] ?? '');
+  let hash = 0;
+  for (let i = 0; i < name.length; i++) hash = (hash * 31 + name.charCodeAt(i)) | 0;
+  const code = `${initials.toUpperCase()}-${Math.abs(hash).toString(16).slice(0, 4).toUpperCase()}`;
+
   const supabase = await serverClient();
-  const { error } = await supabase.from('crew_members').insert({
+  const { error } = await supabase.from('field_crew_employees').insert({
+    slug,
+    code,
     name,
     home_crew_id: homeCrewId,
-    is_foreman: isForeman,
+    leads_crew: isForeman,
     display_order: displayOrder,
-    is_active: true,
+    active: true,
   });
   if (error) redirect(`/admin/production?error=${encodeURIComponent(error.message)}`);
 
@@ -431,7 +453,7 @@ export async function saveProductionMemberHistoricals(
   const memberRows: Array<{
     year: number;
     month: number;
-    crew_member_id: string;
+    employee_slug: string;
     crew_id: string;
     jobs: number;
     revenue: number;
@@ -444,7 +466,7 @@ export async function saveProductionMemberHistoricals(
     memberRows.push({
       year: year!,
       month: month!,
-      crew_member_id: id,
+      employee_slug: id,
       crew_id: input.crewId,
       jobs: input.jobs,
       revenue: input.revenue,
@@ -500,25 +522,25 @@ export async function saveProductionMemberHistoricals(
 
 export async function updateCrewMember(formData: FormData): Promise<void> {
   await requireAdmin();
-  const id = String(formData.get('id') ?? '');
+  const slug = String(formData.get('slug') ?? '');
   const name = String(formData.get('name') ?? '').trim();
   const homeCrewId = String(formData.get('home_crew_id') ?? '') || null;
   const isForeman = formData.get('is_foreman') === 'on';
   const isActive = formData.get('is_active') === 'on';
   const displayOrder = parseIntStrict(formData.get('display_order')) ?? 0;
-  if (!id || !name) redirect('/admin/production?error=missing_fields');
+  if (!slug || !name) redirect('/admin/production?error=missing_fields');
 
   const supabase = await serverClient();
   const { error } = await supabase
-    .from('crew_members')
+    .from('field_crew_employees')
     .update({
       name,
       home_crew_id: homeCrewId,
-      is_foreman: isForeman,
-      is_active: isActive,
+      leads_crew: isForeman,
+      active: isActive,
       display_order: displayOrder,
     })
-    .eq('id', id);
+    .eq('slug', slug);
   if (error) redirect(`/admin/production?error=${encodeURIComponent(error.message)}`);
 
   refreshAffectedPages();

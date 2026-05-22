@@ -78,7 +78,7 @@ export function EntryForm({
   const [addonRows, setAddonRows] = useState<AddonRow[]>(() =>
     initialAddonAttributions.map((a) => ({
       key: a.id,
-      crewMemberId: a.crew_member_id,
+      crewMemberId: a.employee_slug,
       amount: String(a.amount),
       note: a.note ?? '',
     })),
@@ -104,7 +104,7 @@ export function EntryForm({
       const current = parseMoney(amounts[sp.id] ?? '');
       if (Math.round(initial * 100) !== Math.round(current * 100)) return true;
     }
-    // Compare addon rows by (crew_member_id, amount, note) so re-ordering
+    // Compare addon rows by (employee_slug, amount, note) so re-ordering
     // alone doesn't count as a change.
     const norm = (rows: { crewMemberId: string; amount: string | number; note: string | null }[]) =>
       rows
@@ -117,7 +117,7 @@ export function EntryForm({
     const before = JSON.stringify(
       norm(
         initialAddonAttributions.map((a) => ({
-          crewMemberId: a.crew_member_id,
+          crewMemberId: a.employee_slug,
           amount: a.amount,
           note: a.note,
         })),
@@ -375,7 +375,7 @@ function AddonsSection({
               <label className="flex flex-col gap-1 sm:gap-0">
                 <span className="bt-eyebrow sm:hidden">Crew member</span>
                 <select
-                  name={`addon_crew_member_id__${r.key}`}
+                  name={`addon_employee_slug__${r.key}`}
                   value={r.crewMemberId}
                   onChange={(e) =>
                     onUpdate(r.key, { crewMemberId: e.target.value })
@@ -385,7 +385,7 @@ function AddonsSection({
                 >
                   <option value="">— select crew member —</option>
                   {crewMembers.map((cm) => (
-                    <option key={cm.id} value={cm.id}>
+                    <option key={cm.slug} value={cm.slug}>
                       {cm.name}
                     </option>
                   ))}

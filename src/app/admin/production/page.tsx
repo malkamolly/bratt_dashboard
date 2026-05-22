@@ -58,8 +58,8 @@ export default async function ProductionAdminPage({
       .select('id, name, kind, display_order, is_active')
       .order('display_order'),
     supabase
-      .from('crew_members')
-      .select('id, name, home_crew_id, is_foreman, display_order, is_active')
+      .from('field_crew_employees')
+      .select('slug, name, home_crew_id, leads_crew, display_order, active')
       .order('display_order'),
     supabase
       .from('yearly_targets')
@@ -73,7 +73,7 @@ export default async function ProductionAdminPage({
       .eq('month', month),
     supabase
       .from('production_member_historicals')
-      .select('crew_member_id, crew_id, jobs, revenue')
+      .select('employee_slug, crew_id, jobs, revenue')
       .eq('year', year)
       .eq('month', month),
     supabase
@@ -90,7 +90,25 @@ export default async function ProductionAdminPage({
   // Historicals: include the Unassigned bucket so members assigned to it
   // (and any historical jobs/revenue logged against it) still show up.
   const historicalsCrews = crewsAll.filter((c) => c.is_active);
-  const crewMembers = (crewMembersRes.data ?? []) as CrewMember[];
+  type FceRow = {
+    slug: string;
+    name: string;
+    home_crew_id: string | null;
+    leads_crew: boolean;
+    display_order: number;
+    active: boolean;
+  };
+  const fceToCrewMember = (r: FceRow): CrewMember => ({
+    slug: r.slug,
+    name: r.name,
+    home_crew_id: r.home_crew_id,
+    is_foreman: r.leads_crew,
+    display_order: r.display_order,
+    is_active: r.active,
+  });
+  const crewMembers: CrewMember[] = ((crewMembersRes.data ?? []) as FceRow[]).map(
+    fceToCrewMember,
+  );
   const annualProductionGoal = yearlyTargetRes.data?.annual_production_goal
     ? Number(yearlyTargetRes.data.annual_production_goal)
     : null;
@@ -104,7 +122,7 @@ export default async function ProductionAdminPage({
     { crew_id: string; jobs: number; revenue: number }
   > = {};
   for (const h of memberHistRows) {
-    histByMember[h.crew_member_id as string] = {
+    histByMember[h.employee_slug as string] = {
       crew_id: h.crew_id as string,
       jobs: Number(h.jobs),
       revenue: Number(h.revenue),
@@ -124,12 +142,14 @@ export default async function ProductionAdminPage({
   }
   // For the historicals form we want active members PLUS any inactive members
   // who already have data for this month (so old data stays editable).
-  const memberIdsWithData = new Set(
-    memberHistRows.map((r) => r.crew_member_id as string),
+  const memberSlugsWithData = new Set(
+    memberHistRows.map((r) => r.employee_slug as string),
   );
-  const allMembers = (crewMembersRes.data ?? []) as CrewMember[];
+  const allMembers: CrewMember[] = ((crewMembersRes.data ?? []) as FceRow[]).map(
+    fceToCrewMember,
+  );
   const historicalsMembers = allMembers.filter(
-    (m) => m.is_active || memberIdsWithData.has(m.id),
+    (m) => m.is_active || memberSlugsWithData.has(m.slug),
   );
 
   return (
@@ -426,11 +446,11 @@ function RosterTable({
 
         {members.map((mb) => (
           <form
-            key={mb.id}
+            key={mb.slug}
             action={updateCrewMember}
             className="contents [&>*]:my-0.5"
           >
-            <input type="hidden" name="id" value={mb.id} />
+            <input type="hidden" name="slug" value={mb.slug} />
             <input
               type="text"
               name="name"

@@ -225,13 +225,13 @@ export async function loadProductionEntriesForDate(date: IsoDate): Promise<{
         .eq('is_active', true)
         .order('display_order'),
       supabase
-        .from('crew_members')
-        .select('id, name, home_crew_id, is_foreman, display_order, is_active')
-        .eq('is_active', true)
+        .from('field_crew_employees')
+        .select('slug, name, home_crew_id, leads_crew, display_order, active')
+        .eq('active', true)
         .order('display_order'),
       supabase
         .from('production_member_entries')
-        .select('crew_member_id, crew_id, jobs, revenue')
+        .select('employee_slug, crew_id, jobs, revenue')
         .eq('entry_date', date),
       supabase
         .from('production_entries')
@@ -244,7 +244,7 @@ export async function loadProductionEntriesForDate(date: IsoDate): Promise<{
     { crew_id: string; jobs: number; revenue: number }
   > = {};
   for (const row of memberEntriesRes.data ?? []) {
-    memberEntries[row.crew_member_id as string] = {
+    memberEntries[row.employee_slug as string] = {
       crew_id: row.crew_id as string,
       jobs: Number(row.jobs),
       revenue: Number(row.revenue),
@@ -258,9 +258,26 @@ export async function loadProductionEntriesForDate(date: IsoDate): Promise<{
     };
   }
 
+  type FceRow = {
+    slug: string;
+    name: string;
+    home_crew_id: string | null;
+    leads_crew: boolean;
+    display_order: number;
+    active: boolean;
+  };
+  const members: CrewMember[] = ((membersRes.data ?? []) as FceRow[]).map((r) => ({
+    slug: r.slug,
+    name: r.name,
+    home_crew_id: r.home_crew_id,
+    is_foreman: r.leads_crew,
+    display_order: r.display_order,
+    is_active: r.active,
+  }));
+
   return {
     crews: (crewsRes.data ?? []) as Crew[],
-    members: (membersRes.data ?? []) as CrewMember[],
+    members,
     memberEntries,
     crewEntries,
   };

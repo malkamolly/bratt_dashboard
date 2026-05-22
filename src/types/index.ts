@@ -19,7 +19,7 @@ export type Crew = {
 };
 
 export type CrewMember = {
-  id: string;
+  slug: string;
   name: string;
   home_crew_id: string | null;
   is_foreman: boolean;

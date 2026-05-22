@@ -74,8 +74,8 @@ export function HistoricalsForm({
   const [memberJobs, setMemberJobs] = useState<Record<string, string>>(() => {
     const m: Record<string, string> = {};
     for (const mb of members) {
-      const e = initialMemberRows[mb.id];
-      m[mb.id] = e && e.jobs ? String(e.jobs) : '';
+      const e = initialMemberRows[mb.slug];
+      m[mb.slug] = e && e.jobs ? String(e.jobs) : '';
     }
     return m;
   });
@@ -83,8 +83,8 @@ export function HistoricalsForm({
     () => {
       const m: Record<string, string> = {};
       for (const mb of members) {
-        const e = initialMemberRows[mb.id];
-        m[mb.id] = e && e.revenue ? String(e.revenue) : '';
+        const e = initialMemberRows[mb.slug];
+        m[mb.slug] = e && e.revenue ? String(e.revenue) : '';
       }
       return m;
     },
@@ -94,8 +94,8 @@ export function HistoricalsForm({
   >(() => {
     const m: Record<string, string> = {};
     for (const mb of members) {
-      const e = initialMemberRows[mb.id];
-      m[mb.id] = e?.crew_id ?? mb.home_crew_id ?? '';
+      const e = initialMemberRows[mb.slug];
+      m[mb.slug] = e?.crew_id ?? mb.home_crew_id ?? '';
     }
     return m;
   });
@@ -119,7 +119,7 @@ export function HistoricalsForm({
   const memberByCrew = useMemo(() => {
     const map = new Map<string, CrewMember[]>();
     for (const mb of members) {
-      const cid = memberAssignment[mb.id] ?? mb.home_crew_id ?? '';
+      const cid = memberAssignment[mb.slug] ?? mb.home_crew_id ?? '';
       if (!cid) continue;
       if (!map.has(cid)) map.set(cid, []);
       map.get(cid)!.push(mb);
@@ -130,12 +130,12 @@ export function HistoricalsForm({
   const crewTotals = useMemo(() => {
     const totals = new Map<string, { jobs: number; revenue: number }>();
     for (const mb of members) {
-      const cid = memberAssignment[mb.id] ?? mb.home_crew_id ?? '';
+      const cid = memberAssignment[mb.slug] ?? mb.home_crew_id ?? '';
       if (!cid) continue;
       const cur = totals.get(cid) ?? { jobs: 0, revenue: 0 };
       totals.set(cid, {
-        jobs: cur.jobs + parseJobs(memberJobs[mb.id] ?? ''),
-        revenue: cur.revenue + parseRevenue(memberRevenue[mb.id] ?? ''),
+        jobs: cur.jobs + parseJobs(memberJobs[mb.slug] ?? ''),
+        revenue: cur.revenue + parseRevenue(memberRevenue[mb.slug] ?? ''),
       });
     }
     for (const c of crews) {
@@ -169,13 +169,13 @@ export function HistoricalsForm({
 
   const dirty = useMemo(() => {
     for (const mb of members) {
-      const initial = initialMemberRows[mb.id];
+      const initial = initialMemberRows[mb.slug];
       const initJobs = initial?.jobs ?? 0;
       const initRev = initial?.revenue ?? 0;
       const initCrew = initial?.crew_id ?? mb.home_crew_id ?? '';
-      const curJobs = parseJobs(memberJobs[mb.id] ?? '');
-      const curRev = parseRevenue(memberRevenue[mb.id] ?? '');
-      const curCrew = memberAssignment[mb.id] ?? mb.home_crew_id ?? '';
+      const curJobs = parseJobs(memberJobs[mb.slug] ?? '');
+      const curRev = parseRevenue(memberRevenue[mb.slug] ?? '');
+      const curCrew = memberAssignment[mb.slug] ?? mb.home_crew_id ?? '';
       if (curJobs !== initJobs) return true;
       if (Math.round(curRev * 100) !== Math.round(initRev * 100)) return true;
       if (
@@ -368,15 +368,15 @@ function CrewCard({
         <div>
           {members.map((mb, idx) => (
             <div
-              key={mb.id}
+              key={mb.slug}
               className={`grid grid-cols-[minmax(0,1fr)_2.25rem_5.5rem_5.5rem] items-center gap-1.5 px-2 py-1.5 ${
                 idx % 2 === 0 ? 'bg-white/60' : 'bg-transparent'
               } ${!mb.is_active ? 'opacity-60' : ''}`}
             >
               <input
                 type="hidden"
-                name={`crew__member_${mb.id}`}
-                value={memberAssignment[mb.id] ?? ''}
+                name={`crew__member_${mb.slug}`}
+                value={memberAssignment[mb.slug] ?? ''}
               />
               <div className="flex min-w-0 items-center gap-1">
                 <span className="truncate font-headline text-xs font-bold text-ink">
@@ -402,10 +402,10 @@ function CrewCard({
               <input
                 type="text"
                 inputMode="numeric"
-                name={`jobs__member_${mb.id}`}
-                value={memberJobs[mb.id] ?? ''}
+                name={`jobs__member_${mb.slug}`}
+                value={memberJobs[mb.slug] ?? ''}
                 onChange={(e) =>
-                  setMemberJobs((m) => ({ ...m, [mb.id]: e.target.value }))
+                  setMemberJobs((m) => ({ ...m, [mb.slug]: e.target.value }))
                 }
                 placeholder="0"
                 title="Jobs"
@@ -416,10 +416,10 @@ function CrewCard({
                 <input
                   type="text"
                   inputMode="decimal"
-                  name={`revenue__member_${mb.id}`}
-                  value={memberRevenue[mb.id] ?? ''}
+                  name={`revenue__member_${mb.slug}`}
+                  value={memberRevenue[mb.slug] ?? ''}
                   onChange={(e) =>
-                    setMemberRevenue((m) => ({ ...m, [mb.id]: e.target.value }))
+                    setMemberRevenue((m) => ({ ...m, [mb.slug]: e.target.value }))
                   }
                   placeholder="0"
                   title="Revenue"
@@ -427,11 +427,11 @@ function CrewCard({
                 />
               </div>
               <select
-                value={memberAssignment[mb.id] ?? ''}
+                value={memberAssignment[mb.slug] ?? ''}
                 onChange={(e) =>
                   setMemberAssignment((m) => ({
                     ...m,
-                    [mb.id]: e.target.value,
+                    [mb.slug]: e.target.value,
                   }))
                 }
                 title="Crew this member contributed to for this month"
