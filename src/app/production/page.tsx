@@ -190,6 +190,9 @@ function LiveMonthView({
 
   return (
     <main className="mx-auto max-w-6xl px-6 py-10">
+      <div className="mb-3 flex justify-end">
+        <CopyAsImageButton targetId="production-pace-snapshot" />
+      </div>
       <div id="production-pace-snapshot">
       <Header
         year={year}
@@ -508,6 +511,9 @@ function HistoricalMonthView({
 
   return (
     <main className="mx-auto max-w-6xl px-6 py-10">
+      <div className="mb-3 flex justify-end">
+        <CopyAsImageButton targetId="production-pace-snapshot" />
+      </div>
       <div id="production-pace-snapshot">
       <Header
         year={year}
@@ -672,7 +678,6 @@ function Header({
         </p>
       </div>
       <div className="flex flex-wrap items-center gap-3">
-        <CopyAsImageButton targetId="production-pace-snapshot" />
         {showEntryButton && (
           <>
             <Link
