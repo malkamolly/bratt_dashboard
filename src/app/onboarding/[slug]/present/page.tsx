@@ -1,5 +1,5 @@
 // ============================================================================
-// Onboarding slide presenter — /crew/onboarding/[slug]/present
+// Onboarding slide presenter — /onboarding/[slug]/present
 // ============================================================================
 // Renders the onboarding deck inside an iframe pointing at the
 // /api/onboarding-deck/[slug] HTML harness, which boots the shared deck
@@ -38,7 +38,7 @@ export default async function OnboardingPresenterPage({
         className="h-full w-full border-0"
       />
       <Link
-        href="/crew/onboarding"
+        href="/onboarding"
         className="absolute top-3 right-3 z-10 rounded-full bg-white/90 px-3 py-1 font-headline text-[10px] font-extrabold uppercase tracking-ribbon text-bark-deep shadow hover:bg-white"
       >
         Exit deck

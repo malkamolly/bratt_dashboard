@@ -63,6 +63,7 @@ export function BrandHeaderClient({ user }: Props) {
                 <Link href="/production">Production</Link>
               </>
             )}
+            <Link href="/onboarding">Onboarding</Link>
             {user.role === 'admin' && <Link href="/admin">Admin</Link>}
             <form action="/auth/signout" method="post">
               <button

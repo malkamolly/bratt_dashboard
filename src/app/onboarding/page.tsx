@@ -1,13 +1,14 @@
 // ============================================================================
-// Onboarding landing — /crew/onboarding
+// Onboarding landing — /onboarding
 // ============================================================================
-// Lists the available onboarding decks. Each card opens the same deck
-// presenter used by training modules (iframe wrapper around the renderer
-// in /public/training-deck/).
+// Top-level onboarding hub. Lists the available onboarding decks for any
+// role we onboard — currently Field Crew, with Sales and Office to come.
+// Each card opens the same deck presenter used by training modules.
 // ============================================================================
 
 import Link from 'next/link';
-import { requireHubAccess } from '@/lib/auth';
+import { redirect } from 'next/navigation';
+import { getAllowedUser } from '@/lib/auth';
 import {
   ONBOARDING_DECKS,
   loadOnboardingSource,
@@ -16,10 +17,26 @@ import { countSlides } from '@/lib/training-deck';
 
 export const dynamic = 'force-dynamic';
 
-export default async function OnboardingIndexPage() {
-  await requireHubAccess('crew');
+// Decks that don't have a source file yet — shown as "Coming soon" cards
+// so people can see the roadmap.
+const COMING_SOON: Array<{ slug: string; title: string; description: string }> = [
+  {
+    slug: 'sales',
+    title: 'Sales Arborist Onboarding',
+    description: 'First days for new sales arborists — coming soon.',
+  },
+  {
+    slug: 'office',
+    title: 'Office Onboarding',
+    description: 'First days for new office staff — coming soon.',
+  },
+];
 
-  // Pull slide counts for each deck so we can show them on the cards.
+export default async function OnboardingIndexPage() {
+  const user = await getAllowedUser();
+  if (!user) redirect('/login');
+
+  // Pull slide counts for each live deck so we can show them on the cards.
   const decks = await Promise.all(
     Object.values(ONBOARDING_DECKS).map(async (d) => {
       const source = await loadOnboardingSource(d.slug);
@@ -30,8 +47,8 @@ export default async function OnboardingIndexPage() {
   return (
     <main className="mx-auto max-w-6xl px-6 py-10">
       <p className="bt-eyebrow">
-        <Link href="/crew" className="hover:underline">
-          Field Crew Hub
+        <Link href="/" className="hover:underline">
+          Bratt Tree
         </Link>
         <span className="mx-2 text-fg-3">/</span>
         Onboarding
@@ -40,7 +57,7 @@ export default async function OnboardingIndexPage() {
         Onboarding
       </h1>
       <p className="mt-3 max-w-2xl text-fg-2">
-        Decks we walk new field crew through on day one. Present in person, or
+        Decks we walk new hires through on day one. Present in person, or
         share the link and let them go at their own pace.
       </p>
 
@@ -48,7 +65,7 @@ export default async function OnboardingIndexPage() {
         {decks.map((d) => (
           <li key={d.slug}>
             <Link
-              href={`/crew/onboarding/${d.slug}/present`}
+              href={`/onboarding/${d.slug}/present`}
               className="bt-card flex h-full flex-col gap-3 transition-colors hover:!border-orange"
             >
               <p className="bt-eyebrow">{d.version}</p>
@@ -65,6 +82,17 @@ export default async function OnboardingIndexPage() {
                 Present deck &rarr;
               </p>
             </Link>
+          </li>
+        ))}
+        {COMING_SOON.map((d) => (
+          <li key={d.slug}>
+            <div className="bt-card flex h-full cursor-not-allowed flex-col gap-3 opacity-60">
+              <p className="bt-eyebrow">Coming soon</p>
+              <h2 className="font-headline text-2xl font-black uppercase text-bark-deep">
+                {d.title}
+              </h2>
+              <p className="text-sm text-fg-2">{d.description}</p>
+            </div>
           </li>
         ))}
       </ul>

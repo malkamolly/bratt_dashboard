@@ -3,7 +3,7 @@
 // ============================================================================
 // Returns the standalone HTML page that boots the vanilla-JS renderer in
 // /public/training-deck/ (shared with training modules) for an onboarding
-// deck. The /crew/onboarding/present route renders an <iframe> pointing at
+// deck. The /onboarding/[slug]/present route renders an <iframe> pointing at
 // this endpoint.
 // ============================================================================
 
