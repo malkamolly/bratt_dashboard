@@ -10,11 +10,18 @@
 //   <div id="some-snapshot">...content to capture...</div>
 //   <CopyAsImageButton targetId="some-snapshot" />
 //
-// The button is dynamically marked `data-html2canvas-ignore` so if it sits
-// inside the captured region, it won't appear in the screenshot.
+// The captured PNG is composited onto a slightly larger cream canvas with a
+// thin bark border, so screenshots come out as polished, framed cards
+// without forcing those styles onto the live page.
 //
-// html2canvas (~200KB) is loaded lazily on click so it stays out of the
-// initial page bundle.
+// Mark any element with `data-screenshot-ignore="true"` to exclude it from
+// the capture (used internally for this button and the MonthPicker dropdown).
+//
+// Uses `html-to-image` rather than html2canvas because html2canvas has its
+// own layout engine that misrenders flex/grid gaps and line-heights — every
+// section ended up looking "pushed down." html-to-image renders via SVG
+// foreignObject, so the browser does the actual layout and the output
+// matches what's on screen.
 // ============================================================================
 
 import { useState } from 'react';
@@ -36,6 +43,13 @@ const DEFAULT_CLASS =
   'transition-colors hover:border-bark-deep hover:bg-bark-deep hover:text-cream ' +
   'disabled:cursor-wait disabled:opacity-60';
 
+function screenshotFilter(node: HTMLElement): boolean {
+  // html-to-image walks both elements and text nodes; we only care about
+  // HTMLElements (text nodes have no dataset).
+  if (!(node instanceof HTMLElement)) return true;
+  return node.dataset.screenshotIgnore !== 'true';
+}
+
 export function CopyAsImageButton({ targetId, label = 'Copy as image', className }: Props) {
   const [state, setState] = useState<State>('idle');
 
@@ -49,29 +63,27 @@ export function CopyAsImageButton({ targetId, label = 'Copy as image', className
     }
     setState('copying');
     try {
-      const html2canvas = (await import('html2canvas')).default;
-      const inner = await html2canvas(target, {
-        scale: 2, // retina-sharp output when pasted into Slack/email
+      // Lazy-load to keep html-to-image out of the initial page bundle.
+      const { toCanvas } = await import('html-to-image');
+      const inner = await toCanvas(target, {
+        pixelRatio: 2, // retina-sharp output when pasted into Slack/email
         backgroundColor: '#FFF8EC', // bratt cream — matches the page
-        useCORS: true,
+        filter: screenshotFilter,
+        cacheBust: true,
       });
 
       // Composite onto a slightly larger canvas to add a cream "matte" and
-      // a thin border around the content. Gives the screenshot a finished,
-      // card-like look without forcing those styles onto the live page.
-      const PAD = 64; // ~32 CSS px (we render at 2x)
+      // a thin border around the content.
+      const PAD = 64; // ~32 CSS px at the 2x pixel ratio
       const BORDER = 4;
       const out = document.createElement('canvas');
       out.width = inner.width + PAD * 2;
       out.height = inner.height + PAD * 2;
       const ctx = out.getContext('2d');
       if (!ctx) throw new Error('Could not get 2d context');
-      // Cream backdrop
       ctx.fillStyle = '#FFF8EC';
       ctx.fillRect(0, 0, out.width, out.height);
-      // Drop the content into the centre
       ctx.drawImage(inner, PAD, PAD);
-      // Thin bark border just inside the edge so the matte has a defined frame
       ctx.strokeStyle = '#3D2B14'; // bark-deep
       ctx.lineWidth = BORDER;
       const half = BORDER / 2;
@@ -103,7 +115,7 @@ export function CopyAsImageButton({ targetId, label = 'Copy as image', className
       type="button"
       onClick={handleCopy}
       disabled={state === 'copying'}
-      data-html2canvas-ignore="true"
+      data-screenshot-ignore="true"
       className={className ?? DEFAULT_CLASS}
       title="Copies a PNG of this section to your clipboard — paste into Slack, email, etc."
     >

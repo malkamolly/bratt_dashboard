@@ -49,7 +49,7 @@ export function MonthPicker({ year, month, basePath }: Props) {
         </summary>
 
         <div
-          data-html2canvas-ignore="true"
+          data-screenshot-ignore="true"
           className="absolute left-1/2 z-50 mt-3 w-56 -translate-x-1/2 rounded-card border-[3px] border-bark bg-cream p-3 shadow-sh-3"
         >
           <p className="mb-2 text-center font-headline text-[10px] font-extrabold uppercase tracking-ribbon text-fg-3">
