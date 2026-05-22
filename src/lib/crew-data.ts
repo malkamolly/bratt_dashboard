@@ -595,6 +595,65 @@ export type TrainingEmployeeRecord = {
   last_logged: string | null;
 };
 
+// ---------- Per-skill detail ----------
+
+export type SkillEmployeeRecord = {
+  employee_slug: string;
+  employee_name: string;
+  position_key: string | null;
+  position_name: string | null;
+  /** 1/2/3 if rated, null if no rating recorded. */
+  level: SkillLevel | null;
+};
+
+export async function getSkill(key: string): Promise<Skill | null> {
+  const supabase = await serverClient();
+  const { data } = await supabase
+    .from('field_crew_skills')
+    .select('*')
+    .eq('key', key)
+    .maybeSingle();
+  return (data as Skill) ?? null;
+}
+
+export async function listSkillEmployeeRecords(
+  skillKey: string,
+): Promise<SkillEmployeeRecord[]> {
+  const supabase = await serverClient();
+  const [{ data: employees }, { data: records }, { data: positions }] =
+    await Promise.all([
+      supabase
+        .from('field_crew_employees')
+        .select('slug, name, position_key, active')
+        .order('name'),
+      supabase
+        .from('field_crew_employee_skills')
+        .select('employee_slug, level')
+        .eq('skill_key', skillKey),
+      supabase.from('field_crew_positions').select('key, display_name'),
+    ]);
+
+  const positionName = new Map<string, string>();
+  for (const p of (positions ?? []) as { key: string; display_name: string }[]) {
+    positionName.set(p.key, p.display_name);
+  }
+  const levelBySlug = new Map<string, SkillLevel>();
+  for (const r of (records ?? []) as { employee_slug: string; level: number }[]) {
+    levelBySlug.set(r.employee_slug, r.level as SkillLevel);
+  }
+
+  type EmpRow = { slug: string; name: string; position_key: string | null; active: boolean };
+  return ((employees ?? []) as EmpRow[])
+    .filter((e) => e.active)
+    .map((e) => ({
+      employee_slug: e.slug,
+      employee_name: e.name,
+      position_key: e.position_key,
+      position_name: e.position_key ? positionName.get(e.position_key) ?? null : null,
+      level: levelBySlug.get(e.slug) ?? null,
+    }));
+}
+
 export async function getTraining(key: string): Promise<Training | null> {
   const supabase = await serverClient();
   const { data } = await supabase

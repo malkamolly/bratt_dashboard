@@ -43,9 +43,6 @@ export default async function TrainingsCatalogPage() {
                 Display name
               </th>
               <th className="px-4 py-2 text-left font-headline text-xs font-extrabold uppercase tracking-ribbon text-fg-3">
-                Internal key
-              </th>
-              <th className="px-4 py-2 text-left font-headline text-xs font-extrabold uppercase tracking-ribbon text-fg-3">
                 Tracks
               </th>
             </tr>
@@ -61,7 +58,6 @@ export default async function TrainingsCatalogPage() {
                     {t.display_name}
                   </Link>
                 </td>
-                <td className="px-4 py-2 font-mono text-xs text-fg-3">{t.key}</td>
                 <td className="px-4 py-2">
                   <div className="flex flex-wrap gap-1.5">
                     {t.is_hours_based ? (

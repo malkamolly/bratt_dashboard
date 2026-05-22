@@ -10,6 +10,7 @@
 // ============================================================================
 
 import Link from 'next/link';
+import { CrewQuickLinks } from '@/components/crew/CrewQuickLinks';
 import { format } from 'date-fns';
 import { requireHubAccess, canEditCrew } from '@/lib/auth';
 import {
@@ -105,6 +106,15 @@ export default async function FieldCrewHubPage() {
             >
               Active plans &rarr;
             </Link>
+          </div>
+
+          <div className="mt-8">
+            <p className="font-headline text-[10px] font-extrabold uppercase tracking-ribbon text-cream/60">
+              Dig deeper
+            </p>
+            <div className="mt-2">
+              <CrewQuickLinks variant="dark" />
+            </div>
           </div>
         </div>
 
@@ -257,30 +267,6 @@ export default async function FieldCrewHubPage() {
         </p>
       </section>
 
-      {/* ---------- Catalog quick links ---------- */}
-      <section className="mt-12">
-        <p className="bt-eyebrow">Where to next</p>
-        <h2 className="mt-1 font-display text-4xl uppercase tracking-wider text-ink">
-          Dig deeper
-        </h2>
-        <div className="mt-5 flex flex-wrap gap-3">
-          <Link href="/crew/modules" className="bt-btn bt-btn-primary">
-            Training modules
-          </Link>
-          <Link href="/crew/skills" className="bt-btn bt-btn-dark">
-            Skill catalog
-          </Link>
-          <Link href="/crew/trainings" className="bt-btn bt-btn-dark">
-            Trainings
-          </Link>
-          <Link href="/crew/plans" className="bt-btn bt-btn-dark">
-            Plans
-          </Link>
-          <Link href="/crew/reports" className="bt-btn bt-btn-dark">
-            Reports
-          </Link>
-        </div>
-      </section>
     </main>
   );
 }

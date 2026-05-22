@@ -616,6 +616,87 @@ export async function submitTrainingAttempt(input: {
   };
 }
 
+// ============================================================================
+// Skill level editing — used by /crew/skills/[key]
+// ============================================================================
+// Per-skill detail page sets a level (1/2/3) or clears it (0). Activity-feed
+// line says e.g. "Bucket pruning: L2 → L3" so leaders can see who changed
+// what. Manager / admin only.
+// ============================================================================
+
+export async function setEmployeeSkillLevel(input: {
+  employee_slug: string;
+  skill_key: string;
+  level: 0 | 1 | 2 | 3;
+}): Promise<{ ok: true; level: 1 | 2 | 3 | null } | { ok: false; error: string }> {
+  const user = await getAllowedUser();
+  if (!user) return { ok: false, error: 'Not signed in.' };
+  if (!canEditCrew(user.role)) return { ok: false, error: 'Not authorized.' };
+
+  const supabase = await serverClient();
+
+  const [{ data: emp }, { data: skill }, { data: existing }] = await Promise.all([
+    supabase
+      .from('field_crew_employees')
+      .select('slug, name')
+      .eq('slug', input.employee_slug)
+      .maybeSingle(),
+    supabase
+      .from('field_crew_skills')
+      .select('key, display_name')
+      .eq('key', input.skill_key)
+      .maybeSingle(),
+    supabase
+      .from('field_crew_employee_skills')
+      .select('level')
+      .eq('employee_slug', input.employee_slug)
+      .eq('skill_key', input.skill_key)
+      .maybeSingle(),
+  ]);
+  if (!emp) return { ok: false, error: 'Employee not found.' };
+  if (!skill) return { ok: false, error: 'Skill not found.' };
+
+  const prevLevel = (existing?.level as 1 | 2 | 3 | undefined) ?? null;
+  const newLevel = input.level === 0 ? null : input.level;
+  if (prevLevel === newLevel) return { ok: true, level: newLevel };
+
+  if (newLevel === null) {
+    const { error } = await supabase
+      .from('field_crew_employee_skills')
+      .delete()
+      .eq('employee_slug', input.employee_slug)
+      .eq('skill_key', input.skill_key);
+    if (error) return { ok: false, error: error.message };
+  } else {
+    const { error } = await supabase
+      .from('field_crew_employee_skills')
+      .upsert(
+        {
+          employee_slug: input.employee_slug,
+          skill_key: input.skill_key,
+          level: newLevel,
+        },
+        { onConflict: 'employee_slug,skill_key' },
+      );
+    if (error) return { ok: false, error: error.message };
+  }
+
+  const today = new Date().toISOString().slice(0, 10);
+  const fmt = (l: 1 | 2 | 3 | null) => (l === null ? 'unrated' : `L${l}`);
+  await logActivity(
+    supabase,
+    input.employee_slug,
+    today,
+    `${skill.display_name}: ${fmt(prevLevel)} → ${fmt(newLevel)}.`,
+    user.email,
+  );
+
+  revalidatePath(`/crew/skills/${input.skill_key}`);
+  revalidatePath(`/crew/employees/${input.employee_slug}`);
+  revalidatePath('/crew');
+  return { ok: true, level: newLevel };
+}
+
 async function logActivity(
   supabase: Awaited<ReturnType<typeof serverClient>>,
   employee_slug: string,

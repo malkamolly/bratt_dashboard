@@ -42,20 +42,21 @@ export default async function SkillCatalogPage() {
           <thead className="bg-bone">
             <tr>
               <th className="px-4 py-2 text-left font-headline text-xs font-extrabold uppercase tracking-ribbon text-fg-3">
-                Display name
-              </th>
-              <th className="px-4 py-2 text-left font-headline text-xs font-extrabold uppercase tracking-ribbon text-fg-3">
-                Internal key
+                Skill
               </th>
             </tr>
           </thead>
           <tbody>
             {skills.map((s) => (
               <tr key={s.key} className="border-t border-paper-edge/60">
-                <td className="px-4 py-2 font-headline font-extrabold text-bark-deep">
-                  {s.display_name}
+                <td className="px-4 py-2">
+                  <Link
+                    href={`/crew/skills/${s.key}`}
+                    className="font-headline font-extrabold text-bark-deep hover:underline"
+                  >
+                    {s.display_name}
+                  </Link>
                 </td>
-                <td className="px-4 py-2 font-mono text-xs text-fg-3">{s.key}</td>
               </tr>
             ))}
           </tbody>
