@@ -16,6 +16,7 @@ import { usePathname } from 'next/navigation';
 type Variant = 'default' | 'dark';
 
 const LINKS: Array<{ href: string; label: string }> = [
+  { href: '/crew/onboarding', label: 'Onboarding' },
   { href: '/crew/skills', label: 'Skill catalog' },
   { href: '/crew/trainings', label: 'Trainings' },
   { href: '/crew/modules', label: 'Modules' },
