@@ -186,7 +186,16 @@ alter table production_member_historicals
 alter table sales_addon_attributions
   alter column employee_slug set not null;
 
--- And drop NOT NULL on the legacy crew_member_id columns so the new
+-- production_member_historicals has crew_member_id as part of the
+-- composite primary key (year, month, crew_member_id). Postgres won't
+-- let us relax NOT NULL on a PK column, so first swap the PK to use
+-- employee_slug instead — which is the desired end state anyway.
+alter table production_member_historicals
+  drop constraint production_member_historicals_pkey;
+alter table production_member_historicals
+  add primary key (year, month, employee_slug);
+
+-- Now relax NOT NULL on the legacy crew_member_id columns so the new
 -- application code (which only writes employee_slug) doesn't trip the
 -- old constraint while both columns coexist. The columns themselves
 -- go away in 035.
