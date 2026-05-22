@@ -64,11 +64,11 @@ subtitle: We'll knock out the essentials together.
 eyebrow: Apps
 title: Apps to download
 subtitle: Get these set up so they're ready when you need them.
-item: ADP Run | Payroll and time clock. You'll punch in and out from your phone.
-item: TCIA | Intro to Arboriculture and your ongoing training.
-item: Slack | Our main communication tool — chat, forms, and workflows.
-item: ServiceTitan | Work orders, job info, and our mobile field tool.
-item: Vestwell | Our 401(k) retirement provider.
+item: ADP Run | Payroll and time clock. You'll punch in and out from your phone. | /brand/runadp.png
+item: TCIA | Intro to Arboriculture and your ongoing training. | /brand/tcia.webp
+item: Slack | Our main communication tool — chat, forms, and workflows. | /brand/slack.png
+item: ServiceTitan | Work orders, job info, and our mobile field tool. | /brand/servicetitan.webp
+item: Vestwell | Our 401(k) retirement provider. | /brand/vestwell.jpg
 
 
 @ppe-grid

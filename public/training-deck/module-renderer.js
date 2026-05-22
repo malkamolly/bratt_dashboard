@@ -407,12 +407,17 @@
 
   // -------- 9. PPE GRID --------
   layouts['ppe-grid'] = (s, idx, meta) => {
+    // item: "Name | Description"          → letter icon (original behavior)
+    // item: "Name | Description | url"    → image icon, uniformly sized
     const items = fa(s, 'item').map((r, i) => {
-      const [name, desc] = splitPipe(r);
+      const [name, desc, image] = splitPipe(r);
       const initial = (name || '').trim().charAt(0).toUpperCase() || (i + 1);
+      const icon = image && image.trim()
+        ? `<div class="ppe-icon ppe-icon--image"><img src="${esc(image.trim())}" alt="${esc(name || '')}"></div>`
+        : `<div class="ppe-icon">${esc(initial)}</div>`;
       return `
         <div class="ppe-card">
-          <div class="ppe-icon">${esc(initial)}</div>
+          ${icon}
           <div class="ppe-name">${esc(name || '')}</div>
           <div class="ppe-desc">${inline(desc || '')}</div>
         </div>`;
