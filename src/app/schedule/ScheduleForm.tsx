@@ -291,6 +291,49 @@ export default function ScheduleForm() {
   const [saveError, setSaveError] = useState<string | null>(null);
   const [isSaving, startSaveTransition] = useTransition();
 
+  // ---- Summary screenshot ----
+  // Refs the summary section so the "Copy as image" button can render just
+  // that block (excluding the button itself, which is marked
+  // data-html2canvas-ignore) into a PNG on the clipboard.
+  const summaryRef = useRef<HTMLElement | null>(null);
+  const [copyState, setCopyState] = useState<
+    'idle' | 'copying' | 'copied' | 'error'
+  >('idle');
+
+  async function handleCopySummary() {
+    if (!summaryRef.current) return;
+    setCopyState('copying');
+    try {
+      // Dynamic import keeps html2canvas (~200KB) out of the initial bundle.
+      const html2canvas = (await import('html2canvas')).default;
+      const canvas = await html2canvas(summaryRef.current, {
+        scale: 2, // retina-sharp output for paste-into-Slack
+        backgroundColor: '#FFFFFF',
+        useCORS: true,
+      });
+      const blob = await new Promise<Blob | null>((resolve) =>
+        canvas.toBlob((b) => resolve(b), 'image/png'),
+      );
+      if (!blob) throw new Error('Could not encode image');
+      if (
+        typeof window === 'undefined' ||
+        !navigator.clipboard ||
+        typeof window.ClipboardItem === 'undefined'
+      ) {
+        throw new Error('Clipboard image copy not supported in this browser');
+      }
+      await navigator.clipboard.write([
+        new ClipboardItem({ 'image/png': blob }),
+      ]);
+      setCopyState('copied');
+      setTimeout(() => setCopyState('idle'), 2000);
+    } catch (e) {
+      console.error('Copy summary failed:', e);
+      setCopyState('error');
+      setTimeout(() => setCopyState('idle'), 3000);
+    }
+  }
+
   const loadReqId = useRef(0);
 
   useEffect(() => {
@@ -686,8 +729,25 @@ export default function ScheduleForm() {
       </section>
 
       {/* ============ Summary ============ */}
-      <section className="bt-card-orange">
-        <p className="bt-eyebrow">Step 2 — Share with leadership</p>
+      <section ref={summaryRef} className="bt-card-orange">
+        <div
+          className="flex items-start justify-between gap-3"
+          data-html2canvas-ignore="true"
+        >
+          <p className="bt-eyebrow">Step 2 — Share with leadership</p>
+          <button
+            type="button"
+            onClick={handleCopySummary}
+            disabled={copyState === 'copying'}
+            className="shrink-0 rounded-full border-2 border-bark-deep/30 bg-white px-3 py-1 font-headline text-[10px] font-extrabold uppercase tracking-ribbon text-bark-deep transition-colors hover:border-bark-deep hover:bg-bark-deep hover:text-cream disabled:cursor-wait disabled:opacity-60"
+            title="Copies a PNG of this card to your clipboard — paste into Slack, email, etc."
+          >
+            {copyState === 'copying' && 'Copying…'}
+            {copyState === 'copied' && 'Copied ✓'}
+            {copyState === 'error' && 'Copy failed'}
+            {copyState === 'idle' && 'Copy as image'}
+          </button>
+        </div>
         <h2 className="mt-2 font-headline text-2xl font-black uppercase text-bark-deep">
           Summary
         </h2>
