@@ -99,7 +99,7 @@ eyebrow: Pay Structure
 title: Sales is commission — with a draw to start.
 subtitle: Here's how the structure works.
 rule: Weekly Draw | $1,250 per week ($60,000 annualized) goes into your account every week, no matter what.
-rule: Monthly Commission | Commission is calculated and paid in the **first two weeks following a month**. Draw counts against it.
+rule: Paid on Completed Work | You earn commission when a job is **completed** by the crew — not when you sign the proposal. The work has to be done before it counts.
 rule: First 90 Days | Focus on **learning the system and building your pipeline**. The numbers will follow.
 
 
@@ -108,7 +108,8 @@ eyebrow: Pay Cadence
 title: Weekly payroll. Monthly commission settles.
 subtitle: One rhythm to settle into.
 body: Payroll runs weekly through ADP — the **$1,250 draw** hits your account every week so you're not waiting on commission to live.
-body: After the end of each month, we close out the month's commissions over the next two weeks and settle up. Your draw is deducted from what you've earned; the rest gets paid out.
+body: After each month closes, we calculate commission on **the work that was actually completed that month** — not the work that was sold. That settle-up happens in the first two weeks of the following month. Your draw is deducted from what you've earned; the rest gets paid out.
+body: This is important to internalize: a signed proposal isn't commission yet. Stay engaged with your scheduled jobs until they're done.
 
 
 @section-divider
