@@ -21,6 +21,7 @@ type Search = Promise<{
   month?: string;
   saved?: string;
   error?: string;
+  show_inactive?: string;
 }>;
 
 function parseIntInRange(raw: string | undefined, min: number, max: number) {
@@ -43,6 +44,7 @@ export default async function ProductionAdminPage({
   const now = new Date();
   const year = parseIntInRange(sp.year, 2000, 2100) ?? now.getFullYear();
   const month = parseIntInRange(sp.month, 1, 12) ?? now.getMonth() + 1;
+  const showInactive = sp.show_inactive === '1';
 
   const supabase = await serverClient();
   const [
@@ -108,9 +110,11 @@ export default async function ProductionAdminPage({
     is_active: r.active,
     auth_email: r.auth_email,
   });
-  const crewMembers: CrewMember[] = ((crewMembersRes.data ?? []) as FceRow[]).map(
-    fceToCrewMember,
-  );
+  const crewMembers: CrewMember[] = ((crewMembersRes.data ?? []) as FceRow[])
+    .map(fceToCrewMember)
+    // Active members first, inactive sorted to the bottom. Within each
+    // group, preserve the display_order coming back from the query.
+    .sort((a, b) => Number(b.is_active) - Number(a.is_active));
   const annualProductionGoal = yearlyTargetRes.data?.annual_production_goal
     ? Number(yearlyTargetRes.data.annual_production_goal)
     : null;
@@ -193,7 +197,11 @@ export default async function ProductionAdminPage({
           crewValues={histByCrewDirect}
         />
         <div id="crew-members" className="scroll-mt-20">
-          <CrewMembersSection crewMembers={crewMembers} crews={crewsAll.filter((c) => c.is_active)} />
+          <CrewMembersSection
+            crewMembers={crewMembers}
+            crews={crewsAll.filter((c) => c.is_active)}
+            showInactive={showInactive}
+          />
         </div>
       </div>
     </main>
@@ -360,19 +368,41 @@ function ProductionHistoricalsSection({
 function CrewMembersSection({
   crewMembers,
   crews,
+  showInactive,
 }: {
   crewMembers: CrewMember[];
   crews: Crew[];
+  showInactive: boolean;
 }) {
+  const inactiveCount = crewMembers.filter((m) => !m.is_active).length;
+  const visibleMembers = showInactive
+    ? crewMembers
+    : crewMembers.filter((m) => m.is_active);
   return (
     <SectionCard
       eyebrow="4 — Crew Roster"
       title="Crew Members"
       description="Production team members and their home crew. The home crew is where they appear by default on the daily entry form; they can be moved to another crew for an individual day from the form. Set a sign-in email to give a crew member access to the Field Crew Hub — that email will also be added to the Access allowlist with the Field Crew role."
+      headerRight={
+        inactiveCount > 0 ? (
+          <Link
+            href={
+              showInactive
+                ? '/admin/production#crew-members'
+                : '/admin/production?show_inactive=1#crew-members'
+            }
+            className="font-headline text-xs font-extrabold uppercase tracking-ribbon text-orange hover:underline"
+          >
+            {showInactive
+              ? `Hide inactive (${inactiveCount})`
+              : `Show inactive (${inactiveCount})`}
+          </Link>
+        ) : undefined
+      }
     >
       <RosterTable
         crews={crews}
-        members={crewMembers}
+        members={visibleMembers}
       />
       <div className="mt-6 rounded-2 border-2 border-dashed border-paper-edge p-3">
         <p className="bt-eyebrow">Add Crew Member</p>
@@ -462,7 +492,11 @@ function RosterTable({
           <form
             key={mb.slug}
             action={updateCrewMember}
-            className="contents [&>*]:my-0.5"
+            className={
+              mb.is_active
+                ? 'contents [&>*]:my-0.5'
+                : 'contents [&>*]:my-0.5 [&>*]:opacity-60'
+            }
           >
             <input type="hidden" name="slug" value={mb.slug} />
             <input
