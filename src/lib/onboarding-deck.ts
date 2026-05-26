@@ -39,6 +39,14 @@ export const ONBOARDING_DECKS: Record<string, OnboardingDeck> = {
     footerLeft: 'BRATT TREE  |  FIELD CREW ONBOARDING',
     version: 'Version 1.0',
   },
+  sales: {
+    slug: 'sales',
+    title: 'Sales Arborist Onboarding',
+    description:
+      'Your first days, the tools you’ll use, and how we sell at Bratt Tree.',
+    footerLeft: 'BRATT TREE  |  SALES ARBORIST ONBOARDING',
+    version: 'Version 1.0',
+  },
 };
 
 export function getOnboardingDeck(slug: string): OnboardingDeck | null {

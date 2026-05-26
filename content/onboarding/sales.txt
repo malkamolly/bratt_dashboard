@@ -1,0 +1,192 @@
+# ============================================================
+# BRATT TREE — Sales Arborist Onboarding Deck
+# Source content for the slide deck shown at /onboarding/sales.
+# Syntax matches the training-module deck format:
+#   @layout-name  starts a new slide
+#   key: value    a single field on the current slide
+#   key: a | b    multi-part value (split by "|")
+#   - item        a list item
+#   # or //       a comment, ignored
+# ============================================================
+
+
+@cover
+eyebrow: Sales Arborist Onboarding
+unit: Welcome to Bratt Tree
+subtitle: Your first days, the tools you'll use, and how we sell.
+tagline: Show up curious.
+tagline: Sell with care.
+tagline: Build the pipeline.
+image: /training-deck/assets/mascot-circle-color.png
+meta-left: Bratt Tree · Sales Arborist Onboarding
+meta-right: Day 1
+
+
+@welcome
+eyebrow: Welcome
+title: Thank you for joining the team.
+subtitle: We are honored to have you here.
+body: This onboarding is designed to help you start successfully as a Sales Arborist at Bratt Tree. It walks through your first week, the tools you'll use, how you'll get paid, and how we work as a team.
+body: Your manager is your point of contact for everything. Take your time, ask questions, and don't worry about getting everything on day one.
+quote: Provide a 5-star experience to every client.
+
+
+@welcome
+eyebrow: Our Brand
+title: The cutest tree company on the planet.
+subtitle: Same crew. Same standards. Killer new look.
+body: You'll see the Bratt brand everywhere — on trucks, shirts, business cards, jobsite signs, and your business materials. Wear it proudly.
+body: When a client comments on the mascot or the new look, take it as a compliment. We earned it.
+collage: | /brand/logo.png
+collage: | /brand/mascot.png
+collage: | /brand/mascot-circle.png
+collage: | /brand/logotype.png
+
+
+@section-divider
+number: 01
+title: Your First Days
+tagline: What to expect on Day 1 — and how we'll get you set up.
+
+
+@day-agenda
+eyebrow: First Week Agenda
+title: Day 1
+subtitle: We'll knock out the essentials together.
+feature-num: 01
+feature-name: New Hire Paperwork
+feature-desc: Work through the packet at your own pace with the onboarding admin.
+feature-detail: Whole Packet | Fill out every item in the folder, in order
+feature-detail: Two Copies of ID | Required by HR — bring them on day one
+feature-detail: Benefits Last | Knock everything else out first, then tackle benefits
+feature-detail: Contact Person | Your go-to for anything that comes up during onboarding
+feature-detail: Ask Questions | If you're not sure, just ask — that's what we're here for
+- Meet Your Manager | Get connected, exchange contact info, review your onboarding agenda
+- Company Systems & Procedures | A walk-through of how we run sales day-to-day
+- ServiceTitan Login | Get into our CRM and start working through the tutorials
+- Lunch with the Team | With your manager and other team members
+
+
+@ppe-grid
+eyebrow: Apps
+title: Apps to download
+subtitle: Get these set up so they're ready when you need them.
+item: ADP Run | Payroll and time clock. Manage your personal info from your phone. | /brand/runadp.png
+item: TCIA | Arboriculture training. We train weekly — apply it to client conversations. | /brand/tcia.webp
+item: Slack | Our main communication tool — chat, channels, and team updates. | /brand/slack.png
+item: ServiceTitan | Our CRM and proposal tool. You'll live in this every day. | /brand/servicetitan.webp
+item: Vestwell | Our 401(k) retirement provider. | /brand/vestwell.jpg
+
+
+@steps
+eyebrow: Payroll
+title: Getting set up in ADP
+subtitle: The onboarding admin will enter you into ADP while you download the app.
+step: Download ADP Run | While the admin enters your record, install the **ADP Run** app on your phone.
+step: Watch for the email | You'll get a welcome email from ADP — open it on your phone.
+step: Activate your account | Tap the link in the email and follow the prompts to set your password.
+step: Update your info | From here on, use ADP Run to update personal info, view pay stubs, and manage tax forms.
+
+
+@section-divider
+number: 02
+title: How You Get Paid
+tagline: The pay structure for our sales team — and what we want you focused on first.
+
+
+@three-rules
+eyebrow: Pay Structure
+title: Sales is commission — with a draw to start.
+subtitle: Here's how the structure works.
+rule: Weekly Draw | $1,250 per week ($60,000 annualized) goes into your account every week, no matter what.
+rule: Monthly Commission | Commission is calculated and paid in the **first two weeks following a month**. Draw counts against it.
+rule: First 90 Days | Focus on **learning the system and building your pipeline**. The numbers will follow.
+
+
+@welcome
+eyebrow: Pay Cadence
+title: Weekly payroll. Monthly commission settles.
+subtitle: One rhythm to settle into.
+body: Payroll runs weekly through ADP — the **$1,250 draw** hits your account every week so you're not waiting on commission to live.
+body: After the end of each month, we close out the month's commissions over the next two weeks and settle up. Your draw is deducted from what you've earned; the rest gets paid out.
+
+
+@section-divider
+number: 03
+title: Your Tools
+tagline: What you'll get, where the work happens, and how the systems connect.
+
+
+@checklist
+eyebrow: Day One Kit
+title: Technology we provide
+subtitle: You'll get all of this on Day 1 — anything missing, tell your manager.
+- **Company iPad** — for ServiceTitan field work and client visits
+- **Company Phone** — for client calls, follow-up, and team comms
+- **Company Email** — used to log into ServiceTitan, Slack, and ADP
+- **Chargers & Cases** — keep your gear charged and protected
+- **Ramp Card** — for fuel, work-related supplies, and approved spend
+- **Nikon Measuring Tool** — for accurate tree and property measurements
+
+
+@welcome
+eyebrow: CRM
+title: ServiceTitan is where you'll live.
+subtitle: We use it for everything — proposals, jobs, customer history.
+body: We upgraded from Arborgold to **ServiceTitan** — sales went live May 1, field went live June 2. It's a state-of-the-art tool that helps us deliver a 5-star experience.
+body: When you log in, ServiceTitan will walk you through built-in tutorials. **Your confidence with this product is critical for your success** — your onboarding schedule will block out time for the tutorials. Do them all.
+
+
+@welcome
+eyebrow: Follow-Up
+title: Chiirp handles automated follow-up.
+subtitle: It's plugged into ServiceTitan and works in the background.
+body: We use **Chiirp** to automate proposal follow-up — texts, emails, and reminders go out automatically after you send a proposal. It keeps deals warm without manual work.
+body: There's still **manual follow-up** that's on you — Chiirp handles the easy stuff so you can focus on the conversations that need a human. We'll cover the specifics down the road.
+
+
+@section-divider
+number: 04
+title: Communication
+tagline: How we stay in sync as a sales team.
+
+
+@checklist
+eyebrow: Slack
+title: Channels you'll live in
+subtitle: Log in with the invite in your email — these are the channels to join first.
+- **#general** — company-wide announcements
+- **#sales_team** — sales team chat, deals, wins, blockers
+- **#tj_sales** — TJ's territory
+- **#hayden_sales** — Hayden's territory
+- **#ppm_training** — weekly arboriculture training (PPM = Per-Project Manager)
+
+
+@welcome
+eyebrow: Slack Etiquette
+title: Tag people, not channels — usually.
+subtitle: Two patterns to know.
+body: To tag a specific person, use **@FirstNameLastName** (e.g. @brentblanske). They get a notification right away.
+body: To tag everyone watching a channel, use **@channel** — but use this sparingly. Reserve it for things every person on the channel needs to see today.
+
+
+@section-divider
+number: 05
+title: How To Be Successful
+tagline: The four things our top performers do every day.
+
+
+@technique
+eyebrow: The Bratt Way
+title: What success looks like here
+subtitle: It's less about hustle and more about how you show up.
+card: 5-Star Experience | Treat every client interaction like it's their first impression of us — because it might be.
+card: Always Learning | Apply weekly arboriculture training to your client conversations right away. Knowing the trees builds trust fast.
+card: Customer Service Mindset | Continuously improve how we serve clients. If you see a better way, surface it — we'll change it.
+card: Work Smarter | Don't grind for the sake of grinding. Use the tools, use the team, and protect your energy for the conversations that matter.
+
+
+@closing
+title: Welcome to the team.
+subtitle: Questions? Ask your manager — or anyone on the sales team.
+mark: BT

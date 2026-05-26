@@ -21,11 +21,6 @@ export const dynamic = 'force-dynamic';
 // so people can see the roadmap.
 const COMING_SOON: Array<{ slug: string; title: string; description: string }> = [
   {
-    slug: 'sales',
-    title: 'Sales Arborist Onboarding',
-    description: 'First days for new sales arborists — coming soon.',
-  },
-  {
     slug: 'office',
     title: 'Office Onboarding',
     description: 'First days for new office staff — coming soon.',
