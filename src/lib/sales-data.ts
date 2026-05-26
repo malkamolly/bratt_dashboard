@@ -262,7 +262,7 @@ export async function loadSalesEntriesForDate(date: IsoDate): Promise<{
         .eq('entry_date', date),
       supabase
         .from('field_crew_employees')
-        .select('slug, name, home_crew_id, leads_crew, display_order, active')
+        .select('slug, name, home_crew_id, leads_crew, display_order, active, auth_email')
         .eq('active', true)
         .order('name'),
       supabase
@@ -301,6 +301,7 @@ type FceRow = {
   leads_crew: boolean;
   display_order: number;
   active: boolean;
+  auth_email: string | null;
 };
 
 function fceToCrewMembers(rows: unknown[]): CrewMember[] {
@@ -311,6 +312,7 @@ function fceToCrewMembers(rows: unknown[]): CrewMember[] {
     is_foreman: r.leads_crew,
     display_order: r.display_order,
     is_active: r.active,
+    auth_email: r.auth_email,
   }));
 }
 
@@ -333,7 +335,7 @@ export async function loadAddonAttributionsForRange(
       .order('entry_date', { ascending: true }),
     supabase
       .from('field_crew_employees')
-      .select('slug, name, home_crew_id, leads_crew, display_order, active')
+      .select('slug, name, home_crew_id, leads_crew, display_order, active, auth_email')
       .order('display_order'),
   ]);
 

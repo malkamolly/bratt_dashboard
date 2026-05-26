@@ -254,7 +254,12 @@ export async function addCrewMember(formData: FormData): Promise<void> {
   const homeCrewId = String(formData.get('home_crew_id') ?? '') || null;
   const isForeman = formData.get('is_foreman') === 'on';
   const displayOrder = parseIntStrict(formData.get('display_order')) ?? 999;
+  const authEmail =
+    String(formData.get('auth_email') ?? '').trim().toLowerCase() || null;
   if (!name) redirect('/admin/production?error=missing_name');
+  if (authEmail && !authEmail.includes('@')) {
+    redirect('/admin/production?error=invalid_email');
+  }
 
   const slug = name
     .toLowerCase()
@@ -280,11 +285,30 @@ export async function addCrewMember(formData: FormData): Promise<void> {
     leads_crew: isForeman,
     display_order: displayOrder,
     active: true,
+    auth_email: authEmail,
   });
   if (error) redirect(`/admin/production?error=${encodeURIComponent(error.message)}`);
 
+  if (authEmail) await ensureFieldCrewAllowlist(authEmail);
+
   refreshAffectedPages();
   redirect('/admin/production?saved=crew_member_added');
+}
+
+// If an admin sets a sign-in email on a crew member, make sure that email is
+// also on the allowlist so they can actually sign in. Insert only — if a row
+// already exists (e.g. they're already an admin), leave its role alone.
+async function ensureFieldCrewAllowlist(email: string): Promise<void> {
+  const supabase = await serverClient();
+  const { data: existing } = await supabase
+    .from('allowed_emails')
+    .select('email')
+    .eq('email', email)
+    .maybeSingle();
+  if (existing) return;
+  await supabase
+    .from('allowed_emails')
+    .insert({ email, role: 'field_crew' });
 }
 
 // ----------------------------------------------------------------------------
@@ -528,7 +552,12 @@ export async function updateCrewMember(formData: FormData): Promise<void> {
   const isForeman = formData.get('is_foreman') === 'on';
   const isActive = formData.get('is_active') === 'on';
   const displayOrder = parseIntStrict(formData.get('display_order')) ?? 0;
+  const authEmail =
+    String(formData.get('auth_email') ?? '').trim().toLowerCase() || null;
   if (!slug || !name) redirect('/admin/production?error=missing_fields');
+  if (authEmail && !authEmail.includes('@')) {
+    redirect('/admin/production?error=invalid_email');
+  }
 
   const supabase = await serverClient();
   const { error } = await supabase
@@ -539,9 +568,12 @@ export async function updateCrewMember(formData: FormData): Promise<void> {
       leads_crew: isForeman,
       active: isActive,
       display_order: displayOrder,
+      auth_email: authEmail,
     })
     .eq('slug', slug);
   if (error) redirect(`/admin/production?error=${encodeURIComponent(error.message)}`);
+
+  if (authEmail) await ensureFieldCrewAllowlist(authEmail);
 
   refreshAffectedPages();
   redirect('/admin/production?saved=crew_member_updated');

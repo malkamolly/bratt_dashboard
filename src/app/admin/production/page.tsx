@@ -59,7 +59,7 @@ export default async function ProductionAdminPage({
       .order('display_order'),
     supabase
       .from('field_crew_employees')
-      .select('slug, name, home_crew_id, leads_crew, display_order, active')
+      .select('slug, name, home_crew_id, leads_crew, display_order, active, auth_email')
       .order('display_order'),
     supabase
       .from('yearly_targets')
@@ -97,6 +97,7 @@ export default async function ProductionAdminPage({
     leads_crew: boolean;
     display_order: number;
     active: boolean;
+    auth_email: string | null;
   };
   const fceToCrewMember = (r: FceRow): CrewMember => ({
     slug: r.slug,
@@ -105,6 +106,7 @@ export default async function ProductionAdminPage({
     is_foreman: r.leads_crew,
     display_order: r.display_order,
     is_active: r.active,
+    auth_email: r.auth_email,
   });
   const crewMembers: CrewMember[] = ((crewMembersRes.data ?? []) as FceRow[]).map(
     fceToCrewMember,
@@ -190,7 +192,9 @@ export default async function ProductionAdminPage({
           memberValues={histByMember}
           crewValues={histByCrewDirect}
         />
-        <CrewMembersSection crewMembers={crewMembers} crews={crewsAll.filter((c) => c.is_active)} />
+        <div id="crew-members" className="scroll-mt-20">
+          <CrewMembersSection crewMembers={crewMembers} crews={crewsAll.filter((c) => c.is_active)} />
+        </div>
       </div>
     </main>
   );
@@ -364,7 +368,7 @@ function CrewMembersSection({
     <SectionCard
       eyebrow="4 — Crew Roster"
       title="Crew Members"
-      description="Production team members and their home crew. The home crew is where they appear by default on the daily entry form; they can be moved to another crew for an individual day from the form."
+      description="Production team members and their home crew. The home crew is where they appear by default on the daily entry form; they can be moved to another crew for an individual day from the form. Set a sign-in email to give a crew member access to the Field Crew Hub — that email will also be added to the Access allowlist with the Field Crew role."
     >
       <RosterTable
         crews={crews}
@@ -374,15 +378,24 @@ function CrewMembersSection({
         <p className="bt-eyebrow">Add Crew Member</p>
         <form
           action={addCrewMember}
-          className="mt-2 flex flex-col gap-2 sm:flex-row sm:items-end"
+          className="mt-2 flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-end"
         >
-          <label className="flex-1">
+          <label className="flex-1 min-w-[8rem]">
             <span className="text-xs text-fg-2">Name</span>
             <input
               type="text"
               name="name"
               required
-              placeholder="e.g. Alex Rivera"
+              placeholder="e.g. Alex R"
+              className="mt-1 w-full rounded-1 border-2 border-paper-edge bg-white px-2 py-1.5 font-headline text-sm focus:border-orange focus:outline-none"
+            />
+          </label>
+          <label className="flex-1 min-w-[10rem]">
+            <span className="text-xs text-fg-2">Sign-in email (optional)</span>
+            <input
+              type="email"
+              name="auth_email"
+              placeholder="name@bratttree.com"
               className="mt-1 w-full rounded-1 border-2 border-paper-edge bg-white px-2 py-1.5 font-headline text-sm focus:border-orange focus:outline-none"
             />
           </label>
@@ -435,10 +448,11 @@ function RosterTable({
 }) {
   return (
     <div className="overflow-x-auto">
-      <div className="grid min-w-[640px] grid-cols-[minmax(8rem,1.5fr)_minmax(7rem,1fr)_3.5rem_2.5rem_2.5rem_auto] items-center gap-1.5 text-xs">
+      <div className="grid min-w-[820px] grid-cols-[minmax(8rem,1.3fr)_minmax(7rem,1fr)_minmax(10rem,1.4fr)_3.5rem_2.5rem_2.5rem_auto] items-center gap-1.5 text-xs">
         {/* Header */}
         <div className="bt-eyebrow text-fg-3">Name</div>
         <div className="bt-eyebrow text-fg-3">Crew</div>
+        <div className="bt-eyebrow text-fg-3">Sign-in email</div>
         <div className="bt-eyebrow text-fg-3 text-right">Order</div>
         <div className="bt-eyebrow text-fg-3 text-center">F</div>
         <div className="bt-eyebrow text-fg-3 text-center">Active</div>
@@ -469,6 +483,13 @@ function RosterTable({
                 </option>
               ))}
             </select>
+            <input
+              type="email"
+              name="auth_email"
+              defaultValue={mb.auth_email ?? ''}
+              placeholder="name@bratttree.com"
+              className="rounded-1 border border-paper-edge bg-bone px-2 py-1 font-headline text-sm focus:border-orange focus:outline-none"
+            />
             <input
               type="number"
               name="display_order"

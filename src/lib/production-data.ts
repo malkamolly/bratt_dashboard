@@ -226,7 +226,7 @@ export async function loadProductionEntriesForDate(date: IsoDate): Promise<{
         .order('display_order'),
       supabase
         .from('field_crew_employees')
-        .select('slug, name, home_crew_id, leads_crew, display_order, active')
+        .select('slug, name, home_crew_id, leads_crew, display_order, active, auth_email')
         .eq('active', true)
         .order('display_order'),
       supabase
@@ -265,6 +265,7 @@ export async function loadProductionEntriesForDate(date: IsoDate): Promise<{
     leads_crew: boolean;
     display_order: number;
     active: boolean;
+    auth_email: string | null;
   };
   const members: CrewMember[] = ((membersRes.data ?? []) as FceRow[]).map((r) => ({
     slug: r.slug,
@@ -273,6 +274,7 @@ export async function loadProductionEntriesForDate(date: IsoDate): Promise<{
     is_foreman: r.leads_crew,
     display_order: r.display_order,
     is_active: r.active,
+    auth_email: r.auth_email,
   }));
 
   return {

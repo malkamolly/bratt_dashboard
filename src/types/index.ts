@@ -25,6 +25,7 @@ export type CrewMember = {
   is_foreman: boolean;
   display_order: number;
   is_active: boolean;
+  auth_email: string | null;
 };
 
 export type AllowedEmail = {

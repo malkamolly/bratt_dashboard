@@ -217,7 +217,7 @@ export default async function FieldCrewHubPage() {
         </span>
         {editable && (
           <Link
-            href="/admin/crew"
+            href="/admin/production#crew-members"
             className="ml-auto font-headline text-xs font-extrabold uppercase tracking-ribbon text-orange hover:underline"
           >
             Manage crew &rarr;
