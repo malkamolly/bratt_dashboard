@@ -8,8 +8,8 @@
 // ============================================================================
 
 import Link from 'next/link';
-import { notFound } from 'next/navigation';
-import { requireHubAccess } from '@/lib/auth';
+import { notFound, redirect } from 'next/navigation';
+import { getAllowedUser } from '@/lib/auth';
 import {
   getOnboardingDeck,
   loadOnboardingSource,
@@ -22,7 +22,11 @@ export default async function OnboardingPresenterPage({
 }: {
   params: Promise<{ slug: string }>;
 }) {
-  await requireHubAccess('crew');
+  // Onboarding decks are shared across hubs (Field, Sales, Office), so we
+  // gate on "signed-in + on the allowlist" rather than any specific hub.
+  // This lets managers present any deck regardless of which hub they live in.
+  const user = await getAllowedUser();
+  if (!user) redirect('/login');
   const { slug } = await params;
 
   const deck = getOnboardingDeck(slug);

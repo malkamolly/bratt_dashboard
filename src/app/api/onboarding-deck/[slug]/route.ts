@@ -8,7 +8,7 @@
 // ============================================================================
 
 import { NextResponse } from 'next/server';
-import { requireHubAccess } from '@/lib/auth';
+import { getAllowedUser } from '@/lib/auth';
 import {
   getOnboardingDeck,
   loadOnboardingSource,
@@ -34,7 +34,13 @@ export async function GET(
   _req: Request,
   ctx: { params: Promise<{ slug: string }> },
 ) {
-  await requireHubAccess('crew');
+  // Same access rule as the present page — any signed-in allowlisted user
+  // can render any onboarding deck. Decks aren't sensitive and are meant to
+  // be presentable by managers from any hub.
+  const user = await getAllowedUser();
+  if (!user) {
+    return new NextResponse('Unauthorized', { status: 401 });
+  }
   const { slug } = await ctx.params;
 
   const deck = getOnboardingDeck(slug);
