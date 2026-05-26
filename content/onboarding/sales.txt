@@ -61,10 +61,10 @@ feature-detail: Two Copies of ID | Required by HR — bring them on day one
 feature-detail: Benefits Last | Knock everything else out first, then tackle benefits
 feature-detail: Contact Person | Your go-to for anything that comes up during onboarding
 feature-detail: Ask Questions | If you're not sure, just ask — that's what we're here for
-- Meet Your Manager | Get connected, exchange contact info, review your onboarding agenda
-- Company Systems & Procedures | A walk-through of how we run sales day-to-day
+- Company Systems & Procedures | A walk-through of how we work
+- Intro to Arboriculture | Self-directed TCIA training on the app
+- Lunch at the Office | With your manager and other team members
 - ServiceTitan Login | Get into our CRM and start working through the tutorials
-- Lunch with the Team | With your manager and other team members
 
 
 @ppe-grid
@@ -157,9 +157,8 @@ title: Channels you'll live in
 subtitle: Log in with the invite in your email — these are the channels to join first.
 - **#general** — company-wide announcements
 - **#sales_team** — sales team chat, deals, wins, blockers
-- **#tj_sales** — TJ's territory
-- **#hayden_sales** — Hayden's territory
-- **#ppm_training** — weekly arboriculture training (PPM = Per-Project Manager)
+- **#ppm_training** — weekly arboriculture training
+- **Your personal channel** — your manager will set up a channel for you and your sales work
 
 
 @welcome
@@ -176,14 +175,13 @@ title: How To Be Successful
 tagline: The four things our top performers do every day.
 
 
-@technique
+@three-rules
 eyebrow: The Bratt Way
-title: What success looks like here
-subtitle: It's less about hustle and more about how you show up.
-card: 5-Star Experience | Treat every client interaction like it's their first impression of us — because it might be.
-card: Always Learning | Apply weekly arboriculture training to your client conversations right away. Knowing the trees builds trust fast.
-card: Customer Service Mindset | Continuously improve how we serve clients. If you see a better way, surface it — we'll change it.
-card: Work Smarter | Don't grind for the sake of grinding. Use the tools, use the team, and protect your energy for the conversations that matter.
+title: How to be successful here
+subtitle: Three things our top performers do every day.
+rule: Deliver 5-Star Service | Treat every client interaction like a first impression. Continuously improve how we serve them — if you see a better way, surface it.
+rule: Always Learning | Apply weekly arboriculture training to your client conversations right away. Knowing the trees builds trust fast.
+rule: Work Smarter | Don't grind for the sake of grinding. Use the tools, use the team, and protect your energy for the conversations that matter.
 
 
 @closing

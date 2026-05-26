@@ -689,7 +689,16 @@ deck-stage > section {
   color: var(--bt-cream);
   margin: 12px 0 0;
   font-variation-settings: "opsz" 144;
-  overflow-wrap: break-word;
+  /* Allow long single words like "Communication" to stay on one line.
+     overflow-wrap: break-word here was character-breaking them. */
+  overflow-wrap: normal;
+  hyphens: none;
+}
+/* Slightly tighter type for long single-word section titles so they fit
+   the left column at the 1920px deck width without overflowing. Applied
+   in the renderer when the title has no spaces and is > 11 chars. */
+.section-title.section-title--compact {
+  font-size: 120px;
 }
 .section-tagline {
   font-family: var(--font-headline-serif);

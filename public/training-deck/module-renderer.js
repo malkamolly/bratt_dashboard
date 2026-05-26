@@ -325,11 +325,18 @@
     const num = f(s, 'number') || '00';
     const title = f(s, 'title') || 'Section';
     const tagline = f(s, 'tagline');
+    // Long single-word titles (e.g. "Communication") get a smaller font so
+    // they fit on one line within the left column. Multi-word titles wrap
+    // naturally at spaces, so they stay at the default 150px.
+    const longestWord = Math.max(...title.split(/\s+/).map((w) => w.length));
+    const compactClass = !title.includes(' ') && longestWord > 11
+      ? ' section-title--compact'
+      : '';
     return `
       <section class="slide slide--section-divider" data-screen-label="Section ${esc(num)}: ${esc(title)}">
         <div>
           <div class="section-num">Section ${esc(num)}</div>
-          <h2 class="section-title">${esc(title)}</h2>
+          <h2 class="section-title${compactClass}">${esc(title)}</h2>
           ${tagline ? `<div class="section-tagline">${inline(tagline)}</div>` : ''}
         </div>
         <div class="section-side">
