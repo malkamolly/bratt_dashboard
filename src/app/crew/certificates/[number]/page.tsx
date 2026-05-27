@@ -34,21 +34,31 @@ export default async function CertificatePage({
 
   return (
     <>
-      {/* Print-only stylesheet: hide nav chrome, A4/letter-friendly margins. */}
+      {/* Print-only stylesheet: hide nav chrome, keep brand colors, fit one page. */}
       <style>{`
         @media print {
+          /* Force browsers to actually print background colors, gradients,
+             and the logo image instead of stripping them out. */
+          html, body, .cert-frame, .cert-frame * {
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+          }
           body { background: white !important; }
           .no-print { display: none !important; }
+          /* Drop the screen padding so the certificate doesn't spill
+             onto a second page. */
+          .cert-main { padding: 0 !important; max-width: none !important; }
           .cert-frame {
             border-width: 6px !important;
             box-shadow: none !important;
             margin: 0 !important;
+            break-inside: avoid;
           }
-          @page { margin: 0.5in; }
+          @page { size: letter portrait; margin: 0.5in; }
         }
       `}</style>
 
-      <main className="mx-auto max-w-6xl px-6 py-10">
+      <main className="cert-main mx-auto max-w-6xl px-6 py-10">
         {/* Top nav strip — hidden when printing */}
         <div className="no-print flex flex-wrap items-center justify-between gap-3">
           <p className="bt-eyebrow">
