@@ -51,6 +51,7 @@ export function TestTaker({
   });
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
+  const [confirming, setConfirming] = useState(false);
 
   const totalQs = questions.length;
   const answeredCount = useMemo(
@@ -69,7 +70,11 @@ export function TestTaker({
     setAnswers((prev) => ({ ...prev, [qid]: letter }));
   }
 
-  function submit() {
+  // Step 1: validate, then ask for confirmation in-page. We deliberately
+  // avoid window.confirm() — on phones and in-app browsers (e.g. opening the
+  // magic link inside Gmail) that native popup is often suppressed and
+  // silently returns false, which made the Submit button appear to do nothing.
+  function requestSubmit() {
     setError(null);
     if (unansweredIndexes.length > 0) {
       setError(
@@ -82,23 +87,28 @@ export function TestTaker({
       el?.scrollIntoView({ behavior: 'smooth', block: 'center' });
       return;
     }
+    setConfirming(true);
+  }
 
-    if (!confirm(`Submit ${employeeName}'s test? You won't be able to change answers after this.`)) {
-      return;
-    }
-
+  // Step 2: actually grade and submit.
+  function doSubmit() {
+    setConfirming(false);
     startTransition(async () => {
-      const result = await submitTrainingAttempt({
-        attempt_id: attemptId,
-        answers: questions.map((q) => ({ question_id: q.id, chosen: answers[q.id] })),
-      });
-      if (!result.ok) {
-        setError(result.error);
-        return;
+      try {
+        const result = await submitTrainingAttempt({
+          attempt_id: attemptId,
+          answers: questions.map((q) => ({ question_id: q.id, chosen: answers[q.id] })),
+        });
+        if (!result.ok) {
+          setError(result.error);
+          return;
+        }
+        // Send the user to the result screen. The grader stored the
+        // certificate number (or null on fail) on the attempt row.
+        router.push(`/crew/modules/${moduleSlug}/result/${attemptId}`);
+      } catch {
+        setError('Could not submit — check your connection and try again.');
       }
-      // Send the user to the result screen. The grader stored the
-      // certificate number (or null on fail) on the attempt row.
-      router.push(`/crew/modules/${moduleSlug}/result/${attemptId}`);
     });
   }
 
@@ -201,19 +211,46 @@ export function TestTaker({
             {error}
           </p>
         )}
-        <div className="flex flex-wrap gap-3">
-          <button
-            type="button"
-            onClick={submit}
-            disabled={isPending}
-            className="bt-btn bt-btn-primary disabled:opacity-60"
-          >
-            {isPending ? 'Submitting…' : 'Submit test'}
-          </button>
-          <Link href={exitHref} className="bt-btn bt-btn-ghost">
-            Cancel
-          </Link>
-        </div>
+        {confirming ? (
+          <div>
+            <p className="mb-3 text-sm text-ink">
+              Submit {employeeName}&apos;s test? You won&apos;t be able to change
+              answers after this.
+            </p>
+            <div className="flex flex-wrap gap-3">
+              <button
+                type="button"
+                onClick={doSubmit}
+                disabled={isPending}
+                className="bt-btn bt-btn-primary disabled:opacity-60"
+              >
+                {isPending ? 'Submitting…' : 'Yes, submit'}
+              </button>
+              <button
+                type="button"
+                onClick={() => setConfirming(false)}
+                disabled={isPending}
+                className="bt-btn bt-btn-ghost"
+              >
+                Keep editing
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div className="flex flex-wrap gap-3">
+            <button
+              type="button"
+              onClick={requestSubmit}
+              disabled={isPending}
+              className="bt-btn bt-btn-primary disabled:opacity-60"
+            >
+              {isPending ? 'Submitting…' : 'Submit test'}
+            </button>
+            <Link href={exitHref} className="bt-btn bt-btn-ghost">
+              Cancel
+            </Link>
+          </div>
+        )}
         <p className="mt-3 text-xs text-fg-3">
           Once submitted, this attempt is final. If you don&apos;t pass, the
           result screen has a Retake button — you can also retake from your
