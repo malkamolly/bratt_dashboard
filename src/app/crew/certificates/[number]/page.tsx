@@ -131,6 +131,12 @@ export default async function CertificatePage({
 
             {/* Signature line */}
             <div className="mx-auto mt-12 max-w-xs">
+              {/* eslint-disable-next-line @next/next/no-img-element -- plain <img> prints reliably */}
+              <img
+                src="/brand/signatures/caleb-o.svg"
+                alt="Trainer signature"
+                className="mx-auto -mb-1 h-16 w-auto"
+              />
               <div className="border-t border-bark-deep pt-1 text-center">
                 <p className="font-headline text-[10px] font-extrabold uppercase tracking-ribbon text-fg-3">
                   Trainer

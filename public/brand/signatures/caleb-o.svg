@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg id="Layer_2" data-name="Layer 2" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 372.99 151.74">
+  <defs>
+    <style>
+      .cls-1 {
+        letter-spacing: .01em;
+      }
+
+      .cls-2 {
+        letter-spacing: 0em;
+      }
+
+      .cls-3 {
+        fill: #231f20;
+        font-family: RiadsScript-Regular, 'Riads Script';
+        font-size: 144.52px;
+      }
+    </style>
+  </defs>
+  <g id="Wishing_Tree" data-name="Wishing Tree">
+    <text class="cls-3" transform="translate(0 122.84)"><tspan x="0" y="0">Caleb O</tspan><tspan class="cls-1" x="255.21" y="0">l</tspan><tspan class="cls-2" x="284.11" y="0">son</tspan></text>
+  </g>
+</svg>
