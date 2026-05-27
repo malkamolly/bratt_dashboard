@@ -1097,6 +1097,7 @@ export async function listCertificatesForEmployee(slug: string): Promise<Certifi
         ' )',
     )
     .eq('passed', true)
+    .not('certificate_number', 'is', null)
     .eq('field_crew_training_assignments.employee_slug', slug)
     .order('submitted_at', { ascending: false });
   const rows = (data ?? []) as unknown as CertJoinedRow[];
