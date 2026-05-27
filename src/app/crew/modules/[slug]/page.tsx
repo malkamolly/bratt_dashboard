@@ -18,6 +18,7 @@ import {
   listAssignmentsForModule,
   listEmployees,
   listPracticalItems,
+  getCurrentEmployeeSlug,
 } from '@/lib/crew-data';
 import { countSlides, loadSourceText } from '@/lib/training-deck';
 import {
@@ -43,12 +44,18 @@ export default async function ModuleDetailPage({
   const mod = await getTrainingModule(slug);
   if (!mod) notFound();
 
-  const [questions, assignments, employees, practicalItems] = await Promise.all([
+  const [questions, assignments, employees, practicalItems, mySlug] = await Promise.all([
     listModuleQuestions(slug),
     listAssignmentsForModule(slug),
     listEmployees({ activeOnly: true }),
     listPracticalItems(slug),
+    getCurrentEmployeeSlug(),
   ]);
+
+  // The actions column shows for managers, or for a crew member who has
+  // their own assignment in this list (so they can take / retake their test).
+  const showActions =
+    editable || (!!mySlug && assignments.some((a) => a.employee_slug === mySlug));
 
   const sourceText = await loadSourceText(slug);
   const slideCount = countSlides(sourceText);
@@ -167,7 +174,7 @@ export default async function ModuleDetailPage({
                   <th className="px-3 py-2 text-left font-headline text-[10px] font-extrabold uppercase tracking-ribbon text-fg-3">
                     Last activity
                   </th>
-                  {editable && (
+                  {showActions && (
                     <th className="px-3 py-2 text-left font-headline text-[10px] font-extrabold uppercase tracking-ribbon text-fg-3">
                       &nbsp;
                     </th>
@@ -177,6 +184,10 @@ export default async function ModuleDetailPage({
               <tbody>
                 {assignments.map((a) => {
                   const passed = a.latest_attempt?.passed;
+                  const isOwn = !!mySlug && a.employee_slug === mySlug;
+                  // Managers keep their existing always-available button; a
+                  // crew member sees it for their own row until they pass.
+                  const canTake = editable || (isOwn && passed !== true);
                   const status =
                     passed === true
                       ? 'Passed'
@@ -239,7 +250,7 @@ export default async function ModuleDetailPage({
                           ? format(parseISO(a.latest_attempt.submitted_at), 'MMM d, yyyy')
                           : format(parseISO(a.assigned_at), 'MMM d, yyyy')}
                       </td>
-                      {editable && (
+                      {showActions && (
                         <td className="px-3 py-2">
                           <div className="flex flex-wrap items-center gap-2">
                             {a.latest_attempt?.certificate_number ? (
@@ -250,7 +261,7 @@ export default async function ModuleDetailPage({
                                 Certificate
                               </Link>
                             ) : null}
-                            {hasPractical && (
+                            {editable && hasPractical && (
                               <Link
                                 href={`/crew/modules/${mod.slug}/practical/${a.id}`}
                                 className="bt-btn bt-btn-dark !text-[10px] !px-2 !py-1"
@@ -258,16 +269,18 @@ export default async function ModuleDetailPage({
                                 Practical
                               </Link>
                             )}
-                            <form action={startTrainingAttempt}>
-                              <input type="hidden" name="assignment_id" value={a.id} />
-                              <button
-                                type="submit"
-                                className="bt-btn bt-btn-primary !text-[10px] !px-2 !py-1"
-                              >
-                                {a.latest_attempt ? 'Retake' : 'Start test'}
-                              </button>
-                            </form>
-                            {passed !== true && (
+                            {canTake && (
+                              <form action={startTrainingAttempt}>
+                                <input type="hidden" name="assignment_id" value={a.id} />
+                                <button
+                                  type="submit"
+                                  className="bt-btn bt-btn-primary !text-[10px] !px-2 !py-1"
+                                >
+                                  {a.latest_attempt ? 'Retake' : 'Start test'}
+                                </button>
+                              </form>
+                            )}
+                            {editable && passed !== true && (
                               <form action={unassignTrainingModule}>
                                 <input type="hidden" name="assignment_id" value={a.id} />
                                 <input

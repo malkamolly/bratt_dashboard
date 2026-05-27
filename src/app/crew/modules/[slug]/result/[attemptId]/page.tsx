@@ -8,8 +8,9 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { format, parseISO } from 'date-fns';
-import { requireHubAccess } from '@/lib/auth';
+import { requireHubAccess, canEditCrew } from '@/lib/auth';
 import { getTrainingModule } from '@/lib/crew-data';
+import { startTrainingAttempt } from '@/app/crew/actions';
 import { serverClient } from '@/lib/supabase';
 
 export const dynamic = 'force-dynamic';
@@ -19,7 +20,7 @@ export default async function ResultPage({
 }: {
   params: Promise<{ slug: string; attemptId: string }>;
 }) {
-  await requireHubAccess('crew');
+  const user = await requireHubAccess('crew');
   const { slug, attemptId } = await params;
 
   const mod = await getTrainingModule(slug);
@@ -31,8 +32,8 @@ export default async function ResultPage({
     .select(
       'id, submitted_at, score_correct, score_total, passed, missed_safety_critical, certificate_number,' +
         ' field_crew_training_assignments!inner(' +
-        '   employee_slug,' +
-        '   field_crew_employees!inner(name)' +
+        '   id, employee_slug,' +
+        '   field_crew_employees!inner(name, auth_email)' +
         ' )',
     )
     .eq('id', attemptId)
@@ -40,6 +41,12 @@ export default async function ResultPage({
 
   if (!data) notFound();
 
+  type EmpJoin = { name: string; auth_email: string | null };
+  type AssignmentJoin = {
+    id: string;
+    employee_slug: string;
+    field_crew_employees: EmpJoin | EmpJoin[] | null;
+  };
   type Row = {
     id: string;
     submitted_at: string | null;
@@ -48,29 +55,29 @@ export default async function ResultPage({
     passed: boolean | null;
     missed_safety_critical: boolean | null;
     certificate_number: string | null;
-    field_crew_training_assignments:
-      | {
-          employee_slug: string;
-          field_crew_employees: { name: string } | { name: string }[] | null;
-        }
-      | {
-          employee_slug: string;
-          field_crew_employees: { name: string } | { name: string }[] | null;
-        }[]
-      | null;
+    field_crew_training_assignments: AssignmentJoin | AssignmentJoin[] | null;
   };
   const row = data as unknown as Row;
   const assignment = Array.isArray(row.field_crew_training_assignments)
     ? row.field_crew_training_assignments[0]
     : row.field_crew_training_assignments;
-  const employeeName = assignment
+  const emp = assignment
     ? Array.isArray(assignment.field_crew_employees)
-      ? assignment.field_crew_employees[0]?.name ?? assignment.employee_slug
-      : assignment.field_crew_employees?.name ?? assignment.employee_slug
-    : '—';
+      ? assignment.field_crew_employees[0]
+      : assignment.field_crew_employees
+    : null;
   const employeeSlug = assignment?.employee_slug;
+  const employeeName = emp?.name ?? employeeSlug ?? '—';
 
   const passed = row.passed === true;
+
+  // Who can launch a retake from here: a manager/admin, or the crew member
+  // whose assignment this is (their login email matches the profile's).
+  const isSelf =
+    user.role === 'field_crew' &&
+    !!emp?.auth_email &&
+    emp.auth_email.toLowerCase() === user.email.toLowerCase();
+  const canRetake = (canEditCrew(user.role) || isSelf) && !!assignment?.id;
   const score = `${row.score_correct ?? 0} / ${row.score_total ?? mod.pass_threshold}`;
   const pct =
     row.score_total && row.score_total > 0
@@ -149,8 +156,19 @@ export default async function ResultPage({
               View certificate →
             </Link>
           )}
+          {!passed && canRetake && (
+            <form action={startTrainingAttempt}>
+              <input type="hidden" name="assignment_id" value={assignment!.id} />
+              <button type="submit" className="bt-btn bt-btn-primary">
+                Retake test →
+              </button>
+            </form>
+          )}
           {!passed && (
-            <Link href={`/crew/modules/${mod.slug}`} className="bt-btn bt-btn-primary">
+            <Link
+              href={`/crew/modules/${mod.slug}`}
+              className={canRetake ? 'bt-btn bt-btn-ghost' : 'bt-btn bt-btn-primary'}
+            >
               Back to module
             </Link>
           )}

@@ -215,8 +215,9 @@ export function TestTaker({
           </Link>
         </div>
         <p className="mt-3 text-xs text-fg-3">
-          Once submitted, this attempt is final. Retakes go through the
-          assignments list on the module page.
+          Once submitted, this attempt is final. If you don&apos;t pass, the
+          result screen has a Retake button — you can also retake from your
+          own profile page.
         </p>
       </section>
     </main>
