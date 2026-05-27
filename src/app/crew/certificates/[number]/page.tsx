@@ -76,6 +76,12 @@ export default async function CertificatePage({
         >
           {/* Lime sub-frame for the Bratt Tree look */}
           <div className="rounded-card border-2 border-lime p-8 text-center">
+            {/* eslint-disable-next-line @next/next/no-img-element -- plain <img> prints reliably */}
+            <img
+              src="/assets/img/logotype-color.png"
+              alt="Bratt Tree"
+              className="mx-auto mb-5 h-24 w-auto"
+            />
             <p className="font-headline text-xs font-extrabold uppercase tracking-ribbon text-orange">
               Bratt Tree · Operator Certification
             </p>
@@ -123,24 +129,12 @@ export default async function CertificatePage({
               </div>
             </div>
 
-            {/* Signature lines */}
-            <div className="mt-12 grid grid-cols-2 gap-12 text-left">
-              <div>
-                <div className="border-t border-bark-deep pt-1">
-                  <p className="font-headline text-[10px] font-extrabold uppercase tracking-ribbon text-fg-3">
-                    Trainer / Proctor
-                  </p>
-                  {cert.proctor_email && (
-                    <p className="mt-0.5 text-xs text-fg-2">{cert.proctor_email}</p>
-                  )}
-                </div>
-              </div>
-              <div>
-                <div className="border-t border-bark-deep pt-1">
-                  <p className="font-headline text-[10px] font-extrabold uppercase tracking-ribbon text-fg-3">
-                    Bratt Tree Operations
-                  </p>
-                </div>
+            {/* Signature line */}
+            <div className="mx-auto mt-12 max-w-xs">
+              <div className="border-t border-bark-deep pt-1 text-center">
+                <p className="font-headline text-[10px] font-extrabold uppercase tracking-ribbon text-fg-3">
+                  Trainer
+                </p>
               </div>
             </div>
           </div>
