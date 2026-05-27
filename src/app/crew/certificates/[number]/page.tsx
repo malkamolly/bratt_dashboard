@@ -48,9 +48,17 @@ export default async function CertificatePage({
              ribbon, the "Dig Deeper" quick links, and the on-page nav. */
           body > *:not(.cert-main) { display: none !important; }
           .no-print { display: none !important; }
-          /* Drop the screen padding so the certificate fills the page. */
-          .cert-main { padding: 0 !important; max-width: none !important; }
+          /* Drop the screen padding and center the certificate on the page. */
+          .cert-main {
+            padding: 0 !important;
+            max-width: none !important;
+            display: flex !important;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+          }
           .cert-frame {
+            width: 100%;
             border-width: 6px !important;
             box-shadow: none !important;
             margin: 0 !important;
@@ -58,7 +66,7 @@ export default async function CertificatePage({
             break-inside: avoid;
           }
           .cert-frame > div { padding: 1.5rem !important; }
-          @page { size: letter landscape; margin: 0.4in; }
+          @page { size: letter landscape; margin: 0.75in; }
         }
       `}</style>
 
