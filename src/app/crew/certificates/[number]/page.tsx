@@ -34,7 +34,7 @@ export default async function CertificatePage({
 
   return (
     <>
-      {/* Print-only stylesheet: hide nav chrome, keep brand colors, fit one page. */}
+      {/* Print-only stylesheet: print ONLY the certificate, in landscape. */}
       <style>{`
         @media print {
           /* Force browsers to actually print background colors, gradients,
@@ -44,17 +44,21 @@ export default async function CertificatePage({
             print-color-adjust: exact !important;
           }
           body { background: white !important; }
+          /* Hide everything except the certificate: site header, trust
+             ribbon, the "Dig Deeper" quick links, and the on-page nav. */
+          body > *:not(.cert-main) { display: none !important; }
           .no-print { display: none !important; }
-          /* Drop the screen padding so the certificate doesn't spill
-             onto a second page. */
+          /* Drop the screen padding so the certificate fills the page. */
           .cert-main { padding: 0 !important; max-width: none !important; }
           .cert-frame {
             border-width: 6px !important;
             box-shadow: none !important;
             margin: 0 !important;
+            padding: 1.5rem !important;
             break-inside: avoid;
           }
-          @page { size: letter portrait; margin: 0.5in; }
+          .cert-frame > div { padding: 1.5rem !important; }
+          @page { size: letter landscape; margin: 0.4in; }
         }
       `}</style>
 
