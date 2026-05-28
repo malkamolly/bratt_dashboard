@@ -461,14 +461,16 @@ deck-stage > section {
   text-align: center;
 }
 
-/* ===== CARD-GRID (3-col named cards) ===== */
+/* ===== CARD-GRID (named cards, even grid by count) ===== */
 .slide--card-grid .card-grid {
   margin-top: var(--gap-title);
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
   gap: 22px;
   flex: 1;
 }
+.slide--card-grid .card-grid--cols-2 { grid-template-columns: repeat(2, 1fr); }
+.slide--card-grid .card-grid--cols-3 { grid-template-columns: repeat(3, 1fr); }
+.slide--card-grid .card-grid--cols-4 { grid-template-columns: repeat(4, 1fr); }
 .grid-card {
   background: var(--surface-card);
   background: linear-gradient(180deg, var(--surface-card-grad-start) 0%, var(--surface-card-grad-end) 100%);
@@ -586,6 +588,12 @@ deck-stage > section {
   gap: 80px;
   align-items: stretch;
 }
+/* Welcome layout in single-column mode (no quote, no collage). The text
+   should fill the slide, not sit in a narrow column with empty space
+   beside it. */
+.slide--welcome.slide--welcome-solo .welcome-body p {
+  max-width: none;
+}
 .welcome-body {
   display: flex;
   flex-direction: column;
@@ -599,6 +607,24 @@ deck-stage > section {
   color: var(--ink-2);
   margin: 0 0 22px;
   max-width: 38ch;
+}
+/* When a welcome slide carries lots of body paragraphs (4+), tighten the
+   layout so the content fits without overflowing the slide. Applied by
+   the renderer when it detects long content. */
+.slide--welcome.slide--welcome-dense .welcome-body p {
+  font-size: 22px;
+  line-height: 1.4;
+  margin-bottom: 14px;
+}
+.slide--welcome.slide--welcome-dense .welcome-body .slide-title {
+  font-size: 64px;
+  line-height: 1.05;
+  margin-bottom: 12px;
+}
+.slide--welcome.slide--welcome-dense .welcome-body .slide-subtitle {
+  font-size: 22px;
+  margin-top: 8px;
+  margin-bottom: 12px;
 }
 
 .welcome-quote {

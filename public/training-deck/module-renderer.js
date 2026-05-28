@@ -257,14 +257,17 @@
     // No quote and no collage → go single-column so the empty brown panel
     // doesn't show up on slides that are just a welcome message.
     const hasSidePanel = !!quote || collage.length > 0;
+    // When the slide is text-heavy (4+ paragraphs), engage dense mode so the
+    // content doesn't overflow the slide. CSS shrinks the title and body.
+    const denseClass = bodies.length >= 4 ? ' slide--welcome-dense' : '';
     return `
-      <section class="slide slide--welcome${hasSidePanel ? '' : ' slide--welcome-solo'}" data-screen-label="Welcome"${hasSidePanel ? '' : ' style="grid-template-columns:1fr"'}>
+      <section class="slide slide--welcome${hasSidePanel ? '' : ' slide--welcome-solo'}${denseClass}" data-screen-label="Welcome"${hasSidePanel ? '' : ' style="grid-template-columns:1fr"'}>
         ${topRail(s, meta)}
         <div class="welcome-body">
           ${eyebrowEl(s)}
           ${titleEl(s)}
           ${subtitleEl(s)}
-          <div style="height:32px"></div>
+          <div style="height:${bodies.length >= 4 ? 16 : 32}px"></div>
           ${bodies.map(b => `<p>${inline(b)}</p>`).join('')}
         </div>
         ${hasSidePanel ? `
@@ -328,11 +331,20 @@
           ${desc ? `<div class="grid-card-desc">${inline(desc)}</div>` : ''}
         </div>`;
     }).join('');
+    // Choose a column count that produces an even grid for the card count.
+    // 4 cards → 2×2. 6 → 3×2. 9 → 3×3. Awkward counts (5, 7, 8) get the
+    // best-fit (3 cols, with the last row partially filled).
+    const cardCount = fa(s, 'card').length;
+    const cols =
+      cardCount <= 2 ? 2 :
+      cardCount === 4 ? 2 :
+      cardCount <= 9 ? 3 :
+      4;
     return `
       <section class="slide slide--card-grid" data-screen-label="${esc(f(s, 'title') || 'Cards')}">
         ${topRail(s, meta)}
         ${titleBlock(s)}
-        <div class="card-grid">${cards}</div>
+        <div class="card-grid card-grid--cols-${cols}">${cards}</div>
         ${footer(s, idx, meta)}
       </section>
     `;
