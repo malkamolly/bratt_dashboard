@@ -4,6 +4,7 @@ import { canEditMeetings, requireHubAccess } from '@/lib/auth';
 import { HubSubNav } from '@/components/HubSubNav';
 import { DeleteMeetingButton } from '@/components/DeleteMeetingButton';
 import { getMeetingBySlug, splitIntoSlides } from '@/lib/meeting-data';
+import { getTopicDeck } from '@/lib/topic-deck';
 
 export const dynamic = 'force-dynamic';
 
@@ -40,6 +41,12 @@ export default async function MeetingDetailPage({
     meeting.operational_body,
     'operational',
   );
+  // If the meeting is linked to a topic deck, look it up so we can show its
+  // title and link straight to the deck presenter instead of the inline
+  // educational section.
+  const linkedDeck = meeting.topic_slug
+    ? getTopicDeck(meeting.topic_slug)
+    : null;
 
   return (
     <main className="mx-auto max-w-6xl px-6 py-10">
@@ -75,14 +82,25 @@ export default async function MeetingDetailPage({
       <p className="mt-3 text-fg-2">Click a topic to present.</p>
 
       <div className="mt-8 space-y-4">
-        {meeting.educational_title && educationalSlides.length > 0 && (
+        {linkedDeck ? (
           <SectionCard
-            href={`/hub/meetings/${slug}/present/educational`}
-            eyebrow="Educational Topic"
-            title={meeting.educational_title}
-            tags={meeting.educational_tags}
-            slideCount={educationalSlides.length + 1 /* + cover */}
+            href={`/topics/${linkedDeck.slug}/present`}
+            eyebrow="Topic Deck"
+            title={linkedDeck.title}
+            tags={linkedDeck.tags}
+            slideCountLabel="Library deck"
           />
+        ) : (
+          meeting.educational_title &&
+          educationalSlides.length > 0 && (
+            <SectionCard
+              href={`/hub/meetings/${slug}/present/educational`}
+              eyebrow="Educational Topic"
+              title={meeting.educational_title}
+              tags={meeting.educational_tags}
+              slideCountLabel={`${educationalSlides.length + 1} slides`}
+            />
+          )
         )}
         {operationalSlides.length > 0 && (
           <SectionCard
@@ -90,10 +108,10 @@ export default async function MeetingDetailPage({
             eyebrow="Operational Updates"
             title="This Week's Updates"
             tags={[]}
-            slideCount={operationalSlides.length + 1}
+            slideCountLabel={`${operationalSlides.length + 1} slides`}
           />
         )}
-        {!meeting.educational_title && operationalSlides.length === 0 && (
+        {!linkedDeck && !meeting.educational_title && operationalSlides.length === 0 && (
           <p className="rounded-card border-2 border-dashed border-paper-edge bg-paper p-8 text-center text-sm text-fg-2">
             This meeting doesn&apos;t have any slides yet.
             {canEdit && (
@@ -125,13 +143,13 @@ function SectionCard({
   eyebrow,
   title,
   tags,
-  slideCount,
+  slideCountLabel,
 }: {
   href: string;
   eyebrow: string;
   title: string;
   tags: string[];
-  slideCount: number;
+  slideCountLabel: string;
 }) {
   return (
     <Link
@@ -159,9 +177,7 @@ function SectionCard({
       <p className="mt-6 flex items-center gap-2 font-headline text-xs font-extrabold uppercase tracking-ribbon text-orange group-hover:text-cream">
         <span>Click to present</span>
         <span aria-hidden>→</span>
-        <span className="ml-auto text-cream/60">
-          {slideCount} slide{slideCount === 1 ? '' : 's'}
-        </span>
+        <span className="ml-auto text-cream/60">{slideCountLabel}</span>
       </p>
     </Link>
   );

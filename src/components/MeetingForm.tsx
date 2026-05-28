@@ -10,12 +10,20 @@ type Meeting = {
   educational_tags: string[];
   educational_body: string | null;
   operational_body: string | null;
+  topic_slug: string | null;
+};
+
+export type TopicDeckOption = {
+  slug: string;
+  title: string;
 };
 
 type Props = {
   action: (formData: FormData) => Promise<void>;
   initial?: Meeting;
   knownTags: string[];
+  /** Available topic decks the meeting can be linked to */
+  topicDeckOptions: TopicDeckOption[];
   /** Where the Cancel button should send the user */
   cancelHref: string;
   /** Optional submit button label override (default "Save meeting") */
@@ -29,6 +37,7 @@ export function MeetingForm({
   action,
   initial,
   knownTags,
+  topicDeckOptions,
   cancelHref,
   submitLabel = 'Save meeting',
 }: Props) {
@@ -72,11 +81,33 @@ export function MeetingForm({
         <div>
           <p className="bt-eyebrow">Educational</p>
           <p className="mt-1 text-sm text-fg-2">
-            The teaching portion of the meeting. This is what feeds the
-            training library.
+            The teaching portion of the meeting. Either pick a topic deck
+            from the library, or write educational slides inline below.
           </p>
           <FormattingHelp />
         </div>
+
+        <label className="block">
+          <span className="block font-headline text-xs font-extrabold uppercase tracking-ribbon text-fg-2">
+            Use a topic deck
+          </span>
+          <select
+            name="topic_slug"
+            defaultValue={initial?.topic_slug ?? ''}
+            className={FIELD_CLASS}
+          >
+            <option value="">— None (write slides inline below) —</option>
+            {topicDeckOptions.map((t) => (
+              <option key={t.slug} value={t.slug}>
+                {t.title}
+              </option>
+            ))}
+          </select>
+          <span className="mt-2 block text-xs text-fg-3">
+            When a topic deck is selected, the inline Topic / Tags / Slides
+            fields below are ignored.
+          </span>
+        </label>
 
         <label className="block">
           <span className="block font-headline text-xs font-extrabold uppercase tracking-ribbon text-fg-2">

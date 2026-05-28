@@ -5,6 +5,7 @@ import { HubSubNav } from '@/components/HubSubNav';
 import { MeetingForm } from '@/components/MeetingForm';
 import { FlashBanner } from '@/components/admin-shared';
 import { listTags } from '@/lib/meeting-data';
+import { listTopicDecks } from '@/lib/topic-deck';
 import { createMeeting } from '../actions';
 
 export const dynamic = 'force-dynamic';
@@ -22,6 +23,10 @@ export default async function NewMeetingPage({
 
   const sp = await searchParams;
   const knownTags = await listTags();
+  const topicDeckOptions = listTopicDecks().map((d) => ({
+    slug: d.slug,
+    title: d.title,
+  }));
 
   return (
     <main className="mx-auto max-w-6xl px-6 py-10">
@@ -50,6 +55,7 @@ export default async function NewMeetingPage({
         <MeetingForm
           action={createMeeting}
           knownTags={knownTags}
+          topicDeckOptions={topicDeckOptions}
           cancelHref="/hub/meetings"
           submitLabel="Create meeting"
         />

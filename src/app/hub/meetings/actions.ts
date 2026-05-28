@@ -36,6 +36,7 @@ export async function createMeeting(formData: FormData): Promise<void> {
 
   const date = String(formData.get('date') ?? '').trim();
   const title = String(formData.get('title') ?? '').trim();
+  const topicSlug = String(formData.get('topic_slug') ?? '').trim() || null;
   const educationalTitle =
     String(formData.get('educational_title') ?? '').trim() || null;
   const educationalTags = parseTags(formData.get('educational_tags'));
@@ -49,18 +50,25 @@ export async function createMeeting(formData: FormData): Promise<void> {
       `/hub/meetings/new?error=${encodeURIComponent('Date and title are required.')}`,
     );
   }
-  if (!educationalBody && !operationalBody) {
+  // A meeting needs at least one of: topic deck, inline educational, or
+  // operational content.
+  if (!topicSlug && !educationalBody && !operationalBody) {
     redirect(
-      `/hub/meetings/new?error=${encodeURIComponent('Add content to at least one section (Educational or Operational) before saving.')}`,
+      `/hub/meetings/new?error=${encodeURIComponent('Pick a topic deck or add content to the Educational or Operational section before saving.')}`,
     );
   }
 
-  const slug = buildMeetingSlug(date, educationalTitle);
+  // Slug uses the topic deck title if linked, otherwise the inline title.
+  // The meeting's URL shouldn't depend on the deck's data, so we fall back
+  // to the deck slug itself when no inline title was given.
+  const slugTopic = educationalTitle || topicSlug;
+  const slug = buildMeetingSlug(date, slugTopic);
   const supabase = await serverClient();
   const { error } = await supabase.from('meetings').insert({
     date,
     title,
     slug,
+    topic_slug: topicSlug,
     educational_title: educationalTitle,
     educational_tags: educationalTags,
     educational_body: educationalBody,
@@ -85,6 +93,7 @@ export async function updateMeeting(formData: FormData): Promise<void> {
 
   const date = String(formData.get('date') ?? '').trim();
   const title = String(formData.get('title') ?? '').trim();
+  const topicSlug = String(formData.get('topic_slug') ?? '').trim() || null;
   const educationalTitle =
     String(formData.get('educational_title') ?? '').trim() || null;
   const educationalTags = parseTags(formData.get('educational_tags'));
@@ -98,14 +107,15 @@ export async function updateMeeting(formData: FormData): Promise<void> {
       `/hub/meetings/${originalSlug}/edit?error=${encodeURIComponent('Date and title are required.')}`,
     );
   }
-  if (!educationalBody && !operationalBody) {
+  if (!topicSlug && !educationalBody && !operationalBody) {
     redirect(
-      `/hub/meetings/${originalSlug}/edit?error=${encodeURIComponent('Add content to at least one section before saving.')}`,
+      `/hub/meetings/${originalSlug}/edit?error=${encodeURIComponent('Pick a topic deck or add content to the Educational or Operational section before saving.')}`,
     );
   }
 
   // Regenerate slug from date + topic so renaming the topic updates the URL.
-  const newSlug = buildMeetingSlug(date, educationalTitle);
+  const slugTopic = educationalTitle || topicSlug;
+  const newSlug = buildMeetingSlug(date, slugTopic);
 
   const supabase = await serverClient();
   const { error } = await supabase
@@ -114,6 +124,7 @@ export async function updateMeeting(formData: FormData): Promise<void> {
       date,
       title,
       slug: newSlug,
+      topic_slug: topicSlug,
       educational_title: educationalTitle,
       educational_tags: educationalTags,
       educational_body: educationalBody,

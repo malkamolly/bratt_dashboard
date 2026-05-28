@@ -13,23 +13,47 @@ export default async function LibraryPage() {
 
   const [meetings, tagsRaw] = await Promise.all([listMeetings(), listTags()]);
 
+  // For each topic deck, find the most recent meeting that linked to it.
+  // This lets the topic-deck card show "Presented at [date] meeting" as a
+  // cross-link when the connection exists.
+  const linkedMeetingByDeckSlug = new Map<
+    string,
+    { slug: string; date: string }
+  >();
+  for (const m of meetings) {
+    if (m.topic_slug && !linkedMeetingByDeckSlug.has(m.topic_slug)) {
+      linkedMeetingByDeckSlug.set(m.topic_slug, {
+        slug: m.slug,
+        date: m.date,
+      });
+    }
+  }
+
   // Topic decks (standalone slide decks authored in /content/topics) and
   // meeting-derived educational topics get merged into one list sorted by
   // date so the library reads like a single chronological feed.
-  const topicEntries: LibraryEntry[] = listTopicDecks().map((d) => ({
-    kind: 'topic',
-    slug: d.slug,
-    href: `/topics/${d.slug}/present`,
-    date: d.date,
-    title: d.title,
-    description: d.description,
-    tags: d.tags,
-    tagSlugs: d.tags.map(tagSlug),
-    meetingSlug: d.meetingSlug ?? null,
-  }));
+  const topicEntries: LibraryEntry[] = listTopicDecks().map((d) => {
+    const linked = linkedMeetingByDeckSlug.get(d.slug);
+    return {
+      kind: 'topic' as const,
+      slug: d.slug,
+      href: `/topics/${d.slug}/present`,
+      date: d.date,
+      title: d.title,
+      description: d.description,
+      tags: d.tags,
+      tagSlugs: d.tags.map(tagSlug),
+      linkedMeetingSlug: linked?.slug ?? null,
+      linkedMeetingDate: linked?.date ?? null,
+    };
+  });
 
+  // Meeting-derived entries only show up for meetings that wrote inline
+  // educational content — meetings that linked to a topic deck are already
+  // represented by the deck's own entry, so showing them here would create
+  // a duplicate.
   const meetingEntries: LibraryEntry[] = meetings
-    .filter((m) => m.educational_title)
+    .filter((m) => m.educational_title && !m.topic_slug)
     .map((m) => ({
       kind: 'meeting',
       slug: m.slug,
@@ -39,7 +63,8 @@ export default async function LibraryPage() {
       description: null,
       tags: m.educational_tags,
       tagSlugs: m.educational_tags.map(tagSlug),
-      meetingSlug: m.slug,
+      linkedMeetingSlug: null,
+      linkedMeetingDate: null,
     }));
 
   const entries = [...topicEntries, ...meetingEntries].sort((a, b) =>

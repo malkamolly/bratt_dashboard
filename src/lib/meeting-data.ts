@@ -19,6 +19,9 @@ export type Meeting = {
   educational_tags: string[];
   educational_body: string | null;
   operational_body: string | null;
+  /** Optional: slug of a topic deck (see /content/topics) to present as the
+   *  educational section instead of the inline markdown body. */
+  topic_slug: string | null;
   created_at: string;
   updated_at: string;
   created_by: string | null;
@@ -81,6 +84,7 @@ function rowToMeeting(row: Record<string, unknown>): Meeting {
       : [],
     educational_body: row.educational_body ? String(row.educational_body) : null,
     operational_body: row.operational_body ? String(row.operational_body) : null,
+    topic_slug: row.topic_slug ? String(row.topic_slug) : null,
     created_at: String(row.created_at),
     updated_at: String(row.updated_at),
     created_by: row.created_by ? String(row.created_by) : null,

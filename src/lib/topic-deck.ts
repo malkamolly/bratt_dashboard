@@ -5,11 +5,13 @@
 // Hub library. They mirror the onboarding-deck pattern: each deck's source
 // is plain text at /content/topics/<slug>.txt using the same `@layout`
 // syntax as training modules, and the registry below holds the title,
-// description, tags, and optional meeting linkage.
+// description, tags, and date.
 //
-// A topic deck is independent of any specific weekly meeting, but can
-// optionally be associated with one via `meetingSlug` — when set, the
-// library card and the meeting page will cross-link.
+// A topic deck is independent of any specific weekly meeting. To present
+// one at a meeting, link the meeting → deck from the New Meeting form
+// (the meeting carries the topic_slug, not the other way around). The
+// library page joins on that to show a "Presented at..." cross-link on
+// each deck card.
 // ============================================================================
 
 import { readFile } from 'node:fs/promises';
@@ -26,8 +28,6 @@ export type TopicDeck = {
   tags: string[];
   /** Date the deck was added/published — used for sort order in the library */
   date: string; // YYYY-MM-DD
-  /** Optional: meeting slug this deck was presented at (cross-link) */
-  meetingSlug?: string;
   /** Used as the footer left-side text inside the deck */
   footerLeft: string;
   /** Used as the cover meta-right (and the corner of every slide) */

@@ -5,6 +5,7 @@ import { HubSubNav } from '@/components/HubSubNav';
 import { MeetingForm } from '@/components/MeetingForm';
 import { FlashBanner } from '@/components/admin-shared';
 import { getMeetingBySlug, listTags } from '@/lib/meeting-data';
+import { listTopicDecks } from '@/lib/topic-deck';
 import { updateMeeting } from '../../actions';
 
 export const dynamic = 'force-dynamic';
@@ -30,6 +31,11 @@ export default async function EditMeetingPage({
     listTags(),
   ]);
   if (!meeting) notFound();
+
+  const topicDeckOptions = listTopicDecks().map((d) => ({
+    slug: d.slug,
+    title: d.title,
+  }));
 
   return (
     <main className="mx-auto max-w-6xl px-6 py-10">
@@ -69,8 +75,10 @@ export default async function EditMeetingPage({
             educational_tags: meeting.educational_tags,
             educational_body: meeting.educational_body,
             operational_body: meeting.operational_body,
+            topic_slug: meeting.topic_slug,
           }}
           knownTags={knownTags}
+          topicDeckOptions={topicDeckOptions}
           cancelHref={`/hub/meetings/${slug}`}
           submitLabel="Save changes"
         />

@@ -18,9 +18,10 @@ export type LibraryEntry = {
   description: string | null;
   tags: string[];
   tagSlugs: string[];
-  /** If a topic deck is linked to a meeting, the meeting slug — shown as a
-   *  cross-link on the card. */
-  meetingSlug: string | null;
+  /** If a topic deck is linked to a meeting, the meeting slug + date —
+   *  shown as a "Presented at..." cross-link on the card. */
+  linkedMeetingSlug: string | null;
+  linkedMeetingDate: string | null;
 };
 
 export function LibraryFilter({
@@ -55,6 +56,16 @@ export function LibraryFilter({
     const [y, m] = iso.split('-').map(Number);
     return new Date(y, m - 1, 1).toLocaleDateString('en-US', {
       month: 'short',
+      year: 'numeric',
+    });
+  }
+
+  function formatFullDate(iso: string): string {
+    if (!iso) return '';
+    const [y, m, d] = iso.split('-').map(Number);
+    return new Date(y, m - 1, d).toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
       year: 'numeric',
     });
   }
@@ -120,6 +131,11 @@ export function LibraryFilter({
                       </span>
                     ))}
                   </div>
+                )}
+                {e.linkedMeetingSlug && e.linkedMeetingDate && (
+                  <p className="pt-2 font-headline text-[10px] font-extrabold uppercase tracking-ribbon text-fg-3">
+                    Presented {formatFullDate(e.linkedMeetingDate)}
+                  </p>
                 )}
               </Link>
             </li>
