@@ -36,6 +36,8 @@ export type TopicDeck = {
 
 // Registry of available topic decks. Add new ones here as we build them.
 // Each entry must have a corresponding /content/topics/<slug>.txt file.
+// The `date` field is the date the topic was originally taught (or
+// added) — used to sort the library chronologically.
 export const TOPIC_DECKS: Record<string, TopicDeck> = {
   'verticillium-wilt': {
     slug: 'verticillium-wilt',
@@ -45,6 +47,66 @@ export const TOPIC_DECKS: Record<string, TopicDeck> = {
     tags: ['Disease', 'Plant Health Care'],
     date: '2026-05-28',
     footerLeft: 'BRATT TREE  |  VERTICILLIUM WILT',
+    version: 'Version 1.0',
+  },
+  'cabling-and-bracing': {
+    slug: 'cabling-and-bracing',
+    title: 'Cabling & Bracing',
+    description:
+      'What to do about structurally compromised trees — and how to sell the alternative to removal.',
+    tags: ['Structural Care', 'Sales'],
+    date: '2024-09-22',
+    footerLeft: 'BRATT TREE  |  CABLING & BRACING',
+    version: 'Version 1.0',
+  },
+  'deciduous-leaf-diseases': {
+    slug: 'deciduous-leaf-diseases',
+    title: 'Deciduous Leaf Diseases',
+    description:
+      'Apple Scab, Anthracnose, Fireblight, and Bur Oak Blight. How to tell the look-alikes from the killer.',
+    tags: ['Disease', 'Plant Health Care'],
+    date: '2024-06-17',
+    footerLeft: 'BRATT TREE  |  DECIDUOUS LEAF DISEASES',
+    version: 'Version 1.0',
+  },
+  'coniferous-fungal-diseases': {
+    slug: 'coniferous-fungal-diseases',
+    title: 'Coniferous Fungal Diseases',
+    description:
+      'Rhizosphaera, Diplodia, Dothistroma, Brown Spot Needle Blight. Lethal if untreated — and easy to spot.',
+    tags: ['Disease', 'Plant Health Care'],
+    date: '2024-09-09',
+    footerLeft: 'BRATT TREE  |  CONIFER FUNGAL DISEASES',
+    version: 'Version 1.0',
+  },
+  'hemlock-rust-mite-and-ded': {
+    slug: 'hemlock-rust-mite-and-ded',
+    title: 'Hemlock Rust Mite & Dutch Elm Disease',
+    description:
+      'Two issues from one meeting — and the diagnostic discipline they both demand.',
+    tags: ['Pest', 'Disease', 'Plant Health Care'],
+    date: '2024-08-26',
+    footerLeft: 'BRATT TREE  |  HRM & DED',
+    version: 'Version 1.0',
+  },
+  'native-oaks-of-minnesota': {
+    slug: 'native-oaks-of-minnesota',
+    title: 'Native Oaks of Minnesota',
+    description:
+      'Red Oak, Pin Oak, White Oak, Bur Oak, Swamp White Oak. Look at the leaf, look at the acorn, know the family.',
+    tags: ['Tree ID'],
+    date: '2024-09-30',
+    footerLeft: 'BRATT TREE  |  NATIVE OAKS',
+    version: 'Version 1.0',
+  },
+  'soil-change-diagnostics': {
+    slug: 'soil-change-diagnostics',
+    title: 'Soil-Change Diagnostics',
+    description:
+      'Construction, drainage, landscaping. The four ways human activity quietly kills trees — and how to diagnose them.',
+    tags: ['Diagnostics', 'Sales'],
+    date: '2025-07-21',
+    footerLeft: 'BRATT TREE  |  SOIL-CHANGE DIAGNOSTICS',
     version: 'Version 1.0',
   },
 };

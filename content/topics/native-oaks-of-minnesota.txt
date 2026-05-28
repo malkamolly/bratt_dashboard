@@ -1,0 +1,131 @@
+# ============================================================
+# BRATT TREE — Topic Deck: Native Oaks of Minnesota
+# Tree ID guide originally presented at the 2024-09-30 PPM meeting.
+# ============================================================
+
+
+@cover
+eyebrow: Tree ID
+unit: Native Oaks of Minnesota
+subtitle: Red Oak, Pin Oak, White Oak, Bur Oak, Swamp White Oak.
+tagline: Look at the leaf.
+tagline: Look at the acorn.
+tagline: Know which family.
+image: /topics/native-oaks-of-minnesota/cover.jpeg
+image-fit: cover
+meta-left: Bratt Tree · Topic Library
+meta-right: Version 1.0
+
+
+@welcome
+eyebrow: The Family
+title: Fagaceae — Oak, Chestnut, Beech.
+subtitle: Quercus, Castanea, Fagus. (Not Aesculus — that's Horse Chestnut.)
+body: Characterized by **cupule nuts** where some of the nut is visible inside a cup. Generally **one seed per nut.** High wood density per cubic foot. Slower-growing trees.
+body: Oaks **flower as catkins**, not as showy flowers like maples or fruit trees. If you see a hanging tassel in spring, you're probably looking at an oak.
+body: Minnesota's native oaks split into two families: **Red Oaks (Erythrobalanus)** and **White Oaks (Leucobalanus).** Knowing which family you're in answers half the ID questions before you look at the leaf.
+
+
+@two-column
+eyebrow: The Big Split
+title: Red Oak vs White Oak family.
+subtitle: Three differences. Memorize them and you'll never be wrong about the family.
+left-header: Red Oaks (Erythrobalanus)
+left-icon: ●
+left: **Acorns mature in 2 years** — current and last season's acorns both on the tree
+left: **Leaf lobes have bristled (pointed) ends**
+left: Acorn cup is **smoother**
+left: Species: Rubra, Ellipsoidalis, Palustris
+right-header: White Oaks (Leucobalanus)
+right-icon: ●
+right: **Acorns mature in 1 year** — all on this year's growth
+right: **Leaf lobes are rounded, no bristles**
+right: Acorn cup is **rougher, hairier**
+right: Species: Alba, Macrocarpa, Bicolor
+
+
+@section-divider
+number: 01
+title: The Red Oak Family
+tagline: Bristled lobes. Two-year acorns. Smooth cups.
+
+
+@image-side
+eyebrow: Red Oak
+title: Quercus rubra
+subtitle: The classic — pointed lobes, glossy leaves, big tree.
+body: **The benchmark Red Oak.** Pointed lobes with bristle tips, smooth leaf surface, distinctive striped bark on mature trees.
+body: Acorns are medium-sized with a **shallow, smooth cup** covering only the very top of the nut.
+image: /topics/native-oaks-of-minnesota/red-oak-leaf.png
+fit: contain
+
+
+@image-side
+eyebrow: Red Oak Family
+title: Northern Pin Oak — Quercus ellipsoidalis
+subtitle: Common in MN. Lobes deeper than red oak, leaves narrower.
+body: **Northern Pin Oak** has deeply-cut lobes with sharp, bristled tips. Leaves often appear narrower and more delicate than a true Red Oak.
+body: Frequently planted in MN as a landscape replacement for Red Oak. Same family, same diseases (including oak wilt), similar care.
+image: /topics/native-oaks-of-minnesota/northern-pin-oak-1.png
+fit: contain
+
+
+@image-side
+eyebrow: Red Oak Family
+title: Eastern Pin Oak — Quercus palustris
+subtitle: Even narrower leaf lobes than Northern Pin. Less common locally.
+body: **Eastern Pin Oak** has the **deepest, narrowest lobes** of the Red Oak group. The leaf looks almost lacy compared to a Red or Northern Pin.
+body: Native to the eastern US but planted in MN as ornamentals. Watch the lower branches — Pin Oaks often retain a strong **descending lower branch habit** when young, which is a separate ID clue.
+image: /topics/native-oaks-of-minnesota/eastern-pin-oak-1.png
+fit: contain
+
+
+@section-divider
+number: 02
+title: The White Oak Family
+tagline: Rounded lobes. One-year acorns. Hairier cups.
+
+
+@image-side
+eyebrow: White Oak
+title: Quercus alba
+subtitle: The benchmark White Oak — rounded lobes, hairy acorn cups.
+body: **Rounded lobes with no bristled tips.** Bark is pale gray, often flaking in long vertical plates on mature trees.
+body: Acorns mature in **one season** and the cup is **rough and warty.** A Quercus alba acorn is unmistakable once you've held one.
+image: /topics/native-oaks-of-minnesota/white-oak-1.png
+fit: contain
+
+
+@image-side
+eyebrow: White Oak Family
+title: Bur Oak — Quercus macrocarpa
+subtitle: MN's signature White Oak. Massive, fringed acorns.
+body: **Bur Oak** has the **largest acorn of any North American oak** — and a distinctive **fringed cup** that covers most of the nut.
+body: Bark is deeply ridged and corky. Leaves have a characteristic **fiddle-shaped outline** — narrow at the base, wider toward the tip. Often the easiest oak to ID in MN at a distance.
+image: /topics/native-oaks-of-minnesota/bur-oak-1.png
+fit: contain
+
+
+@image-side
+eyebrow: White Oak Family
+title: Swamp White Oak — Quercus bicolor
+subtitle: Two-toned leaves. Tolerates wet sites better than other oaks.
+body: **Swamp White Oak** is identified by its **two-toned leaf** — dark green above, pale silvery-green underneath. Wind in the canopy creates a shimmering effect.
+body: Tolerates **wetter sites** than most oaks — useful when a client has a low-lying area and wants an oak species that won't sulk.
+image: /topics/native-oaks-of-minnesota/swamp-white-oak-1.png
+fit: contain
+
+
+@three-rules
+eyebrow: Putting It Together
+title: The 30-second ID flow.
+subtitle: Three checks, in this order, get you to the answer almost every time.
+rule: Look At The Leaf | Pointed, bristled lobes → Red family. Rounded lobes → White family. That's the first 50%.
+rule: Look At The Acorn | If there are acorns on the tree from this year AND last year, it's Red family. Only this year's acorns, and a hairy cup → White family.
+rule: Then Narrow The Species | Within each family, check leaf depth (Bur is fiddle-shaped, Pin is deeply cut, Swamp White is two-toned). Within minutes, you've got the species.
+
+
+@closing
+title: Look at the leaf. Look at the acorn. Know the family.
+subtitle: Species ID falls out from there.
+mark: BT

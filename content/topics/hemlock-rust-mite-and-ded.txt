@@ -1,0 +1,104 @@
+# ============================================================
+# BRATT TREE — Topic Deck: Hemlock Rust Mite & Dutch Elm Disease
+# Two unrelated topics from the 2024-08-26 PPM meeting, kept
+# together because each is short and the meeting paired them.
+# Source was a PDF — photo placeholders for now; can be filled
+# in later once we have a .pptx copy.
+# ============================================================
+
+
+@cover
+eyebrow: Plant Health Care · Pests & Diseases
+unit: Hemlock Rust Mite & DED
+subtitle: Two issues from one meeting. Different trees. Different bugs. Same diagnostic discipline.
+tagline: Diagnose abiotic factors first.
+tagline: Then look at the bugs.
+tagline: Then talk to the homeowner.
+meta-left: Bratt Tree · Topic Library
+meta-right: Version 1.0
+
+
+@section-divider
+number: 01
+title: Hemlock Rust Mite
+tagline: Nalepella tsugifoliae — nearly microscopic, surprisingly destructive.
+
+
+@welcome
+eyebrow: The Pest
+title: An eriophyid mite that hollows the needle.
+subtitle: Smaller than a spider mite. Easy to miss without a hand lens.
+body: **Eriophyid mites consume the interior of the needle.** Nearly microscopic — significantly smaller than spider mites and not visible at arm's length.
+body: **Potentially lethal when combined with other stress factors** — drought, root issues, poor planting site. A healthy hemlock can usually shrug it off. A stressed one declines fast.
+body: Populations **thrive in cool weather** and drop off during hot summer months. Treat with **miticide in the spring or fall**, not mid-summer.
+
+
+@three-rules
+eyebrow: Field Symptoms
+title: What you'll actually see on the tree.
+subtitle: Three tells, in order of how often they show up.
+rule: Rusty Yellow-Gray Color | When populations are high, needles take on a rusty appearance — partly from feeding damage, partly from shed mite exoskeletons coating the needles.
+rule: New Growth Unaffected | The current year's growth typically looks clean. The damage is on older needles. This helps distinguish from fungal disease.
+rule: Looks Like Dothistroma | Easy to mistake for a fungal needle blight. Hand-lens the needle interior to confirm — if the inside is hollow and the outside is intact, it's mites, not fungus.
+
+
+@welcome
+eyebrow: Diagnostic Discipline
+title: Look at the site before you look at the bugs.
+subtitle: The most common mistake on hemlock declines.
+body: A hemlock in **full sun, in a rock bed, surrounded by hot flagstone** is going to struggle no matter what's eating it. Examine **all abiotic factors first** when diagnosing tree health — site, sun exposure, irrigation, recent landscape changes.
+body: When you find the mite damage on a stressed tree, treat the mite — but tell the client the site is also part of the problem. A miticide won't keep that hemlock alive if it's planted in a Phoenix-style microclimate.
+
+
+@section-divider
+number: 02
+title: Dutch Elm Disease in Review
+tagline: Lethal vascular disease. Carried by Elm Bark Beetles. Treatable on a schedule.
+
+
+@welcome
+eyebrow: The Disease
+title: A fungal disease that plugs the vascular system.
+subtitle: Carried beetle-to-tree, then beetle-to-beetle.
+body: Caused by a **fungus carried on Elm Bark Beetles.** The beetle introduces the fungus when it feeds, and the fungus literally plugs the xylem — the plant material that translocates water and nutrients.
+body: **Lethal.** Once symptoms are visible, the tree is well into the infection cycle. Can be **pruned out if caught early enough** — same logic as fireblight, sanitization cuts well below visible symptoms.
+body: **Preventive treatment: 20 ml propiconazole per inch DBH, every two years.** That's the standing recommendation for a healthy specimen the client wants to keep.
+
+
+@section-divider
+number: 03
+title: Case Study
+tagline: A homeowner with DED concerns — and the diagnostic walkthrough.
+
+
+@welcome
+eyebrow: The Situation
+title: A neighbor's elm just died. Now what?
+subtitle: The diagnostic conversation when a client is panicked.
+body: **Setup:** Homeowner's tree had been treated with propiconazole but not for several years. A competitor's customer's tree about 100 yards away — also treated — just died. We injected the homeowner's tree about a week before this case study.
+body: The homeowner is convinced the tree is infected because of the neighborhood timing. The question isn't "are they wrong to worry" — it's "is the tree actually infected, and if not, how do we know?"
+body: **First step:** explain the timeline. **If we're seeing symptoms this year, the infection would have begun last year.** That sets a baseline for what to look for.
+
+
+@three-rules
+eyebrow: Diagnostic Reasoning
+title: Why this tree probably doesn't have DED.
+subtitle: Three things to look at before agreeing with the homeowner.
+rule: Pattern Is Wrong | If the tree caught DED through a beetle visiting the canopy tip, we'd expect dieback on **the side facing the neighbor's tree**. The wilting here is on the opposite side. Pattern doesn't match.
+rule: Storm Damage Confounds It | Recent storms cracked several branches all over the tree. They've been hanging long enough to be wilting on their own — that's mechanical, not vascular.
+rule: Root Graft Would Be Bottom-Up | If the tree caught it through a **root graft** from the neighbor, we'd expect symptoms to start at the bottom of the canopy and move up. That's not what we're seeing either.
+
+
+@welcome
+eyebrow: The Move
+title: Offer the lab test. Let the homeowner choose.
+subtitle: We're confident — but the client should be the one to decide on certainty.
+body: **The tree may still be infected** — our visual diagnosis isn't a guarantee. We **offered a lab test** so the homeowner could get certainty. The homeowner **declined**, choosing to trust the visual diagnosis.
+body: **Document the offer.** Document the homeowner's decision. That's the protection for everyone if the tree does turn out to be infected later.
+body: The lesson: explain the reasoning, offer the certain answer, respect the client's choice. That's how this conversation should go every time.
+
+
+@closing
+title: Diagnose the site. Diagnose the bug. Diagnose the conversation.
+subtitle: All three matter — especially the last one.
+mark: BT

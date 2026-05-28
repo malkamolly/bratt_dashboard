@@ -1,0 +1,116 @@
+# ============================================================
+# BRATT TREE — Topic Deck: Soil-Change Diagnostics
+# How construction, drainage, and landscaping damage trees.
+# Originally presented at the 2025-07-21 PPM meeting.
+# Source was a PDF — no photos for now; can be added later.
+# ============================================================
+
+
+@cover
+eyebrow: Plant Health Care · Diagnostics
+unit: Soil-Change Diagnostics
+subtitle: Construction, drainage, landscaping — the four ways human activity quietly kills trees.
+tagline: Scan the site first.
+tagline: Diagnose the cause, not the symptom.
+tagline: Bring the homeowner the real story.
+meta-left: Bratt Tree · Topic Library
+meta-right: Version 1.0
+
+
+@welcome
+eyebrow: Why This Matters
+title: Half of our "mystery decline" calls are this.
+subtitle: When a tree starts dying for "no reason" — it's almost never no reason.
+body: When a client says "my tree was fine last year and now it's dying," **the first instinct is to look for disease or pests.** That's backwards.
+body: Most mystery declines trace to a **change in the soil environment** — construction, a new retaining wall, an irrigation tweak, a regrade. Often the homeowner didn't connect those events to the tree.
+body: Our job: **scan the property for evidence of recent change** before we start chasing biotic causes. The right diagnosis is often the one nobody thought to ask about.
+
+
+@card-grid
+eyebrow: The Four Mechanisms
+title: How human activity kills a tree's root system.
+subtitle: All four can be subtle. All four are common.
+card: Soil Compaction | Heavy equipment, fill, or foot traffic squeezes the porosity out of the soil. Fibrous roots can't survive.
+card: Root Damage | Trenching, foundation digs, retaining walls, utility runs — cutting roots cuts the tree's lifelines.
+card: Grade Change | Raising or lowering the soil level around the trunk. Absorbing roots get buried or removed.
+card: Water Redirection | Construction next door changes how water flows. Trees drown, or dry out, depending which way it tips.
+
+
+@section-divider
+number: 01
+title: Soil Compaction
+tagline: The first step of any construction project is to strip off the soil that makes trees thrive.
+
+
+@welcome
+eyebrow: Mechanism 1
+title: Compacted soil holds no air and no water.
+subtitle: Common on new construction, commercial sites, newer suburbs.
+body: **Topsoil is porous, therefore unsuitable for building** — so construction crews strip it off first. What's left is compacted clay or fill. Fibrous roots cannot survive in it.
+body: **Dozers, trucks, excavators, and piles of fill all cause compaction.** Once the soil is compressed, water runs across the surface rather than penetrating to the root zone.
+body: **Don't be fooled by lush turf on top.** Sod over compacted soil looks fine for years while the tree above it slowly suffocates.
+body: **Fun fact:** the same thing happens in cow pastures. You'll see stone-dead trees in fields with cows grazing under them. The hooves compress the soil — small surface area, lots of weight — and the tree's root zone never recovers.
+
+
+@section-divider
+number: 02
+title: Root Damage
+tagline: Trenching, retaining walls, utility runs. Mechanical cuts to the root system.
+
+
+@welcome
+eyebrow: Mechanism 2
+title: Below-grade damage hides in plain sight.
+subtitle: The damage happened months ago. The decline shows up now.
+body: **Mostly seen after digging a foundation, cutting in a retaining wall or fence, or trenching utilities** — underground power, sewer, water, irrigation, drain tile.
+body: **Scan the property for evidence of these events.** We over-diagnose disease before we ever evaluate for mechanical damage underground. That's the first move.
+body: **Distance matters.** Trees can sometimes recover if the cut was far from the trunk. The closer to the root flare, the worse the damage — and the lower the chance of survival.
+body: **A recent example:** the city trenched fiber through the boulevard in front of my house about 8 weeks ago, and half the easement trees are dead already. The trench started right next to the trunks.
+body: **An old example:** Stan Bratt's neighbor, ten years ago. 30-inch Bur Oak. They cut right up to the root flare on one side to dig a foundation for a home addition. It slowly declined and eventually tipped over onto the house.
+
+
+@section-divider
+number: 03
+title: Grade Change
+tagline: Raising or lowering the dirt level around the tree. Both kill, slowly.
+
+
+@welcome
+eyebrow: Mechanism 3
+title: Most absorbing roots are in the top 8–12 inches.
+subtitle: Bury them or remove them and the tree starves.
+body: **Raising the grade** acts like compaction — covering the roots with fill means it takes much more water to reach absorbing depth. The roots starve for both water and air.
+body: **Lowering the grade** removes the absorbing roots outright. Less common, because a regrade usually involves removing the tree first — but we see it on partial regrades.
+body: **The diagnostic tell:** an older tree with **no visible root flare** at ground level. If the trunk goes straight into the soil like a fence post, the grade was raised on it at some point. Recently-raised: tree still looks healthy. Old grade change: tree is probably already dead from girdling roots.
+body: **A war story:** a customer called once to ask if their trees would be okay after the contractor raised the grade "a little bit" and then lowered it back to normal a week or two later. The contractor sent photos of mature oaks buried under **maybe 10 feet of fill.** They asked what they could do to save them. We told them to call their lawyer. The trees were dug back out with an excavator and died shortly after.
+
+
+@section-divider
+number: 04
+title: Water Redirection
+tagline: Construction changes the way water moves. The tree gets flooded — or stranded.
+
+
+@welcome
+eyebrow: Mechanism 4
+title: It doesn't have to be on the client's property.
+subtitle: A neighbor's project can be the cause.
+body: **Construction projects — even in a neighbor's yard — can change the direction or volume of water flowing into the homeowner's yard.** A regraded driveway upstream becomes a new drainage problem downstream.
+body: **In extreme cases**, water pools above the root system and **literally drowns the roots.** Fungal problems get worse with excessive moisture at the base of the tree: Armillaria root rot, canker diseases.
+body: **Saturated soil also destabilizes trees.** There can be so much water that there's not enough solid ground for the roots to grip — trees can simply fall over, especially in a wind event.
+body: **Spruces and white pines** are especially vulnerable. They capture so much wind that a slight loss of root grip is enough to topple them. We get calls every year about an uprooted conifer after a heavy rain.
+
+
+@three-rules
+eyebrow: The Diagnostic Move
+title: Three things to ask before chasing disease.
+subtitle: Run through these on every "mystery decline" call.
+rule: What's Changed Recently? | New construction, retaining wall, fence, irrigation work, paving, regrade — anywhere on this property or the neighbors'. Get specifics.
+rule: Walk The Property | Look for the physical evidence — trenches refilled with different soil, footings near the trunk, missing root flare, water pooling near the base, fresh sod.
+rule: Then Look At The Tree | After ruling in or out an abiotic cause, then evaluate for disease and pests. This order saves you from misdiagnosing 30% of decline calls.
+
+
+@closing
+title: Diagnose the site before you diagnose the tree.
+subtitle: The cause is usually upstream of the symptom.
+mark: BT

@@ -1,0 +1,108 @@
+# ============================================================
+# BRATT TREE — Topic Deck: Tree Cabling and Bracing
+# Source content for the slide deck shown at
+#   /topics/cabling-and-bracing/present
+# Originally presented at the 2024-09-22 PPM meeting.
+# ============================================================
+
+
+@cover
+eyebrow: Structural Care
+unit: Cabling & Bracing
+subtitle: What to do about structurally compromised trees — and how.
+tagline: Save the tree.
+tagline: Lower the risk.
+tagline: Sell the alternative to removal.
+image: /topics/cabling-and-bracing/cover.jpeg
+image-fit: cover
+meta-left: Bratt Tree · Topic Library
+meta-right: Version 1.0
+
+
+@section-divider
+number: 01
+title: Why We Cable
+tagline: The clients who need this most are the ones with the biggest, most-loved trees.
+
+
+@three-rules
+eyebrow: When To Recommend
+title: A cable-and-brace candidate looks like this.
+subtitle: Three things that have to line up.
+rule: High-Value Tree | A mature specimen the homeowner cares about — not something a homeowner would shrug at losing.
+rule: High-Value Targets | Branches over a home, parking area, pool, or driveway. The cost of failure matters.
+rule: Pruning Can't Fix It | The structural defect (codominant stems, included bark, large open cavities) can't be corrected by removing weight alone.
+
+
+@image-side
+eyebrow: The Pitch
+title: It's an alternative to removal.
+subtitle: A conversation worth having before the saw comes out.
+body: Nearly any species can be a candidate. The question is never "can we cable it?" — it's "is this tree worth saving, and is the risk acceptable once we do?"
+body: When a client is steeling themselves for a $4,000 removal of a tree they love, a cable-and-brace plan with weight reduction is often a fraction of the cost and keeps the tree standing.
+image: /topics/cabling-and-bracing/why-cable.jpeg
+fit: cover
+
+
+@section-divider
+number: 02
+title: How It Works
+tagline: Steel cables, bracing rods, and weight reduction — when to use which.
+
+
+@welcome
+eyebrow: Cables
+title: What cables actually do.
+subtitle: They compress the union, not "hold the tree together."
+body: **Steel cables compress branch attachments** and relieve torque from compromised unions. The tree responds by laying down stronger wound-response tissue — the cable is structural, but it's also therapeutic.
+body: We use **static steel cables**. Dynamic cabling systems exist (they let the stem travel a bit before catching it), but for a tree that bad we'd usually be doing **weight reduction pruning** anyway.
+body: Cables are often paired with weight reduction, but it's not a hard requirement.
+
+
+@welcome
+eyebrow: Bracing Rods
+title: Like stitches for the trunk.
+subtitle: They close the seam so the tree can heal it shut.
+body: Bracing rods **close cracks in stem wood** and prevent future cracking. Wounds that open below branch unions can't be helped by a cable above them — that's a bracing-rod job.
+body: This is exactly like getting stitches for a deep cut. **A wound that keeps opening and closing can't compartmentalize.** Hold it shut, and the tree builds wound-response tissue much faster.
+body: One rod is rarely enough — see the diagnosis at the end of this deck.
+
+
+@three-rules
+eyebrow: When Not To
+title: Trees we don't cable.
+subtitle: Cases can be made in most situations, but a few species or situations are a hard no.
+rule: Cottonwoods | The wood is too soft and they don't compartmentalize well. Weight reduction is a far better alternative.
+rule: Trees Already Failing | A tree in active structural collapse needs to come down, not be patched.
+rule: Targets You Can Move | If the only "target" is a fence or a shed the client doesn't care about, sometimes the right answer is to relocate the target, not engineer the tree.
+
+
+@section-divider
+number: 03
+title: Case Study
+tagline: A real candidate — what we saw, and what we did.
+
+
+@image-side
+eyebrow: The Tree
+title: Mature deciduous with a major fork.
+subtitle: Codominant stems with included bark, sitting over a deck and a roof.
+body: The client called about a "weird sound" the tree made during a windstorm. On inspection: a deep seam running across the trunk where two stems meet, hanging directly over the back deck.
+body: Removal would have cost ~$4,500 and lost a tree the client had grown up next to.
+image: /topics/cabling-and-bracing/case-study-tree.jpg
+fit: cover
+
+
+@three-rules
+eyebrow: Diagnosis
+title: How the work plans out.
+subtitle: Three principles that should be in every estimate.
+rule: Minimum Two Bracing Rods | A seam goes all the way across the trunk, so it has to be closed in more than one spot to close flat. One rod alone twists the seam open at the far end.
+rule: Minimum Two Cables | One stem to another stem with a single cable creates uneven pull on one side. Two cables balance the forces and keep the union under even compression.
+rule: Pair With Weight Reduction | Reducing canopy weight at the tip of each codominant stem improves the structural integrity faster than the cable will on its own.
+
+
+@closing
+title: Save the tree. Sell the alternative.
+subtitle: When the conversation starts at removal, lead with this.
+mark: BT

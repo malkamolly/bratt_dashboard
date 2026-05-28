@@ -1,0 +1,98 @@
+# ============================================================
+# BRATT TREE — Topic Deck: Coniferous Fungal Diseases
+# Rhizosphaera, Diplodia, Dothistroma, Brown Spot Needle Blight.
+# Originally presented at the 2024-09-09 PPM meeting.
+# ============================================================
+
+
+@cover
+eyebrow: Plant Health Care · Diseases
+unit: Conifer Fungal Diseases
+subtitle: Rhizosphaera, Diplodia, Dothistroma, Brown Spot Needle Blight.
+tagline: Lethal if untreated.
+tagline: Easy to spot.
+tagline: Sell early treatment.
+image: /topics/coniferous-fungal-diseases/cover.png
+image-fit: cover
+meta-left: Bratt Tree · Topic Library
+meta-right: Version 1.0
+
+
+@welcome
+eyebrow: The Mechanism
+title: How fungal diseases behave on conifers.
+subtitle: One playbook covers all four pathogens.
+body: **Spread by rain, sprinklers, and airborne spores.** Once a needle or shoot is infected, it stays infected — there is no "cure" for the infected tissue.
+body: **Treatment protects new growth as it emerges.** Spray three times as needles or candles emerge for constant protection while the tissue matures. Mature needles and shoots cannot be infected, so the goal is to bridge the vulnerable window.
+body: Persistent treatment over **2–3 years** is what makes a tree look better — not the first season's spray. Set that expectation with the client up front.
+collage: Wet spring | /topics/coniferous-fungal-diseases/overview.jpeg
+
+
+@three-rules
+eyebrow: Before The Detail
+title: The non-negotiables.
+subtitle: Three things every client needs to hear.
+rule: Lethal | Untreated, all four of these eventually kill the tree. This isn't a cosmetic conversation.
+rule: Persistent | The first season of treatment won't look much different. Year two starts showing it. Year three is when the tree looks like a tree again.
+rule: Timing Matters | We spray as needles or candles emerge. Miss the window and the new growth is exposed.
+
+
+@section-divider
+number: 01
+title: The Four Pathogens
+tagline: Different hosts, different symptoms, same treatment philosophy.
+
+
+@image-side
+eyebrow: 1 of 4 · Rhizosphaera Needle Cast
+title: Spruce. Inside-out browning.
+subtitle: Most common on **blue (Colorado) spruce.**
+body: Needles **turn purple and die from the interior of the branch outward**, leaving healthy tips and dead interiors — a hollow, ragged look.
+body: **Often confused for (and paired with) spider mite damage.** Check for the purple needles, then check for mites; they like the same conditions.
+image: /topics/coniferous-fungal-diseases/rhizosphaera-1.png
+fit: cover
+
+
+@image-side
+eyebrow: 2 of 4 · Diplodia Shoot Blight
+title: Pine. Curled, wilted shoots.
+subtitle: Most common on **red, mugo, and Austrian pines.**
+body: Infected new shoots **curl and wilt.** Spotted from a long way off — they look like dead candles still attached to the branch.
+body: Tree may look overall healthy but covered in patches of dead, brown new growth. The damage is on **last year's growth**, mostly.
+image: /topics/coniferous-fungal-diseases/diplodia-1.jpeg
+fit: cover
+
+
+@image-side
+eyebrow: 3 of 4 · Dothistroma Needle Blight
+title: Pine. Banded needles.
+subtitle: Extremely common on **Austrian pine.**
+body: **Infects needles, not shoots.** Look for a **red or black band** across the needle, with dead tissue beyond it.
+body: The banding pattern is diagnostic — needles die at the band but the base often stays green for a while.
+image: /topics/coniferous-fungal-diseases/dothistroma-1.png
+fit: cover
+
+
+@image-side
+eyebrow: 4 of 4 · Brown Spot Needle Blight
+title: Pine. Whole-needle death.
+subtitle: Most common on **Scotch and Ponderosa pine.**
+body: Appears similar to dothistroma — but the **whole needle dies** rather than pausing at a banded section.
+body: Needles can stay green where they attach to the shoot, then fall off by end of season. Frequently confused with dothistroma; the difference is the kill pattern on the needle itself.
+image: /topics/coniferous-fungal-diseases/brownspot-1.jpeg
+fit: cover
+
+
+@three-rules
+eyebrow: Key Points
+title: How to talk about these issues with a customer.
+subtitle: Same talk track works for all four.
+rule: It's Lethal | "Untreated, this disease will eventually kill the tree. We can stop it, but the tree has to start treatment this year."
+rule: Treatment Takes Years | "You won't see a dramatic improvement this season. By year two the new growth is clean. By year three the tree looks healthy again."
+rule: Timing Is Everything | "We spray three times in the spring as the new needles emerge. Miss that window and the new growth gets infected and we lose another year."
+
+
+@closing
+title: Spot it. Time it. Treat it for three years.
+subtitle: The conversation is the same. The pathogen just changes.
+mark: BT

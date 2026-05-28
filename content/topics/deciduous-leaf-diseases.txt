@@ -1,0 +1,183 @@
+# ============================================================
+# BRATT TREE — Topic Deck: Deciduous Leaf Diseases
+# Apple Scab, Anthracnose, Fireblight, and Bur Oak Blight.
+# Originally presented at the 2024-06-17 PPM meeting.
+# ============================================================
+
+
+@cover
+eyebrow: Plant Health Care · Diseases
+unit: Deciduous Leaf Diseases
+subtitle: Apple Scab, Anthracnose, Fireblight, and Bur Oak Blight.
+tagline: Three look-alikes.
+tagline: One that kills trees.
+tagline: Know which is which.
+image: /topics/deciduous-leaf-diseases/cover.jpeg
+image-fit: cover
+meta-left: Bratt Tree · Topic Library
+meta-right: Version 1.0
+
+
+@three-rules
+eyebrow: The Headline
+title: One of these four kills trees.
+subtitle: The other three look terrible but are mostly cosmetic.
+rule: Cosmetic | **Apple Scab and Anthracnose** make trees look like garbage in mid-summer. They don't kill the tree. Two fungicide sprays in spring fix them.
+rule: Lethal | **Fireblight** is bacterial, untreatable beyond pruning, and kills trees. Confusing it with apple scab on a crabapple is the most expensive mistake we can make.
+rule: Sneaky | **Bur Oak Blight** is non-lethal on its own but weakens the tree's defenses against Two-Lined Chestnut Borer. Treat it like a slow-burning problem worth solving.
+
+
+@section-divider
+number: 01
+title: Apple Scab
+tagline: Cosmetic. Common. Easy fix.
+
+
+@image-side
+eyebrow: Apple Scab
+title: Venturia inaequalis
+subtitle: A fungal disease that makes crabapples look like Halloween in June.
+body: Infects **crabapples, apple, pear, mountain ash.** Non-lethal — it damages leaves and fruit but does not kill the tree.
+body: Treatable with **two fungicide sprays in the spring** about 15 days apart, while the leaves emerge. Untreated trees defoliate by mid-July.
+body: **Often confused with fireblight** — but fireblight kills, scab doesn't. The distinguishing feature: scab makes brown spots; fireblight makes whole shoots wilt and stay attached.
+image: /topics/deciduous-leaf-diseases/apple-scab.jpeg
+fit: cover
+
+
+@photo
+eyebrow: Apple Scab
+title: What it looks like on the leaf.
+image: /topics/deciduous-leaf-diseases/scab-leaf-spots.png
+caption: Brown spots with fringed borders, leading to yellow leaves and premature leaf drop.
+fit: contain
+
+
+@photo
+eyebrow: Apple Scab
+title: And on the fruit.
+image: /topics/deciduous-leaf-diseases/scab-fruit.png
+caption: Crabapples and apples both show pitted, scabbed fruit when infected.
+fit: contain
+
+
+@section-divider
+number: 02
+title: Anthracnose
+tagline: Cosmetic. Common. Easy fix. Sound familiar?
+
+
+@image-side
+eyebrow: Anthracnose
+title: Looks bad, isn't lethal.
+subtitle: Same treatment as apple scab — two fungicide sprays in the spring.
+body: Causes **cupping and curling** of leaves. Common in wet, rainy springs (as with every leaf fungal pathogen).
+body: Mostly affects **white oaks (including Bur), hackberry, sugar and Norway maple, birch, walnut, elm, butternut.**
+body: Frequently confused with **oak wilt** (lethal) and **Bur Oak Blight** (slow-burn). Anthracnose alone won't kill a tree; aesthetically it's less than ideal for a large front-yard specimen.
+image: /topics/deciduous-leaf-diseases/anthracnose.jpeg
+fit: cover
+
+
+@photo
+eyebrow: Anthracnose
+title: Cupped leaf on oak.
+image: /topics/deciduous-leaf-diseases/anthracnose-oak.png
+caption: The classic anthracnose tell — leaves curl inward and wilt from the edges.
+fit: contain
+
+
+@photo
+eyebrow: Anthracnose
+title: Maple anthracnose.
+image: /topics/deciduous-leaf-diseases/anthracnose-maple.png
+caption: Same disease, different host — irregular brown blotches following the leaf veins.
+fit: contain
+
+
+@section-divider
+number: 03
+title: Fireblight
+tagline: The one that kills. Not treatable. Has to be cut out.
+
+
+@image-side
+eyebrow: Fireblight
+title: Erwinia amylovora
+subtitle: Bacterial. Lethal. The one we cannot afford to miss.
+body: One of the most common bacterial issues in MN. Affects many **rosaceae species** — mostly apple, crab, mountain ash; also hawthorn and serviceberry.
+body: **Newer shoots wilt and fall flat off the tree while still attached.** The tree looks heat-damaged. Cambial staining is similar to Dutch Elm Disease.
+body: **Not treatable** beyond pruning out infected shoots. Sanitization cuts must be made **8 feet below visible staining.** Tools sanitized between cuts with **10% bleach solution.** Once it's in the trunk, the tree is done.
+image: /topics/deciduous-leaf-diseases/fireblight-mountain-ash.png
+fit: cover
+
+
+@photo
+eyebrow: Fireblight
+title: Cambial staining.
+image: /topics/deciduous-leaf-diseases/fireblight-cambial.png
+caption: Cut into an infected branch and the cambium shows green-brown discoloration — similar to what DED does in elm.
+fit: contain
+
+
+@photo
+eyebrow: Fireblight
+title: Canker on the trunk.
+image: /topics/deciduous-leaf-diseases/fireblight-canker.png
+caption: Bark sinks and cracks where the bacterium has killed the cambium. Overwinters here.
+fit: contain
+
+
+@photo
+eyebrow: Fireblight
+title: Crabapple in advanced infection.
+image: /topics/deciduous-leaf-diseases/fireblight-crab.png
+caption: When multiple stems show the shepherd's-crook wilt, the tree usually can't be saved.
+fit: contain
+
+
+@section-divider
+number: 04
+title: Bur Oak Blight
+tagline: Slow-burn. The petioles tell the story.
+
+
+@image-side
+eyebrow: Bur Oak Blight
+title: Tubakia iowensis
+subtitle: Non-lethal alone — but it opens the door for Two-Lined Chestnut Borer.
+body: Affects **Bur Oak** with wide variation in susceptibility tree-to-tree. **Petioles turn brown and stay attached to twigs all winter.** Whole leaves may stay attached too.
+body: Look for **black fruiting bodies on the petioles** — that's the diagnostic. Confused with anthracnose; a tree can have both.
+body: Leaves look healthy until **mid-to-late July**, then start to brown. Removing fallen leaves doesn't help — infected petioles are still on the tree.
+body: **Treatment: propiconazole trunk injection in May**, before full leaf development. Treat every two years.
+image: /topics/deciduous-leaf-diseases/bob-declining.png
+fit: cover
+
+
+@photo
+eyebrow: Bur Oak Blight
+title: Conidia on the petiole.
+image: /topics/deciduous-leaf-diseases/bob-conidia.png
+caption: The black fruiting bodies on the petiole are the diagnostic — confirm B.O.B. before treating.
+fit: contain
+
+
+@photo
+eyebrow: Bur Oak Blight
+title: Red-veined leaves.
+image: /topics/deciduous-leaf-diseases/bob-veins.png
+caption: Infected leaves show distinctive red discoloration along the veins.
+fit: contain
+
+
+@three-rules
+eyebrow: Talking To Clients
+title: How to tell them apart in one sentence.
+subtitle: Memorize these — they get you through 90% of the conversations.
+rule: Apple Scab vs Fireblight | Scab makes **brown spots on leaves**. Fireblight makes **whole shoots wilt and stay attached.** If the shoot looks like a shepherd's crook, it's fireblight — get it cut out.
+rule: Anthracnose vs B.O.B. | Anthracnose **cups and curls** leaves in early summer. B.O.B. shows up **mid-to-late July** with **petioles that stay on the twig all winter.**
+rule: When In Doubt | A lab test (or a confident verbal diagnosis backed by a photo to a manager) is always cheaper than misdiagnosing fireblight as scab. **Err toward fireblight** when the answer matters.
+
+
+@closing
+title: Three look-alikes. One killer.
+subtitle: Get the differential right and the treatment plan is easy.
+mark: BT
