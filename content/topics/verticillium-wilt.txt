@@ -1,0 +1,144 @@
+# ============================================================
+# BRATT TREE — Topic Deck: Verticillium Wilt
+# Source content for the slide deck shown at
+#   /topics/verticillium-wilt/present
+# Syntax matches the onboarding / training-module deck format:
+#   @layout-name  starts a new slide
+#   key: value    a single field on the current slide
+#   key: a | b    multi-part value (split by "|")
+#   - item        a list item
+#   # or //       a comment, ignored
+# ============================================================
+
+
+@cover
+eyebrow: Plant Health Care · Diseases
+unit: Verticillium Wilt
+subtitle: A soil-borne fungus that kills susceptible trees.
+tagline: Verticillium dahliae
+tagline: Know the symptoms.
+tagline: Talk to clients with confidence.
+image: /topics/verticillium-wilt/cover.jpeg
+meta-left: Bratt Tree · Topic Library
+meta-right: Version 1.0
+
+
+@section-divider
+number: 01
+title: Why We Care
+tagline: It lives in the soil, kills trees, and there is no cure.
+
+
+@three-rules
+eyebrow: The Headline
+title: Three things to know
+subtitle: Internalize these before anything else.
+rule: It Kills | **Verticillium wilt kills trees.** Once a tree is infected the prognosis is grim — and there is no treatment currently available.
+rule: It Hides | The fungus lives in the soil for years with no visible evidence, then infects roots and gets pulled up into the canopy.
+rule: It's Common Here | Sugar maple, catalpa, and magnolia get hit hardest in our area. Sugar maple is especially common on the **west side** of the Twin Cities.
+
+
+@welcome
+eyebrow: The Mechanism
+title: It attacks the xylem.
+subtitle: A water-translocation issue, not a leaf issue.
+body: The **xylem** is the plumbing inside a tree — the tissue that pulls water from the roots up into the canopy. Verticillium wilt **plugs the xylem**, so water can't get where it needs to go.
+body: When water flow is diminished or cut off, the leaves start to **dry out (desiccate)**. That's why you see tip dieback and wilting throughout the canopy even when the weather has been wet.
+body: This is also why fungicide doesn't help — the fungus isn't on the leaves, it's clogging the pipes from the inside.
+
+
+@section-divider
+number: 02
+title: Identifying It
+tagline: What it looks like in the canopy, in the leaves, and under the bark.
+
+
+@welcome
+eyebrow: Symptoms
+title: What to look for.
+subtitle: No single symptom guarantees a diagnosis — look for the pattern.
+body: **Abnormal leaf color**, wilting throughout the canopy, **small leaf size**, thinning canopy with or without other obvious adverse conditions, and **tip dieback** are all common.
+body: **Streaks under the bark** on twigs are a strong tell, but not necessary for ID. Maples streak **green**, catalpas streak **brown**. You may or may not see them.
+body: A **lab test** is the only way to guarantee a diagnosis. If a client wants certainty, that's the path.
+
+
+@photo
+eyebrow: Symptom 1 of 4
+title: Discolored leaves
+image: /topics/verticillium-wilt/symptom-1.png
+alt: A maple leaf with yellow blotches between the veins
+caption: Yellow blotching between the veins on a sugar maple leaf — an early canopy symptom.
+fit: contain
+
+
+@photo
+eyebrow: Symptom 2 of 4
+title: Yellowing on one side
+image: /topics/verticillium-wilt/symptom-2.png
+alt: Two trees, the one on the left yellowing while the one on the right stays green
+caption: Asymmetric yellowing — one side of the canopy fails before the other as the xylem clogs.
+fit: contain
+
+
+@photo
+eyebrow: Symptom 3 of 4
+title: Streaks under the bark
+image: /topics/verticillium-wilt/symptom-3.png
+alt: Cross-section of a twig showing dark streaks in the wood
+caption: Cut a small twig and peel the bark — maples streak green, catalpas streak brown. Strong tell when present.
+fit: contain
+
+
+@photo
+eyebrow: Symptom 4 of 4
+title: Thinning, dying canopy
+image: /topics/verticillium-wilt/symptom-4.png
+alt: A maple tree with a sparse, partially browning canopy
+caption: Sparse foliage and tip dieback throughout the canopy — late-stage decline.
+fit: contain
+
+
+@section-divider
+number: 03
+title: Living With It
+tagline: How to advise clients when their soil already has it.
+
+
+@welcome
+eyebrow: Where it lives
+title: It lives in the soil — for years.
+subtitle: You can't remove it. You can only replace what you plant.
+body: The fungus stays in the soil and **cannot be removed** by treatment, fumigation, or replacement of the topsoil at any practical scale. It can sit dormant for years with no visible evidence of its presence.
+body: When a susceptible tree's roots hit infected soil, the fungal bodies enter the roots and travel up into the canopy. From there, the decline begins.
+body: The path forward is **removal + replacement with an unsusceptible species** — not retreating the existing tree.
+collage: Roots in soil | /topics/verticillium-wilt/where.jpeg
+
+
+@checklist
+eyebrow: Safe Replants
+title: Native MN species that resist Verticillium
+subtitle: Recommend these when a client needs to replace an infected tree.
+- **Oak**
+- **Birch**
+- **Apple**
+- **Hackberry**
+- **Pine**
+- **Spruce**
+- **Walnut**
+- **Willow**
+- **Ironwood**
+
+
+@three-rules
+eyebrow: How to Talk to Clients
+title: Lead with honesty.
+subtitle: Three moves that work for this conversation.
+rule: Name It Clearly | Use the words "Verticillium wilt" and explain it in plain language: a soil fungus that plugs the tree's plumbing.
+rule: Set Expectations | There is **no cure**. Treatment isn't the answer. The honest path is removal and replacement with a species that isn't susceptible.
+rule: Offer the Path Forward | Bring the resistant-species list to the conversation. Clients want a plan, not just bad news.
+
+
+@closing
+title: Know it. Spot it. Explain it.
+subtitle: When in doubt, a lab test is the only way to be sure.
+mark: BT

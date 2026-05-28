@@ -258,6 +258,32 @@
     `;
   };
 
+  // -------- 2b. PHOTO --------
+  // Single large photograph with optional title/eyebrow/caption above.
+  // Used in topic decks where one slide = one image (e.g. disease symptoms).
+  //   image: /topics/<slug>/photo.jpg   (required for the image to render)
+  //   caption: short note shown under the photo
+  //   fit: contain (default) or cover
+  layouts['photo'] = (s, idx, meta) => {
+    const imgSrc = f(s, 'image');
+    const caption = f(s, 'caption');
+    const fit = (f(s, 'fit') || 'contain').toLowerCase();
+    const alt = f(s, 'alt') || f(s, 'title') || '';
+    return `
+      <section class="slide slide--photo" data-screen-label="${esc(f(s, 'title') || 'Photo')}">
+        ${topRail(s, meta)}
+        ${titleBlock(s)}
+        <figure class="photo-frame">
+          ${imgSrc
+            ? `<img class="photo-frame-img photo-frame-img--${esc(fit)}" src="${esc(imgSrc)}" alt="${esc(alt)}">`
+            : `<image-slot id="photo-${idx}" shape="rounded" placeholder="Drop a photo here"></image-slot>`}
+          ${caption ? `<figcaption class="photo-caption">${inline(caption)}</figcaption>` : ''}
+        </figure>
+        ${footer(s, idx, meta)}
+      </section>
+    `;
+  };
+
   // -------- 3. AGENDA --------
   layouts['agenda'] = (s, idx, meta) => {
     // items as "Name | Description"

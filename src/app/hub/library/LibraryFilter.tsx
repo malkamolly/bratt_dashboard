@@ -4,28 +4,39 @@ import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { useMemo } from 'react';
 
-type Topic = {
-  meetingSlug: string;
-  meetingDate: string;
+export type LibraryEntry = {
+  /** "topic" = standalone topic deck; "meeting" = meeting's educational section */
+  kind: 'topic' | 'meeting';
+  slug: string;
+  /** Where the card links — for topics this opens the deck directly; for
+   *  meetings it goes to the meeting detail page (with its present link). */
+  href: string;
+  /** YYYY-MM-DD — used for sort + the date pill on the card */
+  date: string;
   title: string;
+  /** Short blurb shown on the card; meeting entries don't have one */
+  description: string | null;
   tags: string[];
   tagSlugs: string[];
+  /** If a topic deck is linked to a meeting, the meeting slug — shown as a
+   *  cross-link on the card. */
+  meetingSlug: string | null;
 };
 
 export function LibraryFilter({
-  topics,
+  entries,
   allTags,
 }: {
-  topics: Topic[];
+  entries: LibraryEntry[];
   allTags: { label: string; slug: string }[];
 }) {
   const sp = useSearchParams();
   const activeTag = sp.get('tag') ?? 'all';
 
   const visible = useMemo(() => {
-    if (activeTag === 'all') return topics;
-    return topics.filter((t) => t.tagSlugs.includes(activeTag));
-  }, [topics, activeTag]);
+    if (activeTag === 'all') return entries;
+    return entries.filter((e) => e.tagSlugs.includes(activeTag));
+  }, [entries, activeTag]);
 
   function chipClasses(slug: string) {
     const base =
@@ -51,7 +62,11 @@ export function LibraryFilter({
   return (
     <>
       <div className="mb-6 flex flex-wrap gap-2">
-        <Link href={chipHref('all')} className={chipClasses('all')} scroll={false}>
+        <Link
+          href={chipHref('all')}
+          className={chipClasses('all')}
+          scroll={false}
+        >
           All
         </Link>
         {allTags.map((t) => (
@@ -72,21 +87,31 @@ export function LibraryFilter({
         </p>
       ) : (
         <ul className="grid grid-cols-1 gap-5 sm:grid-cols-2">
-          {visible.map((t) => (
-            <li key={t.meetingSlug}>
+          {visible.map((e) => (
+            <li key={`${e.kind}-${e.slug}`}>
               <Link
-                href={`/hub/meetings/${t.meetingSlug}`}
+                href={e.href}
                 className="bt-card flex h-full flex-col gap-2 transition-colors hover:!border-orange"
               >
-                <p className="font-headline text-xs font-extrabold uppercase tracking-ribbon text-orange">
-                  {formatDate(t.meetingDate)}
-                </p>
+                <div className="flex items-center gap-2">
+                  <p className="font-headline text-xs font-extrabold uppercase tracking-ribbon text-orange">
+                    {formatDate(e.date)}
+                  </p>
+                  {e.kind === 'topic' && (
+                    <span className="rounded-full bg-lime/20 px-2 py-0.5 font-headline text-[10px] font-extrabold uppercase tracking-ribbon text-bark-deep">
+                      Deck
+                    </span>
+                  )}
+                </div>
                 <h2 className="font-headline text-xl font-black uppercase text-bark-deep">
-                  {t.title}
+                  {e.title}
                 </h2>
-                {t.tags.length > 0 && (
+                {e.description && (
+                  <p className="text-sm text-fg-2">{e.description}</p>
+                )}
+                {e.tags.length > 0 && (
                   <div className="mt-auto flex flex-wrap gap-1.5 pt-2">
-                    {t.tags.map((tag) => (
+                    {e.tags.map((tag) => (
                       <span
                         key={tag}
                         className="rounded-full bg-paper-edge px-2.5 py-0.5 font-headline text-[10px] font-extrabold uppercase tracking-ribbon text-bark-deep"
