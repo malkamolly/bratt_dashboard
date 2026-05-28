@@ -25,7 +25,6 @@ subtitle: One playbook covers all four pathogens.
 body: **Spread by rain, sprinklers, and airborne spores.** Once a needle or shoot is infected, it stays infected — there is no "cure" for the infected tissue.
 body: **Treatment protects new growth as it emerges.** Spray three times as needles or candles emerge for constant protection while the tissue matures. Mature needles and shoots cannot be infected, so the goal is to bridge the vulnerable window.
 body: Persistent treatment over **2–3 years** is what makes a tree look better — not the first season's spray. Set that expectation with the client up front.
-collage: Wet spring | /topics/coniferous-fungal-diseases/overview.jpeg
 
 
 @three-rules
