@@ -1,0 +1,111 @@
+# ============================================================
+# BRATT TREE — Topic Deck: Oak Galls
+# Three cynipid-wasp galls common on Minnesota oaks.
+# Merged from two meetings:
+#   - 2024-12-16 (Cynipid Galls On Native Oak Trees MN, base)
+#   - 2024-08-04 (Oak Cynipidae portion of the mixed deck)
+# ============================================================
+
+
+@cover
+eyebrow: Plant Health Care · Pests
+unit: Oak Galls
+subtitle: Red Oak Apple Gall, Jumping Oak Gall, Bullet Gall — and why none of them need treatment.
+tagline: Cosmetic, not lethal.
+tagline: "Do nothing" is usually the right call.
+tagline: Look weirder than they are.
+image: /topics/oak-galls/cover.jpeg
+image-fit: cover
+meta-left: Bratt Tree · Topic Library
+meta-right: Version 1.0
+
+
+@welcome
+eyebrow: How Galls Form
+title: A tiny insect convinces the tree to build it a house.
+subtitle: Wild biology — but harmless to the tree in almost every case.
+body: **Galls form during the accelerated growth period of new leaves, shoots, and flowers** in late spring. Cynipid wasps damage the plant by feeding, and their **salivary secretions cause the tree to over-produce growth hormones.**
+body: Higher hormone production means **increased cell size or cell numbers in localized spots** — that's the gall. The insect feeds and grows inside it.
+body: **Mature plant tissues aren't affected.** And once galls start forming, they keep going even after the insect dies. Gall makers basically reprogram meristematic tissue.
+
+
+@three-rules
+eyebrow: What To Tell The Client
+title: The honest answer is "do nothing."
+subtitle: Three rules for the conversation.
+rule: Not Harmful | Galls do not harm the tree. Very young trees covered with galls for several years in a row could be weakened — but that's the exception, not the rule.
+rule: No Treatment Needed | We do not spray for gall-making insects. If a homeowner insists on doing something for cosmetic reasons, **soil-injected imidacloprid** is labeled for it.
+rule: Older Galls Don't Drop | Galls are now part of the twig. Even after treatment they don't fall off — they shed slowly over time. Set that expectation.
+
+
+@section-divider
+number: 01
+title: The Three Galls
+tagline: Different oak, different shape — same lack of urgency.
+
+
+@image-side
+eyebrow: 1 of 3 · Red Oak Apple Gall
+title: The yellow-green one in your hand.
+subtitle: "Creepy oak galls that are fun to dissect and look delicious."
+body: **Found on red oak family** — the bristle-tipped, two-year-acorn oaks. The gall is the size of a small apple, **greenish-yellow with brown speckles.**
+body: Inside is a small chamber where the larva develops. **Fun to dissect** — they look strangely like fruit but are 100% inedible.
+body: **Cosmetic only.** Drops off the tree late summer or fall after the larva matures.
+image: /topics/oak-galls/cover.jpeg
+fit: cover
+
+
+@image-side
+eyebrow: 1 of 3 · Red Oak Apple Gall
+title: Inside the apple gall.
+subtitle: A single chamber. A single larva. That's the whole story.
+body: The cross-section shows what's actually going on — a hollow gall with **a small mass at the center where the larva grows.** The plant material around it is just an engineered nursery.
+body: **Once the larva emerges**, the gall dries out and falls. There's nothing left to treat by the time the homeowner notices it.
+image: /topics/oak-galls/apple-gall-cross-section.jpeg
+fit: contain
+
+
+@image-side
+eyebrow: 2 of 3 · Jumping Oak Gall
+title: Neuroterus saltatorius
+subtitle: Looks like confetti on the leaf.
+body: **Caused by cynipidae** — small stingless wasps. **Non-lethal. Cosmetic only.**
+body: Called "jumping" because the **wasp larva is moving around inside the gall.** They often fall off the leaf as they near maturity — sometimes you'll find them hopping on the ground under an infested tree.
+body: **Found on white oak and bur oak** — the rounded-lobe, one-year-acorn oaks.
+image: /topics/oak-galls/jumping-gall.jpg
+fit: cover
+
+
+@image-side
+eyebrow: 3 of 3 · Oak Bullet Gall
+title: Disholcaspis quercusmamma
+subtitle: Round, bullet-shaped galls clustered on twigs.
+body: **Caused by cynipid wasps.** Adult lays an egg on the leaf or twig and the tree grows a shell around it. The wasp bores its way out when ready to fly.
+body: **July and August: thousands of tiny stingless wasps emerge.** They're not interested in you. The galls don't disrupt vascular function inside the twig — the tree's fine.
+body: **Found on bur oak**, less commonly on swamp white (bicolor) oak.
+image: /topics/oak-galls/bullet-gall.jpeg
+fit: cover
+
+
+@welcome
+eyebrow: The Wasp Nest Mistake
+title: Yellow jackets feeding on bullet galls aren't nesting.
+subtitle: The single most common client question on this topic.
+body: Bullet galls **secrete nectar on the outside.** That nectar attracts **yellow jackets and other wasps** — but those wasps aren't nesting in the galls.
+body: **They're just feeding.** The galls themselves are still cynipid-wasp galls. No nest, no swarm, no aggression — just hungry yellow jackets at a sugar source.
+body: **Tell the client this directly.** It's the difference between "we need pest control" and "this is normal and we leave it alone."
+
+
+@three-rules
+eyebrow: The Sales Talk
+title: How to close a "what about these weird things?" call.
+subtitle: Most of these calls don't need a visit at all.
+rule: Lead With "It's Fine" | "Those are galls — they're cosmetic. The tree isn't being harmed. We'd recommend doing nothing." That sentence saves a truck roll on most of these.
+rule: Offer The Option | If the client really wants something done — for aesthetics, for peace of mind — soil-injected imidacloprid is the tool. Set expectations: it works for next year, not this one.
+rule: Set The Yellow-Jacket Expectation | If they're bullet galls, mention the wasp activity proactively. "You'll see yellow jackets feeding on them — they're not nesting, just snacking. Leave them alone."
+
+
+@closing
+title: Cosmetic. Fascinating. Not your problem.
+subtitle: When the right answer is "nothing," say it with confidence.
+mark: BT

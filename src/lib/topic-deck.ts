@@ -69,14 +69,24 @@ export const TOPIC_DECKS: Record<string, TopicDeck> = {
     footerLeft: 'BRATT TREE  |  DECIDUOUS LEAF DISEASES',
     version: 'Version 1.0',
   },
-  'coniferous-fungal-diseases': {
-    slug: 'coniferous-fungal-diseases',
-    title: 'Coniferous Fungal Diseases',
+  'common-conifer-pests-and-diseases': {
+    slug: 'common-conifer-pests-and-diseases',
+    title: 'Conifer Pests & Diseases',
     description:
-      'Rhizosphaera, Diplodia, Dothistroma, Brown Spot Needle Blight. Lethal if untreated — and easy to spot.',
-    tags: ['Disease', 'Plant Health Care'],
-    date: '2024-09-09',
-    footerLeft: 'BRATT TREE  |  CONIFER FUNGAL DISEASES',
+      'Rhizosphaera, Diplodia, Dothistroma, Brown Spot Needle Blight, and European Pine Sawfly. Lethal if untreated — and easy to spot.',
+    tags: ['Disease', 'Pest', 'Plant Health Care'],
+    date: '2025-06-01',
+    footerLeft: 'BRATT TREE  |  CONIFER PESTS & DISEASES',
+    version: 'Version 1.1',
+  },
+  'oak-galls': {
+    slug: 'oak-galls',
+    title: 'Oak Galls',
+    description:
+      'Red Oak Apple Gall, Jumping Oak Gall, Bullet Gall — three weird-looking but harmless cynipid-wasp galls on Minnesota oaks.',
+    tags: ['Pest', 'Plant Health Care'],
+    date: '2024-12-16',
+    footerLeft: 'BRATT TREE  |  OAK GALLS',
     version: 'Version 1.0',
   },
   'hemlock-rust-mite-and-ded': {

@@ -1,0 +1,117 @@
+# ============================================================
+# BRATT TREE — Topic Deck: Common Conifer Pests & Diseases
+# Rhizosphaera, Diplodia, Dothistroma, Brown Spot Needle Blight,
+# and European Pine Sawfly.
+#
+# Merged from three meetings:
+#   - 2025-06-01 (Common Conifer Pests, base for the structure)
+#   - 2024-09-09 (Coniferous Fungal Diseases, image source)
+#   - 2024-08-04 (Brown Spot needle blight specifics)
+# ============================================================
+
+
+@cover
+eyebrow: Plant Health Care · Pests & Diseases
+unit: Conifer Pests & Diseases
+subtitle: The five most common issues we see on conifers — and how to talk about treating them.
+tagline: Lethal if untreated.
+tagline: Easy to spot.
+tagline: Sell early treatment.
+image: /topics/common-conifer-pests-and-diseases/cover.png
+image-fit: cover
+meta-left: Bratt Tree · Topic Library
+meta-right: Version 1.1
+
+
+@welcome
+eyebrow: What These Have In Common
+title: One playbook covers most of them.
+subtitle: Four fungal diseases and one insect — but the conversation rhymes.
+body: **The most common issues we see on conifers.** Easily prevented or eliminated once you can ID them, and lethal if untreated.
+body: **Damage is obvious on last year's growth.** That's where you look. Current-year growth typically looks fine until the cycle catches up to it.
+body: **Solved by foliar treatment.** All five respond to a spring spray program. Pine Sawfly is the outlier — it's an insect, not a fungus — but timing and conversation are similar.
+
+
+@three-rules
+eyebrow: Before The Detail
+title: The non-negotiables.
+subtitle: Three things every client needs to hear.
+rule: Lethal | Untreated, all five eventually kill the tree. Pine Sawfly the fastest — faster than the fungal diseases. This isn't a cosmetic conversation.
+rule: Persistent | The first season won't look dramatically different. Year two starts showing it. Year three is when the tree looks like a tree again.
+rule: Timing Matters | We spray as needles or candles emerge. Miss the window and the new growth is unprotected. Fertilize alongside treatment and recovery is faster.
+
+
+@section-divider
+number: 01
+title: The Five Issues
+tagline: Different hosts, different symptoms — same diagnostic discipline.
+
+
+@image-side
+eyebrow: 1 of 5 · Rhizosphaera Needle Cast
+title: Spruce. Inside-out browning.
+subtitle: Most common on **blue (Colorado) spruce.**
+body: **Branches defoliate from the center of the tree outward.** Typically identified by **purple needles on the branch interior.**
+body: This year's growth appears unaffected. Last year's growth may be purple. Previous years' growth may have already fallen off.
+body: **Often paired with spider mite damage** — check for the purple needles, then check for mites. They like the same conditions.
+image: /topics/common-conifer-pests-and-diseases/rhizosphaera-1.png
+fit: cover
+
+
+@image-side
+eyebrow: 2 of 5 · Diplodia Shoot Blight
+title: Pine. Curled, wilted new shoots.
+subtitle: Most common on **red, mugo, and Austrian pines.**
+body: New shoots emerge, become infected, **begin to curl** as the needles die back. The curled shoot itself dies.
+body: Identified by **brown / yellow / curling shoots on last year's growth.** Easily spotted from a long distance once advanced.
+body: Tree can look overall healthy but **covered in patches of dead new growth** — the dead candles are the diagnostic.
+image: /topics/common-conifer-pests-and-diseases/diplodia-1.jpeg
+fit: cover
+
+
+@image-side
+eyebrow: 3 of 5 · Dothistroma Needle Blight
+title: Pine. Banded needles.
+subtitle: Extremely common on **Austrian pine.**
+body: **Infects needles, not shoots.** Look for a **red or black band** across the needle, with dead tissue beyond the band.
+body: The banding pattern is diagnostic — needles die at the band but the base often stays green for a while.
+body: Treated the same as the other fungal blights — three sprays in spring as needles emerge.
+image: /topics/common-conifer-pests-and-diseases/dothistroma-1.png
+fit: cover
+
+
+@image-side
+eyebrow: 4 of 5 · Brown Spot Needle Blight
+title: Pine. Whole-needle death.
+subtitle: Most common on **Scotch and Ponderosa pine** — white pine less so.
+body: Appears similar to dothistroma — but the **whole needle dies** rather than pausing at a banded section. Needles can stay green where they attach to the shoot, then drop end of season.
+body: **Reddish-brown spots on needles** are the early tell. Scattered through the canopy rather than isolated to one area.
+body: **Sanitation helps:** rake up fallen needles, redirect sprinklers off the foliage. Spray three times in the spring like dothistroma.
+image: /topics/common-conifer-pests-and-diseases/brownspot-1.jpeg
+fit: cover
+
+
+@image-side
+eyebrow: 5 of 5 · European Pine Sawfly
+title: Pine. Larvae feeding in clusters.
+subtitle: Most common on **red pine and mugo pine.** Kills trees faster than any of the fungal diseases.
+body: Adult **lays eggs inside the needle.** Eggs hatch and **several small larvae feed on individual needles together.** As they grow, each larva consumes a whole needle by itself.
+body: **Easy to spot in the lower canopy**, especially on the house side of red and mugo pines. Last year's growth looks chewed up — like rabbit or deer damage. It's not. It's larvae.
+body: Infestations can be **identified in winter** as **small white bulges along the needle surface** in a sequential line — that's where eggs were laid.
+image: /topics/common-conifer-pests-and-diseases/pine-sawfly.jpeg
+fit: cover
+
+
+@three-rules
+eyebrow: How To Talk About These
+title: The customer conversation that closes.
+subtitle: Three beats, in this order, every time.
+rule: Frame The Stakes | "Untreated, this issue will eventually kill the tree. Treating it will get your tree looking healthy and green again — but the tree won't recover by next month."
+rule: Set The Timeline | "You'll see improvement next year, with the biggest change by year three. Fertilizing alongside treatment speeds the recovery — looks better faster."
+rule: Lead With Value | "Compare the cost of treatment against the cost of replacing a tree this size — and the privacy, the aesthetics, the savings. Treatment usually wins by a wide margin."
+
+
+@closing
+title: Spot it. Time it. Sell the multi-year program.
+subtitle: The pathogen changes. The conversation doesn't.
+mark: BT
