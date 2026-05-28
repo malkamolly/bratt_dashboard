@@ -190,8 +190,18 @@
     // When `image` is set, render a plain <img> instead of the user-fillable
     // image-slot — this is how the onboarding cover pins the mascot.
     const imgSrc = f(s, 'image');
+    // `image-fit` controls whether a fixed cover image is letterboxed inside
+    // the circle (contain, default — used by the onboarding mascot) or fills
+    // the whole circle (cover — used for photographs).
+    const imageFit = (f(s, 'image-fit') || 'contain').toLowerCase() === 'cover'
+      ? 'cover'
+      : 'contain';
+    // Long single-word titles (e.g. "VERTICILLIUM") overflow the cover at the
+    // default 220px font. Auto-shrink when the longest word is too long.
+    const longestWord = Math.max(...unit.split(/\s+/).map(w => w.length));
+    const compactClass = longestWord > 10 ? ' slide--cover-compact' : '';
     return `
-      <section class="slide slide--cover" data-screen-label="Cover · ${esc(unit)}">
+      <section class="slide slide--cover${compactClass}" data-screen-label="Cover · ${esc(unit)}">
         <div class="cover-text">
           <div class="cover-eyebrow">${esc(eyebrow)}</div>
           <h1 class="cover-name">${esc(unit)}</h1>
@@ -200,7 +210,7 @@
         </div>
         <div class="cover-imagery">
           ${imgSrc
-            ? `<img class="cover-image-fixed" src="${esc(imgSrc)}" alt="${esc(unit)}">`
+            ? `<img class="cover-image-fixed cover-image-fixed--${imageFit}" src="${esc(imgSrc)}" alt="${esc(unit)}">`
             : `<image-slot id="${esc(imgId)}" shape="circle" placeholder="${esc(imgPlaceholder)}"></image-slot>`}
         </div>
         <div class="cover-meta">
@@ -253,6 +263,66 @@
               ? `<div class="welcome-collage-grid">${collage}</div>`
               : (quote ? `<blockquote>${inline(quote)}</blockquote>` : '')}
           </div>` : ''}
+        ${footer(s, idx, meta)}
+      </section>
+    `;
+  };
+
+  // -------- 2c. IMAGE-SIDE --------
+  // Two-column slide: text on the left (eyebrow/title/subtitle/body), a
+  // single large photograph filling the right column. Used when a photo
+  // carries real meaning alongside the text (e.g. "It lives in the soil"
+  // shown next to a roots-in-soil photo). Cousin of @welcome, which puts a
+  // collage or quote on the right; @image-side gives you one big image.
+  //   image: /path/to/photo.jpg   (required)
+  //   side: right (default) or left
+  //   fit:  cover (default) or contain
+  layouts['image-side'] = (s, idx, meta) => {
+    const bodies = fa(s, 'body');
+    const imgSrc = f(s, 'image');
+    const alt = f(s, 'alt') || f(s, 'title') || '';
+    const side = (f(s, 'side') || 'right').toLowerCase() === 'left' ? 'left' : 'right';
+    const fit = (f(s, 'fit') || 'cover').toLowerCase() === 'contain' ? 'contain' : 'cover';
+    const caption = f(s, 'caption');
+    return `
+      <section class="slide slide--image-side slide--image-side-${side}" data-screen-label="${esc(f(s, 'title') || 'Image')}">
+        ${topRail(s, meta)}
+        <div class="image-side-text">
+          ${eyebrowEl(s)}
+          ${titleEl(s)}
+          ${subtitleEl(s)}
+          ${bodies.length ? `<div class="image-side-body">${bodies.map(b => `<p>${inline(b)}</p>`).join('')}</div>` : ''}
+        </div>
+        <div class="image-side-media">
+          ${imgSrc
+            ? `<img class="image-side-img image-side-img--${fit}" src="${esc(imgSrc)}" alt="${esc(alt)}">`
+            : `<image-slot id="image-side-${idx}" shape="rounded" placeholder="Drop a photo here"></image-slot>`}
+          ${caption ? `<div class="image-side-caption">${inline(caption)}</div>` : ''}
+        </div>
+        ${footer(s, idx, meta)}
+      </section>
+    `;
+  };
+
+  // -------- 2d. CARD-GRID --------
+  // 3-column grid of named cards — name + optional short description.
+  // Eye-catching alternative to a bullet checklist when you have a small,
+  // discrete set of items you want to feel meaningful (e.g. a list of
+  // tree species). Each "card" line is "Name | optional description".
+  layouts['card-grid'] = (s, idx, meta) => {
+    const cards = fa(s, 'card').map((row) => {
+      const [name, desc] = splitPipe(row);
+      return `
+        <div class="grid-card">
+          <div class="grid-card-name">${inline(name || '')}</div>
+          ${desc ? `<div class="grid-card-desc">${inline(desc)}</div>` : ''}
+        </div>`;
+    }).join('');
+    return `
+      <section class="slide slide--card-grid" data-screen-label="${esc(f(s, 'title') || 'Cards')}">
+        ${topRail(s, meta)}
+        ${titleBlock(s)}
+        <div class="card-grid">${cards}</div>
         ${footer(s, idx, meta)}
       </section>
     `;

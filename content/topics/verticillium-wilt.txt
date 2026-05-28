@@ -19,6 +19,7 @@ tagline: Verticillium dahliae
 tagline: Know the symptoms.
 tagline: Talk to clients with confidence.
 image: /topics/verticillium-wilt/cover.jpeg
+image-fit: cover
 meta-left: Bratt Tree · Topic Library
 meta-right: Version 1.0
 
@@ -104,29 +105,32 @@ title: Living With It
 tagline: How to advise clients when their soil already has it.
 
 
-@welcome
+@image-side
 eyebrow: Where it lives
 title: It lives in the soil — for years.
 subtitle: You can't remove it. You can only replace what you plant.
-body: The fungus stays in the soil and **cannot be removed** by treatment, fumigation, or replacement of the topsoil at any practical scale. It can sit dormant for years with no visible evidence of its presence.
-body: When a susceptible tree's roots hit infected soil, the fungal bodies enter the roots and travel up into the canopy. From there, the decline begins.
+body: The fungus stays in the soil and **cannot be removed** by treatment, fumigation, or replacement of the topsoil at any practical scale. It can sit dormant for years with no visible evidence.
+body: When a susceptible tree's roots hit infected soil, the fungal bodies enter the roots and travel up into the canopy.
 body: The path forward is **removal + replacement with an unsusceptible species** — not retreating the existing tree.
-collage: Roots in soil | /topics/verticillium-wilt/where.jpeg
+image: /topics/verticillium-wilt/where.jpeg
+alt: A young tree's roots reaching down into dark soil
+side: right
+fit: cover
 
 
-@checklist
+@card-grid
 eyebrow: Safe Replants
 title: Native MN species that resist Verticillium
 subtitle: Recommend these when a client needs to replace an infected tree.
-- **Oak**
-- **Birch**
-- **Apple**
-- **Hackberry**
-- **Pine**
-- **Spruce**
-- **Walnut**
-- **Willow**
-- **Ironwood**
+card: Oak | Strong, long-lived shade tree
+card: Birch | Graceful, early-season interest
+card: Apple | Flowering + fruiting option
+card: Hackberry | Tough urban survivor
+card: Pine | Evergreen structure
+card: Spruce | Dense evergreen screen
+card: Walnut | Stately canopy tree
+card: Willow | Loves wet sites
+card: Ironwood | Slow-grow understory
 
 
 @three-rules
