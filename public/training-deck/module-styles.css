@@ -345,10 +345,14 @@ deck-stage > section {
 .cover-image-fixed--cover {
   object-fit: cover;
 }
-/* Auto-shrink the title when a single word is too long to fit at the
-   default 220px (e.g. "VERTICILLIUM"). Triggered by the renderer. */
+/* Auto-shrink tiers for long cover titles. Driven by the renderer.
+   Default 220px is fine up to ~8 chars per word, ~16 total. Beyond that
+   the title would push into the photo column. */
 .slide--cover-compact .cover-name {
   font-size: 150px;
+}
+.slide--cover-ultra-compact .cover-name {
+  font-size: 110px;
 }
 
 .welcome-quote--collage {

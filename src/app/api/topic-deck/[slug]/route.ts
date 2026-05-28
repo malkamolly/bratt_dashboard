@@ -93,7 +93,10 @@ export async function GET(
       brandFooter: cfg.brandFooter,
       footerLeft: cfg.footerLeft,
       version: cfg.version,
-      railLeft: cfg.moduleTitle ? 'Bratt Tree · ' + cfg.moduleTitle : 'Bratt Tree · Library'
+      railLeft: cfg.moduleTitle ? 'Bratt Tree · ' + cfg.moduleTitle : 'Bratt Tree · Library',
+      // Topic-deck rule: the cover photo circle is never empty. If a deck
+      // doesn't specify its own cover image, the mascot fills the circle.
+      coverFallback: '/training-deck/assets/mascot-circle-color.png'
     };
     function boot() {
       try {

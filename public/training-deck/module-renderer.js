@@ -196,12 +196,22 @@
     const imageFit = (f(s, 'image-fit') || 'contain').toLowerCase() === 'cover'
       ? 'cover'
       : 'contain';
-    // Long single-word titles (e.g. "VERTICILLIUM") overflow the cover at the
-    // default 220px font. Auto-shrink when the longest word is too long.
+    // Auto-shrink long titles so the photo column never gets pushed off the
+    // slide. Default 220px is sized for ~8 chars/line in the text column.
+    // Longer titles (Verticillium, Native Oaks of Minnesota) drop a tier or
+    // two automatically. See the topic-deck spec — the photo circle is
+    // always visible.
     const longestWord = Math.max(...unit.split(/\s+/).map(w => w.length));
-    const compactClass = longestWord > 10 ? ' slide--cover-compact' : '';
+    const totalLen = unit.length;
+    let sizeClass = '';
+    if (longestWord > 12 || totalLen > 22) sizeClass = ' slide--cover-ultra-compact';
+    else if (longestWord > 8 || totalLen > 16) sizeClass = ' slide--cover-compact';
+    // Cover image fallback: if the deck didn't specify an `image:` on its
+    // cover slide, fall back to whatever the meta config provides (topic
+    // decks default to the Bratt Tree mascot — see the topic-deck route).
+    const resolvedImg = imgSrc || (meta && meta.coverFallback);
     return `
-      <section class="slide slide--cover${compactClass}" data-screen-label="Cover · ${esc(unit)}">
+      <section class="slide slide--cover${sizeClass}" data-screen-label="Cover · ${esc(unit)}">
         <div class="cover-text">
           <div class="cover-eyebrow">${esc(eyebrow)}</div>
           <h1 class="cover-name">${esc(unit)}</h1>
@@ -209,8 +219,8 @@
           ${taglines.length ? `<div class="cover-taglines">${taglines.map(t => `<div class="cover-tagline">${esc(t)}</div>`).join('')}</div>` : ''}
         </div>
         <div class="cover-imagery">
-          ${imgSrc
-            ? `<img class="cover-image-fixed cover-image-fixed--${imageFit}" src="${esc(imgSrc)}" alt="${esc(unit)}">`
+          ${resolvedImg
+            ? `<img class="cover-image-fixed cover-image-fixed--${imageFit}" src="${esc(resolvedImg)}" alt="${esc(unit)}">`
             : `<image-slot id="${esc(imgId)}" shape="circle" placeholder="${esc(imgPlaceholder)}"></image-slot>`}
         </div>
         <div class="cover-meta">
