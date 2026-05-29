@@ -1,0 +1,87 @@
+# ============================================================
+# BRATT TREE — Topic Deck: Elm Foliar Issues
+# Elm Leaf Beetle vs Elm Leaf Miner vs Anthracnose.
+# Originally presented July 2024.
+# ============================================================
+
+
+@cover
+eyebrow: Plant Health Care · Pests & Diseases
+unit: Elm Foliar Issues
+subtitle: Elm Leaf Beetle, Elm Leaf Miner, Anthracnose — three look-alikes on the same tree.
+tagline: Cosmetic, not lethal.
+tagline: Easy to mistake for each other.
+tagline: Same treatment for two of three.
+image: /topics/elm-foliar-issues/cover.jpeg
+image-fit: cover
+meta-left: Bratt Tree · Topic Library
+meta-right: Version 1.0
+
+
+@three-rules
+eyebrow: The Headline
+title: Three issues. None of them kills the tree.
+subtitle: But all three make the tree look terrible mid-summer.
+rule: Elm Leaf Beetle | Insect. Skeletonizes leaves. Treatable with permethrin or systemic imidacloprid. Annual treatment, not a cure.
+rule: Elm Leaf Miner | Different insect, similar damage pattern. Same treatment as the beetle.
+rule: Anthracnose | Fungal, not insect. **Frequently confused with Dutch Elm Disease** — that's the conversation we have to manage. Two fungicide sprays in spring.
+
+
+@section-divider
+number: 01
+title: The Two Insects
+tagline: Behave like Japanese beetle: damage now, beetles dead later, leaves chewed up regardless.
+
+
+@image-side
+eyebrow: 1 of 3 · Elm Leaf Beetle
+title: Skeletonized leaves, browning canopy.
+subtitle: Cosmetic damage. Annual treatment.
+body: **Non-lethal foliar damage** — the beetle chews on the leaf surface, leaving the veins behind. Tree looks rough by July.
+body: **Treatment:** permethrin foliar spray or systemic imidacloprid soil drench. Behaves like Japanese beetle — **damage happens before the beetles die**, so spraying isn't a quick reversal.
+body: **Set the expectation:** spraying is **annual**, not a one-and-done. It provides value up front but doesn't fix the tree long-term.
+image: /topics/elm-foliar-issues/elm-leaf-beetle.jpeg
+fit: cover
+
+
+@image-side
+eyebrow: 2 of 3 · Elm Leaf Miner
+title: Tunneling damage between the leaf surfaces.
+subtitle: Different insect, similar look on the tree.
+body: **Larva tunnels between the upper and lower leaf surfaces**, leaving translucent or browning patches that look like small blisters or trails.
+body: **Non-lethal.** Behaves similarly to the beetle in that damage occurs before the insect dies. Tree shrugs it off year-over-year.
+body: **Same treatment as the beetle:** permethrin or systemic imidacloprid. Same annual cadence, same "value up front" framing.
+image: /topics/elm-foliar-issues/elm-leaf-miner.jpeg
+fit: cover
+
+
+@section-divider
+number: 02
+title: The Fungal One
+tagline: Anthracnose looks like DED to a panicked homeowner — and we need to manage that fast.
+
+
+@image-side
+eyebrow: 3 of 3 · Elm Anthracnose
+title: Cupped, curling leaves with brown blotches.
+subtitle: Fungal disease. Non-lethal. Frequently confused with Dutch Elm Disease.
+body: **Fungal foliar disease.** Causes cupping, curling, and brown blotches on the leaves — the kind of damage that looks alarming to a homeowner who's heard of DED.
+body: **It's not DED.** Anthracnose doesn't kill the tree. The first move on a homeowner-DED-panic call is to rule anthracnose in (or out) before we send anyone into full diagnostic mode.
+body: **Treatment:** two fungicide sprays in the spring as leaves emerge. Annual program prevents recurrence.
+image: /topics/elm-foliar-issues/anthracnose.png
+fit: cover
+
+
+@three-rules
+eyebrow: Talking To Clients
+title: How to handle the "is my elm dying?" call.
+subtitle: Three sentences that calm down 90% of these conversations.
+rule: It's Not DED | "What you're seeing is anthracnose (or beetle damage). It's cosmetic — your tree is not in danger. Dutch Elm Disease looks very different and we'd be able to tell you that immediately."
+rule: It Comes Back Every Year | "Treatment is an annual program. We can knock the damage way down with spring treatments — but the bugs and the fungus come back, so we plan for it every year."
+rule: Don't Confuse The Three | If it's chewed (skeletonized or tunneled), it's an insect. If it's cupped/curled with brown blotches, it's anthracnose. Different treatment, same talk track.
+
+
+@closing
+title: Three things to rule out before anyone says "DED."
+subtitle: Confidence in the differential is the whole sale.
+mark: BT

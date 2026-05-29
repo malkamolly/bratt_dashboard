@@ -1,0 +1,77 @@
+# ============================================================
+# BRATT TREE — Topic Deck: Canker Diseases of Poplar
+# Hypoxylon Canker and Septoria Canker — the two pathogens that
+# kill more poplars in the Midwest than anything else.
+# Originally presented at the 2025-05-19 PPM meeting.
+# ============================================================
+
+
+@cover
+eyebrow: Plant Health Care · Diseases
+unit: Poplar Cankers
+subtitle: Hypoxylon and Septoria — the two fungal diseases that kill more poplars in the Midwest than anything else.
+tagline: Both are lethal.
+tagline: Both are common.
+tagline: Treatment is limited.
+image: /topics/poplar-canker-diseases/cover.jpeg
+image-fit: cover
+meta-left: Bratt Tree · Topic Library
+meta-right: Version 1.0
+
+
+@welcome
+eyebrow: Canker Disease Basics
+title: What a canker actually is.
+subtitle: A dead, sunken patch in the bark where a fungal infection has killed the cambium.
+body: **A canker is a localized area where the fungus has killed the cambium** — the layer of living tissue just beneath the bark. The bark sinks, sometimes cracks, and the tree can't move water and nutrients past that spot.
+body: **If a canker rings the stem, it girdles the tree.** That's how cankers kill — by interrupting the vascular system locally, then progressively.
+body: **Treatment is limited for both poplar cankers.** This deck is about identification and what to tell the client — not a list of treatments.
+
+
+@section-divider
+number: 01
+title: Hypoxylon Canker
+tagline: The biggest single cause of poplar death in the Midwest.
+
+
+@image-side
+eyebrow: Hypoxylon Canker
+title: The Midwest's poplar killer.
+subtitle: A fungal disease that targets stressed poplars and quietly girdles them.
+body: **Largest cause of poplar death in the Midwest.** Hypoxylon attacks trees that are already weakened — drought, root damage, construction stress, age.
+body: **Look for the bark to slough off** in patches, revealing dark gray or black fungal tissue underneath. Affected limbs die back. Once visible on the trunk, the tree is usually past saving.
+body: **No effective fungicide treatment exists.** Management is preventative — reduce stress, water adequately, avoid root damage. Once symptoms show, the conversation is about removal, not cure.
+image: /topics/poplar-canker-diseases/hypoxylon.jpeg
+fit: cover
+
+
+@section-divider
+number: 02
+title: Septoria Canker
+tagline: Less common, equally serious. Can girdle a stem and kill the tree.
+
+
+@image-side
+eyebrow: Septoria Canker
+title: A stem-girdling fungus on poplar.
+subtitle: Less prevalent than Hypoxylon but just as fatal once established.
+body: **Fungal disease that can girdle the stem and kill a poplar.** Septoria primarily attacks **hybrid poplars** but is seen on natives too.
+body: **Starts as small dark lesions on twigs and small branches** that expand into sunken cankers. As the canker enlarges, it interrupts the vascular system around it.
+body: **Same management approach as Hypoxylon:** reduce stress, water properly, and once a stem is girdled, the affected branch (or tree) is on the removal track.
+image: /topics/poplar-canker-diseases/septoria.jpeg
+fit: cover
+
+
+@three-rules
+eyebrow: Talking To Clients
+title: The honest poplar conversation.
+subtitle: Three things to say when a homeowner asks "can you save this tree?"
+rule: Be Straight About The Odds | "By the time we see active canker on the trunk, the tree is usually past treatment. We can talk about how to slow it down — but we should also start thinking about replacement on a timeline."
+rule: Stress Is The Trigger | "These fungi are everywhere. They only take down a tree that's already stressed. The best thing we can do for your other poplars is reduce their stress — proper watering, root zone protection, no new construction damage."
+rule: Plan The Removal Now, Not Later | "Dead and dying poplars become hazards fast — the wood is brittle and breaks unpredictably. Better to plan a controlled removal than wait for a windstorm to do it for you."
+
+
+@closing
+title: Two diseases. Same playbook. Honest conversation wins.
+subtitle: When the news is bad, deliver it with a plan.
+mark: BT

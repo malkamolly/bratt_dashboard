@@ -1,0 +1,97 @@
+# ============================================================
+# BRATT TREE — Topic Deck: Pruning Apple Trees for Fruit
+# What an arborist (not an orchardist) needs to know about
+# pruning a residential apple tree.
+# Originally presented at the 2025-02-10 PPM meeting.
+# ============================================================
+
+
+@cover
+eyebrow: Pruning · Fruit Trees
+unit: Apple Tree Pruning
+subtitle: According to your arborist — not your orchardist.
+tagline: We're arborists, not orchardists.
+tagline: Know enough to advise.
+tagline: Don't over-promise on fruit.
+image: /topics/pruning-apple-trees/cover.jpeg
+image-fit: cover
+meta-left: Bratt Tree · Topic Library
+meta-right: Version 1.0
+
+
+@welcome
+eyebrow: The Framing
+title: Stay in our lane.
+subtitle: Apple care is its own career — we just need to be useful in a residential setting.
+body: **Fruit trees, and their care, make up several careers** that each take a lifetime to perfect. Teaching our customers about 400 years of orchard pruning theory is **not our job.**
+body: What follows is a **general set of guidelines** for apple pruning in a residential landscape — enough that we can answer the common questions confidently without pretending to be commercial growers.
+body: **If a homeowner asks something off-script** ("which variety should I plant?", "why aren't my apples sweeter?"), the right answer is sometimes "you'd want to talk to an orchardist for that."
+
+
+@section-divider
+number: 01
+title: Where Apple Trees Come From
+tagline: A 2-minute origin story for context.
+
+
+@image-side
+eyebrow: Apple Tree Origins
+title: 400 years of human intervention.
+subtitle: A few origin facts that come up in client conversations.
+body: **Discovered in central Asia, introduced to North America by the French in the 1600s.** Apples as we know them are the result of thousands of years of selective breeding.
+body: **Apple seeds don't grow true to seed** — plant a seed from a Honeycrisp and you'll get something else, probably a crabapple. **Commercial apple trees are clones** (grafted onto crabapple rootstock).
+body: **Apples generally need a separate pollinator tree.** Innumerable exceptions, but if a homeowner asks why their lone apple tree barely produces — pollination is the most likely answer.
+image: /topics/pruning-apple-trees/apple-origins.jpeg
+fit: cover
+
+
+@section-divider
+number: 02
+title: Why We Prune
+tagline: Three reasons that justify the cuts.
+
+
+@three-rules
+eyebrow: Why Prune Apple Trees?
+title: The three actual reasons.
+subtitle: All three matter for fruit, structure, and the homeowner's quality of life.
+rule: Fruit Production | Apples form on **spur buds from last year's growth**, not on this year's new shoots. Pruning balances "keep the fruit buds" against "don't let the tree get tangled."
+rule: Tree Structure | Compact branches with light reaching all of them produces better fruit and a healthier tree. **Strong central leader, no crossing branches, no crowding.**
+rule: Manageability | A residential apple tree the homeowner can pick from — and that doesn't break under fruit weight — beats a wild 30-foot specimen every time.
+
+
+@image-side
+eyebrow: Fruit Buds
+title: Spur buds produce apples. Don't cut them off.
+subtitle: The single most important thing to know before you prune.
+body: **Fruit forms on "spur" buds — stubby, knobby short shoots that come off older wood.** Last year's spur buds are likely to produce fruit this year. Cut those off and you've cut off the harvest.
+body: **New growth (this year's long shoots) won't fruit this year.** Buds beyond the previous year's reduction point are unlikely to produce fruit.
+body: **Reduction cuts** are how we shorten branches without removing fruiting wood. Aim for cuts that preserve the spur buds along the older wood.
+image: /topics/pruning-apple-trees/fruit-buds.jpeg
+fit: cover
+
+
+@image-side
+eyebrow: Ideal Structure
+title: What a well-pruned apple tree looks like.
+subtitle: Older growth preserved, newer growth shortened, light everywhere.
+body: **Older growth is preserved** (that's where the fruiting spurs live). **Newer growth is shortened** (so the tree doesn't get top-heavy or tangled).
+body: **Compact branches that can physically withstand the weight of fruit.** Apple branches break under load — structure matters more than for an ornamental tree.
+body: **Branches all exposed to light.** **Strong central leader.** Minimal crowding. Upright water-sprout growth is controlled, not allowed to take over the canopy.
+image: /topics/pruning-apple-trees/ideal-structure.jpeg
+fit: cover
+
+
+@three-rules
+eyebrow: Talking To Clients
+title: When a homeowner asks about their apple tree.
+subtitle: Three answers that cover most of the calls.
+rule: "Will You Prune It For Fruit?" | "We'll prune it for structure and health, which helps with fruit. We're not orchardists — we won't promise more apples, but the tree will be in better shape to produce."
+rule: "Why Doesn't It Produce Apples?" | Most likely: no pollinator nearby, the tree got pruned too hard (cut off the spur buds), or last year's spring weather killed the blossoms. Walk through each before recommending anything.
+rule: "When Should You Prune?" | **Late winter / early spring** before bud break. Avoid pruning in summer (stresses the tree) or fall (creates wounds that don't close before winter).
+
+
+@closing
+title: Prune for structure. Preserve the spurs.
+subtitle: We're not orchardists — but we can be useful.
+mark: BT

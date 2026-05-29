@@ -1,0 +1,106 @@
+# ============================================================
+# BRATT TREE — Topic Deck: Fall Diagnostics & PHC Controls
+# What changes in fall, what to look at, and why fall watering
+# matters.
+# Originally presented at the 2024-11-04 PPM meeting.
+# ============================================================
+
+
+@cover
+eyebrow: Plant Health Care · Diagnostics
+unit: Fall Diagnostics
+subtitle: PHC controls, conifer vs deciduous. What changes after leaf drop — and what to look at instead.
+tagline: A leaf is a snapshot.
+tagline: Diagnose now, treat in spring.
+tagline: Water before the freeze.
+image: /topics/fall-phc-controls/cover.jpeg
+image-fit: cover
+meta-left: Bratt Tree · Topic Library
+meta-right: Version 1.0
+
+
+@welcome
+eyebrow: Why Fall Matters
+title: The diagnostic window before everything freezes.
+subtitle: Three questions worth working through on every fall site visit.
+body: **What has changed since summer?** A tree that looked fine in July can show fall symptoms (needle shedding, premature browning, late chlorosis) that point to issues for next year.
+body: **Conifer vs deciduous diagnostics differ in fall.** Conifers hold all their tells; deciduous trees lose half their diagnostic surface area to the ground.
+body: **What if we can't positively ID the pest right now?** Sometimes the answer is "treat early next spring based on what we saw this summer" — not "diagnose deeper in October."
+
+
+@section-divider
+number: 01
+title: Conifer Fall Factors
+tagline: They keep their needles — so they keep their diagnostics.
+
+
+@image-side
+eyebrow: Needle Shedding
+title: Old needles drop. New needles stay. Don't panic.
+subtitle: Common for needles 2–3 years old, pronounced on white pines.
+body: **All conifers shed older needles** — typically anything **2–3 years and older.** This is normal, healthy, expected.
+body: **Pronounced on white pines** — clients call about it every fall. The diagnostic move: check that **the new and second-year needles are still attached and green.** If only the inner-canopy old needles are shedding, it's normal.
+body: **Not harmful. Not treatable. Not necessary to address.** The conversation is reassurance, not diagnosis.
+image: /topics/fall-phc-controls/needle-shedding.jpeg
+fit: cover
+
+
+@image-side
+eyebrow: Larch / Tamarack
+title: Larix laricina — the deciduous conifer.
+subtitle: Don't be that guy who thinks the larch is dying.
+body: **Larch (Tamarack)** is a **coniferous tree** in the Pinaceae family — but **not "evergreen."** Needles are soft and short, cones small.
+body: **Drops all its needles every fall** in a stunning yellow display, then re-grows them in spring. **This is normal.**
+body: If a client calls panicked about their "dying pine" turning yellow in October — there's a 50/50 chance they have a larch. Walk through the ID before you walk through diagnostics.
+image: /topics/fall-phc-controls/larch.jpeg
+fit: cover
+
+
+@section-divider
+number: 02
+title: Deciduous Fall Factors
+tagline: The leaves on the ground tell you what the tree was doing all year.
+
+
+@image-side
+eyebrow: Reading The Canopy In Fall
+title: Did treatment work? Compare side by side.
+subtitle: We sprayed this tree in May. It's now November.
+body: **A treated crabapple in November still has its leaves.** Untreated crabapples nearby will be nearly bare — apple scab defoliated them in late summer.
+body: **This side-by-side is one of our best sales artifacts.** Before/after, treated/untreated, with the homeowner's own eyes.
+body: When in doubt about whether a fall treatment is working, walk the property next year in October and compare to a neighbor. The answer is usually obvious.
+image: /topics/fall-phc-controls/treated-crab.jpeg
+fit: cover
+
+
+@welcome
+eyebrow: The Big Picture
+title: A leaf is a snapshot.
+subtitle: This year's leaf has this year's problems. We treat for next year.
+body: **Fungal diseases** can be sprayed just after bud break, preventing symptoms on mature leaves. **Chlorosis** can be treated at fall dosage now — effective for two seasons.
+body: **Poor soil fertility** can be addressed until the ground freezes — or after it thaws in spring. **Spring rains** can change next year's leaves for better or worse on fungal issues.
+body: **Insect damage on this year's leaf has zero effect on next year's leaf.** We get new ones every spring. The job is preventing the same damage from happening again.
+
+
+@three-rules
+eyebrow: The Fall Diagnostic Move
+title: Three habits that make fall site visits worth doing.
+subtitle: Use the season — don't fight it.
+rule: Trust Summer's Diagnosis | "My crabapple looked bad in July" — we know what that is. Don't get distracted by November leaf debris. Plan the spring treatment.
+rule: Lean On The Ground Layer | Look at the leaves on the ground. Petioles still attached to twigs (oak)? Buds with weird discoloration? The litter tells the story.
+rule: Set Up The Watering Conversation | Most homeowners stop watering when the leaves drop. That's exactly when the roots most need water — see the next slide.
+
+
+@welcome
+eyebrow: Fall Watering
+title: Water after leaf drop, until the ground freezes.
+subtitle: This is the single most important PHC habit we can teach a homeowner.
+body: **Root hairs ("absorbing roots") do 90% of the water uptake** for the tree. They mostly live in the top 8–12 inches of soil.
+body: **When the top layer dries out for too long, root hairs desiccate and lose function.** A dry fall heading into a dry winter can damage the root system long before the tree shows it in spring.
+body: **Watering after leaf drop** — when there's not ample rain — **protects the absorbing roots through winter.** Tell every client this. It costs them nothing but a sprinkler hour and saves trees.
+
+
+@closing
+title: A leaf is a snapshot. Plan for next year now.
+subtitle: Diagnose what you can. Water until it freezes.
+mark: BT

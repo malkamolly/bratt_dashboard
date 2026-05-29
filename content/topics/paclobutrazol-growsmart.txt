@@ -1,0 +1,102 @@
+# ============================================================
+# BRATT TREE — Topic Deck: GrowSmart (Paclobutrazol)
+# What the product does, when to use it, and why it's an
+# affordable alternative to soil amendment.
+# Originally presented at the 2025-05-12 PPM meeting.
+# ============================================================
+
+
+@cover
+eyebrow: Plant Health Care · Treatments
+unit: GrowSmart
+subtitle: Paclobutrazol — slows top growth, boosts root density, makes the leaves greener. A cheaper alternative to soil amendment.
+tagline: Less canopy growth.
+tagline: More roots.
+tagline: Greener leaves.
+image: /topics/paclobutrazol-growsmart/cover.jpeg
+image-fit: cover
+meta-left: Bratt Tree · Topic Library
+meta-right: Version 1.0
+
+
+@three-rules
+eyebrow: The Sales Pitch
+title: Why GrowSmart is useful to a homeowner.
+subtitle: Three things to say before getting into the mechanism.
+rule: Bigger Roots | Treated trees grow **64% denser root systems over 3 years.** That means better water uptake, better drought resistance, less stress.
+rule: Greener Leaves | Increased chlorophyll production. The tree literally looks healthier within a season.
+rule: Cheaper Than Soil Work | Almost matches the benefit of full soil amendment + radial trenching — at **a fraction of the cost.** That's the conversation.
+
+
+@section-divider
+number: 01
+title: When To Recommend It
+tagline: Site conditions where GrowSmart pays off the most.
+
+
+@card-grid
+eyebrow: Ideal Site Conditions
+title: GrowSmart shines on stressed trees.
+subtitle: Pick the sites that match — that's where the ROI is highest.
+card: Drought-Stressed Trees | A bigger root system buffers against dry summers.
+card: Urban / Compacted Soil | Roots can't grow easily — GrowSmart helps the tree squeeze more out of what's there.
+card: Mature Trees Slowing Down | Helps an older tree allocate energy to roots and defense instead of just more canopy.
+card: Trees Outgrowing Their Site | Slows top growth — useful for trees that have outgrown a small yard or are encroaching on structures.
+
+
+@section-divider
+number: 02
+title: How It Actually Works
+tagline: The mechanism — for the curious arborist, not the homeowner.
+
+
+@welcome
+eyebrow: The Mechanism
+title: A growth-hormone re-allocation.
+subtitle: "What homeowners absolutely do not care to hear about."
+body: **Reduced production of gibberellic acid** — the hormone that drives top-growth elongation. **Cell elongation slows, shoots are shorter.**
+body: **Increased chlorophyll production** makes for greener leaves. **Increased abscisic acid** reduces water loss; leaves become thicker and waxier.
+body: **Improved carbohydrate storage** — energy that would have gone into more canopy is now available for **roots, defense compounds (against insects), and fruit/flower development.** That's where the visible benefits come from.
+
+
+@section-divider
+number: 03
+title: The Research
+tagline: Why we trust this product — and what it actually does to roots.
+
+
+@image-side
+eyebrow: Root Density Study
+title: Pin oak — treated vs untreated.
+subtitle: Gary W. Watson, Journal of Arboriculture, 1996.
+body: **Fine root density increased 64% over 3 years** in trees treated with GrowSmart basal injection — compared to untreated controls.
+body: **Density increase was greatest in the top 10 cm of soil** — exactly where absorbing roots are most useful and most often damaged by compaction.
+body: This is the foundational study that put paclobutrazol on the map as a tree-health treatment, not just a growth regulator for nurseries.
+image: /topics/paclobutrazol-growsmart/root-comparison.png
+fit: contain
+
+
+@image-side
+eyebrow: GrowSmart vs Soil Trenching
+title: Almost as good — at a fraction of the cost.
+subtitle: Radial trenching adds 70% root density. GrowSmart adds 64%. Both beat doing nothing.
+body: **Radial trenching (SRT) with GrowSmart** produced **70% denser roots** — only **6% better than GrowSmart alone** (64%).
+body: **The takeaway:** soil amendment is the clear technical winner. But GrowSmart performs **almost as well** without the expensive, invasive trenching work.
+body: For most residential clients, **GrowSmart alone is the right call.** Reserve the full soil-amendment package for high-value trees in very poor soil.
+image: /topics/paclobutrazol-growsmart/density-chart.png
+fit: contain
+
+
+@three-rules
+eyebrow: How To Sell It
+title: The three-line pitch.
+subtitle: Memorize these and you'll close most GrowSmart conversations.
+rule: Frame The Problem | "Your tree is in poor soil / drought-stressed / outgrowing its site. Without intervention, it'll keep declining."
+rule: Frame The Options | "We could do full soil amendment with radial trenching — that's the most effective. But it's invasive and expensive. There's a treatment that gets us 90% of the way there for a fraction of the cost."
+rule: Frame The Outcome | "Over the next 3 years your tree will build a 64% denser root system. Leaves will be greener within a season. Canopy growth slows, which is what we want — that energy is going into the roots instead."
+
+
+@closing
+title: Bigger roots, greener leaves, lower cost.
+subtitle: The treatment most homeowners say yes to once they hear the framing.
+mark: BT

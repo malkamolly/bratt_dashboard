@@ -119,6 +119,76 @@ export const TOPIC_DECKS: Record<string, TopicDeck> = {
     footerLeft: 'BRATT TREE  |  SOIL-CHANGE DIAGNOSTICS',
     version: 'Version 1.0',
   },
+  'elm-foliar-issues': {
+    slug: 'elm-foliar-issues',
+    title: 'Elm Foliar Issues',
+    description:
+      'Elm Leaf Beetle, Elm Leaf Miner, and Anthracnose. Three look-alikes — and the conversation that keeps clients from panicking about DED.',
+    tags: ['Pest', 'Disease', 'Plant Health Care'],
+    date: '2024-07-15',
+    footerLeft: 'BRATT TREE  |  ELM FOLIAR ISSUES',
+    version: 'Version 1.0',
+  },
+  'lilac-foliar-diseases': {
+    slug: 'lilac-foliar-diseases',
+    title: 'Lilac Diseases',
+    description:
+      'Pseudomonas vs Pseudocercospora — plus iron chlorosis treatment. Two diseases that look identical and one nutrient issue.',
+    tags: ['Disease', 'Plant Health Care'],
+    date: '2024-07-29',
+    footerLeft: 'BRATT TREE  |  LILAC DISEASES',
+    version: 'Version 1.0',
+  },
+  'poplar-canker-diseases': {
+    slug: 'poplar-canker-diseases',
+    title: 'Poplar Cankers',
+    description:
+      'Hypoxylon and Septoria. The two fungal diseases that kill more poplars in the Midwest than anything else.',
+    tags: ['Disease', 'Plant Health Care'],
+    date: '2025-05-19',
+    footerLeft: 'BRATT TREE  |  POPLAR CANKERS',
+    version: 'Version 1.0',
+  },
+  'pruning-apple-trees': {
+    slug: 'pruning-apple-trees',
+    title: 'Pruning Apple Trees',
+    description:
+      'What an arborist (not an orchardist) needs to know about pruning a residential apple tree for fruit and structure.',
+    tags: ['Pruning'],
+    date: '2025-02-10',
+    footerLeft: 'BRATT TREE  |  APPLE PRUNING',
+    version: 'Version 1.0',
+  },
+  'paclobutrazol-growsmart': {
+    slug: 'paclobutrazol-growsmart',
+    title: 'GrowSmart (Paclobutrazol)',
+    description:
+      'Slows top growth, boosts root density, makes the leaves greener. A cheaper alternative to full soil amendment.',
+    tags: ['Plant Health Care', 'Sales'],
+    date: '2025-05-12',
+    footerLeft: 'BRATT TREE  |  GROWSMART',
+    version: 'Version 1.0',
+  },
+  'nutriroot-vs-arborplex': {
+    slug: 'nutriroot-vs-arborplex',
+    title: 'NutriRoot vs ArborPlex',
+    description:
+      'A decision framework — when to use which product, and when to use both. Diagnose first, then prescribe.',
+    tags: ['Plant Health Care', 'Sales'],
+    date: '2025-06-23',
+    footerLeft: 'BRATT TREE  |  NUTRIROOT VS ARBORPLEX',
+    version: 'Version 1.0',
+  },
+  'fall-phc-controls': {
+    slug: 'fall-phc-controls',
+    title: 'Fall Diagnostics',
+    description:
+      'PHC controls, conifer vs deciduous. What changes after leaf drop — and why fall watering is the single best habit to teach a homeowner.',
+    tags: ['Diagnostics', 'Plant Health Care'],
+    date: '2024-11-04',
+    footerLeft: 'BRATT TREE  |  FALL DIAGNOSTICS',
+    version: 'Version 1.0',
+  },
 };
 
 export function getTopicDeck(slug: string): TopicDeck | null {

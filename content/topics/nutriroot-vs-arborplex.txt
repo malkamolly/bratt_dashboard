@@ -1,0 +1,94 @@
+# ============================================================
+# BRATT TREE — Topic Deck: NutriRoot vs ArborPlex
+# A decision framework — when to use which product, and when
+# to use both.
+# Originally presented at the 2025-06-23 PPM meeting.
+# Text-only deck (source had no photos).
+# ============================================================
+
+
+@cover
+eyebrow: Plant Health Care · Products
+unit: NutriRoot vs ArborPlex
+subtitle: Two liquid treatments. One for roots, one for nutrients. How to pick — and when to use both.
+tagline: Diagnose first.
+tagline: Then prescribe.
+tagline: Sometimes both.
+meta-left: Bratt Tree · Topic Library
+meta-right: Version 1.0
+
+
+@two-column
+eyebrow: Product Overview
+title: The 30-second comparison.
+subtitle: Liquid biostimulant vs liquid fertilizer. Different jobs.
+left-header: NutriRoot
+left-icon: ●
+left: **Liquid root biostimulant**
+left: Applied via **soil drench or injection**
+left: Best for **new trees, drought stress, root loss**
+left: Key ingredients: seaweed extract, humates, surfactants, 2% NPK
+left: Function: stimulates root + microbial activity, improves water retention
+right-header: ArborPlex
+right-icon: ●
+right: **Liquid fertilizer with micronutrients**
+right: Applied via **soil injection**
+right: Best for **established trees needing nutrients**
+right: Key ingredients: 14-4-5 NPK + micronutrients + humic acid
+right: Function: boosts foliar and root growth, corrects nutrient deficiencies
+
+
+@section-divider
+number: 01
+title: Diagnose The Tree
+tagline: Which product matches the tree's condition.
+
+
+@card-grid
+eyebrow: When To Use NutriRoot
+title: Pick NutriRoot when the tree is stressed or new.
+subtitle: It's about establishment, recovery, and soil health.
+card: Newly Planted | Recently transplanted or planted — establishment phase.
+card: Drought Stressed | The biostimulant helps the tree pull more water from the soil.
+card: Root Loss | After construction damage, root cutting, or major decline.
+card: Poor / Compacted Soil | NutriRoot improves the soil environment around the roots, not just the tree.
+
+
+@card-grid
+eyebrow: When To Use ArborPlex
+title: Pick ArborPlex when the tree is established but hungry.
+subtitle: It's about feeding a tree that's otherwise healthy.
+card: Established & Growing | Tree is past establishment, in active growth.
+card: Nutrient Deficiency | Yellowing, weak canopy, slow growth not explained by water or roots.
+card: Part Of A Program | Seasonal PHC where regular fertilization is part of the plan.
+card: Urban Street Trees | Tough sites where soil nutrition is poor but roots are otherwise OK.
+
+
+@section-divider
+number: 02
+title: Real-World Scenarios
+tagline: How the choice plays out on actual client sites.
+
+
+@card-grid
+eyebrow: Pick The Right Product
+title: Three common situations.
+subtitle: When the answer is "one," "the other," or "both."
+card: New Tree Install | **NutriRoot** for establishment. Add ArborPlex too if the soil is also poor.
+card: Urban Street Tree, Poor Soil | **ArborPlex** for nutrient support. Add NutriRoot too if the tree shows root stress.
+card: Construction-Damaged Tree | **NutriRoot first** for root repair, **then ArborPlex** as the tree starts to recover. Or both at once if the decline is fast.
+
+
+@three-rules
+eyebrow: Key Takeaways
+title: How to prescribe like an arborist, not a salesman.
+subtitle: Three rules that keep the conversation honest.
+rule: Diagnose Before Prescribing | Walk the site, look at the tree, ask about history. **The condition determines the product** — don't lead with the product.
+rule: NutriRoot = Soil + Water | When the issue is **roots, drought, or new establishment**, NutriRoot is the lever.
+rule: ArborPlex = Feeding | When the issue is **a healthy tree that needs nutrients to thrive**, ArborPlex is the lever. Combine the two for phased recovery on stressed trees.
+
+
+@closing
+title: Diagnose the condition. Match the product.
+subtitle: Sometimes both. Never neither.
+mark: BT

@@ -1,0 +1,96 @@
+# ============================================================
+# BRATT TREE — Topic Deck: Lilac Foliar Diseases + Chlorosis
+# Pseudomonas vs Pseudocercospora + Iron Chlorosis treatment.
+# Originally presented at the 2024-07-29 PPM meeting.
+# ============================================================
+
+
+@cover
+eyebrow: Plant Health Care · Diseases
+unit: Lilac Diseases
+subtitle: Bacterial blight, fungal leaf spot, and iron chlorosis. Three issues that look alike — only one is treatable.
+tagline: Two look the same.
+tagline: One has no treatment.
+tagline: Get the differential right.
+image: /topics/lilac-foliar-diseases/cover.jpeg
+image-fit: cover
+meta-left: Bratt Tree · Topic Library
+meta-right: Version 1.0
+
+
+@three-rules
+eyebrow: The Headline
+title: Three things showing up on lilacs.
+subtitle: Two foliar diseases that look identical, and a separate chlorosis issue.
+rule: Pseudomonas | Bacterial blight. **No proven treatment.** Manage by pruning out and bolstering plant health. The bad-news call.
+rule: Pseudocercospora | Fungal leaf spot. **Treatable** — two fungicide sprays in spring. The good-news call.
+rule: Iron Chlorosis | Different issue entirely — nutrient deficiency, not a pathogen. Treatable with iron injection. Yellow leaves, green veins.
+
+
+@section-divider
+number: 01
+title: The Two Look-Alikes
+tagline: Pseudomonas and Pseudocercospora present similarly. Treatment is wildly different.
+
+
+@image-side
+eyebrow: Pseudomonas syringae
+title: Bacterial Blight.
+subtitle: Wilting shoots, blackened stems, dark brown leaf spots.
+body: **Bacterial disease.** Presents with **wilting shoots and blackened stems/flower clusters** — visually similar to diplodia on pines or apple scab on leaves.
+body: **Bacteria are basically everywhere.** Spreads through open wounds. Can be **pruned out** the same way we manage fireblight — sanitization cuts, sterile tools between cuts.
+body: **There is currently no proven treatment for this disease.** As with all diseases without a direct treatment, **bolstering plant health and improving soil conditions** is what extends plant life. That's the conversation.
+image: /topics/lilac-foliar-diseases/pseudomonas.png
+fit: cover
+
+
+@image-side
+eyebrow: Pseudocercospora
+title: Lilac Leaf Spot.
+subtitle: Fungal disease that looks just like the bacterial one.
+body: **Fungal disease.** **Commonly confused with pseudomonas** — same shoot wilt, similar leaf-spot appearance. But this one is treatable, so the differential matters.
+body: **Treated like apple scab** (and most other deciduous foliar fungi): **two sprays in the spring with fungicide** as leaves emerge.
+body: When in doubt between this and pseudomonas, treat for the fungus first — at worst you've done no harm; at best you've solved the problem.
+image: /topics/lilac-foliar-diseases/pseudocercospora.jpeg
+fit: cover
+
+
+@section-divider
+number: 02
+title: Iron Chlorosis
+tagline: A separate problem on a lot of the same trees. Yellow leaves, green veins.
+
+
+@image-side
+eyebrow: Iron Chlorosis
+title: Yellow leaves, green veins.
+subtitle: Not a disease — a nutrient absorption problem.
+body: **Yellowing leaves caused by iron deficiency.** The diagnostic tell: **yellow leaf with green veins** (the veins stay supplied longest).
+body: Lack of iron decreases the plant's ability to produce chlorophyll. **Generally does not kill trees** but makes them look bad and reduces vigor over time.
+body: **Manganese deficiency can cause similar chlorosis** in high-pH soils. Even in iron-rich soil, **high pH can lock the iron up as a solid** that roots can't absorb. So this is really a soil-chemistry problem, not just a nutrient deficiency.
+image: /topics/lilac-foliar-diseases/iron-chlorosis.png
+fit: cover
+
+
+@welcome
+eyebrow: Treatment
+title: When and how to treat chlorosis.
+subtitle: Different dosing in summer vs fall. Pick the right one.
+body: **Summer dosing:** low-dose MNJet FE injection. Treats the current season only — **does not carry over to next year.** Reduced dose is intentional: full dosage in summer can defoliate the tree.
+body: **Fall dosing:** **full dose, two seasons of effect.** This is the better-value treatment when timing allows.
+body: **Rule of thumb:** if you're talking to a client in spring or summer about chlorosis, set them up for fall treatment unless they need immediate relief. The math favors waiting.
+
+
+@three-rules
+eyebrow: Talking To Clients
+title: The conversation, three beats.
+subtitle: Each issue has a different talk track. Match yours to the differential.
+rule: Pseudomonas | "This is bacterial — there's no spray that fixes it. We can prune out the worst of it and focus on overall plant health, but the lilac will likely keep showing this on and off."
+rule: Pseudocercospora | "This looks like the bacterial one but it's actually fungal — which means we *can* treat it. Two spring sprays and your lilac will look much better next year."
+rule: Iron Chlorosis | "The yellow leaves with green veins are an iron uptake issue, not a disease. We can inject iron directly into the trunk. Fall treatment is the best value — two seasons of effect."
+
+
+@closing
+title: Get the differential right. The treatment plan falls out.
+subtitle: One untreatable, one easy fix, one nutrient injection.
+mark: BT
