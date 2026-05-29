@@ -141,7 +141,7 @@ function AnnualGoalSection({
       title={`Annual Sales Goal (${year})`}
       description="The big yearly number. Powers the YTD progress bar on the Sales PACE dashboard."
     >
-      <form action={saveAnnualGoal} className="flex flex-col gap-3 sm:flex-row sm:items-end">
+      <form key={`annual-${year}`} action={saveAnnualGoal} className="flex flex-col gap-3 sm:flex-row sm:items-end">
         <input type="hidden" name="year" value={year} />
         <label className="flex-1">
           <span className="bt-eyebrow">Annual Goal ($)</span>
@@ -187,7 +187,10 @@ function MonthlyGoalsSection({
       description="Company-wide goal plus an optional per-salesperson target. Per-person goals show as '% of Goal' columns on the dashboard."
       headerRight={<MonthPicker year={year} month={month} basePath="/admin/sales" />}
     >
-      <form action={saveMonthlyGoals} className="space-y-5">
+      {/* key forces the form (and its uncontrolled inputs) to remount when the
+          month/year changes, so each field picks up the new defaultValue instead
+          of keeping the previously displayed month's values. */}
+      <form key={`goals-${year}-${month}`} action={saveMonthlyGoals} className="space-y-5">
         <input type="hidden" name="year" value={year} />
         <input type="hidden" name="month" value={month} />
 
@@ -267,7 +270,8 @@ function HistoricalsSection({
           amounts and save.
         </p>
       )}
-      <form action={saveHistoricals} className="space-y-4">
+      {/* Same remount-on-month-change fix as the goals form above. */}
+      <form key={`hist-${year}-${month}`} action={saveHistoricals} className="space-y-4">
         <input type="hidden" name="year" value={year} />
         <input type="hidden" name="month" value={month} />
 
