@@ -10,13 +10,9 @@
 import Link from 'next/link';
 import { requireHubAccess, canEditCrew } from '@/lib/auth';
 import { listCdlProgress, listEmployees } from '@/lib/crew-data';
-import { CDL_STAGES, cdlStageLabel } from '@/lib/cdl';
-import {
-  setCdlStage,
-  addCdlTrainees,
-  removeCdlTrainee,
-  moveCdlTrainee,
-} from '@/app/crew/actions';
+import { CDL_STAGES } from '@/lib/cdl';
+import { addCdlTrainees } from '@/app/crew/actions';
+import { CdlRoster } from '@/components/crew/CdlRoster';
 
 export const dynamic = 'force-dynamic';
 
@@ -91,91 +87,18 @@ export default async function CdlTrackerPage({
 
       {/* Roster */}
       <section className="mt-10">
-        <h2 className="font-display text-3xl uppercase tracking-wider text-ink">On the track</h2>
-        {trainees.length === 0 ? (
-          <p className="mt-3 text-sm text-fg-3">Nobody on the CDL track yet.</p>
-        ) : (
-          <ul className="mt-4 divide-y divide-paper-edge overflow-hidden rounded-card border border-paper-edge bg-paper">
-            {trainees.map((t, i) => (
-              <li
-                key={t.employee_slug}
-                className="flex flex-wrap items-center justify-between gap-3 px-4 py-3"
-              >
-                <div className="flex items-center gap-2">
-                  {editable && (
-                    <span className="flex flex-col">
-                      <form action={moveCdlTrainee}>
-                        <input type="hidden" name="employee_slug" value={t.employee_slug} />
-                        <input type="hidden" name="direction" value="up" />
-                        <button
-                          type="submit"
-                          disabled={i === 0}
-                          aria-label="Move up"
-                          className="font-headline text-xs leading-none text-fg-3 hover:text-orange disabled:opacity-30"
-                        >
-                          ▲
-                        </button>
-                      </form>
-                      <form action={moveCdlTrainee}>
-                        <input type="hidden" name="employee_slug" value={t.employee_slug} />
-                        <input type="hidden" name="direction" value="down" />
-                        <button
-                          type="submit"
-                          disabled={i === trainees.length - 1}
-                          aria-label="Move down"
-                          className="font-headline text-xs leading-none text-fg-3 hover:text-orange disabled:opacity-30"
-                        >
-                          ▼
-                        </button>
-                      </form>
-                    </span>
-                  )}
-                  <Link
-                    href={`/crew/employees/${t.employee_slug}`}
-                    className="font-headline text-base font-extrabold text-bark-deep hover:underline"
-                  >
-                    {t.employee_name}
-                  </Link>
-                </div>
-                {editable ? (
-                  <div className="flex items-center gap-2">
-                    <form action={setCdlStage} className="flex items-center gap-2">
-                      <input type="hidden" name="employee_slug" value={t.employee_slug} />
-                      <select
-                        name="stage"
-                        defaultValue={t.stage}
-                        className="rounded-2 border-2 border-paper-edge bg-cream px-2 py-1 font-headline text-xs font-extrabold uppercase tracking-ribbon text-bark-deep"
-                      >
-                        {CDL_STAGES.map((label, i) => (
-                          <option key={label} value={i + 1}>
-                            {i + 1}. {label}
-                          </option>
-                        ))}
-                      </select>
-                      <button type="submit" className="bt-btn bt-btn-dark !text-[10px] !px-2 !py-1">
-                        Update
-                      </button>
-                    </form>
-                    <form action={removeCdlTrainee}>
-                      <input type="hidden" name="employee_slug" value={t.employee_slug} />
-                      <button
-                        type="submit"
-                        title="Remove from the CDL track"
-                        className="font-headline text-[10px] font-extrabold uppercase tracking-ribbon text-fg-3 hover:text-orange-press"
-                      >
-                        Remove
-                      </button>
-                    </form>
-                  </div>
-                ) : (
-                  <span className="inline-flex items-center rounded-full bg-bark-deep px-3 py-1 font-headline text-[10px] font-extrabold uppercase tracking-ribbon text-cream">
-                    {t.stage}. {cdlStageLabel(t.stage)}
-                  </span>
-                )}
-              </li>
-            ))}
-          </ul>
-        )}
+        <div className="flex items-baseline justify-between gap-3">
+          <h2 className="font-display text-3xl uppercase tracking-wider text-ink">On the track</h2>
+          {editable && trainees.length > 1 && (
+            <span className="font-headline text-[10px] font-extrabold uppercase tracking-ribbon text-fg-3">
+              Drag ⠿ to reorder
+            </span>
+          )}
+        </div>
+        <CdlRoster
+          items={trainees.map((t) => ({ slug: t.employee_slug, name: t.employee_name, stage: t.stage }))}
+          editable={editable}
+        />
       </section>
 
       {/* Add to track (managers) */}

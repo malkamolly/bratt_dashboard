@@ -613,9 +613,16 @@ function TrainingStatus({
       </span>
     );
   }
-  // Anything else (status='completed_date_tbd', 'card_pending',
-  // 'in_progress', etc.) means "we're working on it" — render uniformly
-  // as "In progress" so the table reads consistently.
+  // Completed historically, exact date unknown → still "Completed".
+  if (rec.status === 'completed_date_tbd') {
+    return (
+      <span className="inline-flex items-center rounded-full bg-green-dark px-2 py-0.5 font-headline text-[10px] font-extrabold uppercase tracking-ribbon text-white">
+        Completed
+      </span>
+    );
+  }
+  // Anything else ('card_pending', 'in_progress', etc.) means "we're working
+  // on it" — render uniformly as "In progress" so the table reads consistently.
   return (
     <span className="inline-flex items-center rounded-full bg-status-warn/30 px-2 py-0.5 font-headline text-[10px] font-extrabold uppercase tracking-ribbon text-orange-press">
       In progress

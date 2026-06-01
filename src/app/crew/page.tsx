@@ -23,7 +23,7 @@ import {
   type Position,
 } from '@/lib/crew-data';
 import { SkillBadge } from '@/components/crew/SkillBadge';
-import { ForemanPill, SpecialtyPill } from '@/components/crew/CrewPills';
+import { ForemanPill, SpecialtyPill, CdlPill } from '@/components/crew/CrewPills';
 import { serverClient } from '@/lib/supabase';
 
 type LicenseStatus = 'passed' | 'in_progress' | 'failed' | null;
@@ -47,6 +47,27 @@ async function loadApplicatorsLicenseStatuses(
     if (r.completed) out.set(r.employee_slug, 'passed');
     else if (r.status === 'failed') out.set(r.employee_slug, 'failed');
     else if (r.status) out.set(r.employee_slug, 'in_progress');
+  }
+  return out;
+}
+
+// Crew who hold a CDL — completed date on file, or completed-with-no-date
+// (status 'completed_date_tbd'). Drives the CDL pill next to their name.
+async function loadCdlHolders(slugs: string[]): Promise<Set<string>> {
+  const out = new Set<string>();
+  if (slugs.length === 0) return out;
+  const supabase = await serverClient();
+  const { data } = await supabase
+    .from('field_crew_employee_trainings')
+    .select('employee_slug, completed, status')
+    .eq('training_key', 'cdl')
+    .in('employee_slug', slugs);
+  for (const r of (data ?? []) as {
+    employee_slug: string;
+    completed: string | null;
+    status: string | null;
+  }[]) {
+    if (r.completed || r.status === 'completed_date_tbd') out.add(r.employee_slug);
   }
   return out;
 }
@@ -94,6 +115,7 @@ export default async function FieldCrewHubPage() {
   const phcLicenseByEmployee = await loadApplicatorsLicenseStatuses(
     phcEmployees.map((e) => e.slug),
   );
+  const cdlHolders = await loadCdlHolders(employees.map((e) => e.slug));
 
   return (
     <main className="mx-auto max-w-6xl px-6 py-10">
@@ -250,6 +272,7 @@ export default async function FieldCrewHubPage() {
                   employees={list}
                   licenseByEmployee={phcLicenseByEmployee}
                   specialtyByKey={specialtyByKey}
+                  cdlHolders={cdlHolders}
                 />
               );
             }
@@ -262,6 +285,7 @@ export default async function FieldCrewHubPage() {
                 columns={cols}
                 allSkillKeys={skills.map((s) => s.key)}
                 specialtyByKey={specialtyByKey}
+                cdlHolders={cdlHolders}
               />
             );
           })}
@@ -274,6 +298,7 @@ export default async function FieldCrewHubPage() {
               columns={[]}
               allSkillKeys={skills.map((s) => s.key)}
               specialtyByKey={specialtyByKey}
+              cdlHolders={cdlHolders}
               summaryColumn
             />
           )}
@@ -351,6 +376,7 @@ function PositionSection({
   columns,
   allSkillKeys,
   specialtyByKey,
+  cdlHolders,
   summaryColumn = false,
 }: {
   title: string;
@@ -360,6 +386,7 @@ function PositionSection({
   columns: { key: string; label: string }[];
   allSkillKeys: string[];
   specialtyByKey: Map<string, string>;
+  cdlHolders: Set<string>;
   summaryColumn?: boolean;
 }) {
   const borderClass = tone === 'warn' ? 'border-orange' : 'border-lime';
@@ -408,9 +435,10 @@ function PositionSection({
                   >
                     {e.name}
                   </Link>
-                  {(e.leads_crew || e.specialties.length > 0) && (
+                  {(e.leads_crew || e.specialties.length > 0 || cdlHolders.has(e.slug)) && (
                     <span className="ml-1.5 inline-flex flex-wrap items-center gap-1">
                       {e.leads_crew && <ForemanPill />}
+                      {cdlHolders.has(e.slug) && <CdlPill />}
                       {e.specialties.map((sp) => (
                         <SpecialtyPill
                           key={sp}
@@ -457,11 +485,13 @@ function PhcSection({
   employees,
   licenseByEmployee,
   specialtyByKey,
+  cdlHolders,
 }: {
   title: string;
   employees: Employee[];
   licenseByEmployee: Map<string, LicenseStatus>;
   specialtyByKey: Map<string, string>;
+  cdlHolders: Set<string>;
 }) {
   return (
     <div className="flex h-full flex-col rounded-card border-[3px] border-lime bg-paper p-4 sm:p-5">
@@ -495,9 +525,10 @@ function PhcSection({
                   >
                     {e.name}
                   </Link>
-                  {(e.leads_crew || e.specialties.length > 0) && (
+                  {(e.leads_crew || e.specialties.length > 0 || cdlHolders.has(e.slug)) && (
                     <span className="ml-1.5 inline-flex flex-wrap items-center gap-1">
                       {e.leads_crew && <ForemanPill />}
+                      {cdlHolders.has(e.slug) && <CdlPill />}
                       {e.specialties.map((sp) => (
                         <SpecialtyPill
                           key={sp}

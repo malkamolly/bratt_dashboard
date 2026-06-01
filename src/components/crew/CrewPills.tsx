@@ -22,6 +22,20 @@ export function ForemanPill({ size = 'sm' }: { size?: 'sm' | 'md' }) {
   );
 }
 
+export function CdlPill({ size = 'sm' }: { size?: 'sm' | 'md' }) {
+  return (
+    <span
+      title="Holds a CDL"
+      className={clsx(
+        'inline-flex items-center rounded-full border border-teal text-teal font-headline font-extrabold uppercase tracking-ribbon align-middle',
+        size === 'sm' ? 'px-1.5 py-0 text-[8px]' : 'px-2 py-0.5 text-[10px]',
+      )}
+    >
+      CDL
+    </span>
+  );
+}
+
 const SPECIALTY_COLORS: Record<string, string> = {
   stump: 'border-wood text-wood',
   clam: 'border-teal text-teal',

@@ -1355,3 +1355,24 @@ export async function moveCdlTrainee(formData: FormData): Promise<void> {
   revalidatePath('/crew/reports/digest');
   redirect(CDL_BACK);
 }
+
+/**
+ * Save a brand-new order for the whole CDL track in one shot (used by the
+ * drag-and-drop list). Called programmatically from the client, so it just
+ * revalidates rather than redirecting.
+ */
+export async function reorderCdlTrack(orderedSlugs: string[]): Promise<void> {
+  const user = await getAllowedUser();
+  if (!user || !canEditCrew(user.role)) return;
+  const supabase = await serverClient();
+  await Promise.all(
+    orderedSlugs.map((slug, i) =>
+      supabase
+        .from('field_crew_cdl_progress')
+        .update({ sort_order: i + 1 })
+        .eq('employee_slug', slug),
+    ),
+  );
+  revalidatePath(CDL_BACK);
+  revalidatePath('/crew/reports/digest');
+}
