@@ -121,8 +121,8 @@ export default async function ProgressDigestPage() {
         </Link>
       </header>
 
-      <div className="mt-8 grid grid-cols-1 gap-6 lg:grid-cols-4">
-          {/* Achievement feed (left) */}
+      <div className="mt-8 grid grid-cols-1 gap-6 lg:grid-cols-5">
+          {/* Achievement feed (left, narrower) */}
           <section className="bt-card lg:col-span-2">
             <h2 className="font-headline text-sm font-extrabold uppercase tracking-ribbon text-bark-deep">
               Who moved the needle
@@ -166,64 +166,66 @@ export default async function ProgressDigestPage() {
             )}
           </section>
 
-          {/* Totals + by-day (right) */}
-          <aside className="space-y-6">
-            <div className="bt-card">
-              <h2 className="font-headline text-sm font-extrabold uppercase tracking-ribbon text-bark-deep">
-                This week
-              </h2>
-              <p className="font-headline text-[10px] font-extrabold uppercase tracking-ribbon text-fg-3">
-                Trailing 7 days
-              </p>
-              <dl className="mt-4 space-y-3">
-                <TotalRow
-                  value={callouts.leveledUpPeople}
-                  label={`crew member${callouts.leveledUpPeople === 1 ? '' : 's'} leveled up`}
-                  color="text-orange"
-                />
-                <TotalRow value={callouts.certifiedTotal} label="certified" color="text-green-dark" />
-                <TotalRow
-                  value={callouts.failedTotal}
-                  label="failed a certification"
-                  color="text-orange-press"
-                />
-                <TotalRow
-                  value={fmtHours(callouts.hours)}
-                  label="training hours logged"
-                  color="text-bark-deep"
-                />
-              </dl>
-            </div>
+          {/* Right side (wider): summary + chart on top, CDL across the bottom */}
+          <div className="space-y-6 lg:col-span-3">
+            <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
+              {/* This week */}
+              <div className="bt-card">
+                <h2 className="font-headline text-sm font-extrabold uppercase tracking-ribbon text-bark-deep">
+                  This week
+                </h2>
+                <p className="font-headline text-[10px] font-extrabold uppercase tracking-ribbon text-fg-3">
+                  Trailing 7 days
+                </p>
+                <dl className="mt-4 space-y-3">
+                  <TotalRow
+                    value={callouts.leveledUpPeople}
+                    label={`crew member${callouts.leveledUpPeople === 1 ? '' : 's'} leveled up`}
+                    color="text-orange"
+                  />
+                  <TotalRow value={callouts.certifiedTotal} label="certified" color="text-green-dark" />
+                  <TotalRow
+                    value={callouts.failedTotal}
+                    label="failed a certification"
+                    color="text-orange-press"
+                  />
+                  <TotalRow
+                    value={fmtHours(callouts.hours)}
+                    label="training hours logged"
+                    color="text-bark-deep"
+                  />
+                </dl>
+              </div>
 
-            <div className="bt-card">
-              <h2 className="font-headline text-sm font-extrabold uppercase tracking-ribbon text-bark-deep">
-                Activity by day
-              </h2>
-              <div className="mt-5 flex items-end justify-between gap-1.5" style={{ height: 130 }}>
-                {digest.days.map((d) => {
-                  const isToday = d.date === digest.toDate;
-                  const h = Math.round((d.count / maxDay) * 95);
-                  return (
-                    <div key={d.date} className="flex flex-1 flex-col items-center justify-end gap-1.5">
-                      <span className="font-headline text-[11px] font-extrabold text-bark-deep">
-                        {d.count || ''}
-                      </span>
-                      <div
-                        className={`w-full rounded-t ${isToday ? 'bg-orange' : 'bg-bark-deep/70'}`}
-                        style={{ height: Math.max(d.count ? 6 : 2, h) }}
-                      />
-                      <span className="font-headline text-[9px] font-extrabold uppercase tracking-ribbon text-fg-3">
-                        {format(parseISO(d.date), 'EEEEE')}
-                      </span>
-                    </div>
-                  );
-                })}
+              {/* Activity by day */}
+              <div className="bt-card">
+                <h2 className="font-headline text-sm font-extrabold uppercase tracking-ribbon text-bark-deep">
+                  Activity by day
+                </h2>
+                <div className="mt-5 flex items-end justify-between gap-1.5" style={{ height: 150 }}>
+                  {digest.days.map((d) => {
+                    const isToday = d.date === digest.toDate;
+                    const h = Math.round((d.count / maxDay) * 110);
+                    return (
+                      <div key={d.date} className="flex flex-1 flex-col items-center justify-end gap-1.5">
+                        <span className="font-headline text-[11px] font-extrabold text-bark-deep">
+                          {d.count || ''}
+                        </span>
+                        <div
+                          className={`w-full rounded-t ${isToday ? 'bg-orange' : 'bg-bark-deep/70'}`}
+                          style={{ height: Math.max(d.count ? 6 : 2, h) }}
+                        />
+                        <span className="font-headline text-[9px] font-extrabold uppercase tracking-ribbon text-fg-3">
+                          {format(parseISO(d.date), 'EEEEE')}
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
             </div>
-          </aside>
 
-          {/* CDL pipeline overview (3rd column) */}
-          <aside className="lg:col-span-1">
+            {/* CDL pipeline overview (full width under both) */}
             <div className="bt-card">
               <div className="flex items-baseline justify-between gap-2">
                 <h2 className="font-headline text-sm font-extrabold uppercase tracking-ribbon text-bark-deep">
@@ -239,13 +241,13 @@ export default async function ProgressDigestPage() {
               {cdl.length === 0 ? (
                 <p className="mt-3 text-sm text-fg-3">Nobody on the CDL track yet.</p>
               ) : (
-                <ol className="mt-4 space-y-3">
+                <ol className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-5">
                   {CDL_STAGES.map((label, i) => {
                     const people = cdlByStage[i];
                     return (
-                      <li key={label} className="border-t border-paper-edge pt-2 first:border-t-0 first:pt-0">
+                      <li key={label} className="rounded-2 border border-paper-edge bg-cream px-3 py-2">
                         <div className="flex items-baseline justify-between gap-2">
-                          <span className="font-headline text-[11px] font-extrabold uppercase tracking-ribbon text-bark-deep">
+                          <span className="font-headline text-[10px] font-extrabold uppercase tracking-ribbon text-fg-3">
                             {i + 1}. {label}
                           </span>
                           <span
@@ -265,7 +267,7 @@ export default async function ProgressDigestPage() {
                 </ol>
               )}
             </div>
-          </aside>
+          </div>
         </div>
     </main>
   );
@@ -282,10 +284,10 @@ function TotalRow({
 }) {
   return (
     <div className="flex items-center gap-3">
-      <dd className={`w-16 shrink-0 text-right font-display text-4xl leading-none ${color}`}>
+      <dd className={`w-12 shrink-0 text-right font-display text-4xl leading-none ${color}`}>
         {value}
       </dd>
-      <dt className="font-headline text-[11px] font-extrabold uppercase tracking-ribbon text-fg-2">
+      <dt className="font-headline text-[11px] font-extrabold uppercase leading-tight tracking-ribbon text-fg-2">
         {label}
       </dt>
     </div>
