@@ -14,34 +14,38 @@ import Link from 'next/link';
 import { format, parseISO } from 'date-fns';
 import { requireHubAccess } from '@/lib/auth';
 import { listActivitySince, listCdlProgress } from '@/lib/crew-data';
-import { buildDigest } from '@/lib/huddle-digest';
+import { buildDigest, type ClassifiedActivity } from '@/lib/huddle-digest';
 import { CDL_STAGES } from '@/lib/cdl';
 
 export const dynamic = 'force-dynamic';
 
 const WINDOW_DAYS = 7;
 
-// One crew member's week, summarized for their roster line.
-type PersonWeek = {
-  slug: string;
-  name: string;
-  certified: number;
-  leveledUp: number;
-  failed: number;
-  hours: number;
-  total: number;
-};
+type PersonWeek = { slug: string; name: string; events: ClassifiedActivity[] };
 
-type Chip = { label: string; cls: string };
-
-function chipsFor(p: PersonWeek, fmtHours: (n: number) => string): Chip[] {
-  const chips: Chip[] = [];
-  const times = (n: number) => (n > 1 ? ` ×${n}` : '');
-  if (p.certified) chips.push({ label: `Certified${times(p.certified)}`, cls: 'bg-green-dark text-white' });
-  if (p.leveledUp) chips.push({ label: `Leveled up${times(p.leveledUp)}`, cls: 'bg-orange text-white' });
-  if (p.hours) chips.push({ label: `${fmtHours(p.hours)}h`, cls: 'bg-bark-deep text-cream' });
-  if (p.failed) chips.push({ label: `Did not pass${times(p.failed)}`, cls: 'bg-orange-press text-white' });
-  return chips;
+// What one achievement reads as on a crew member's line: a tag + the specific
+// thing they did (which cert, which skill, how many hours).
+function achievementOf(e: ClassifiedActivity): { tag: string; cls: string; detail: string } {
+  switch (e.kind) {
+    case 'cert_pass':
+      return { tag: 'Certified', cls: 'bg-green-dark text-white', detail: e.certName ?? '' };
+    case 'skill_up':
+      return {
+        tag: 'Leveled up',
+        cls: 'bg-orange text-white',
+        detail: e.description.replace(/\.$/, '').replace(/:\s*/, ' '),
+      };
+    case 'hours':
+      return {
+        tag: 'Training',
+        cls: 'bg-bark-deep text-cream',
+        detail: e.description.replace(/^Training session:\s*/i, ''),
+      };
+    case 'cert_fail':
+      return { tag: 'Did not pass', cls: 'bg-orange-press text-white', detail: e.certName ?? '' };
+    default:
+      return { tag: 'Update', cls: 'bg-paper-edge text-bark-deep', detail: e.description };
+  }
 }
 
 export default async function ProgressDigestPage() {
@@ -64,26 +68,18 @@ export default async function ProgressDigestPage() {
   // Group CDL trainees by stage for the overview column.
   const cdlByStage = CDL_STAGES.map((_, i) => cdl.filter((t) => t.stage === i + 1));
 
-  // One summarized line per crew member who actually did something this week.
+  // One line per crew member who did something this week, listing exactly what.
   const bySlug = new Map<string, PersonWeek>();
-  const ensurePerson = (slug: string, name: string) => {
-    let p = bySlug.get(slug);
-    if (!p) {
-      p = { slug, name, certified: 0, leveledUp: 0, failed: 0, hours: 0, total: 0 };
-      bySlug.set(slug, p);
-    }
-    return p;
-  };
   for (const e of digest.events) {
-    const p = ensurePerson(e.employee_slug, e.employee_name);
-    p.total++;
-    if (e.kind === 'cert_pass') p.certified++;
-    else if (e.kind === 'skill_up') p.leveledUp++;
-    else if (e.kind === 'cert_fail') p.failed++;
-    else if (e.kind === 'hours' && e.hours) p.hours += e.hours;
+    let p = bySlug.get(e.employee_slug);
+    if (!p) {
+      p = { slug: e.employee_slug, name: e.employee_name, events: [] };
+      bySlug.set(e.employee_slug, p);
+    }
+    p.events.push(e);
   }
   const roster = Array.from(bySlug.values()).sort(
-    (a, b) => b.total - a.total || a.name.localeCompare(b.name),
+    (a, b) => b.events.length - a.events.length || a.name.localeCompare(b.name),
   );
 
   const maxDay = Math.max(1, ...digest.days.map((d) => d.count));
@@ -131,37 +127,31 @@ export default async function ProgressDigestPage() {
               </p>
             ) : (
               <ul className="mt-4 divide-y divide-paper-edge">
-                {roster.map((p) => {
-                  const chips = chipsFor(p, fmtHours);
-                  return (
-                    <li key={p.slug} className="flex items-center justify-between gap-3 py-2.5 text-sm">
-                      <Link
-                        href={`/crew/employees/${p.slug}`}
-                        className={`shrink-0 font-headline font-extrabold hover:underline ${
-                          p.total ? 'text-bark-deep' : 'text-fg-3'
-                        }`}
-                      >
-                        {p.name}
-                      </Link>
-                      {chips.length > 0 ? (
-                        <span className="flex flex-wrap items-center justify-end gap-1.5">
-                          {chips.map((c) => (
+                {roster.map((p) => (
+                  <li key={p.slug} className="flex items-start justify-between gap-3 py-2.5 text-sm">
+                    <Link
+                      href={`/crew/employees/${p.slug}`}
+                      className="shrink-0 pt-0.5 font-headline font-extrabold text-bark-deep hover:underline"
+                    >
+                      {p.name}
+                    </Link>
+                    <ul className="flex flex-col items-end gap-1 text-right">
+                      {p.events.map((e) => {
+                        const a = achievementOf(e);
+                        return (
+                          <li key={e.id} className="flex flex-wrap items-center justify-end gap-1.5">
                             <span
-                              key={c.label}
-                              className={`rounded-full px-2 py-0.5 font-headline text-[9px] font-extrabold uppercase tracking-ribbon ${c.cls}`}
+                              className={`shrink-0 rounded-full px-2 py-0.5 font-headline text-[9px] font-extrabold uppercase tracking-ribbon ${a.cls}`}
                             >
-                              {c.label}
+                              {a.tag}
                             </span>
-                          ))}
-                        </span>
-                      ) : (
-                        <span className="font-headline text-[10px] font-extrabold uppercase tracking-ribbon text-fg-3">
-                          — no activity
-                        </span>
-                      )}
-                    </li>
-                  );
-                })}
+                            {a.detail && <span className="text-xs text-fg-2">{a.detail}</span>}
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  </li>
+                ))}
               </ul>
             )}
           </section>
