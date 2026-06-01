@@ -5,6 +5,7 @@ const SECTIONS: { href: string; label: string }[] = [
   { href: '/hub/arborists', label: 'Roster' },
   { href: '/hub/meetings', label: 'Meetings' },
   { href: '/hub/library', label: 'Library' },
+  { href: '/hub/calculator', label: 'Calculator' },
 ];
 
 export function HubSubNav({ active }: { active: string }) {
