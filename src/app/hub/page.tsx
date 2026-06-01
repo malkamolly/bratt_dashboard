@@ -68,7 +68,7 @@ export default async function HubHomePage() {
           </p>
         </Link>
 
-        <Link href="/hub/onboarding" className="bt-card group transition-colors hover:!border-orange">
+        <Link href="/onboarding/sales/present" className="bt-card group transition-colors hover:!border-orange">
           <h2 className="font-headline text-3xl font-black uppercase text-bark-deep">
             Onboarding
           </h2>
