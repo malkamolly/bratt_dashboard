@@ -4,55 +4,44 @@
 // An auto-generated, read-only visualization of the last 7 days of the
 // activity feed, for the trainer's daily huddle. Recomputed live on each load.
 //
-// Layout: a feed of achievement cards (who · what · when) on the left, and a
-// totals scoreboard + by-day chart on the right. Source data is
-// field_crew_activity, classified by lib/huddle-digest.ts (certifications are
-// deduped — a pass supersedes an earlier fail for the same cert).
+// Layout: every crew member on their own line summarizing their week (left),
+// with a totals scoreboard + by-day chart and a CDL pipeline overview (right).
+// Source data is field_crew_activity, classified by lib/huddle-digest.ts
+// (certifications are deduped — a pass supersedes an earlier fail).
 // ============================================================================
 
 import Link from 'next/link';
 import { format, parseISO } from 'date-fns';
 import { requireHubAccess } from '@/lib/auth';
-import { listActivitySince, listCdlProgress } from '@/lib/crew-data';
-import { buildDigest, type ClassifiedActivity } from '@/lib/huddle-digest';
+import { listActivitySince, listCdlProgress, listEmployees } from '@/lib/crew-data';
+import { buildDigest } from '@/lib/huddle-digest';
 import { CDL_STAGES } from '@/lib/cdl';
 
 export const dynamic = 'force-dynamic';
 
 const WINDOW_DAYS = 7;
 
-type CardSpec = { tag: string; tagClass: string; detail: string };
+// One crew member's week, summarized for their roster line.
+type PersonWeek = {
+  slug: string;
+  name: string;
+  certified: number;
+  leveledUp: number;
+  failed: number;
+  hours: number;
+  total: number;
+};
 
-// Map a classified activity to how its achievement card reads.
-function toCard(e: ClassifiedActivity): CardSpec {
-  switch (e.kind) {
-    case 'cert_pass':
-      return {
-        tag: 'Certified',
-        tagClass: 'bg-green-dark text-white',
-        detail: e.certName ?? e.description,
-      };
-    case 'skill_up':
-      return {
-        tag: 'Leveled up',
-        tagClass: 'bg-orange text-white',
-        detail: e.description.replace(/\.$/, ''),
-      };
-    case 'hours':
-      return {
-        tag: 'Training',
-        tagClass: 'bg-bark-deep text-cream',
-        detail: e.description.replace(/^Training session:\s*/i, ''),
-      };
-    case 'cert_fail':
-      return {
-        tag: 'Did not pass',
-        tagClass: 'bg-orange-press text-white',
-        detail: e.certName ?? e.description,
-      };
-    default:
-      return { tag: 'Update', tagClass: 'bg-paper-edge text-bark-deep', detail: e.description };
-  }
+type Chip = { label: string; cls: string };
+
+function chipsFor(p: PersonWeek, fmtHours: (n: number) => string): Chip[] {
+  const chips: Chip[] = [];
+  const times = (n: number) => (n > 1 ? ` ×${n}` : '');
+  if (p.certified) chips.push({ label: `Certified${times(p.certified)}`, cls: 'bg-green-dark text-white' });
+  if (p.leveledUp) chips.push({ label: `Leveled up${times(p.leveledUp)}`, cls: 'bg-orange text-white' });
+  if (p.hours) chips.push({ label: `${fmtHours(p.hours)}h`, cls: 'bg-bark-deep text-cream' });
+  if (p.failed) chips.push({ label: `Did not pass${times(p.failed)}`, cls: 'bg-orange-press text-white' });
+  return chips;
 }
 
 export default async function ProgressDigestPage() {
@@ -65,15 +54,39 @@ export default async function ProgressDigestPage() {
     'yyyy-MM-dd',
   );
 
-  const [entries, cdl] = await Promise.all([
+  const [entries, cdl, employees] = await Promise.all([
     listActivitySince(sinceISO),
     listCdlProgress(),
+    listEmployees({ activeOnly: true }),
   ]);
   const digest = buildDigest(entries, { days: WINDOW_DAYS, todayISO });
   const { callouts } = digest;
 
   // Group CDL trainees by stage for the overview column.
   const cdlByStage = CDL_STAGES.map((_, i) => cdl.filter((t) => t.stage === i + 1));
+
+  // One summarized line per crew member — everyone, even if idle this week.
+  const bySlug = new Map<string, PersonWeek>();
+  const ensurePerson = (slug: string, name: string) => {
+    let p = bySlug.get(slug);
+    if (!p) {
+      p = { slug, name, certified: 0, leveledUp: 0, failed: 0, hours: 0, total: 0 };
+      bySlug.set(slug, p);
+    }
+    return p;
+  };
+  for (const emp of employees) ensurePerson(emp.slug, emp.name);
+  for (const e of digest.events) {
+    const p = ensurePerson(e.employee_slug, e.employee_name);
+    p.total++;
+    if (e.kind === 'cert_pass') p.certified++;
+    else if (e.kind === 'skill_up') p.leveledUp++;
+    else if (e.kind === 'cert_fail') p.failed++;
+    else if (e.kind === 'hours' && e.hours) p.hours += e.hours;
+  }
+  const roster = Array.from(bySlug.values()).sort(
+    (a, b) => b.total - a.total || a.name.localeCompare(b.name),
+  );
 
   const maxDay = Math.max(1, ...digest.days.map((d) => d.count));
   const fmtHours = (n: number) => (Number.isInteger(n) ? String(n) : n.toFixed(1));
@@ -108,49 +121,44 @@ export default async function ProgressDigestPage() {
         </Link>
       </header>
 
-      {digest.totalEntries === 0 ? (
-        <div className="mt-8 rounded-card border-2 border-dashed border-paper-edge bg-paper p-8 text-center">
-          <p className="font-headline text-xs font-extrabold uppercase tracking-ribbon text-fg-3">
-            Nothing yet
-          </p>
-          <p className="mt-2 text-sm text-fg-2">
-            No activity has been logged in this window. Once the trainer logs
-            skill bumps, training hours, or certifications, they&apos;ll show up
-            here automatically.
-          </p>
-        </div>
-      ) : (
-        <div className="mt-8 grid grid-cols-1 gap-6 lg:grid-cols-4">
+      <div className="mt-8 grid grid-cols-1 gap-6 lg:grid-cols-4">
           {/* Achievement feed (left) */}
           <section className="bt-card lg:col-span-2">
             <h2 className="font-headline text-sm font-extrabold uppercase tracking-ribbon text-bark-deep">
               Who moved the needle
             </h2>
-            {digest.events.length === 0 ? (
-              <p className="mt-4 text-sm text-fg-3">
-                No level-ups, certifications, or training logged this week.
-              </p>
+            {roster.length === 0 ? (
+              <p className="mt-4 text-sm text-fg-3">No active crew on file.</p>
             ) : (
               <ul className="mt-4 divide-y divide-paper-edge">
-                {digest.events.map((e) => {
-                  const card = toCard(e);
+                {roster.map((p) => {
+                  const chips = chipsFor(p, fmtHours);
                   return (
-                    <li key={e.id} className="flex items-center gap-3 py-2.5 text-sm">
-                      <span
-                        className={`w-24 shrink-0 rounded-full px-2 py-0.5 text-center font-headline text-[9px] font-extrabold uppercase tracking-ribbon ${card.tagClass}`}
-                      >
-                        {card.tag}
-                      </span>
+                    <li key={p.slug} className="flex items-center justify-between gap-3 py-2.5 text-sm">
                       <Link
-                        href={`/crew/employees/${e.employee_slug}`}
-                        className="shrink-0 font-headline font-extrabold text-bark-deep hover:underline"
+                        href={`/crew/employees/${p.slug}`}
+                        className={`shrink-0 font-headline font-extrabold hover:underline ${
+                          p.total ? 'text-bark-deep' : 'text-fg-3'
+                        }`}
                       >
-                        {e.employee_name}
+                        {p.name}
                       </Link>
-                      <span className="min-w-0 flex-1 truncate text-fg-2">{card.detail}</span>
-                      <span className="shrink-0 font-headline text-[10px] font-extrabold uppercase tracking-ribbon text-fg-3">
-                        {format(parseISO(e.occurred_on), 'MMM d')}
-                      </span>
+                      {chips.length > 0 ? (
+                        <span className="flex flex-wrap items-center justify-end gap-1.5">
+                          {chips.map((c) => (
+                            <span
+                              key={c.label}
+                              className={`rounded-full px-2 py-0.5 font-headline text-[9px] font-extrabold uppercase tracking-ribbon ${c.cls}`}
+                            >
+                              {c.label}
+                            </span>
+                          ))}
+                        </span>
+                      ) : (
+                        <span className="font-headline text-[10px] font-extrabold uppercase tracking-ribbon text-fg-3">
+                          — no activity
+                        </span>
+                      )}
                     </li>
                   );
                 })}
@@ -259,7 +267,6 @@ export default async function ProgressDigestPage() {
             </div>
           </aside>
         </div>
-      )}
     </main>
   );
 }

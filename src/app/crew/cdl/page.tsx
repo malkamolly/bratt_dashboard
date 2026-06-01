@@ -11,7 +11,12 @@ import Link from 'next/link';
 import { requireHubAccess, canEditCrew } from '@/lib/auth';
 import { listCdlProgress, listEmployees } from '@/lib/crew-data';
 import { CDL_STAGES, cdlStageLabel } from '@/lib/cdl';
-import { setCdlStage, addCdlTrainees, removeCdlTrainee } from '@/app/crew/actions';
+import {
+  setCdlStage,
+  addCdlTrainees,
+  removeCdlTrainee,
+  moveCdlTrainee,
+} from '@/app/crew/actions';
 
 export const dynamic = 'force-dynamic';
 
@@ -91,17 +96,47 @@ export default async function CdlTrackerPage({
           <p className="mt-3 text-sm text-fg-3">Nobody on the CDL track yet.</p>
         ) : (
           <ul className="mt-4 divide-y divide-paper-edge overflow-hidden rounded-card border border-paper-edge bg-paper">
-            {trainees.map((t) => (
+            {trainees.map((t, i) => (
               <li
                 key={t.employee_slug}
                 className="flex flex-wrap items-center justify-between gap-3 px-4 py-3"
               >
-                <Link
-                  href={`/crew/employees/${t.employee_slug}`}
-                  className="font-headline text-base font-extrabold text-bark-deep hover:underline"
-                >
-                  {t.employee_name}
-                </Link>
+                <div className="flex items-center gap-2">
+                  {editable && (
+                    <span className="flex flex-col">
+                      <form action={moveCdlTrainee}>
+                        <input type="hidden" name="employee_slug" value={t.employee_slug} />
+                        <input type="hidden" name="direction" value="up" />
+                        <button
+                          type="submit"
+                          disabled={i === 0}
+                          aria-label="Move up"
+                          className="font-headline text-xs leading-none text-fg-3 hover:text-orange disabled:opacity-30"
+                        >
+                          ▲
+                        </button>
+                      </form>
+                      <form action={moveCdlTrainee}>
+                        <input type="hidden" name="employee_slug" value={t.employee_slug} />
+                        <input type="hidden" name="direction" value="down" />
+                        <button
+                          type="submit"
+                          disabled={i === trainees.length - 1}
+                          aria-label="Move down"
+                          className="font-headline text-xs leading-none text-fg-3 hover:text-orange disabled:opacity-30"
+                        >
+                          ▼
+                        </button>
+                      </form>
+                    </span>
+                  )}
+                  <Link
+                    href={`/crew/employees/${t.employee_slug}`}
+                    className="font-headline text-base font-extrabold text-bark-deep hover:underline"
+                  >
+                    {t.employee_name}
+                  </Link>
+                </div>
                 {editable ? (
                   <div className="flex items-center gap-2">
                     <form action={setCdlStage} className="flex items-center gap-2">

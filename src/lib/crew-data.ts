@@ -1148,20 +1148,22 @@ export type CdlTrainee = {
   employee_slug: string;
   employee_name: string;
   stage: number;
+  sort_order: number;
   notes: string | null;
   updated_at: string | null;
 };
 
-/** Everyone currently on the CDL track, ordered by stage then name. */
+/** Everyone currently on the CDL track, in the manager's chosen order. */
 export async function listCdlProgress(): Promise<CdlTrainee[]> {
   const supabase = await serverClient();
   const { data } = await supabase
     .from('field_crew_cdl_progress')
-    .select('employee_slug, stage, notes, updated_at, field_crew_employees!inner(name)')
-    .order('stage', { ascending: true });
+    .select('employee_slug, stage, sort_order, notes, updated_at, field_crew_employees!inner(name)')
+    .order('sort_order', { ascending: true });
   type Row = {
     employee_slug: string;
     stage: number;
+    sort_order: number;
     notes: string | null;
     updated_at: string | null;
     field_crew_employees: { name: string } | { name: string }[] | null;
@@ -1175,11 +1177,12 @@ export async function listCdlProgress(): Promise<CdlTrainee[]> {
         employee_slug: r.employee_slug,
         employee_name: joined?.name ?? r.employee_slug,
         stage: r.stage,
+        sort_order: r.sort_order,
         notes: r.notes,
         updated_at: r.updated_at,
       };
     })
-    .sort((a, b) => a.stage - b.stage || a.employee_name.localeCompare(b.employee_name));
+    .sort((a, b) => a.sort_order - b.sort_order || a.employee_name.localeCompare(b.employee_name));
 }
 
 // ---------- Aggregations for the homepage ----------

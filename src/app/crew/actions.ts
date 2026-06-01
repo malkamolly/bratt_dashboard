@@ -1228,10 +1228,25 @@ export async function addCdlTrainees(formData: FormData): Promise<void> {
 
   const supabase = await serverClient();
   const today = new Date().toISOString().slice(0, 10);
+
+  // Append new trainees after everyone already on the track.
+  const { data: maxRow } = await supabase
+    .from('field_crew_cdl_progress')
+    .select('sort_order')
+    .order('sort_order', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  let next = ((maxRow as { sort_order: number } | null)?.sort_order ?? 0) + 1;
+
   const { error } = await supabase
     .from('field_crew_cdl_progress')
     .upsert(
-      slugs.map((employee_slug) => ({ employee_slug, stage: 1, updated_by: user.email })),
+      slugs.map((employee_slug) => ({
+        employee_slug,
+        stage: 1,
+        sort_order: next++,
+        updated_by: user.email,
+      })),
       { onConflict: 'employee_slug', ignoreDuplicates: true },
     );
   if (error) redirect(`${CDL_BACK}?error=${encodeURIComponent(error.message)}`);
@@ -1263,4 +1278,38 @@ export async function removeCdlTrainee(formData: FormData): Promise<void> {
   revalidatePath(CDL_BACK);
   revalidatePath('/crew/reports/digest');
   redirect(`${CDL_BACK}?removed=1`);
+}
+
+export async function moveCdlTrainee(formData: FormData): Promise<void> {
+  const user = await getAllowedUser();
+  if (!user) redirect('/login');
+  if (!canEditCrew(user.role)) redirect('/access-denied');
+
+  const slug = String(formData.get('employee_slug') ?? '').trim();
+  const direction = String(formData.get('direction') ?? '');
+  if (!slug || (direction !== 'up' && direction !== 'down')) redirect(CDL_BACK);
+
+  const supabase = await serverClient();
+  const { data: rows } = await supabase
+    .from('field_crew_cdl_progress')
+    .select('employee_slug, sort_order')
+    .order('sort_order', { ascending: true })
+    .order('employee_slug', { ascending: true });
+
+  const list = (rows ?? []) as { employee_slug: string; sort_order: number }[];
+  const idx = list.findIndex((r) => r.employee_slug === slug);
+  const swapIdx = direction === 'up' ? idx - 1 : idx + 1;
+  if (idx === -1 || swapIdx < 0 || swapIdx >= list.length) redirect(CDL_BACK);
+
+  // Swap the two rows' sort_order values.
+  const a = list[idx];
+  const b = list[swapIdx];
+  await Promise.all([
+    supabase.from('field_crew_cdl_progress').update({ sort_order: b.sort_order }).eq('employee_slug', a.employee_slug),
+    supabase.from('field_crew_cdl_progress').update({ sort_order: a.sort_order }).eq('employee_slug', b.employee_slug),
+  ]);
+
+  revalidatePath(CDL_BACK);
+  revalidatePath('/crew/reports/digest');
+  redirect(CDL_BACK);
 }
