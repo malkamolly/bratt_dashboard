@@ -13,7 +13,7 @@
 import Link from 'next/link';
 import { format, parseISO } from 'date-fns';
 import { requireHubAccess } from '@/lib/auth';
-import { listActivitySince, listCdlProgress, listEmployees } from '@/lib/crew-data';
+import { listActivitySince, listCdlProgress } from '@/lib/crew-data';
 import { buildDigest } from '@/lib/huddle-digest';
 import { CDL_STAGES } from '@/lib/cdl';
 
@@ -54,10 +54,9 @@ export default async function ProgressDigestPage() {
     'yyyy-MM-dd',
   );
 
-  const [entries, cdl, employees] = await Promise.all([
+  const [entries, cdl] = await Promise.all([
     listActivitySince(sinceISO),
     listCdlProgress(),
-    listEmployees({ activeOnly: true }),
   ]);
   const digest = buildDigest(entries, { days: WINDOW_DAYS, todayISO });
   const { callouts } = digest;
@@ -65,7 +64,7 @@ export default async function ProgressDigestPage() {
   // Group CDL trainees by stage for the overview column.
   const cdlByStage = CDL_STAGES.map((_, i) => cdl.filter((t) => t.stage === i + 1));
 
-  // One summarized line per crew member — everyone, even if idle this week.
+  // One summarized line per crew member who actually did something this week.
   const bySlug = new Map<string, PersonWeek>();
   const ensurePerson = (slug: string, name: string) => {
     let p = bySlug.get(slug);
@@ -75,7 +74,6 @@ export default async function ProgressDigestPage() {
     }
     return p;
   };
-  for (const emp of employees) ensurePerson(emp.slug, emp.name);
   for (const e of digest.events) {
     const p = ensurePerson(e.employee_slug, e.employee_name);
     p.total++;
@@ -128,7 +126,9 @@ export default async function ProgressDigestPage() {
               Who moved the needle
             </h2>
             {roster.length === 0 ? (
-              <p className="mt-4 text-sm text-fg-3">No active crew on file.</p>
+              <p className="mt-4 text-sm text-fg-3">
+                No level-ups, certifications, or training logged this week.
+              </p>
             ) : (
               <ul className="mt-4 divide-y divide-paper-edge">
                 {roster.map((p) => {
@@ -241,26 +241,25 @@ export default async function ProgressDigestPage() {
               {cdl.length === 0 ? (
                 <p className="mt-3 text-sm text-fg-3">Nobody on the CDL track yet.</p>
               ) : (
-                <ol className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-5">
+                <ol className="mt-4 divide-y divide-paper-edge">
                   {CDL_STAGES.map((label, i) => {
                     const people = cdlByStage[i];
                     return (
-                      <li key={label} className="rounded-2 border border-paper-edge bg-cream px-3 py-2">
-                        <div className="flex items-baseline justify-between gap-2">
-                          <span className="font-headline text-[10px] font-extrabold uppercase tracking-ribbon text-fg-3">
-                            {i + 1}. {label}
-                          </span>
-                          <span
-                            className={`font-headline text-sm font-extrabold ${people.length ? 'text-orange' : 'text-fg-3'}`}
-                          >
-                            {people.length}
-                          </span>
-                        </div>
-                        {people.length > 0 && (
-                          <p className="mt-1 text-xs text-fg-2">
-                            {people.map((p) => p.employee_name).join(', ')}
-                          </p>
-                        )}
+                      <li
+                        key={label}
+                        className="flex items-baseline justify-between gap-4 py-2.5"
+                      >
+                        <span className="w-44 shrink-0 font-headline text-[11px] font-extrabold uppercase tracking-ribbon text-bark-deep">
+                          {i + 1}. {label}
+                        </span>
+                        <span className="flex-1 text-xs text-fg-2">
+                          {people.map((p) => p.employee_name).join(', ')}
+                        </span>
+                        <span
+                          className={`shrink-0 font-headline text-sm font-extrabold ${people.length ? 'text-orange' : 'text-fg-3'}`}
+                        >
+                          {people.length}
+                        </span>
                       </li>
                     );
                   })}
