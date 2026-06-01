@@ -1142,6 +1142,46 @@ export async function listCertificatesForEmployee(slug: string): Promise<Certifi
   return rows.map(buildCert).filter((r): r is CertificateRecord => r !== null);
 }
 
+// ---------- CDL tracker ----------
+
+export type CdlTrainee = {
+  employee_slug: string;
+  employee_name: string;
+  stage: number;
+  notes: string | null;
+  updated_at: string | null;
+};
+
+/** Everyone currently on the CDL track, ordered by stage then name. */
+export async function listCdlProgress(): Promise<CdlTrainee[]> {
+  const supabase = await serverClient();
+  const { data } = await supabase
+    .from('field_crew_cdl_progress')
+    .select('employee_slug, stage, notes, updated_at, field_crew_employees!inner(name)')
+    .order('stage', { ascending: true });
+  type Row = {
+    employee_slug: string;
+    stage: number;
+    notes: string | null;
+    updated_at: string | null;
+    field_crew_employees: { name: string } | { name: string }[] | null;
+  };
+  return ((data ?? []) as Row[])
+    .map((r) => {
+      const joined = Array.isArray(r.field_crew_employees)
+        ? r.field_crew_employees[0]
+        : r.field_crew_employees;
+      return {
+        employee_slug: r.employee_slug,
+        employee_name: joined?.name ?? r.employee_slug,
+        stage: r.stage,
+        notes: r.notes,
+        updated_at: r.updated_at,
+      };
+    })
+    .sort((a, b) => a.stage - b.stage || a.employee_name.localeCompare(b.employee_name));
+}
+
 // ---------- Aggregations for the homepage ----------
 
 export type SkillSummary = {

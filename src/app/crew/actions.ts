@@ -12,6 +12,7 @@ import { redirect } from 'next/navigation';
 import { getAllowedUser, canEditCrew } from '@/lib/auth';
 import { serverClient } from '@/lib/supabase';
 import { isValidTheme, countSlides } from '@/lib/training-deck';
+import { cdlStageLabel, isCdlStage } from '@/lib/cdl';
 
 export type TrainingSessionEntryInput = {
   training_key: string;
@@ -1159,4 +1160,107 @@ export async function saveTrainingModuleSource(formData: FormData): Promise<void
   revalidatePath(`/crew/modules/${slug}/edit`);
   revalidatePath(`/crew/modules/${slug}/present`);
   redirect(`${back}?saved=1`);
+}
+
+// ============================================================================
+// CDL tracker — used by /crew/cdl
+// ============================================================================
+// A crew member's progress through the 5-stage CDL pipeline. Stages live in
+// src/lib/cdl.ts. Manager-only writes; each change appends an activity line so
+// there's an audit trail in the feed (kept out of the daily-progress card feed
+// on purpose — CDL has its own column there).
+
+const CDL_BACK = '/crew/cdl';
+
+export async function setCdlStage(formData: FormData): Promise<void> {
+  const user = await getAllowedUser();
+  if (!user) redirect('/login');
+  if (!canEditCrew(user.role)) redirect('/access-denied');
+
+  const slug = String(formData.get('employee_slug') ?? '').trim();
+  const stage = Number(formData.get('stage'));
+  if (!slug || !isCdlStage(stage)) {
+    redirect(`${CDL_BACK}?error=${encodeURIComponent('Pick a valid stage.')}`);
+  }
+
+  const supabase = await serverClient();
+  const today = new Date().toISOString().slice(0, 10);
+
+  const { data: existing } = await supabase
+    .from('field_crew_cdl_progress')
+    .select('stage')
+    .eq('employee_slug', slug)
+    .maybeSingle();
+  const prevStage = (existing as { stage: number } | null)?.stage ?? null;
+
+  const { error } = await supabase
+    .from('field_crew_cdl_progress')
+    .upsert(
+      { employee_slug: slug, stage, updated_at: new Date().toISOString(), updated_by: user.email },
+      { onConflict: 'employee_slug' },
+    );
+  if (error) redirect(`${CDL_BACK}?error=${encodeURIComponent(error.message)}`);
+
+  if (prevStage !== stage) {
+    const desc =
+      prevStage === null
+        ? `CDL: added at ${cdlStageLabel(stage)}.`
+        : `CDL: ${cdlStageLabel(prevStage)} → ${cdlStageLabel(stage)}.`;
+    await logActivity(supabase, slug, today, desc, user.email);
+    revalidatePath(`/crew/employees/${slug}`);
+  }
+
+  revalidatePath(CDL_BACK);
+  revalidatePath('/crew/reports/digest');
+  redirect(`${CDL_BACK}?saved=1`);
+}
+
+export async function addCdlTrainees(formData: FormData): Promise<void> {
+  const user = await getAllowedUser();
+  if (!user) redirect('/login');
+  if (!canEditCrew(user.role)) redirect('/access-denied');
+
+  const slugs = formData
+    .getAll('employee_slug')
+    .map((s) => String(s).trim())
+    .filter(Boolean);
+  if (slugs.length === 0) redirect(CDL_BACK);
+
+  const supabase = await serverClient();
+  const today = new Date().toISOString().slice(0, 10);
+  const { error } = await supabase
+    .from('field_crew_cdl_progress')
+    .upsert(
+      slugs.map((employee_slug) => ({ employee_slug, stage: 1, updated_by: user.email })),
+      { onConflict: 'employee_slug', ignoreDuplicates: true },
+    );
+  if (error) redirect(`${CDL_BACK}?error=${encodeURIComponent(error.message)}`);
+
+  for (const slug of slugs) {
+    await logActivity(supabase, slug, today, `CDL: added at ${cdlStageLabel(1)}.`, user.email);
+    revalidatePath(`/crew/employees/${slug}`);
+  }
+  revalidatePath(CDL_BACK);
+  revalidatePath('/crew/reports/digest');
+  redirect(`${CDL_BACK}?added=${slugs.length}`);
+}
+
+export async function removeCdlTrainee(formData: FormData): Promise<void> {
+  const user = await getAllowedUser();
+  if (!user) redirect('/login');
+  if (!canEditCrew(user.role)) redirect('/access-denied');
+
+  const slug = String(formData.get('employee_slug') ?? '').trim();
+  if (!slug) redirect(CDL_BACK);
+
+  const supabase = await serverClient();
+  const { error } = await supabase
+    .from('field_crew_cdl_progress')
+    .delete()
+    .eq('employee_slug', slug);
+  if (error) redirect(`${CDL_BACK}?error=${encodeURIComponent(error.message)}`);
+
+  revalidatePath(CDL_BACK);
+  revalidatePath('/crew/reports/digest');
+  redirect(`${CDL_BACK}?removed=1`);
 }

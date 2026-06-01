@@ -13,8 +13,9 @@
 import Link from 'next/link';
 import { format, parseISO } from 'date-fns';
 import { requireHubAccess } from '@/lib/auth';
-import { listActivitySince } from '@/lib/crew-data';
+import { listActivitySince, listCdlProgress } from '@/lib/crew-data';
 import { buildDigest, type ClassifiedActivity } from '@/lib/huddle-digest';
+import { CDL_STAGES } from '@/lib/cdl';
 
 export const dynamic = 'force-dynamic';
 
@@ -64,9 +65,15 @@ export default async function ProgressDigestPage() {
     'yyyy-MM-dd',
   );
 
-  const entries = await listActivitySince(sinceISO);
+  const [entries, cdl] = await Promise.all([
+    listActivitySince(sinceISO),
+    listCdlProgress(),
+  ]);
   const digest = buildDigest(entries, { days: WINDOW_DAYS, todayISO });
   const { callouts } = digest;
+
+  // Group CDL trainees by stage for the overview column.
+  const cdlByStage = CDL_STAGES.map((_, i) => cdl.filter((t) => t.stage === i + 1));
 
   const maxDay = Math.max(1, ...digest.days.map((d) => d.count));
   const fmtHours = (n: number) => (Number.isInteger(n) ? String(n) : n.toFixed(1));
@@ -113,7 +120,7 @@ export default async function ProgressDigestPage() {
           </p>
         </div>
       ) : (
-        <div className="mt-8 grid grid-cols-1 gap-6 lg:grid-cols-3">
+        <div className="mt-8 grid grid-cols-1 gap-6 lg:grid-cols-4">
           {/* Achievement feed (left) */}
           <section className="bt-card lg:col-span-2">
             <h2 className="font-headline text-sm font-extrabold uppercase tracking-ribbon text-bark-deep">
@@ -157,6 +164,9 @@ export default async function ProgressDigestPage() {
               <h2 className="font-headline text-sm font-extrabold uppercase tracking-ribbon text-bark-deep">
                 This week
               </h2>
+              <p className="font-headline text-[10px] font-extrabold uppercase tracking-ribbon text-fg-3">
+                Trailing 7 days
+              </p>
               <dl className="mt-4 space-y-3">
                 <TotalRow
                   value={callouts.leveledUpPeople}
@@ -201,6 +211,51 @@ export default async function ProgressDigestPage() {
                   );
                 })}
               </div>
+            </div>
+          </aside>
+
+          {/* CDL pipeline overview (3rd column) */}
+          <aside className="lg:col-span-1">
+            <div className="bt-card">
+              <div className="flex items-baseline justify-between gap-2">
+                <h2 className="font-headline text-sm font-extrabold uppercase tracking-ribbon text-bark-deep">
+                  CDL tracking
+                </h2>
+                <Link
+                  href="/crew/cdl"
+                  className="font-headline text-[10px] font-extrabold uppercase tracking-ribbon text-orange hover:underline"
+                >
+                  Manage →
+                </Link>
+              </div>
+              {cdl.length === 0 ? (
+                <p className="mt-3 text-sm text-fg-3">Nobody on the CDL track yet.</p>
+              ) : (
+                <ol className="mt-4 space-y-3">
+                  {CDL_STAGES.map((label, i) => {
+                    const people = cdlByStage[i];
+                    return (
+                      <li key={label} className="border-t border-paper-edge pt-2 first:border-t-0 first:pt-0">
+                        <div className="flex items-baseline justify-between gap-2">
+                          <span className="font-headline text-[11px] font-extrabold uppercase tracking-ribbon text-bark-deep">
+                            {i + 1}. {label}
+                          </span>
+                          <span
+                            className={`font-headline text-sm font-extrabold ${people.length ? 'text-orange' : 'text-fg-3'}`}
+                          >
+                            {people.length}
+                          </span>
+                        </div>
+                        {people.length > 0 && (
+                          <p className="mt-1 text-xs text-fg-2">
+                            {people.map((p) => p.employee_name).join(', ')}
+                          </p>
+                        )}
+                      </li>
+                    );
+                  })}
+                </ol>
+              )}
             </div>
           </aside>
         </div>
