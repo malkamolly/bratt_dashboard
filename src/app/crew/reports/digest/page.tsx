@@ -115,20 +115,20 @@ export default async function ProgressDigestPage() {
       ) : (
         <div className="mt-8 grid grid-cols-1 gap-6 lg:grid-cols-3">
           {/* Achievement feed (left) */}
-          <section className="lg:col-span-2">
+          <section className="bt-card lg:col-span-2">
             <h2 className="font-headline text-sm font-extrabold uppercase tracking-ribbon text-bark-deep">
               Who moved the needle
             </h2>
             {digest.events.length === 0 ? (
-              <p className="mt-3 text-sm text-fg-3">
+              <p className="mt-4 text-sm text-fg-3">
                 No level-ups, certifications, or training logged this week.
               </p>
             ) : (
-              <ul className="mt-3 divide-y divide-paper-edge overflow-hidden rounded-card border border-paper-edge bg-paper">
+              <ul className="mt-4 divide-y divide-paper-edge">
                 {digest.events.map((e) => {
                   const card = toCard(e);
                   return (
-                    <li key={e.id} className="flex items-center gap-3 px-4 py-2.5 text-sm">
+                    <li key={e.id} className="flex items-center gap-3 py-2.5 text-sm">
                       <span
                         className={`w-24 shrink-0 rounded-full px-2 py-0.5 text-center font-headline text-[9px] font-extrabold uppercase tracking-ribbon ${card.tagClass}`}
                       >
@@ -170,8 +170,8 @@ export default async function ProgressDigestPage() {
                   color="text-orange-press"
                 />
                 <TotalRow
-                  value={`${fmtHours(callouts.hours)}h`}
-                  label="training logged"
+                  value={fmtHours(callouts.hours)}
+                  label="training hours logged"
                   color="text-bark-deep"
                 />
               </dl>
@@ -220,7 +220,7 @@ function TotalRow({
 }) {
   return (
     <div className="flex items-center gap-3">
-      <dd className={`w-14 shrink-0 text-right font-display text-4xl leading-none ${color}`}>
+      <dd className={`w-16 shrink-0 text-right font-display text-4xl leading-none ${color}`}>
         {value}
       </dd>
       <dt className="font-headline text-[11px] font-extrabold uppercase tracking-ribbon text-fg-2">
