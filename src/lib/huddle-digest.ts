@@ -140,6 +140,12 @@ export type ProgressDigest = {
   };
   /** "Who moved the needle" — progress events per person, desc. */
   leaderboard: PersonCount[];
+  /**
+   * Unified, newest-first feed of achievement events for the card list:
+   * certifications, level-ups, training sessions, and (as setbacks) fails.
+   * Certs/fails are already deduped (a pass supersedes an earlier fail).
+   */
+  events: ClassifiedActivity[];
   skillUps: ClassifiedActivity[];
   certified: CertOutcome[];
   failed: CertOutcome[];
@@ -181,6 +187,7 @@ export function buildDigest(
     .map(classifyActivity);
 
   const skillUps: ClassifiedActivity[] = [];
+  const hoursSessions: ClassifiedActivity[] = [];
   const leveledUpPeople = new Set<string>();
   const hoursBySlug = new Map<string, PersonCount>();
   const needleBySlug = new Map<string, PersonCount>();
@@ -214,6 +221,7 @@ export function buildDigest(
       bumpNeedle(c);
     } else if (c.kind === 'hours' && c.hours) {
       totalHours += c.hours;
+      hoursSessions.push(c);
       const h = hoursBySlug.get(c.employee_slug) ?? {
         slug: c.employee_slug,
         name: c.employee_name,
@@ -243,6 +251,11 @@ export function buildDigest(
 
   const round2 = (n: number) => Math.round(n * 100) / 100;
 
+  // Unified feed for the achievement cards, newest day first.
+  const events = [...certified, ...skillUps, ...failed, ...hoursSessions].sort(
+    (a, b) => b.occurred_on.localeCompare(a.occurred_on) || a.employee_name.localeCompare(b.employee_name),
+  );
+
   return {
     fromDate,
     toDate,
@@ -257,6 +270,7 @@ export function buildDigest(
       hours: round2(totalHours),
     },
     leaderboard: Array.from(needleBySlug.values()).sort(bySlugDesc),
+    events,
     skillUps,
     certified,
     failed,

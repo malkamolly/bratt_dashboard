@@ -3,19 +3,56 @@
 // ============================================================================
 // An auto-generated, read-only visualization of the last 7 days of the
 // activity feed, for the trainer's daily huddle. Recomputed live on each load.
-// Source data is field_crew_activity, classified by lib/huddle-digest.ts into
-// skill level-ups, certifications (pass/fail, deduped), and training hours.
+//
+// Layout: a feed of achievement cards (who · what · when) on the left, and a
+// totals scoreboard + by-day chart on the right. Source data is
+// field_crew_activity, classified by lib/huddle-digest.ts (certifications are
+// deduped — a pass supersedes an earlier fail for the same cert).
 // ============================================================================
 
 import Link from 'next/link';
 import { format, parseISO } from 'date-fns';
 import { requireHubAccess } from '@/lib/auth';
 import { listActivitySince } from '@/lib/crew-data';
-import { buildDigest, type CertGroup } from '@/lib/huddle-digest';
+import { buildDigest, type ClassifiedActivity } from '@/lib/huddle-digest';
 
 export const dynamic = 'force-dynamic';
 
 const WINDOW_DAYS = 7;
+
+type CardSpec = { tag: string; tagClass: string; detail: string };
+
+// Map a classified activity to how its achievement card reads.
+function toCard(e: ClassifiedActivity): CardSpec {
+  switch (e.kind) {
+    case 'cert_pass':
+      return {
+        tag: 'Certified',
+        tagClass: 'bg-green-dark text-white',
+        detail: e.certName ?? e.description,
+      };
+    case 'skill_up':
+      return {
+        tag: 'Leveled up',
+        tagClass: 'bg-orange text-white',
+        detail: e.description.replace(/\.$/, ''),
+      };
+    case 'hours':
+      return {
+        tag: 'Training',
+        tagClass: 'bg-bark-deep text-cream',
+        detail: e.description.replace(/^Training session:\s*/i, ''),
+      };
+    case 'cert_fail':
+      return {
+        tag: 'Did not pass',
+        tagClass: 'bg-orange-press text-white',
+        detail: e.certName ?? e.description,
+      };
+    default:
+      return { tag: 'Update', tagClass: 'bg-paper-edge text-bark-deep', detail: e.description };
+  }
+}
 
 export default async function ProgressDigestPage() {
   await requireHubAccess('crew');
@@ -32,8 +69,6 @@ export default async function ProgressDigestPage() {
   const { callouts } = digest;
 
   const maxDay = Math.max(1, ...digest.days.map((d) => d.count));
-  const maxNeedle = Math.max(1, ...digest.leaderboard.map((p) => p.count));
-  const maxHours = Math.max(1, ...digest.hoursByPerson.map((p) => p.count));
   const fmtHours = (n: number) => (Number.isInteger(n) ? String(n) : n.toFixed(1));
 
   return (
@@ -78,257 +113,126 @@ export default async function ProgressDigestPage() {
           </p>
         </div>
       ) : (
-        <>
-          {/* Who moved the needle (top) */}
-          <section className="mt-8 bt-card">
+        <div className="mt-8 grid grid-cols-1 gap-6 lg:grid-cols-3">
+          {/* Achievement feed (left) */}
+          <section className="lg:col-span-2">
             <h2 className="font-headline text-sm font-extrabold uppercase tracking-ribbon text-bark-deep">
               Who moved the needle
             </h2>
-            <p className="mt-1 text-xs text-fg-3">
-              Skill level-ups, certifications, and training sessions per person.
-            </p>
-            {digest.leaderboard.length === 0 ? (
-              <p className="mt-3 text-sm text-fg-3">No progress events logged this week.</p>
+            {digest.events.length === 0 ? (
+              <p className="mt-3 text-sm text-fg-3">
+                No level-ups, certifications, or training logged this week.
+              </p>
             ) : (
-              <ul className="mt-4 space-y-3">
-                {digest.leaderboard.map((p) => (
-                  <li key={p.slug}>
-                    <div className="flex items-center justify-between">
-                      <Link
-                        href={`/crew/employees/${p.slug}`}
-                        className="font-headline text-xs font-extrabold uppercase tracking-ribbon text-bark-deep hover:underline"
+              <ul className="mt-3 space-y-3">
+                {digest.events.map((e) => {
+                  const card = toCard(e);
+                  return (
+                    <li
+                      key={e.id}
+                      className="flex items-start gap-3 rounded-card border border-paper-edge bg-paper p-4"
+                    >
+                      <span
+                        className={`mt-0.5 shrink-0 rounded-full px-2.5 py-1 font-headline text-[10px] font-extrabold uppercase tracking-ribbon ${card.tagClass}`}
                       >
-                        {p.name}
-                      </Link>
-                      <span className="font-headline text-xs font-extrabold text-fg-2">
-                        {p.count}
+                        {card.tag}
                       </span>
-                    </div>
-                    <div className="mt-1 h-2.5 w-full overflow-hidden rounded-full bg-paper-edge">
-                      <div
-                        className="h-full rounded-full bg-orange"
-                        style={{ width: `${Math.max(4, (p.count / maxNeedle) * 100)}%` }}
-                      />
-                    </div>
-                  </li>
-                ))}
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-baseline justify-between gap-3">
+                          <Link
+                            href={`/crew/employees/${e.employee_slug}`}
+                            className="truncate font-headline text-base font-extrabold text-bark-deep hover:underline"
+                          >
+                            {e.employee_name}
+                          </Link>
+                          <span className="shrink-0 font-headline text-[11px] font-extrabold uppercase tracking-ribbon text-fg-3">
+                            {format(parseISO(e.occurred_on), 'EEE, MMM d')}
+                          </span>
+                        </div>
+                        <p className="mt-0.5 text-sm text-fg-2">{card.detail}</p>
+                      </div>
+                    </li>
+                  );
+                })}
               </ul>
             )}
           </section>
 
-          {/* Specific callouts */}
-          <section className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            {callouts.leveledUpPeople > 0 && (
-              <Callout
-                value={callouts.leveledUpPeople}
-                label={`crew member${callouts.leveledUpPeople === 1 ? '' : 's'} leveled up`}
-                accent="orange"
-                note={
-                  callouts.leveledUpEvents > callouts.leveledUpPeople
-                    ? `${callouts.leveledUpEvents} skill level-ups total`
-                    : undefined
-                }
-              />
-            )}
-            {callouts.certifiedTotal > 0 && (
-              <Callout
-                value={callouts.certifiedTotal}
-                label="certified"
-                accent="green"
-                breakdown={callouts.certifiedByCert}
-              />
-            )}
-            {callouts.failedTotal > 0 && (
-              <Callout
-                value={callouts.failedTotal}
-                label={`failed a certification`}
-                accent="rust"
-                breakdown={callouts.failedByCert}
-              />
-            )}
-            {callouts.hours > 0 && (
-              <Callout
-                value={`${fmtHours(callouts.hours)}h`}
-                label="training logged"
-                accent="bark"
-              />
-            )}
-          </section>
-
-          {/* Activity by day */}
-          <section className="mt-6 bt-card">
-            <h2 className="font-headline text-sm font-extrabold uppercase tracking-ribbon text-bark-deep">
-              Activity by day
-            </h2>
-            <div className="mt-5 flex items-end justify-between gap-2" style={{ height: 160 }}>
-              {digest.days.map((d) => {
-                const isToday = d.date === digest.toDate;
-                const h = Math.round((d.count / maxDay) * 120);
-                return (
-                  <div key={d.date} className="flex flex-1 flex-col items-center justify-end gap-2">
-                    <span className="font-headline text-xs font-extrabold text-bark-deep">
-                      {d.count || ''}
-                    </span>
-                    <div
-                      className={`w-full rounded-t ${isToday ? 'bg-orange' : 'bg-bark-deep/70'}`}
-                      style={{ height: Math.max(d.count ? 6 : 2, h) }}
-                    />
-                    <span className="font-headline text-[10px] font-extrabold uppercase tracking-ribbon text-fg-3">
-                      {format(parseISO(d.date), 'EEE')}
-                    </span>
-                  </div>
-                );
-              })}
-            </div>
-          </section>
-
-          {/* Who specifically: level-ups, certs, fails */}
-          <section className="mt-6 grid grid-cols-1 gap-6 md:grid-cols-3">
-            <DetailList
-              title={`Leveled up (${digest.skillUps.length})`}
-              empty="None this week."
-              items={digest.skillUps.map((s) => ({
-                id: s.id,
-                slug: s.employee_slug,
-                name: s.employee_name,
-                detail: s.description.replace(/\.$/, ''),
-              }))}
-            />
-            <DetailList
-              title={`Certified (${digest.certified.length})`}
-              empty="None this week."
-              items={digest.certified.map((c) => ({
-                id: c.id,
-                slug: c.employee_slug,
-                name: c.employee_name,
-                detail: c.certName,
-              }))}
-            />
-            <DetailList
-              title={`Did not pass (${digest.failed.length})`}
-              empty="None this week."
-              items={digest.failed.map((c) => ({
-                id: c.id,
-                slug: c.employee_slug,
-                name: c.employee_name,
-                detail: c.certName,
-              }))}
-            />
-          </section>
-
-          {/* Hours by person */}
-          {digest.hoursByPerson.length > 0 && (
-            <section className="mt-6 bt-card">
+          {/* Totals + by-day (right) */}
+          <aside className="space-y-6">
+            <div className="bt-card">
               <h2 className="font-headline text-sm font-extrabold uppercase tracking-ribbon text-bark-deep">
-                Training hours by person
+                This week
               </h2>
-              <ul className="mt-4 space-y-3">
-                {digest.hoursByPerson.map((p) => (
-                  <li key={p.slug}>
-                    <div className="flex items-center justify-between">
-                      <Link
-                        href={`/crew/employees/${p.slug}`}
-                        className="font-headline text-xs font-extrabold uppercase tracking-ribbon text-bark-deep hover:underline"
-                      >
-                        {p.name}
-                      </Link>
-                      <span className="font-headline text-xs font-extrabold text-fg-2">
-                        {fmtHours(p.count)}h
+              <dl className="mt-4 space-y-3">
+                <TotalRow
+                  value={callouts.leveledUpPeople}
+                  label={`crew member${callouts.leveledUpPeople === 1 ? '' : 's'} leveled up`}
+                  color="text-orange"
+                />
+                <TotalRow value={callouts.certifiedTotal} label="certified" color="text-green-dark" />
+                <TotalRow
+                  value={callouts.failedTotal}
+                  label="failed a certification"
+                  color="text-orange-press"
+                />
+                <TotalRow
+                  value={`${fmtHours(callouts.hours)}h`}
+                  label="training logged"
+                  color="text-bark-deep"
+                />
+              </dl>
+            </div>
+
+            <div className="bt-card">
+              <h2 className="font-headline text-sm font-extrabold uppercase tracking-ribbon text-bark-deep">
+                Activity by day
+              </h2>
+              <div className="mt-5 flex items-end justify-between gap-1.5" style={{ height: 130 }}>
+                {digest.days.map((d) => {
+                  const isToday = d.date === digest.toDate;
+                  const h = Math.round((d.count / maxDay) * 95);
+                  return (
+                    <div key={d.date} className="flex flex-1 flex-col items-center justify-end gap-1.5">
+                      <span className="font-headline text-[11px] font-extrabold text-bark-deep">
+                        {d.count || ''}
+                      </span>
+                      <div
+                        className={`w-full rounded-t ${isToday ? 'bg-orange' : 'bg-bark-deep/70'}`}
+                        style={{ height: Math.max(d.count ? 6 : 2, h) }}
+                      />
+                      <span className="font-headline text-[9px] font-extrabold uppercase tracking-ribbon text-fg-3">
+                        {format(parseISO(d.date), 'EEEEE')}
                       </span>
                     </div>
-                    <div className="mt-1 h-2.5 w-full overflow-hidden rounded-full bg-paper-edge">
-                      <div
-                        className="h-full rounded-full bg-green-dark"
-                        style={{ width: `${Math.max(4, (p.count / maxHours) * 100)}%` }}
-                      />
-                    </div>
-                  </li>
-                ))}
-              </ul>
-            </section>
-          )}
-        </>
+                  );
+                })}
+              </div>
+            </div>
+          </aside>
+        </div>
       )}
     </main>
   );
 }
 
-function Callout({
+function TotalRow({
   value,
   label,
-  accent,
-  breakdown,
-  note,
+  color,
 }: {
   value: number | string;
   label: string;
-  accent: 'orange' | 'green' | 'rust' | 'bark';
-  breakdown?: CertGroup[];
-  note?: string;
+  color: string;
 }) {
-  const color =
-    accent === 'orange'
-      ? 'text-orange'
-      : accent === 'green'
-        ? 'text-green-dark'
-        : accent === 'rust'
-          ? 'text-orange-press'
-          : 'text-bark-deep';
   return (
-    <div className="bt-card">
-      <p className={`font-display text-5xl ${color}`}>{value}</p>
-      <p className="mt-1 font-headline text-[11px] font-extrabold uppercase tracking-ribbon text-fg-2">
+    <div className="flex items-center gap-3">
+      <dd className={`w-14 shrink-0 text-right font-display text-4xl leading-none ${color}`}>
+        {value}
+      </dd>
+      <dt className="font-headline text-[11px] font-extrabold uppercase tracking-ribbon text-fg-2">
         {label}
-      </p>
-      {note && <p className="mt-1 text-[11px] text-fg-3">{note}</p>}
-      {breakdown && breakdown.length > 0 && (
-        <ul className="mt-3 space-y-1 border-t border-paper-edge pt-2">
-          {breakdown.map((b) => (
-            <li
-              key={b.name}
-              className="flex items-center justify-between text-xs text-fg-2"
-            >
-              <span className="truncate pr-2">{b.name}</span>
-              <span className="font-headline font-extrabold text-bark-deep">{b.count}</span>
-            </li>
-          ))}
-        </ul>
-      )}
-    </div>
-  );
-}
-
-function DetailList({
-  title,
-  items,
-  empty,
-}: {
-  title: string;
-  items: { id: string; slug: string; name: string; detail: string }[];
-  empty: string;
-}) {
-  return (
-    <div className="bt-card">
-      <h2 className="font-headline text-sm font-extrabold uppercase tracking-ribbon text-bark-deep">
-        {title}
-      </h2>
-      {items.length === 0 ? (
-        <p className="mt-3 text-sm text-fg-3">{empty}</p>
-      ) : (
-        <ul className="mt-3 space-y-2">
-          {items.map((it) => (
-            <li key={it.id} className="text-sm">
-              <Link
-                href={`/crew/employees/${it.slug}`}
-                className="font-headline font-extrabold text-bark-deep hover:underline"
-              >
-                {it.name}
-              </Link>{' '}
-              <span className="text-fg-2">— {it.detail}</span>
-            </li>
-          ))}
-        </ul>
-      )}
+      </dt>
     </div>
   );
 }
