@@ -100,6 +100,7 @@ function CompletionRow({ record, training, editable }: Props) {
           completed={completed || null}
           cardReceived={cardReceived || null}
           cardRequired={training.card_required}
+          completedNoDate={!completed && record.status === 'completed_date_tbd'}
         />
       </td>
       <td className="px-2 py-2.5">
@@ -174,12 +175,14 @@ function StatusChip({
   completed,
   cardReceived,
   cardRequired,
+  completedNoDate = false,
 }: {
   completed: string | null;
   cardReceived: string | null;
   cardRequired: boolean;
+  completedNoDate?: boolean;
 }) {
-  if (completed) {
+  if (completed || completedNoDate) {
     return (
       <span className="inline-flex items-center rounded-full bg-green-dark px-2 py-0.5 font-headline text-[10px] font-extrabold uppercase tracking-ribbon text-white">
         Completed

@@ -40,7 +40,11 @@ export default async function TrainingDetailPage({
       if (training.is_hours_based) {
         if (r.hours_total > 0) acc.active += 1;
         else acc.pending += 1;
-      } else if (r.completed || (training.card_required && r.card_received)) {
+      } else if (
+        r.completed ||
+        r.status === 'completed_date_tbd' ||
+        (training.card_required && r.card_received)
+      ) {
         acc.active += 1;
       } else {
         acc.pending += 1;

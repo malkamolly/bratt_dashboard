@@ -235,10 +235,10 @@ export async function setEmployeeTrainingRecord(
           completed,
           card_received: cardReceived,
           notes,
-          // Clear any prior "TBD" / "in progress" status since real dates now
-          // tell the story. If trainer wanted to mark TBD again they could,
-          // but the UI doesn't expose status directly.
-          status: null,
+          // A real completion date supersedes any status. But if there's still
+          // no date, preserve the existing status (e.g. 'completed_date_tbd' for
+          // historical CDL holders) so editing notes doesn't un-complete them.
+          status: completed ? null : existing?.status ?? null,
         },
         { onConflict: 'employee_slug,training_key' },
       );
