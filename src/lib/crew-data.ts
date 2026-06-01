@@ -330,6 +330,41 @@ export async function listActivity(opts: { limit?: number; slug?: string } = {})
   });
 }
 
+/**
+ * Activity entries on or after a given date (YYYY-MM-DD), newest first.
+ * Used by the daily progress digest, which rolls up the last several days.
+ */
+export async function listActivitySince(sinceDate: string): Promise<ActivityEntry[]> {
+  const supabase = await serverClient();
+  const { data } = await supabase
+    .from('field_crew_activity')
+    .select(
+      'id, employee_slug, occurred_on, description, field_crew_employees!inner(name)',
+    )
+    .gte('occurred_on', sinceDate)
+    .order('occurred_on', { ascending: false })
+    .order('created_at', { ascending: false });
+  type Row = {
+    id: string;
+    employee_slug: string;
+    occurred_on: string;
+    description: string;
+    field_crew_employees: { name: string } | { name: string }[] | null;
+  };
+  return ((data ?? []) as Row[]).map((r) => {
+    const joined = Array.isArray(r.field_crew_employees)
+      ? r.field_crew_employees[0]
+      : r.field_crew_employees;
+    return {
+      id: r.id,
+      employee_slug: r.employee_slug,
+      employee_name: joined?.name ?? r.employee_slug,
+      occurred_on: r.occurred_on,
+      description: r.description,
+    };
+  });
+}
+
 // ---------- Plans ----------
 
 type PlanRow = {

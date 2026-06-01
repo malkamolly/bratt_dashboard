@@ -30,7 +30,22 @@ export default async function ReportsIndexPage() {
         Where the daily huddle and the training activity feed live.
       </p>
 
-      <section className="mt-8 grid grid-cols-1 gap-6 md:grid-cols-2">
+      <section className="mt-8 grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
+        <Link href="/crew/reports/digest" className="bt-card transition-colors hover:!border-orange">
+          <p className="bt-eyebrow">Auto-generated</p>
+          <h2 className="mt-2 font-headline text-2xl font-black uppercase text-bark-deep">
+            Daily progress
+          </h2>
+          <p className="mt-3 text-sm text-fg-2">
+            A visual rollup of the last 7 days — skill level-ups, training
+            hours, completions, and who moved the needle. Built for the morning
+            huddle; pull it up or screenshot it.
+          </p>
+          <p className="mt-6 font-headline text-xs font-extrabold uppercase tracking-ribbon text-orange">
+            Open &rarr;
+          </p>
+        </Link>
+
         <Link href="/crew/reports/feed" className="bt-card transition-colors hover:!border-orange">
           <p className="bt-eyebrow">Live</p>
           <h2 className="mt-2 font-headline text-2xl font-black uppercase text-bark-deep">
