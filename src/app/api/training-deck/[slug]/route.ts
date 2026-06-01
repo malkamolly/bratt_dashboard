@@ -12,7 +12,7 @@
 import { NextResponse } from 'next/server';
 import { requireHubAccess } from '@/lib/auth';
 import { getTrainingModule } from '@/lib/crew-data';
-import { moduleMetaFor, isValidTheme, loadSourceText } from '@/lib/training-deck';
+import { moduleMetaFor, isValidTheme, resolveModuleSource } from '@/lib/training-deck';
 
 export const dynamic = 'force-dynamic';
 
@@ -42,7 +42,7 @@ export async function GET(
     return new NextResponse('Module not found', { status: 404 });
   }
 
-  const source = (await loadSourceText(slug))?.trim();
+  const source = (await resolveModuleSource(mod))?.trim();
   if (!source) {
     return new NextResponse('This module has no slide source yet.', { status: 404 });
   }

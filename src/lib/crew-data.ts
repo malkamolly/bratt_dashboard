@@ -772,6 +772,9 @@ export type TrainingModule = {
   version: string;
   is_active: boolean;
   theme: string;
+  // Slide-deck script in the @layout DSL. Edited in-app and stored in the DB.
+  // When null/empty, the loader falls back to the on-disk content file.
+  source_text: string | null;
 };
 
 export type ModuleQuestion = {

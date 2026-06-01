@@ -35,6 +35,24 @@ export async function loadSourceText(slug: string): Promise<string | null> {
 }
 
 /**
+ * Resolves the slide-deck script for a module, DB-first.
+ *
+ * Managers edit the deck in-app, and those edits are saved to the module's
+ * `source_text` column in Supabase. If that column has content we use it;
+ * otherwise we fall back to the on-disk content file (the original way decks
+ * were authored). This lets old file-authored modules keep working while new
+ * edits live in the database — the only place a Vercel deploy can persist a
+ * runtime write.
+ */
+export async function resolveModuleSource(
+  mod: Pick<TrainingModule, 'slug' | 'source_text'>,
+): Promise<string | null> {
+  const fromDb = (mod.source_text ?? '').trim();
+  if (fromDb) return mod.source_text;
+  return loadSourceText(mod.slug);
+}
+
+/**
  * Counts how many `@layout` blocks appear in a module's source text.
  * Lines that start with `#` or `//` are comments; lines that start with
  * `@@` (e.g. `@@appendix`) are renderer hints, not slides.

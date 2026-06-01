@@ -20,7 +20,7 @@ import {
   listPracticalItems,
   getCurrentEmployeeSlug,
 } from '@/lib/crew-data';
-import { countSlides, loadSourceText } from '@/lib/training-deck';
+import { countSlides, resolveModuleSource } from '@/lib/training-deck';
 import {
   assignTrainingModule,
   startTrainingAttempt,
@@ -57,7 +57,7 @@ export default async function ModuleDetailPage({
   const showActions =
     editable || (!!mySlug && assignments.some((a) => a.employee_slug === mySlug));
 
-  const sourceText = await loadSourceText(slug);
+  const sourceText = await resolveModuleSource(mod);
   const slideCount = countSlides(sourceText);
   const hasDeck = slideCount > 0;
   const safetyCount = questions.filter((q) => q.safety_critical).length;

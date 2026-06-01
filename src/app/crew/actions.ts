@@ -11,7 +11,7 @@ import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { getAllowedUser, canEditCrew } from '@/lib/auth';
 import { serverClient } from '@/lib/supabase';
-import { isValidTheme } from '@/lib/training-deck';
+import { isValidTheme, countSlides } from '@/lib/training-deck';
 
 export type TrainingSessionEntryInput = {
   training_key: string;
@@ -1093,6 +1093,61 @@ export async function saveTrainingModuleSettings(formData: FormData): Promise<vo
   const { error } = await supabase
     .from('field_crew_training_modules')
     .update({ name, theme })
+    .eq('slug', slug);
+
+  if (error) {
+    redirect(`${back}?error=${encodeURIComponent(error.message)}`);
+  }
+
+  revalidatePath('/crew/modules');
+  revalidatePath(`/crew/modules/${slug}`);
+  revalidatePath(`/crew/modules/${slug}/edit`);
+  revalidatePath(`/crew/modules/${slug}/present`);
+  redirect(`${back}?saved=1`);
+}
+
+/**
+ * Save the slide-deck script (the @layout DSL) for one module.
+ *
+ * Slides used to be authored in a file in the repo, which meant a code change
+ * + deploy for every edit. We now persist the script to the module's
+ * `source_text` column so managers can edit the deck straight from the app and
+ * see it live (the renderer reads `source_text` first — see resolveModuleSource).
+ *
+ * We don't fully parse the DSL here, but we do require at least one `@layout`
+ * block so an empty or obviously-broken save can't blank out a working deck.
+ */
+const MAX_SOURCE_LENGTH = 200_000;
+
+export async function saveTrainingModuleSource(formData: FormData): Promise<void> {
+  const user = await getAllowedUser();
+  if (!user) redirect('/login');
+  if (!canEditCrew(user.role)) redirect('/access-denied');
+
+  const slug = String(formData.get('module_slug') ?? '').trim();
+  if (!slug) redirect('/crew/modules?error=missing_module');
+  const back = `/crew/modules/${slug}/edit`;
+
+  // Normalize line endings so Windows/Mac/Linux edits store identically.
+  const source = String(formData.get('source_text') ?? '').replace(/\r\n/g, '\n');
+
+  if (source.length > MAX_SOURCE_LENGTH) {
+    redirect(
+      `${back}?error=${encodeURIComponent('Slide content is too long. Trim it down and try again.')}`,
+    );
+  }
+  if (countSlides(source) < 1) {
+    redirect(
+      `${back}?error=${encodeURIComponent(
+        'No slides found. Each slide must start with an @layout line (e.g. @cover).',
+      )}`,
+    );
+  }
+
+  const supabase = await serverClient();
+  const { error } = await supabase
+    .from('field_crew_training_modules')
+    .update({ source_text: source })
     .eq('slug', slug);
 
   if (error) {
