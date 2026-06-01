@@ -2,35 +2,38 @@
 // Small pill components used across the Field Crew Hub.
 // ============================================================================
 // Kept subtle on purpose — these show up next to every crew name in the
-// roster grid, so heavy fills create noise. Outlined treatment for foremen,
-// tonal-fill chips for equipment-operator specialties.
+// roster grid, so heavy fills create noise. Foreman is just an emoji; the
+// rest are tiny outlined chips.
 // ============================================================================
 
 import { clsx } from 'clsx';
 
+// Foreman is shown as a hard-hat emoji rather than a text pill — it reads at a
+// glance and keeps the name row uncluttered.
 export function ForemanPill({ size = 'sm' }: { size?: 'sm' | 'md' }) {
   return (
     <span
       title="Foreman"
-      className={clsx(
-        'inline-flex items-center rounded-full border border-bark-deep/40 text-fg-2 font-headline font-extrabold uppercase tracking-ribbon align-middle',
-        size === 'sm' ? 'px-1.5 py-0 text-[8px]' : 'px-2 py-0.5 text-[10px]',
-      )}
+      aria-label="Foreman"
+      role="img"
+      className={clsx('align-middle leading-none', size === 'sm' ? 'text-[11px]' : 'text-sm')}
     >
-      Foreman
+      👷
     </span>
   );
 }
 
+const PILL_BASE =
+  'inline-flex items-center rounded-full border font-headline font-extrabold uppercase align-middle';
+
+const PILL_SIZE: Record<'sm' | 'md', string> = {
+  sm: 'px-1 py-0 text-[8px] tracking-wide',
+  md: 'px-2 py-0.5 text-[10px] tracking-ribbon',
+};
+
 export function CdlPill({ size = 'sm' }: { size?: 'sm' | 'md' }) {
   return (
-    <span
-      title="Holds a CDL"
-      className={clsx(
-        'inline-flex items-center rounded-full border border-teal text-teal font-headline font-extrabold uppercase tracking-ribbon align-middle',
-        size === 'sm' ? 'px-1.5 py-0 text-[8px]' : 'px-2 py-0.5 text-[10px]',
-      )}
-    >
+    <span title="Holds a CDL" className={clsx(PILL_BASE, 'border-teal text-teal', PILL_SIZE[size])}>
       CDL
     </span>
   );
@@ -53,15 +56,5 @@ export function SpecialtyPill({
   size?: 'sm' | 'md';
 }) {
   const color = SPECIALTY_COLORS[specialtyKey] ?? 'border-sand text-sand';
-  return (
-    <span
-      className={clsx(
-        'inline-flex items-center rounded-full border font-headline font-extrabold uppercase tracking-ribbon align-middle',
-        color,
-        size === 'sm' ? 'px-1.5 py-0 text-[8px]' : 'px-2 py-0.5 text-[10px]',
-      )}
-    >
-      {label}
-    </span>
-  );
+  return <span className={clsx(PILL_BASE, color, PILL_SIZE[size])}>{label}</span>;
 }
