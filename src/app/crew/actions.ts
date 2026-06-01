@@ -12,7 +12,7 @@ import { redirect } from 'next/navigation';
 import { getAllowedUser, canEditCrew } from '@/lib/auth';
 import { serverClient } from '@/lib/supabase';
 import { isValidTheme, countSlides } from '@/lib/training-deck';
-import { cdlStageLabel, isCdlStage } from '@/lib/cdl';
+import { cdlStageLabel, isCdlStage, CDL_DONE_STAGE } from '@/lib/cdl';
 
 export type TrainingSessionEntryInput = {
   training_key: string;
@@ -1171,6 +1171,32 @@ export async function saveTrainingModuleSource(formData: FormData): Promise<void
 // on purpose — CDL has its own column there).
 
 const CDL_BACK = '/crew/cdl';
+const CDL_TRAINING_KEY = 'cdl';
+
+/**
+ * Keep the catalog "CDL" training in sync with the tracker stage (full sync):
+ *   - final stage  → training Completed (today)
+ *   - stages 1–4   → training In progress
+ * card_received is intentionally left untouched (preserved if already on file).
+ */
+async function syncCdlTraining(
+  supabase: Awaited<ReturnType<typeof serverClient>>,
+  slug: string,
+  stage: number,
+) {
+  const today = new Date().toISOString().slice(0, 10);
+  const done = stage >= CDL_DONE_STAGE;
+  await supabase.from('field_crew_employee_trainings').upsert(
+    {
+      employee_slug: slug,
+      training_key: CDL_TRAINING_KEY,
+      completed: done ? today : null,
+      status: done ? null : 'in_progress',
+      last_updated: today,
+    },
+    { onConflict: 'employee_slug,training_key' },
+  );
+}
 
 export async function setCdlStage(formData: FormData): Promise<void> {
   const user = await getAllowedUser();
@@ -1201,15 +1227,18 @@ export async function setCdlStage(formData: FormData): Promise<void> {
     );
   if (error) redirect(`${CDL_BACK}?error=${encodeURIComponent(error.message)}`);
 
+  await syncCdlTraining(supabase, slug, stage);
+
   if (prevStage !== stage) {
     const desc =
       prevStage === null
         ? `CDL: added at ${cdlStageLabel(stage)}.`
         : `CDL: ${cdlStageLabel(prevStage)} → ${cdlStageLabel(stage)}.`;
     await logActivity(supabase, slug, today, desc, user.email);
-    revalidatePath(`/crew/employees/${slug}`);
   }
 
+  revalidatePath(`/crew/employees/${slug}`);
+  revalidatePath('/crew/trainings/cdl');
   revalidatePath(CDL_BACK);
   revalidatePath('/crew/reports/digest');
   redirect(`${CDL_BACK}?saved=1`);
@@ -1252,9 +1281,11 @@ export async function addCdlTrainees(formData: FormData): Promise<void> {
   if (error) redirect(`${CDL_BACK}?error=${encodeURIComponent(error.message)}`);
 
   for (const slug of slugs) {
+    await syncCdlTraining(supabase, slug, 1);
     await logActivity(supabase, slug, today, `CDL: added at ${cdlStageLabel(1)}.`, user.email);
     revalidatePath(`/crew/employees/${slug}`);
   }
+  revalidatePath('/crew/trainings/cdl');
   revalidatePath(CDL_BACK);
   revalidatePath('/crew/reports/digest');
   redirect(`${CDL_BACK}?added=${slugs.length}`);
@@ -1275,6 +1306,17 @@ export async function removeCdlTrainee(formData: FormData): Promise<void> {
     .eq('employee_slug', slug);
   if (error) redirect(`${CDL_BACK}?error=${encodeURIComponent(error.message)}`);
 
+  // Clear the CDL training row only if it was still in progress — a finished
+  // CDL stays Completed (they earned it) even after leaving the track.
+  await supabase
+    .from('field_crew_employee_trainings')
+    .delete()
+    .eq('employee_slug', slug)
+    .eq('training_key', CDL_TRAINING_KEY)
+    .is('completed', null);
+
+  revalidatePath(`/crew/employees/${slug}`);
+  revalidatePath('/crew/trainings/cdl');
   revalidatePath(CDL_BACK);
   revalidatePath('/crew/reports/digest');
   redirect(`${CDL_BACK}?removed=1`);

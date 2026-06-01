@@ -9,7 +9,8 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { requireHubAccess, canEditCrew } from '@/lib/auth';
-import { getTraining, listTrainingEmployeeRecords } from '@/lib/crew-data';
+import { getTraining, listTrainingEmployeeRecords, listCdlProgress } from '@/lib/crew-data';
+import { CDL_STAGES } from '@/lib/cdl';
 import { TrainingRowEditor } from '@/components/crew/TrainingRowEditor';
 
 export const dynamic = 'force-dynamic';
@@ -27,6 +28,11 @@ export default async function TrainingDetailPage({
   if (!training) notFound();
 
   const records = await listTrainingEmployeeRecords(key);
+
+  // CDL is driven by the 5-stage tracker; show the live pipeline here so this
+  // page and /crew/cdl never look out of step.
+  const cdl = key === 'cdl' ? await listCdlProgress() : [];
+  const cdlByStage = CDL_STAGES.map((_, i) => cdl.filter((t) => t.stage === i + 1));
 
   // Header counts: how many employees have a "current" state vs not.
   const counts = records.reduce(
@@ -92,6 +98,47 @@ export default async function TrainingDetailPage({
         <p className="mt-4 rounded-2 bg-paper px-3 py-2 text-xs text-fg-3">
           View-only — only admins and field managers can edit records here.
         </p>
+      )}
+
+      {key === 'cdl' && (
+        <section className="mt-6 bt-card">
+          <div className="flex items-baseline justify-between gap-2">
+            <h2 className="font-headline text-sm font-extrabold uppercase tracking-ribbon text-bark-deep">
+              CDL pipeline
+            </h2>
+            <Link
+              href="/crew/cdl"
+              className="font-headline text-[10px] font-extrabold uppercase tracking-ribbon text-orange hover:underline"
+            >
+              Open tracker →
+            </Link>
+          </div>
+          <p className="mt-1 text-xs text-fg-3">
+            Completion below is driven by the tracker — reaching{' '}
+            <strong>{CDL_STAGES[CDL_STAGES.length - 1]}</strong> marks this training complete.
+          </p>
+          <ol className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-5">
+            {CDL_STAGES.map((label, i) => (
+              <li key={label} className="rounded-2 border border-paper-edge bg-cream px-3 py-2">
+                <div className="flex items-baseline justify-between gap-2">
+                  <span className="font-headline text-[10px] font-extrabold uppercase tracking-ribbon text-fg-3">
+                    {i + 1}. {label}
+                  </span>
+                  <span
+                    className={`font-headline text-sm font-extrabold ${cdlByStage[i].length ? 'text-orange' : 'text-fg-3'}`}
+                  >
+                    {cdlByStage[i].length}
+                  </span>
+                </div>
+                {cdlByStage[i].length > 0 && (
+                  <p className="mt-1 text-xs text-fg-2">
+                    {cdlByStage[i].map((t) => t.employee_name).join(', ')}
+                  </p>
+                )}
+              </li>
+            ))}
+          </ol>
+        </section>
       )}
 
       <div className="mt-6 overflow-x-auto rounded-card border border-paper-edge bg-paper">
