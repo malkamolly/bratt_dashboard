@@ -124,33 +124,26 @@ export default async function ProgressDigestPage() {
                 No level-ups, certifications, or training logged this week.
               </p>
             ) : (
-              <ul className="mt-3 space-y-3">
+              <ul className="mt-3 divide-y divide-paper-edge overflow-hidden rounded-card border border-paper-edge bg-paper">
                 {digest.events.map((e) => {
                   const card = toCard(e);
                   return (
-                    <li
-                      key={e.id}
-                      className="flex items-start gap-3 rounded-card border border-paper-edge bg-paper p-4"
-                    >
+                    <li key={e.id} className="flex items-center gap-3 px-4 py-2.5 text-sm">
                       <span
-                        className={`mt-0.5 shrink-0 rounded-full px-2.5 py-1 font-headline text-[10px] font-extrabold uppercase tracking-ribbon ${card.tagClass}`}
+                        className={`w-24 shrink-0 rounded-full px-2 py-0.5 text-center font-headline text-[9px] font-extrabold uppercase tracking-ribbon ${card.tagClass}`}
                       >
                         {card.tag}
                       </span>
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-baseline justify-between gap-3">
-                          <Link
-                            href={`/crew/employees/${e.employee_slug}`}
-                            className="truncate font-headline text-base font-extrabold text-bark-deep hover:underline"
-                          >
-                            {e.employee_name}
-                          </Link>
-                          <span className="shrink-0 font-headline text-[11px] font-extrabold uppercase tracking-ribbon text-fg-3">
-                            {format(parseISO(e.occurred_on), 'EEE, MMM d')}
-                          </span>
-                        </div>
-                        <p className="mt-0.5 text-sm text-fg-2">{card.detail}</p>
-                      </div>
+                      <Link
+                        href={`/crew/employees/${e.employee_slug}`}
+                        className="shrink-0 font-headline font-extrabold text-bark-deep hover:underline"
+                      >
+                        {e.employee_name}
+                      </Link>
+                      <span className="min-w-0 flex-1 truncate text-fg-2">{card.detail}</span>
+                      <span className="shrink-0 font-headline text-[10px] font-extrabold uppercase tracking-ribbon text-fg-3">
+                        {format(parseISO(e.occurred_on), 'MMM d')}
+                      </span>
                     </li>
                   );
                 })}
