@@ -1,11 +1,12 @@
 import Link from 'next/link';
-import { requireHubAccess } from '@/lib/auth';
+import { requireHubAccess, canUseCalculator } from '@/lib/auth';
 import { HubSubNav } from '@/components/HubSubNav';
 
 export const dynamic = 'force-dynamic';
 
 export default async function HubHomePage() {
-  await requireHubAccess('hub');
+  const user = await requireHubAccess('hub');
+  const showCalculator = canUseCalculator(user.role);
 
   return (
     <main className="mx-auto max-w-6xl px-6 py-10">
@@ -68,18 +69,20 @@ export default async function HubHomePage() {
           </p>
         </Link>
 
-        <Link href="/hub/calculator" className="bt-card group transition-colors hover:!border-orange">
-          <h2 className="font-headline text-3xl font-black uppercase text-bark-deep">
-            PHC Calculator
-          </h2>
-          <p className="mt-3 text-sm text-fg-2">
-            Build a customer quote from the PHC price book &mdash; pick a
-            treatment, enter the DBH, and the total adds up as you go.
-          </p>
-          <p className="mt-6 font-headline text-xs font-extrabold uppercase tracking-ribbon text-orange">
-            Open calculator &rarr;
-          </p>
-        </Link>
+        {showCalculator && (
+          <Link href="/hub/calculator" className="bt-card group transition-colors hover:!border-orange">
+            <h2 className="font-headline text-3xl font-black uppercase text-bark-deep">
+              PHC Calculator
+            </h2>
+            <p className="mt-3 text-sm text-fg-2">
+              Build a customer quote from the PHC price book &mdash; pick a
+              treatment, enter the DBH, and the total adds up as you go.
+            </p>
+            <p className="mt-6 font-headline text-xs font-extrabold uppercase tracking-ribbon text-orange">
+              Open calculator &rarr;
+            </p>
+          </Link>
+        )}
 
         <Link href="/onboarding/sales/present" className="bt-card group transition-colors hover:!border-orange">
           <h2 className="font-headline text-3xl font-black uppercase text-bark-deep">

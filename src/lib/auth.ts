@@ -58,6 +58,15 @@ export function canEditMeetings(role: Role): boolean {
   return role === 'admin' || role === 'sales_manager';
 }
 
+/**
+ * Can this role use the PHC price calculator? Restricted to managers + admin
+ * for now while the calculator is being tested. To open it up to the whole
+ * Sales Arborist Hub later, change this to `canAccessHub(role, 'hub')`.
+ */
+export function canUseCalculator(role: Role): boolean {
+  return role === 'admin' || role === 'sales_manager';
+}
+
 /** Can this role create or edit Field Crew Hub data (skills, trainings, plans, huddles)? */
 export function canEditCrew(role: Role): boolean {
   return role === 'admin' || role === 'field_manager';

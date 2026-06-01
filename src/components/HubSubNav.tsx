@@ -1,17 +1,24 @@
 import Link from 'next/link';
+import { getAllowedUser, canUseCalculator } from '@/lib/auth';
 
-const SECTIONS: { href: string; label: string }[] = [
+const BASE_SECTIONS: { href: string; label: string }[] = [
   { href: '/hub', label: 'Home' },
   { href: '/hub/arborists', label: 'Roster' },
   { href: '/hub/meetings', label: 'Meetings' },
   { href: '/hub/library', label: 'Library' },
-  { href: '/hub/calculator', label: 'Calculator' },
 ];
 
-export function HubSubNav({ active }: { active: string }) {
+export async function HubSubNav({ active }: { active: string }) {
+  // The Calculator tab is only shown to managers + admin while it's in testing.
+  const user = await getAllowedUser();
+  const sections = [...BASE_SECTIONS];
+  if (user && canUseCalculator(user.role)) {
+    sections.push({ href: '/hub/calculator', label: 'Calculator' });
+  }
+
   return (
     <nav className="mb-8 flex flex-wrap gap-x-3 gap-y-2 border-b-2 border-paper-edge pb-4 sm:gap-x-6">
-      {SECTIONS.map((s) => {
+      {sections.map((s) => {
         const isActive = active === s.href;
         return (
           <Link

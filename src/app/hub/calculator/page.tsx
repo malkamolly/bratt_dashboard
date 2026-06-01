@@ -1,12 +1,15 @@
 import Link from 'next/link';
-import { requireHubAccess } from '@/lib/auth';
+import { redirect } from 'next/navigation';
+import { requireHubAccess, canUseCalculator } from '@/lib/auth';
 import { HubSubNav } from '@/components/HubSubNav';
 import { QuoteBuilder } from '@/components/QuoteBuilder';
 
 export const dynamic = 'force-dynamic';
 
 export default async function CalculatorPage() {
-  await requireHubAccess('hub');
+  const user = await requireHubAccess('hub');
+  // Managers + admin only while the calculator is in testing.
+  if (!canUseCalculator(user.role)) redirect('/access-denied');
 
   return (
     <main className="mx-auto max-w-6xl px-6 py-10">
