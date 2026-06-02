@@ -1,12 +1,11 @@
 // ============================================================================
 // Forecast-vs-actual data loader (server-only)
 // ============================================================================
-// Lines up what we *scheduled* for each day (the "Tomorrow's Schedule" log in
-// `daily_schedules`) against what each crew *actually* booked that day
-// (`production_entries`). Both are keyed by calendar date, so we group by
-// date and bucket into the four work types the scheduler uses.
+// For a SINGLE day, lines up what we scheduled (the "Tomorrow's Schedule" log
+// in `daily_schedules`) against what each crew actually booked that day
+// (`production_entries`), bucketed into the four work types.
 //
-// Forecast dollars use the SAME "daily share" rule the schedule page shows:
+// Projected dollars use the SAME "daily share" rule the schedule page shows:
 // a multi-day job's revenue is spread evenly across its days, so a $9k job
 // over 3 days contributes $3k to each of those days. (We only have the job's
 // total + day count, not a per-day plan, so an even split is the honest
@@ -17,13 +16,12 @@
 // ============================================================================
 
 import { serverClient } from './supabase';
-import { monthRange, type IsoDate } from './dates';
 import type { CrewKind } from '@/types';
 import {
   FORECAST_CATEGORIES,
   type ForecastCategory,
   type DayComparison,
-  type ForecastVsActualData,
+  type DayComparisonRow,
 } from './forecast-actual-types';
 
 // Re-export the client-safe pieces so server callers can keep importing
@@ -35,7 +33,7 @@ export {
 export type {
   ForecastCategory,
   DayComparison,
-  ForecastVsActualData,
+  DayComparisonRow,
 } from './forecast-actual-types';
 
 // Map a crew's `kind` (on the actuals side) onto a schedule category. Clam
@@ -75,27 +73,19 @@ function jobShare(raw: unknown): { category: ForecastCategory; share: number } |
   return { category, share: revenue / days };
 }
 
-export async function loadForecastVsActual(
-  year?: number,
-  month?: number,
-): Promise<ForecastVsActualData> {
-  const now = new Date();
-  const y = year ?? now.getFullYear();
-  const m = month ?? now.getMonth() + 1;
+export async function loadDayComparison(dateIso: string): Promise<DayComparison> {
   const supabase = await serverClient();
-  const { start, end } = monthRange(y, m);
 
-  const [schedulesRes, entriesRes, crewsRes] = await Promise.all([
+  const [scheduleRes, entriesRes, crewsRes] = await Promise.all([
     supabase
       .from('daily_schedules')
-      .select('schedule_date, jobs')
-      .gte('schedule_date', start)
-      .lte('schedule_date', end),
+      .select('jobs, updated_at, updated_by')
+      .eq('schedule_date', dateIso)
+      .maybeSingle(),
     supabase
       .from('production_entries')
-      .select('entry_date, crew_id, revenue')
-      .gte('entry_date', start)
-      .lte('entry_date', end),
+      .select('crew_id, revenue')
+      .eq('entry_date', dateIso),
     // All crews (including inactive) so historic entries from a now-retired
     // crew still map to the right work type.
     supabase.from('crews').select('id, kind'),
@@ -106,63 +96,38 @@ export async function loadForecastVsActual(
     crewKind.set(c.id as string, c.kind as CrewKind);
   }
 
-  // Forecast: sum daily-share by date + category.
-  const forecastByDate = new Map<IsoDate, Record<ForecastCategory, number>>();
-  for (const row of schedulesRes.data ?? []) {
-    const date = row.schedule_date as IsoDate;
-    const jobs = Array.isArray(row.jobs) ? row.jobs : [];
-    const bucket = forecastByDate.get(date) ?? zeroByCategory();
-    for (const raw of jobs) {
-      const js = jobShare(raw);
-      if (js) bucket[js.category] += js.share;
-    }
-    forecastByDate.set(date, bucket);
+  // Projected: sum the daily share of every scheduled job, by category.
+  const projected = zeroByCategory();
+  const jobs = Array.isArray(scheduleRes.data?.jobs) ? scheduleRes.data.jobs : [];
+  for (const raw of jobs) {
+    const js = jobShare(raw);
+    if (js) projected[js.category] += js.share;
   }
+  const hasSchedule = !!scheduleRes.data;
 
-  // Actual: sum booked revenue by date + category (via crew kind).
-  const actualByDate = new Map<IsoDate, Record<ForecastCategory, number>>();
-  for (const row of entriesRes.data ?? []) {
-    const date = row.entry_date as IsoDate;
+  // Actual: sum booked revenue, mapped to a category via crew kind.
+  const actual = zeroByCategory();
+  const entries = entriesRes.data ?? [];
+  for (const row of entries) {
     const kind = crewKind.get(row.crew_id as string) ?? 'production';
-    const category = kindToCategory(kind);
-    const bucket = actualByDate.get(date) ?? zeroByCategory();
-    bucket[category] += Number(row.revenue) || 0;
-    actualByDate.set(date, bucket);
+    actual[kindToCategory(kind)] += Number(row.revenue) || 0;
   }
+  const hasActual = entries.length > 0;
 
-  // One row per date that has EITHER a forecast or an actual — so a day we
-  // planned work but booked nothing (or vice versa) still shows up as the
-  // discrepancy it is.
-  const allDates = Array.from(
-    new Set<IsoDate>([...forecastByDate.keys(), ...actualByDate.keys()]),
-  ).sort();
-
-  const totalsForecast = zeroByCategory();
-  const totalsActual = zeroByCategory();
-
-  const days: DayComparison[] = allDates.map((date) => {
-    const forecast = forecastByDate.get(date) ?? zeroByCategory();
-    const actual = actualByDate.get(date) ?? zeroByCategory();
-    let forecastTotal = 0;
-    let actualTotal = 0;
-    for (const cat of FORECAST_CATEGORIES) {
-      totalsForecast[cat] += forecast[cat];
-      totalsActual[cat] += actual[cat];
-      forecastTotal += forecast[cat];
-      actualTotal += actual[cat];
-    }
-    return { date, forecast, actual, forecastTotal, actualTotal };
-  });
+  const rows: DayComparisonRow[] = FORECAST_CATEGORIES.map((category) => ({
+    category,
+    projected: projected[category],
+    actual: actual[category],
+  }));
 
   return {
-    year: y,
-    month: m,
-    days,
-    totals: {
-      forecast: totalsForecast,
-      actual: totalsActual,
-      forecastTotal: FORECAST_CATEGORIES.reduce((s, c) => s + totalsForecast[c], 0),
-      actualTotal: FORECAST_CATEGORIES.reduce((s, c) => s + totalsActual[c], 0),
-    },
+    date: dateIso,
+    rows,
+    projectedTotal: rows.reduce((s, r) => s + r.projected, 0),
+    actualTotal: rows.reduce((s, r) => s + r.actual, 0),
+    hasSchedule,
+    hasActual,
+    scheduleUpdatedBy: (scheduleRes.data?.updated_by as string | null) ?? null,
+    scheduleUpdatedAt: (scheduleRes.data?.updated_at as string | null) ?? null,
   };
 }

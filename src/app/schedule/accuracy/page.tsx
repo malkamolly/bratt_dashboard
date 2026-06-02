@@ -2,24 +2,31 @@ import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { getAllowedUser } from '@/lib/auth';
 import {
-  loadForecastVsActual,
-  FORECAST_CATEGORIES,
+  loadDayComparison,
   FORECAST_CATEGORY_LABEL,
+  type DayComparisonRow,
 } from '@/lib/forecast-actual-data';
-import { fmtUsd, fmtPct, monthLabel } from '@/lib/format';
-import { MonthPicker } from '@/components/MonthPicker';
+import { fmtUsd, fmtPct } from '@/lib/format';
+import { toIsoDate, fromIsoDate } from '@/lib/dates';
 import { CopyAsImageButton } from '@/components/CopyAsImageButton';
-import ForecastVsActualView from './ForecastVsActualView';
+import { DayPicker } from './DayPicker';
 
 export const dynamic = 'force-dynamic';
 
-type Search = Promise<{ year?: string; month?: string }>;
+type Search = Promise<{ date?: string }>;
 
-function parseIntInRange(raw: string | undefined, min: number, max: number) {
-  if (raw == null) return null;
-  const n = Number(raw);
-  if (!Number.isInteger(n) || n < min || n > max) return null;
-  return n;
+function validIsoDate(s: string | undefined): s is string {
+  if (!s || !/^\d{4}-\d{2}-\d{2}$/.test(s)) return false;
+  return !Number.isNaN(new Date(`${s}T00:00:00`).getTime());
+}
+
+function longDate(iso: string): string {
+  return fromIsoDate(iso).toLocaleDateString('en-US', {
+    weekday: 'long',
+    month: 'long',
+    day: 'numeric',
+    year: 'numeric',
+  });
 }
 
 export default async function ForecastAccuracyPage({
@@ -32,15 +39,13 @@ export default async function ForecastAccuracyPage({
   if (user.role !== 'admin' && user.role !== 'user') redirect('/access-denied');
 
   const sp = await searchParams;
-  const now = new Date();
-  const year = parseIntInRange(sp.year, 2000, 2100) ?? now.getFullYear();
-  const month = parseIntInRange(sp.month, 1, 12) ?? now.getMonth() + 1;
+  const date = validIsoDate(sp.date) ? sp.date : toIsoDate(new Date());
 
-  const data = await loadForecastVsActual(year, month);
-  const { totals } = data;
+  const data = await loadDayComparison(date);
+  const diffTotal = data.actualTotal - data.projectedTotal;
 
   return (
-    <main className="mx-auto max-w-6xl px-6 py-10">
+    <main className="mx-auto max-w-5xl px-6 py-10">
       <div className="mb-3 flex justify-end">
         <CopyAsImageButton targetId="forecast-accuracy-snapshot" />
       </div>
@@ -62,94 +67,170 @@ export default async function ForecastAccuracyPage({
             <h1 className="mt-2 font-display text-4xl sm:text-5xl tracking-wider text-ink uppercase">
               Forecast vs Actual
             </h1>
-            <p className="mt-3 max-w-2xl text-fg-2">
-              {monthLabel(year, month)} &mdash; what we scheduled for each day
-              versus what the crews actually booked.
-            </p>
+            <p className="mt-3 text-fg-2">{longDate(date)}</p>
           </div>
-          <div data-screenshot-ignore="true">
-            <MonthPicker year={year} month={month} basePath="/schedule/accuracy" />
-          </div>
+          <DayPicker date={date} />
         </section>
 
-        {/* Summary cards: one per work type + a combined total */}
-        <section className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          <SummaryCard
-            label="All Work"
-            forecast={totals.forecastTotal}
-            actual={totals.actualTotal}
-            highlight
-          />
-          {FORECAST_CATEGORIES.map((cat) => (
-            <SummaryCard
-              key={cat}
-              label={FORECAST_CATEGORY_LABEL[cat]}
-              forecast={totals.forecast[cat]}
-              actual={totals.actual[cat]}
-            />
-          ))}
+        {/* Status banner when one side is missing */}
+        {(!data.hasSchedule || !data.hasActual) && (
+          <div className="mt-5 rounded-card border-2 border-status-warn/40 bg-status-warn/10 px-4 py-3 text-sm text-fg-2">
+            {!data.hasSchedule && !data.hasActual ? (
+              <>Nothing recorded for this day — no schedule was saved and no production was entered.</>
+            ) : !data.hasSchedule ? (
+              <>No schedule was saved for this day, so the projected column shows $0. The actuals below are real.</>
+            ) : (
+              <>No production has been entered for this day yet, so the actual column shows $0. Once today&rsquo;s numbers are entered, this will fill in.</>
+            )}
+          </div>
+        )}
+
+        {/* Three big totals: Projected | Actual | Difference */}
+        <section className="mt-6 grid grid-cols-3 gap-3 sm:gap-4">
+          <TotalCard label="Projected" sublabel="Tomorrow's Schedule" value={data.projectedTotal} />
+          <TotalCard label="Actual" sublabel="Production Pace" value={data.actualTotal} />
+          <DiffCard projected={data.projectedTotal} actual={data.actualTotal} />
         </section>
 
-        <ForecastVsActualView days={data.days} />
+        {/* Per-work-type breakdown, same three columns */}
+        <section className="mt-8 overflow-x-auto rounded-card border-[3px] border-lime bg-white">
+          <table className="w-full min-w-[560px] text-left text-sm">
+            <thead className="bg-paper-edge/40 text-fg-2">
+              <tr>
+                <th className="px-4 py-3 font-headline text-xs font-extrabold uppercase tracking-ribbon">
+                  Work Type
+                </th>
+                <th className="px-4 py-3 text-right font-headline text-xs font-extrabold uppercase tracking-ribbon">
+                  Projected
+                </th>
+                <th className="px-4 py-3 text-right font-headline text-xs font-extrabold uppercase tracking-ribbon">
+                  Actual
+                </th>
+                <th className="px-4 py-3 text-right font-headline text-xs font-extrabold uppercase tracking-ribbon">
+                  Difference
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {data.rows.map((r, idx) => (
+                <Row key={r.category} row={r} striped={idx % 2 === 1} />
+              ))}
+            </tbody>
+            <tfoot>
+              <tr className="border-t-2 border-ink/10 bg-bark text-cream">
+                <td className="px-4 py-3 font-headline font-black uppercase tracking-ribbon">
+                  Total
+                </td>
+                <td className="px-4 py-3 text-right font-headline font-black tabular-nums">
+                  {fmtUsd(data.projectedTotal)}
+                </td>
+                <td className="px-4 py-3 text-right font-headline font-black tabular-nums">
+                  {fmtUsd(data.actualTotal)}
+                </td>
+                <td className="px-4 py-3 text-right font-headline font-black tabular-nums">
+                  <DiffText diff={diffTotal} onDark />
+                </td>
+              </tr>
+            </tfoot>
+          </table>
+        </section>
+
+        <p className="mt-3 text-xs text-fg-3">
+          &ldquo;Projected&rdquo; is the saved schedule for this day, with multi-day jobs split
+          evenly across their days. &ldquo;Actual&rdquo; is booked production revenue. A positive
+          difference (green) means the crews booked more than was scheduled.
+          {data.scheduleUpdatedBy && (
+            <> &middot; Schedule last saved by {data.scheduleUpdatedBy}.</>
+          )}
+        </p>
       </div>
     </main>
   );
 }
 
-function SummaryCard({
+function Row({ row, striped }: { row: DayComparisonRow; striped: boolean }) {
+  const diff = row.actual - row.projected;
+  return (
+    <tr className={striped ? 'bg-paper/40' : 'bg-white'}>
+      <td className="px-4 py-3 font-headline font-bold text-ink">
+        {FORECAST_CATEGORY_LABEL[row.category]}
+      </td>
+      <td className="px-4 py-3 text-right tabular-nums">{fmtUsd(row.projected)}</td>
+      <td className="px-4 py-3 text-right tabular-nums">{fmtUsd(row.actual)}</td>
+      <td className="px-4 py-3 text-right tabular-nums font-bold">
+        <DiffText diff={diff} />
+      </td>
+    </tr>
+  );
+}
+
+function DiffText({ diff, onDark }: { diff: number; onDark?: boolean }) {
+  if (Math.round(diff) === 0) {
+    return <span className={onDark ? 'text-cream/70' : 'text-fg-3'}>$0</span>;
+  }
+  const up = diff > 0;
+  const cls = onDark
+    ? up
+      ? 'text-lime'
+      : 'text-apricot'
+    : up
+      ? 'text-green-dark'
+      : 'text-orange-press';
+  return (
+    <span className={cls}>
+      {up ? '+' : '−'}
+      {fmtUsd(Math.abs(diff))}
+    </span>
+  );
+}
+
+function TotalCard({
   label,
-  forecast,
-  actual,
-  highlight,
+  sublabel,
+  value,
 }: {
   label: string;
-  forecast: number;
-  actual: number;
-  highlight?: boolean;
+  sublabel: string;
+  value: number;
 }) {
-  const diff = actual - forecast;
-  const hit = forecast > 0 ? actual / forecast : null;
-  const hasData = forecast !== 0 || actual !== 0;
-
   return (
-    <div className={highlight ? 'bt-card-orange' : 'bt-card'}>
+    <div className="bt-card">
       <p className="font-headline text-xs font-extrabold uppercase tracking-ribbon text-fg-2">
         {label}
       </p>
-      <div className="mt-3 flex items-baseline justify-between gap-2">
-        <div>
-          <p className="font-headline text-[10px] font-extrabold uppercase tracking-ribbon text-fg-3">
-            Forecast
-          </p>
-          <p className="font-headline text-xl font-black text-ink">{fmtUsd(forecast)}</p>
-        </div>
-        <div className="text-right">
-          <p className="font-headline text-[10px] font-extrabold uppercase tracking-ribbon text-fg-3">
-            Actual
-          </p>
-          <p className="font-headline text-xl font-black text-ink">{fmtUsd(actual)}</p>
-        </div>
-      </div>
-      <div className="mt-3 flex items-center justify-between border-t border-paper-edge pt-2">
-        {hasData ? (
-          <>
-            <span
-              className={
-                'font-headline text-sm font-black ' +
-                (diff >= 0 ? 'text-green-dark' : 'text-orange-press')
-              }
-            >
-              {diff >= 0 ? '+' : '−'}
-              {fmtUsd(Math.abs(diff))}
-            </span>
-            <span className="text-xs text-fg-3">
-              {hit != null ? `${fmtPct(hit)} of forecast` : 'no forecast'}
-            </span>
-          </>
-        ) : (
-          <span className="text-xs text-fg-3">No data this month</span>
-        )}
-      </div>
+      <p className="font-headline text-[10px] font-extrabold uppercase tracking-ribbon text-fg-3">
+        {sublabel}
+      </p>
+      <p className="mt-2 font-headline text-2xl font-black text-ink sm:text-3xl">
+        {fmtUsd(value)}
+      </p>
+    </div>
+  );
+}
+
+function DiffCard({ projected, actual }: { projected: number; actual: number }) {
+  const diff = actual - projected;
+  const hit = projected > 0 ? actual / projected : null;
+  const up = diff >= 0;
+  return (
+    <div className={up ? 'bt-card-orange' : 'bt-card'}>
+      <p className="font-headline text-xs font-extrabold uppercase tracking-ribbon text-fg-2">
+        Difference
+      </p>
+      <p className="font-headline text-[10px] font-extrabold uppercase tracking-ribbon text-fg-3">
+        Actual − Projected
+      </p>
+      <p
+        className={
+          'mt-2 font-headline text-2xl font-black sm:text-3xl ' +
+          (Math.round(diff) === 0 ? 'text-fg-2' : up ? 'text-green-dark' : 'text-orange-press')
+        }
+      >
+        {Math.round(diff) === 0 ? '$0' : `${up ? '+' : '−'}${fmtUsd(Math.abs(diff))}`}
+      </p>
+      {hit != null && (
+        <p className="mt-1 text-xs text-fg-3">{fmtPct(hit)} of projection</p>
+      )}
     </div>
   );
 }
