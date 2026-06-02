@@ -137,9 +137,18 @@ export async function loadProductionMonth(
     crewBudgets[b.crew_id as string] = Number(b.budget_revenue);
   }
 
+  // In-progress is a LIVE snapshot ("work started but not yet booked, right
+  // now") with no month attached. It only makes sense for the month that's
+  // currently in progress. For any past/future month we leave it empty so a
+  // closed month (e.g. viewing May in June) doesn't borrow the current
+  // month's open-work dollars. This auto-clears the instant the calendar
+  // rolls over to a new month.
+  const isCurrentMonth = y === now.getFullYear() && m === now.getMonth() + 1;
   const crewInProgress: Record<string, number> = {};
-  for (const row of inProgressRes.data ?? []) {
-    crewInProgress[row.crew_id as string] = Number(row.amount);
+  if (isCurrentMonth) {
+    for (const row of inProgressRes.data ?? []) {
+      crewInProgress[row.crew_id as string] = Number(row.amount);
+    }
   }
 
   return {
