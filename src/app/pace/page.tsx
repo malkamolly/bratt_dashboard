@@ -103,6 +103,21 @@ export default async function PaceHomePage() {
             </p>
           </Link>
         )}
+
+        {canSeeSchedule && (
+          <Link href="/schedule/accuracy" className="bt-card group transition-colors hover:!border-orange">
+            <p className="bt-eyebrow">Dashboard 4</p>
+            <h2 className="mt-2 font-headline text-3xl font-black uppercase text-bark-deep">
+              Forecast vs Actual
+            </h2>
+            <p className="mt-3 text-sm text-fg-2">
+              Compare what we scheduled each day against what the crews actually booked, by work type. Spot where tomorrow&rsquo;s projections drift from reality.
+            </p>
+            <p className="mt-6 font-headline text-xs font-extrabold uppercase tracking-ribbon text-orange">
+              Open dashboard &rarr;
+            </p>
+          </Link>
+        )}
       </section>
 
       <section className="mt-10 rounded-card bg-bark p-6 text-cream">
