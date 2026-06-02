@@ -5,7 +5,8 @@ import {
   loadProductionEntriesForDate,
   loadProductionEntryAuditForDate,
 } from '@/lib/production-data';
-import { toIsoDate, fromIsoDate, isWeekend } from '@/lib/dates';
+import { fromIsoDate, isWeekend } from '@/lib/dates';
+import { prevWorkdayIso } from '@/lib/workdays';
 import { EntryForm } from './EntryForm';
 
 type SearchParams = Promise<{ date?: string; saved?: string }>;
@@ -25,9 +26,11 @@ export default async function ProductionEntryPage({
   if (!user) redirect('/login');
 
   const params = await searchParams;
-  const today = toIsoDate(new Date());
+  // Default to the previous working day — production numbers are entered the
+  // day after the work happens, so that's almost always what you want. Skips
+  // weekends and holidays. An explicit ?date= always wins.
   const date =
-    params.date && isValidIsoDate(params.date) ? params.date : today;
+    params.date && isValidIsoDate(params.date) ? params.date : prevWorkdayIso();
 
   const { crews, members, memberEntries, crewEntries } =
     await loadProductionEntriesForDate(date);

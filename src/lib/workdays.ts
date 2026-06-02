@@ -121,3 +121,29 @@ export function nextWorkdayIso(from?: Date): string {
   }
   return toIso(d);
 }
+
+/**
+ * Returns the ISO date (YYYY-MM-DD) of the most recent working day BEFORE
+ * `from` (defaults to today). Skips weekends and observed holidays.
+ *
+ * Example: on Monday May 26, 2026, returns "2026-05-22" (Friday) because
+ * Sunday/Saturday are weekends and Monday May 25 was Memorial Day.
+ */
+export function prevWorkdayIso(from?: Date): string {
+  const d = from ? new Date(from) : new Date();
+  d.setHours(0, 0, 0, 0);
+  d.setDate(d.getDate() - 1);
+
+  // Cover this year + last year of holidays — easily enough for any single
+  // "previous workday" hop (the longest skip is ~4 days around the holidays).
+  const holidays = new Set<string>([
+    ...holidaysForYear(d.getFullYear()),
+    ...holidaysForYear(d.getFullYear() - 1),
+  ]);
+
+  for (let i = 0; i < 30; i++) {
+    if (isWorkday(d, holidays)) return toIso(d);
+    d.setDate(d.getDate() - 1);
+  }
+  return toIso(d);
+}
