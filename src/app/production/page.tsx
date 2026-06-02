@@ -684,7 +684,7 @@ function Header({
               href="/production/entry"
               className="inline-flex items-center rounded-full bg-orange px-5 py-2 font-headline text-xs font-extrabold uppercase tracking-ribbon text-white shadow-sh-1 transition-colors hover:bg-orange-hover"
             >
-              Enter Today&apos;s Numbers
+              Enter Previous Day Numbers
             </Link>
             <Link
               href="/production/in-progress"
