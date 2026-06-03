@@ -12,8 +12,8 @@ const nunito = Nunito({
 });
 
 export const metadata: Metadata = {
-  title: 'Bratt Tree PACE Dashboard',
-  description: 'Daily sales and production pace reporting for Bratt Tree Company.',
+  title: 'Bratt Tree Hub',
+  description: 'Internal hub for the Bratt Tree team.',
   icons: { icon: '/brand/mascot-circle.png' },
 };
 
