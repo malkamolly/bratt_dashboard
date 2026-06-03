@@ -129,6 +129,12 @@ export function EntryForm({
       if (!map.has(cid)) map.set(cid, []);
       map.get(cid)!.push(mb);
     }
+    // Foremen always sit at the top of their crew. `members` arrives already
+    // in display_order, and Array.sort is stable, so sorting only on foreman
+    // status keeps everyone else in their existing order.
+    for (const arr of map.values()) {
+      arr.sort((a, b) => Number(b.is_foreman) - Number(a.is_foreman));
+    }
     return map;
   }, [members, memberAssignment]);
 
