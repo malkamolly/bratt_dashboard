@@ -124,6 +124,24 @@ Visit http://localhost:3000.
 
 Future updates are automatic: any push to `main` redeploys.
 
+## Site Markup tool (city permits / power line clearance)
+
+`/hub/site-plan` lets a Sales Arborist build a marked-up **map** and **photo**
+of a job site, then save it as a PDF to attach to a permit or email to the
+power company. The photo half works out of the box. The live **map** half
+needs a Google Maps key:
+
+1. In Google Cloud (console.cloud.google.com), enable **Maps Static API** and
+   **Geocoding API**, then create an **API key**.
+2. Set a daily **quota** of ~100/day on each API so the bill is capped (a
+   quota is a hard stop; a budget alert is only an email).
+3. In Vercel → Project → Settings → **Environment Variables**, add
+   `GOOGLE_MAPS_API_KEY` with the key value, then redeploy.
+
+The key is used only by the server-side `/api/site-map/*` routes — it is never
+sent to the browser. Until it's set, the map shows a friendly "not switched on
+yet" note and the photo markup still works.
+
 ## Brand system
 
 The KickCharge brand kit is integrated:

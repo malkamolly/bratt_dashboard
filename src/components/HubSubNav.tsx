@@ -6,6 +6,7 @@ const BASE_SECTIONS: { href: string; label: string }[] = [
   { href: '/hub/arborists', label: 'Roster' },
   { href: '/hub/meetings', label: 'Meetings' },
   { href: '/hub/library', label: 'Library' },
+  { href: '/hub/site-plan', label: 'Site Markup' },
 ];
 
 export async function HubSubNav({ active }: { active: string }) {

@@ -84,6 +84,20 @@ export default async function HubHomePage() {
           </Link>
         )}
 
+        <Link href="/hub/site-plan" className="bt-card group transition-colors hover:!border-orange">
+          <h2 className="font-headline text-3xl font-black uppercase text-bark-deep">
+            Site Markup
+          </h2>
+          <p className="mt-3 text-sm text-fg-2">
+            Mark up a map and photo of a job site for city permits or power line
+            clearance &mdash; lane closures, safety zone, tree locations &mdash;
+            then save it as a PDF.
+          </p>
+          <p className="mt-6 font-headline text-xs font-extrabold uppercase tracking-ribbon text-orange">
+            Open site markup &rarr;
+          </p>
+        </Link>
+
         <Link href="/onboarding/sales/present" className="bt-card group transition-colors hover:!border-orange">
           <h2 className="font-headline text-3xl font-black uppercase text-bark-deep">
             Onboarding
