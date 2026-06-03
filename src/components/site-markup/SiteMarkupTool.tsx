@@ -278,8 +278,8 @@ export function SiteMarkupTool() {
               className="mt-1 w-full rounded-md border-2 border-paper-edge bg-white px-3 py-2 text-sm text-ink focus:border-orange focus:outline-none"
             />
             <span className="mt-1 block text-xs text-fg-3">
-              Required. Searching the map below fills this in automatically — or
-              type it here if you&apos;re not using the map.
+              Required. Type it here, then use <strong>Find on map</strong> below
+              to load the location (which also tidies up the address).
             </span>
           </label>
 
@@ -337,7 +337,7 @@ export function SiteMarkupTool() {
           Find the address, frame the street, then draw lane closures, the
           safety zone, cones, and labels.
         </p>
-        <MapPicker canvasRef={mapCanvas} onResolved={setAddress} />
+        <MapPicker canvasRef={mapCanvas} address={address} onResolved={setAddress} />
         <div className="mt-3">
           <button
             type="button"

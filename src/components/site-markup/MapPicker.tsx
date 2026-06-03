@@ -24,7 +24,9 @@ type MapType = 'hybrid' | 'roadmap';
 
 type Props = {
   canvasRef: RefObject<AnnotationCanvasHandle | null>;
-  /** Called with the tidy address Google returned, for the printed header. */
+  /** The shared site address (owned by the parent's Job Details field). */
+  address: string;
+  /** Called with the tidy address Google returned, to update the shared field. */
   onResolved?: (formatted: string) => void;
 };
 
@@ -37,8 +39,7 @@ function degPerPixelLng(zoom: number): number {
   return 360 / (256 * Math.pow(2, zoom));
 }
 
-export function MapPicker({ canvasRef, onResolved }: Props) {
-  const [address, setAddress] = useState('');
+export function MapPicker({ canvasRef, address, onResolved }: Props) {
   const [marker, setMarker] = useState<Resolved | null>(null);
   const [center, setCenter] = useState<{ lat: number; lng: number } | null>(null);
   const [zoom, setZoom] = useState(19);
@@ -48,8 +49,7 @@ export function MapPicker({ canvasRef, onResolved }: Props) {
   const [error, setError] = useState<string | null>(null);
   const [notConfigured, setNotConfigured] = useState(false);
 
-  async function findAddress(e?: React.FormEvent) {
-    e?.preventDefault();
+  async function findAddress() {
     const q = address.trim();
     if (!q) return;
     setLoading(true);
@@ -122,23 +122,22 @@ export function MapPicker({ canvasRef, onResolved }: Props) {
 
   return (
     <div>
-      {/* Address search */}
-      <form onSubmit={findAddress} className="flex flex-wrap gap-2">
-        <input
-          type="text"
-          value={address}
-          onChange={(e) => setAddress(e.target.value)}
-          placeholder="Job address — e.g. 123 Main St, Springfield IL"
-          className="min-w-0 flex-1 rounded-md border-2 border-paper-edge bg-white px-3 py-2 text-sm text-ink focus:border-orange focus:outline-none"
-        />
+      {/* Uses the Site address from Job Details above — no separate box. */}
+      <div className="flex flex-wrap items-center gap-2">
         <button
-          type="submit"
+          type="button"
+          onClick={findAddress}
           disabled={loading || !address.trim()}
           className="bt-btn bt-btn-primary disabled:cursor-not-allowed disabled:opacity-50"
         >
           {loading ? 'Finding…' : 'Find on map'}
         </button>
-      </form>
+        {!address.trim() && (
+          <span className="text-sm text-fg-3">
+            Enter the Site address in Job Details above first.
+          </span>
+        )}
+      </div>
 
       {notConfigured && (
         <p className="mt-3 rounded-md border-2 border-status-warn bg-status-warn/15 px-3 py-2 text-sm text-fg-2">
