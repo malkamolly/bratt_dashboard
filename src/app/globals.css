@@ -182,11 +182,6 @@ header.site nav .navmenu a.active {
     justify-content: center;
     width: 100%;
   }
-  /* Keep dropdowns from spilling off the edge on the centered mobile nav. */
-  header.site nav .navmenu {
-    left: 50%;
-    transform: translateX(-50%);
-  }
 }
 
 /* ---------- Base ---------- */
