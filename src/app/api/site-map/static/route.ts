@@ -18,7 +18,7 @@
 // ============================================================================
 
 import { NextRequest, NextResponse } from 'next/server';
-import { getAllowedUser, canAccessHub } from '@/lib/auth';
+import { getAllowedUser, canUseSiteMarkup } from '@/lib/auth';
 
 export const dynamic = 'force-dynamic';
 
@@ -32,7 +32,7 @@ function num(v: string | null): number | null {
 
 export async function GET(req: NextRequest) {
   const user = await getAllowedUser();
-  if (!user || !canAccessHub(user.role, 'hub')) {
+  if (!user || !canUseSiteMarkup(user.role)) {
     return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
   }
 

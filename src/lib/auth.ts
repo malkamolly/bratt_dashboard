@@ -67,6 +67,16 @@ export function canUseCalculator(role: Role): boolean {
   return role === 'admin' || role === 'sales_manager';
 }
 
+/**
+ * Can this role use the Site Markup tool (permit / power line clearance
+ * plans)? Restricted to managers + admin for now while it's new. To open it
+ * up to the whole Sales Arborist Hub later, change this to
+ * `canAccessHub(role, 'hub')`.
+ */
+export function canUseSiteMarkup(role: Role): boolean {
+  return role === 'admin' || role === 'sales_manager';
+}
+
 /** Can this role create or edit Field Crew Hub data (skills, trainings, plans, huddles)? */
 export function canEditCrew(role: Role): boolean {
   return role === 'admin' || role === 'field_manager';

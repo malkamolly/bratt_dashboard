@@ -1,13 +1,15 @@
 import Link from 'next/link';
-import { requireHubAccess } from '@/lib/auth';
+import { redirect } from 'next/navigation';
+import { requireHubAccess, canUseSiteMarkup } from '@/lib/auth';
 import { HubSubNav } from '@/components/HubSubNav';
 import { SiteMarkupTool } from '@/components/site-markup/SiteMarkupTool';
 
 export const dynamic = 'force-dynamic';
 
 export default async function SitePlanPage() {
-  // Anyone with Sales Arborist Hub access can use this (incl. Sales Arborists).
-  await requireHubAccess('hub');
+  // Managers + admin only for now (matches the PHC Calculator gating).
+  const user = await requireHubAccess('hub');
+  if (!canUseSiteMarkup(user.role)) redirect('/access-denied');
 
   return (
     <main className="mx-auto max-w-4xl px-6 py-10">

@@ -1,20 +1,23 @@
 import Link from 'next/link';
-import { getAllowedUser, canUseCalculator } from '@/lib/auth';
+import { getAllowedUser, canUseCalculator, canUseSiteMarkup } from '@/lib/auth';
 
 const BASE_SECTIONS: { href: string; label: string }[] = [
   { href: '/hub', label: 'Home' },
   { href: '/hub/arborists', label: 'Roster' },
   { href: '/hub/meetings', label: 'Meetings' },
   { href: '/hub/library', label: 'Library' },
-  { href: '/hub/site-plan', label: 'Site Markup' },
 ];
 
 export async function HubSubNav({ active }: { active: string }) {
-  // The Calculator tab is only shown to managers + admin while it's in testing.
+  // The Calculator + Site Markup tabs are only shown to managers + admin
+  // while they're new.
   const user = await getAllowedUser();
   const sections = [...BASE_SECTIONS];
   if (user && canUseCalculator(user.role)) {
     sections.push({ href: '/hub/calculator', label: 'Calculator' });
+  }
+  if (user && canUseSiteMarkup(user.role)) {
+    sections.push({ href: '/hub/site-plan', label: 'Site Markup' });
   }
 
   return (
