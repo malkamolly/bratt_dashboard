@@ -108,8 +108,8 @@ header.site nav .navgroup > button.navtrigger {
   gap: 5px;
   transition: border-color 120ms ease, color 120ms ease;
 }
-header.site nav .navgroup > button.navtrigger:hover,
-header.site nav .navgroup > button.navtrigger[aria-expanded='true'],
+header.site nav .navgroup:hover > button.navtrigger,
+header.site nav .navgroup:focus-within > button.navtrigger,
 header.site nav .navgroup.active > button.navtrigger {
   color: var(--bt-lime);
   border-bottom-color: var(--bt-orange);
@@ -118,7 +118,8 @@ header.site nav .navtrigger .caret {
   font-size: 9px;
   transition: transform 120ms ease;
 }
-header.site nav .navtrigger[aria-expanded='true'] .caret {
+header.site nav .navgroup:hover .caret,
+header.site nav .navgroup:focus-within .caret {
   transform: rotate(180deg);
 }
 header.site nav .navmenu {
@@ -133,9 +134,24 @@ header.site nav .navmenu {
   border-radius: 14px;
   box-shadow: 0 14px 40px rgba(26, 14, 5, 0.16), 0 2px 6px rgba(26, 14, 5, 0.06);
   padding: 6px;
-  display: flex;
+  /* Hidden until the group is hovered or focused (see rule below). */
+  display: none;
   flex-direction: column;
   gap: 2px;
+}
+/* Invisible bridge across the 8px gap so moving the cursor from the trigger
+   down to the menu doesn't pass through "nothing" and close it. */
+header.site nav .navmenu::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: -11px;
+  height: 11px;
+}
+header.site nav .navgroup:hover .navmenu,
+header.site nav .navgroup:focus-within .navmenu {
+  display: flex;
 }
 header.site nav .navmenu a {
   color: var(--bt-ink);

@@ -2,7 +2,6 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { useEffect, useRef, useState } from 'react';
 import type { Role } from '@/lib/auth';
 
 export type NavItem = { label: string; href: string };
@@ -46,6 +45,9 @@ function bestMatch(pathname: string, items: NavItem[]): string | null {
   return best;
 }
 
+// Hover/focus dropdown. The menu is always in the DOM; CSS reveals it on
+// hover of the group or when anything inside it has keyboard focus
+// (`:focus-within`), so mouse, keyboard, and touch all work without JS.
 function NavDropdown({
   group,
   activeHref,
@@ -53,56 +55,28 @@ function NavDropdown({
   group: NavGroup;
   activeHref: string | null;
 }) {
-  const [open, setOpen] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
-  const pathname = usePathname();
-
-  // Close on navigation.
-  useEffect(() => {
-    setOpen(false);
-  }, [pathname]);
-
-  // Close when clicking outside the menu.
-  useEffect(() => {
-    if (!open) return;
-    function onDown(e: MouseEvent) {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
-    }
-    document.addEventListener('mousedown', onDown);
-    return () => document.removeEventListener('mousedown', onDown);
-  }, [open]);
-
   const groupActive = group.items.some((i) => i.href === activeHref);
 
   return (
-    <div className={`navgroup${groupActive ? ' active' : ''}`} ref={ref}>
-      <button
-        type="button"
-        className="navtrigger"
-        aria-haspopup="true"
-        aria-expanded={open}
-        onClick={() => setOpen((o) => !o)}
-      >
+    <div className={`navgroup${groupActive ? ' active' : ''}`}>
+      <button type="button" className="navtrigger" aria-haspopup="true">
         {group.label}
         <span className="caret" aria-hidden>
           ▾
         </span>
       </button>
-      {open && (
-        <div className="navmenu" role="menu">
-          {group.items.map((it) => (
-            <Link
-              key={it.href}
-              href={it.href}
-              role="menuitem"
-              className={it.href === activeHref ? 'active' : undefined}
-              onClick={() => setOpen(false)}
-            >
-              {it.label}
-            </Link>
-          ))}
-        </div>
-      )}
+      <div className="navmenu" role="menu">
+        {group.items.map((it) => (
+          <Link
+            key={it.href}
+            href={it.href}
+            role="menuitem"
+            className={it.href === activeHref ? 'active' : undefined}
+          >
+            {it.label}
+          </Link>
+        ))}
+      </div>
     </div>
   );
 }
