@@ -84,8 +84,8 @@ export const AnnotationCanvas = forwardRef<AnnotationCanvasHandle, Props>(
     const draftRef = useRef<Shape | null>(null);
     const drawingRef = useRef(false);
 
-    // Canvas pixel dimensions (set once the background image loads).
-    const dimsRef = useRef<{ w: number; h: number }>({ w: 1280, h: 960 });
+    // Canvas pixel dimensions — drive the <canvas> width/height attributes.
+    const [dims, setDims] = useState<{ w: number; h: number }>({ w: 1280, h: 960 });
     const [ready, setReady] = useState(false);
 
     const [tool, setTool] = useState<Tool>('arrow');
@@ -170,7 +170,9 @@ export const AnnotationCanvas = forwardRef<AnnotationCanvasHandle, Props>(
       if (!canvas) return;
       const ctx = canvas.getContext('2d');
       if (!ctx) return;
-      const { w, h } = dimsRef.current;
+      // Use the canvas's actual pixel size as the source of truth.
+      const w = canvas.width;
+      const h = canvas.height;
 
       ctx.clearRect(0, 0, w, h);
       const img = imgRef.current;
@@ -193,7 +195,6 @@ export const AnnotationCanvas = forwardRef<AnnotationCanvasHandle, Props>(
         shapesRef.current = [];
         draftRef.current = null;
         setReady(false);
-        redraw();
         return;
       }
 
@@ -203,43 +204,45 @@ export const AnnotationCanvas = forwardRef<AnnotationCanvasHandle, Props>(
         const scale = Math.min(1, MAX_CANVAS_W / img.naturalWidth);
         const w = Math.round(img.naturalWidth * scale);
         const h = Math.round(img.naturalHeight * scale);
-        dimsRef.current = { w, h };
-        const canvas = canvasRef.current;
-        if (canvas) {
-          canvas.width = w;
-          canvas.height = h;
-        }
         imgRef.current = img;
         // A fresh background means previous drawings no longer line up.
         shapesRef.current = [];
         draftRef.current = null;
+        // Resize via state. React re-applies the width/height attributes during
+        // render, which BLANKS the canvas — so the actual painting must happen
+        // afterwards, in the redraw effect below, not here.
+        setDims({ w, h });
         setReady(true);
-        redraw();
       };
       img.onerror = () => {
         imgRef.current = null;
         setReady(false);
-        redraw();
       };
       img.src = src;
-    }, [src, redraw]);
+    }, [src]);
+
+    // Repaint after the canvas resizes or readiness flips. This runs *after*
+    // React has applied the (blanking) width/height attributes, so the image
+    // and shapes survive a resize to a differently-shaped photo.
+    useEffect(() => {
+      redraw();
+    }, [dims, ready, redraw]);
 
     // ---- Pointer handling --------------------------------------------------
 
     function canvasPoint(e: React.PointerEvent<HTMLCanvasElement>): Point {
       const canvas = canvasRef.current!;
       const rect = canvas.getBoundingClientRect();
-      const { w, h } = dimsRef.current;
       return {
-        x: ((e.clientX - rect.left) / rect.width) * w,
-        y: ((e.clientY - rect.top) / rect.height) * h,
+        x: ((e.clientX - rect.left) / rect.width) * canvas.width,
+        y: ((e.clientY - rect.top) / rect.height) * canvas.height,
       };
     }
 
     function onPointerDown(e: React.PointerEvent<HTMLCanvasElement>) {
       if (!ready) return;
       const p = canvasPoint(e);
-      const w = dimsRef.current.w;
+      const w = canvasRef.current?.width ?? dims.w;
 
       if (tool === 'text') {
         const text = window.prompt('Label text')?.trim();
@@ -403,8 +406,8 @@ export const AnnotationCanvas = forwardRef<AnnotationCanvasHandle, Props>(
         {/* Canvas */}
         <canvas
           ref={canvasRef}
-          width={dimsRef.current.w}
-          height={dimsRef.current.h}
+          width={dims.w}
+          height={dims.h}
           onPointerDown={onPointerDown}
           onPointerMove={onPointerMove}
           onPointerUp={endStroke}
