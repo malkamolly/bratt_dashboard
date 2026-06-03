@@ -80,6 +80,81 @@ header.site nav button.signout:hover {
   color: var(--bt-lime);
   border-bottom-color: var(--bt-orange);
 }
+/* Top-level link for the current section. */
+header.site nav a.active {
+  color: var(--bt-lime);
+  border-bottom-color: var(--bt-orange);
+}
+
+/* ---------- Dropdown menus (Sales ▾ / Production ▾) ---------- */
+header.site nav .navgroup {
+  position: relative;
+  display: inline-flex;
+}
+header.site nav .navgroup > button.navtrigger {
+  color: var(--bt-cream);
+  font-family: var(--font-headline);
+  font-weight: 800;
+  font-size: 13px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  padding: 6px 0;
+  border: none;
+  border-bottom: 3px solid transparent;
+  background: none;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  transition: border-color 120ms ease, color 120ms ease;
+}
+header.site nav .navgroup > button.navtrigger:hover,
+header.site nav .navgroup > button.navtrigger[aria-expanded='true'],
+header.site nav .navgroup.active > button.navtrigger {
+  color: var(--bt-lime);
+  border-bottom-color: var(--bt-orange);
+}
+header.site nav .navtrigger .caret {
+  font-size: 9px;
+  transition: transform 120ms ease;
+}
+header.site nav .navtrigger[aria-expanded='true'] .caret {
+  transform: rotate(180deg);
+}
+header.site nav .navmenu {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0;
+  z-index: 60;
+  min-width: 210px;
+  background: var(--bt-cream);
+  color: var(--bt-ink);
+  border: 3px solid var(--bt-bark);
+  border-radius: 14px;
+  box-shadow: 0 14px 40px rgba(26, 14, 5, 0.16), 0 2px 6px rgba(26, 14, 5, 0.06);
+  padding: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+header.site nav .navmenu a {
+  color: var(--bt-ink);
+  border-bottom: none;
+  padding: 8px 12px;
+  border-radius: 8px;
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  white-space: nowrap;
+}
+header.site nav .navmenu a:hover {
+  color: var(--bt-cream);
+  background: var(--bt-bark);
+  border-bottom: none;
+}
+header.site nav .navmenu a.active {
+  color: #fff;
+  background: var(--bt-orange);
+}
 
 /* On phones, center the brand + nav rather than left/right split. */
 @media (max-width: 640px) {
@@ -90,6 +165,11 @@ header.site nav button.signout:hover {
   header.site nav {
     justify-content: center;
     width: 100%;
+  }
+  /* Keep dropdowns from spilling off the edge on the centered mobile nav. */
+  header.site nav .navmenu {
+    left: 50%;
+    transform: translateX(-50%);
   }
 }
 
