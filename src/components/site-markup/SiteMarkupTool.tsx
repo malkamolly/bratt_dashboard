@@ -196,6 +196,104 @@ function printDocument(html: string, filename: string) {
   document.body.appendChild(iframe);
 }
 
+function loadImage(src: string): Promise<HTMLImageElement> {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.onload = () => resolve(img);
+    img.onerror = reject;
+    img.src = src;
+  });
+}
+
+/** Composite a branded header (logo + bold address + purpose/date) onto the top
+ *  of a marked-up image, so an individually-downloaded JPEG matches the PDF. */
+async function brandImage(
+  markupUrl: string,
+  opts: {
+    logoUrl: string;
+    address: string;
+    purpose: string;
+    date: string;
+    label: string;
+  },
+): Promise<string> {
+  const { logoUrl, address, purpose, date, label } = opts;
+  const markup = await loadImage(markupUrl);
+  let logo: HTMLImageElement | null = null;
+  try {
+    logo = await loadImage(logoUrl);
+  } catch {
+    logo = null; // brand text still renders even if the logo fails to load
+  }
+
+  const W = markup.naturalWidth;
+  const mH = markup.naturalHeight;
+  const headerH = Math.round(W * 0.125);
+  const pad = Math.round(W * 0.022);
+  const rule = Math.max(3, Math.round(W * 0.003));
+
+  const canvas = document.createElement('canvas');
+  canvas.width = W;
+  canvas.height = headerH + mH;
+  const ctx = canvas.getContext('2d');
+  if (!ctx) return markupUrl;
+
+  ctx.fillStyle = '#ffffff';
+  ctx.fillRect(0, 0, W, canvas.height);
+
+  // Logo (left)
+  let logoRight = pad;
+  if (logo && logo.naturalHeight > 0) {
+    const lH = Math.round(headerH * 0.42);
+    const lW = Math.round(lH * (logo.naturalWidth / logo.naturalHeight));
+    ctx.drawImage(logo, pad, Math.round((headerH - lH) / 2), lW, lH);
+    logoRight = pad + lW;
+  }
+
+  // Text block (right-aligned)
+  const eyebrowF = Math.round(W * 0.0135);
+  const addrF = Math.round(W * 0.023);
+  const metaF = Math.round(W * 0.0135);
+  const gap = Math.round(W * 0.006);
+  const blockH = eyebrowF + gap + addrF + gap + metaF;
+  const rightX = W - pad;
+  let y = Math.round((headerH - rule - blockH) / 2);
+
+  ctx.textAlign = 'right';
+  ctx.textBaseline = 'top';
+
+  ctx.fillStyle = '#7A6B55';
+  ctx.font = `800 ${eyebrowF}px sans-serif`;
+  ctx.fillText(`SITE WORK PLAN · ${label.toUpperCase()}`, rightX, y);
+  y += eyebrowF + gap;
+
+  // Address — shrink to fit the space between the logo and the right edge.
+  const availW = W - logoRight - pad - pad;
+  let af = addrF;
+  ctx.fillStyle = '#1A0E05';
+  ctx.font = `800 ${af}px sans-serif`;
+  while (af > metaF && ctx.measureText(address).width > availW) {
+    af -= 1;
+    ctx.font = `800 ${af}px sans-serif`;
+  }
+  ctx.fillText(address, rightX, y);
+  y += addrF + gap;
+
+  ctx.fillStyle = '#7A6B55';
+  ctx.font = `600 ${metaF}px sans-serif`;
+  ctx.fillText(`${purpose}  ·  ${date}`, rightX, y);
+
+  // Brand-orange rule under the header
+  ctx.fillStyle = '#EB4C1B';
+  ctx.fillRect(0, headerH - rule, W, rule);
+
+  // The marked-up image below
+  ctx.drawImage(markup, 0, headerH, W, mH);
+
+  return canvas.toDataURL('image/jpeg', 0.92);
+}
+
 export function SiteMarkupTool() {
   const mapCanvas = useRef<AnnotationCanvasHandle | null>(null);
   const photoCanvas = useRef<AnnotationCanvasHandle | null>(null);
@@ -206,31 +304,62 @@ export function SiteMarkupTool() {
   const [address, setAddress] = useState('');
   const [notes, setNotes] = useState('');
 
-  function handleDownloadMap() {
-    const url = mapCanvas.current?.getDataUrl();
-    if (!url) {
-      alert('Load a map first (search a job address above).');
-      return;
-    }
-    download(url, `${addressSlug(address)}-map.jpg`);
+  function ensureAddress(): boolean {
+    if (address.trim()) return true;
+    alert('Please enter the site address first.');
+    addressInputRef.current?.focus();
+    addressInputRef.current?.scrollIntoView({ block: 'center', behavior: 'smooth' });
+    return false;
   }
 
-  function handleDownloadPhoto() {
+  const logoUrl = () => `${window.location.origin}/assets/img/logotype-color.png`;
+
+  async function handleDownloadMap() {
+    const url = mapCanvas.current?.getDataUrl();
+    if (!url) {
+      alert('Load a map first (use "Find on map" above).');
+      return;
+    }
+    if (!ensureAddress()) return;
+    const name = `${addressSlug(address)}-map.jpg`;
+    try {
+      const branded = await brandImage(url, {
+        logoUrl: logoUrl(),
+        address,
+        purpose,
+        date: format(new Date(), 'PP'),
+        label: 'Site Map',
+      });
+      download(branded, name);
+    } catch {
+      download(url, name); // fall back to the unbranded image if compositing fails
+    }
+  }
+
+  async function handleDownloadPhoto() {
     const url = photoCanvas.current?.getDataUrl();
     if (!url) {
       alert('Choose a photo first.');
       return;
     }
-    download(url, `${addressSlug(address)}-photo.jpg`);
+    if (!ensureAddress()) return;
+    const name = `${addressSlug(address)}-photo.jpg`;
+    try {
+      const branded = await brandImage(url, {
+        logoUrl: logoUrl(),
+        address,
+        purpose,
+        date: format(new Date(), 'PP'),
+        label: 'Tree / Work Location',
+      });
+      download(branded, name);
+    } catch {
+      download(url, name);
+    }
   }
 
   function handlePrint() {
-    if (!address.trim()) {
-      alert('Please enter the site address before printing.');
-      addressInputRef.current?.focus();
-      addressInputRef.current?.scrollIntoView({ block: 'center', behavior: 'smooth' });
-      return;
-    }
+    if (!ensureAddress()) return;
     const map = mapCanvas.current?.getDataUrl() ?? null;
     const photo = photoCanvas.current?.getDataUrl() ?? null;
     if (!map && !photo) {
@@ -238,7 +367,7 @@ export function SiteMarkupTool() {
       return;
     }
     const html = buildPrintHtml({
-      logoUrl: `${window.location.origin}/assets/img/logotype-color.png`,
+      logoUrl: logoUrl(),
       customer,
       purpose,
       address,
