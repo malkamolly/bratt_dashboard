@@ -76,14 +76,14 @@ function buildPrintHtml(opts: {
     <div class="brandbar">
       <img src="${logoUrl}" alt="Bratt Tree">
       <div class="doc-title">
-        <div class="t">Site Work Plan</div>
+        <div class="eyebrow">Site Work Plan</div>
+        <div class="addr">${escapeHtml(address)}</div>
         <span class="badge">${escapeHtml(purpose)}</span>
       </div>
     </div>`;
   const info = `
     <table class="info">
       ${row('Customer', customer)}
-      ${row('Address', address)}
       ${row('Date', date)}
       ${row('Notes', notes)}
     </table>`;
@@ -126,10 +126,14 @@ function buildPrintHtml(opts: {
     border-bottom: 3px solid #EB4C1B; padding-bottom: 10px; margin-bottom: 16px;
   }
   .brandbar img { height: 44px; width: auto; display: block; }
-  .doc-title { text-align: right; }
-  .doc-title .t {
-    font-size: 17px; font-weight: 800; letter-spacing: 0.06em;
-    text-transform: uppercase; color: #1A0E05;
+  .doc-title { text-align: right; max-width: 62%; }
+  .doc-title .eyebrow {
+    font-size: 9px; font-weight: 800; letter-spacing: 0.1em;
+    text-transform: uppercase; color: #7A6B55;
+  }
+  .doc-title .addr {
+    font-size: 14px; font-weight: 800; color: #1A0E05;
+    margin-top: 2px; line-height: 1.25;
   }
   .badge {
     display: inline-block; margin-top: 5px; background: #EB4C1B; color: #fff;
@@ -195,6 +199,7 @@ function printDocument(html: string, filename: string) {
 export function SiteMarkupTool() {
   const mapCanvas = useRef<AnnotationCanvasHandle | null>(null);
   const photoCanvas = useRef<AnnotationCanvasHandle | null>(null);
+  const addressInputRef = useRef<HTMLInputElement | null>(null);
 
   const [customer, setCustomer] = useState('');
   const [purpose, setPurpose] = useState<string>(PURPOSES[0]);
@@ -220,6 +225,12 @@ export function SiteMarkupTool() {
   }
 
   function handlePrint() {
+    if (!address.trim()) {
+      alert('Please enter the site address before printing.');
+      addressInputRef.current?.focus();
+      addressInputRef.current?.scrollIntoView({ block: 'center', behavior: 'smooth' });
+      return;
+    }
     const map = mapCanvas.current?.getDataUrl() ?? null;
     const photo = photoCanvas.current?.getDataUrl() ?? null;
     if (!map && !photo) {
@@ -253,6 +264,25 @@ export function SiteMarkupTool() {
         </p>
 
         <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <label className="block sm:col-span-2">
+            <span className="font-headline text-[11px] font-extrabold uppercase tracking-ribbon text-fg-3">
+              Site address <span className="text-orange-press">*</span>
+            </span>
+            <input
+              ref={addressInputRef}
+              type="text"
+              required
+              value={address}
+              onChange={(e) => setAddress(e.target.value)}
+              placeholder="e.g. 123 Main St, Springfield IL"
+              className="mt-1 w-full rounded-md border-2 border-paper-edge bg-white px-3 py-2 text-sm text-ink focus:border-orange focus:outline-none"
+            />
+            <span className="mt-1 block text-xs text-fg-3">
+              Required. Searching the map below fills this in automatically — or
+              type it here if you&apos;re not using the map.
+            </span>
+          </label>
+
           <label className="block">
             <span className="font-headline text-[11px] font-extrabold uppercase tracking-ribbon text-fg-3">
               Customer (First name + last initial)
