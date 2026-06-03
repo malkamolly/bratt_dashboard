@@ -54,10 +54,9 @@ function addressSlug(address: string): string {
   return s || 'bratt-site-plan';
 }
 
-/** Build the standalone HTML document we print from a hidden iframe. The
- *  <title> becomes the browser's default "Save as PDF" file name. */
+/** Build the standalone, branded HTML document we print from a hidden iframe. */
 function buildPrintHtml(opts: {
-  title: string;
+  logoUrl: string;
   customer: string;
   purpose: string;
   address: string;
@@ -66,24 +65,37 @@ function buildPrintHtml(opts: {
   map: string | null;
   photo: string | null;
 }): string {
-  const { title, customer, purpose, address, notes, date, map, photo } = opts;
+  const { logoUrl, customer, purpose, address, notes, date, map, photo } = opts;
 
   const row = (k: string, v: string) =>
-    v ? `<tr><td class="k">${k}</td><td>${escapeHtml(v)}</td></tr>` : '';
-  const header = `
-    <h1>BRATT TREE — SITE WORK PLAN</h1>
-    <div class="purpose">${escapeHtml(purpose)}</div>
-    <table>
-      ${row('Customer:', customer)}
-      ${row('Address:', address)}
-      ${row('Date:', date)}
-      ${row('Notes:', notes)}
+    v
+      ? `<tr><td class="k">${k}</td><td>${escapeHtml(v)}</td></tr>`
+      : '';
+
+  const brandbar = `
+    <div class="brandbar">
+      <img src="${logoUrl}" alt="Bratt Tree">
+      <div class="doc-title">
+        <div class="t">Site Work Plan</div>
+        <span class="badge">${escapeHtml(purpose)}</span>
+      </div>
+    </div>`;
+  const info = `
+    <table class="info">
+      ${row('Customer', customer)}
+      ${row('Address', address)}
+      ${row('Date', date)}
+      ${row('Notes', notes)}
     </table>`;
+  const header = brandbar + info;
+  const foot =
+    '<div class="foot">Prepared with the Bratt Tree Sales Arborist Hub</div>';
+
   const mapBlock = map
-    ? `<h2>Site Map</h2><img class="map" src="${map}" alt="Marked-up site map">`
+    ? `<h2 class="section">Site Map</h2><div class="imgwrap"><img class="markup map" src="${map}" alt="Marked-up site map"></div>`
     : '';
   const photoBlock = photo
-    ? `<h2>Tree / Work Location</h2><img class="photo" src="${photo}" alt="Marked-up job-site photo">`
+    ? `<h2 class="section">Tree / Work Location</h2><div class="imgwrap"><img class="markup photo" src="${photo}" alt="Marked-up job-site photo"></div>`
     : '';
 
   // Keep page count tight: header sits with the map; the photo gets its own
@@ -91,41 +103,72 @@ function buildPrintHtml(opts: {
   // we never emit a near-empty page.
   const pages: string[] = [];
   if (map) {
-    pages.push(header + mapBlock);
-    if (photo) pages.push(photoBlock);
+    pages.push(header + mapBlock + foot);
+    if (photo) pages.push(brandbar + photoBlock + foot);
   } else if (photo) {
-    pages.push(header + photoBlock);
+    pages.push(header + photoBlock + foot);
   } else {
-    pages.push(header);
+    pages.push(header + foot);
   }
   const body = pages
     .map((p) => `<section class="page">${p}</section>`)
     .join('');
 
   return `<!doctype html><html><head><meta charset="utf-8">
-<title>${escapeHtml(title)}</title>
+<title>Site Work Plan</title>
 <style>
-  @page { size: letter; margin: 0.5in; }
+  @page { size: letter; margin: 0.6in; }
   * { box-sizing: border-box; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-  body { margin: 0; font-family: ui-sans-serif, system-ui, sans-serif; color: #1A0E05; }
-  h1 { font-size: 20px; margin: 0; }
-  .purpose { font-size: 13px; margin: 4px 0 12px; }
-  table { font-size: 12px; border-collapse: collapse; margin-bottom: 14px; }
-  td { padding: 2px 12px 2px 0; vertical-align: top; }
-  td.k { font-weight: 700; white-space: nowrap; }
-  h2 { font-size: 14px; margin: 0 0 6px; }
-  img { display: block; max-width: 100%; }
+  html, body { margin: 0; padding: 0; }
+  body { font-family: ui-sans-serif, system-ui, -apple-system, sans-serif; color: #1A0E05; }
+  .brandbar {
+    display: flex; align-items: flex-end; justify-content: space-between;
+    border-bottom: 3px solid #EB4C1B; padding-bottom: 10px; margin-bottom: 16px;
+  }
+  .brandbar img { height: 44px; width: auto; display: block; }
+  .doc-title { text-align: right; }
+  .doc-title .t {
+    font-size: 17px; font-weight: 800; letter-spacing: 0.06em;
+    text-transform: uppercase; color: #1A0E05;
+  }
+  .badge {
+    display: inline-block; margin-top: 5px; background: #EB4C1B; color: #fff;
+    font-size: 9px; font-weight: 800; letter-spacing: 0.08em;
+    text-transform: uppercase; padding: 3px 9px; border-radius: 999px;
+  }
+  table.info { font-size: 12px; border-collapse: collapse; margin: 0 0 16px; }
+  table.info td { padding: 2px 16px 2px 0; vertical-align: top; }
+  table.info td.k {
+    font-weight: 700; white-space: nowrap; color: #7A6B55;
+    text-transform: uppercase; font-size: 10px; letter-spacing: 0.05em;
+    padding-top: 4px;
+  }
+  h2.section {
+    font-size: 11px; font-weight: 800; letter-spacing: 0.08em;
+    text-transform: uppercase; color: #EB4C1B; margin: 0 0 7px;
+  }
+  .imgwrap {
+    display: inline-block; max-width: 100%;
+    border: 1px solid #E8DCC0; border-radius: 6px; overflow: hidden;
+  }
+  img.markup { display: block; max-width: 100%; height: auto; }
   /* Cap heights so a single image never spills onto a second page. */
-  img.map { max-height: 8in; }
-  img.photo { max-height: 9.3in; }
+  img.map { max-height: 7.3in; }
+  img.photo { max-height: 8.6in; }
+  .foot {
+    margin-top: 12px; font-size: 8.5px; color: #A99; color: #9b8a73;
+    letter-spacing: 0.04em;
+  }
   .page { page-break-after: always; }
   .page:last-child { page-break-after: auto; }
 </style></head><body>${body}</body></html>`;
 }
 
 /** Print a standalone HTML document via a hidden iframe, so ONLY that document
- *  prints (no blank pages from the surrounding app). */
-function printViaIframe(html: string) {
+ *  prints (no blank pages from the surrounding app). The PDF file name is the
+ *  browser's title at print time — and Chrome uses the TOP document's title
+ *  for an iframe print, so we swap it in here and restore it afterward. */
+function printDocument(html: string, filename: string) {
   const iframe = document.createElement('iframe');
   iframe.setAttribute('aria-hidden', 'true');
   iframe.style.cssText =
@@ -133,12 +176,17 @@ function printViaIframe(html: string) {
   iframe.onload = () => {
     const win = iframe.contentWindow;
     if (!win) return;
+    const prevTitle = document.title;
+    const restore = () => {
+      document.title = prevTitle;
+      iframe.remove();
+    };
+    document.title = filename;
     win.focus();
+    win.onafterprint = restore;
+    // Safety net for browsers that don't fire `afterprint`.
+    setTimeout(restore, 60000);
     win.print();
-    // Tidy up after the dialog closes; the timeout is a safety net for
-    // browsers that don't fire `afterprint`.
-    win.onafterprint = () => iframe.remove();
-    setTimeout(() => iframe.remove(), 60000);
   };
   iframe.srcdoc = html;
   document.body.appendChild(iframe);
@@ -179,8 +227,7 @@ export function SiteMarkupTool() {
       return;
     }
     const html = buildPrintHtml({
-      // Browsers use the document title as the default Save-as-PDF file name.
-      title: address.trim() || 'Bratt Tree Site Work Plan',
+      logoUrl: `${window.location.origin}/assets/img/logotype-color.png`,
       customer,
       purpose,
       address,
@@ -189,7 +236,8 @@ export function SiteMarkupTool() {
       map,
       photo,
     });
-    printViaIframe(html);
+    // The job address becomes the default Save-as-PDF file name.
+    printDocument(html, address.trim() || 'Bratt Tree Site Work Plan');
   }
 
   return (
