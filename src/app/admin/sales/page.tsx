@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { getAllowedUser } from '@/lib/auth';
@@ -6,7 +7,6 @@ import { fmtUsd, monthLabel } from '@/lib/format';
 import { MonthPicker } from '@/components/MonthPicker';
 import { SectionCard, FlashBanner } from '@/components/admin-shared';
 import { SalespersonPhotoUpload } from '@/components/SalespersonPhotoUpload';
-import { getArboristBySalespersonName } from '@/lib/hub-content';
 import {
   saveAnnualGoal,
   saveMonthlyGoals,
@@ -51,7 +51,9 @@ export default async function SalesAdminPage({
     await Promise.all([
       supabase
         .from('salespeople')
-        .select('id, name, display_order, is_active, photo_url')
+        .select(
+          'id, name, display_order, is_active, photo_url, last_initial, title, certified, isa_number, is_manager, on_roster',
+        )
         .order('display_order'),
       supabase
         .from('yearly_targets')
@@ -310,93 +312,168 @@ function HistoricalsSection({
   );
 }
 
+// Small reusable field label + input pair for the roster forms.
+function Field({
+  label,
+  children,
+}: {
+  label: string;
+  children: ReactNode;
+}) {
+  return (
+    <label className="flex flex-col gap-1">
+      <span className="bt-eyebrow text-fg-3">{label}</span>
+      {children}
+    </label>
+  );
+}
+
+const inputCls =
+  'rounded-1 border border-paper-edge bg-bone px-2 py-1 font-headline text-sm focus:border-orange focus:outline-none';
+
 function RosterSection({ salespeople }: { salespeople: Salesperson[] }) {
   return (
     <SectionCard
       eyebrow="4 — Roster"
       title="Salespeople"
-      description="Edit names, change display order on the dashboard, or hide ex-employees. Salespeople are never deleted - flipping 'Active' off just hides them from new entries while keeping their history intact."
+      description="Add a salesperson here and they automatically appear on the Arborist Hub Team Roster too. First name is what sales attribution matches on; Last Initial, Title, Certified and ISA # are what show on the roster card. Flipping 'Active' off hides them from new entries while keeping their history. 'Other' and 'Add-Ons' are attribution buckets, not people, so they stay off the roster."
     >
-      <div className="overflow-x-auto">
-        <div className="grid min-w-[640px] grid-cols-[auto_minmax(8rem,2fr)_3.5rem_2.5rem_auto] items-center gap-1.5 text-xs">
-          <div className="bt-eyebrow text-fg-3">Photo</div>
-          <div className="bt-eyebrow text-fg-3">Name</div>
-          <div className="bt-eyebrow text-fg-3 text-right">Order</div>
-          <div className="bt-eyebrow text-fg-3 text-center">Active</div>
-          <div />
-          {salespeople.map((sp) => {
-            // Prefer the photo uploaded through admin; fall back to whatever the
-            // arborist markdown file lists (if a matching arborist exists).
-            const arborist = getArboristBySalespersonName(sp.name);
-            const photo = sp.photo_url ?? arborist?.photo ?? null;
-            return (
-              <div key={sp.id} className="contents [&>*]:my-0.5">
+      <div className="space-y-3">
+        {salespeople.map((sp) => {
+          const photo = sp.photo_url ?? null;
+          return (
+            <form
+              key={sp.id}
+              action={updateSalesperson}
+              className="rounded-2 border-2 border-paper-edge bg-white p-3"
+            >
+              <input type="hidden" name="id" value={sp.id} />
+              <div className="flex flex-wrap items-end gap-3">
                 <SalespersonPhotoUpload
                   salespersonId={sp.id}
                   currentPhotoUrl={photo}
                   fallbackInitial={sp.name.slice(0, 1)}
                 />
-                <form action={updateSalesperson} className="contents">
-                  <input type="hidden" name="id" value={sp.id} />
+                <Field label="First Name">
+                  <input type="text" name="name" defaultValue={sp.name} className={`${inputCls} w-32`} />
+                </Field>
+                <Field label="Last Initial">
                   <input
                     type="text"
-                    name="name"
-                    defaultValue={sp.name}
-                    className="rounded-1 border border-paper-edge bg-bone px-2 py-1 font-headline text-sm focus:border-orange focus:outline-none"
+                    name="last_initial"
+                    maxLength={3}
+                    defaultValue={sp.last_initial ?? ''}
+                    placeholder="e.g. P"
+                    className={`${inputCls} w-16`}
                   />
+                </Field>
+                <Field label="Title">
+                  <input
+                    type="text"
+                    name="title"
+                    defaultValue={sp.title ?? 'Sales Arborist'}
+                    className={`${inputCls} w-40`}
+                  />
+                </Field>
+                <Field label="ISA #">
+                  <input
+                    type="text"
+                    name="isa_number"
+                    defaultValue={sp.isa_number ?? ''}
+                    placeholder="optional"
+                    className={`${inputCls} w-32`}
+                  />
+                </Field>
+                <Field label="Order">
                   <input
                     type="number"
                     name="display_order"
                     defaultValue={sp.display_order}
-                    className="rounded-1 border border-paper-edge bg-bone px-1.5 py-1 text-right font-headline text-sm focus:border-orange focus:outline-none"
+                    className={`${inputCls} w-16 text-right`}
                   />
-                  <div className="flex justify-center">
-                    <input
-                      type="checkbox"
-                      name="is_active"
-                      defaultChecked={sp.is_active}
-                      className="h-4 w-4"
-                    />
-                  </div>
-                  <button
-                    type="submit"
-                    className="rounded-full border-2 border-ink px-3 py-1 font-headline text-[10px] font-extrabold uppercase tracking-ribbon text-ink transition-colors hover:bg-ink hover:text-cream"
-                  >
-                    Save
-                  </button>
-                </form>
+                </Field>
+                <label className="flex items-center gap-1.5 pb-1.5">
+                  <input type="checkbox" name="certified" defaultChecked={!!sp.certified} className="h-4 w-4" />
+                  <span className="text-xs text-fg-2">Certified</span>
+                </label>
+                <label className="flex items-center gap-1.5 pb-1.5">
+                  <input type="checkbox" name="is_active" defaultChecked={sp.is_active} className="h-4 w-4" />
+                  <span className="text-xs text-fg-2">Active</span>
+                </label>
+                <button
+                  type="submit"
+                  className="ml-auto rounded-full border-2 border-ink px-3 py-1 font-headline text-[10px] font-extrabold uppercase tracking-ribbon text-ink transition-colors hover:bg-ink hover:text-cream"
+                >
+                  Save
+                </button>
               </div>
-            );
-          })}
-        </div>
+              {sp.on_roster === false && (
+                <p className="mt-2 text-[11px] text-fg-3">
+                  Attribution bucket — not shown on the Team Roster.
+                </p>
+              )}
+            </form>
+          );
+        })}
       </div>
 
       <div className="mt-6 rounded-2 border-2 border-dashed border-paper-edge p-3">
         <p className="bt-eyebrow">Add Salesperson</p>
+        <p className="mt-1 text-xs text-fg-2">
+          Adds them to the Sales dashboard <em>and</em> the Arborist Hub Team
+          Roster.
+        </p>
         <form
           action={addSalesperson}
-          className="mt-2 flex flex-col gap-2 sm:flex-row sm:items-end"
+          className="mt-3 flex flex-wrap items-end gap-3"
         >
-          <label className="flex-1">
-            <span className="text-xs text-fg-2">Name</span>
+          <Field label="First Name">
             <input
               type="text"
               name="name"
               required
               placeholder="e.g. Maria"
-              className="mt-1 w-full rounded-1 border-2 border-paper-edge bg-white px-2 py-1.5 font-headline focus:border-orange focus:outline-none"
+              className={`${inputCls} w-32`}
             />
-          </label>
-          <label>
-            <span className="text-xs text-fg-2">Display Order</span>
+          </Field>
+          <Field label="Last Initial">
+            <input
+              type="text"
+              name="last_initial"
+              maxLength={3}
+              placeholder="e.g. K"
+              className={`${inputCls} w-16`}
+            />
+          </Field>
+          <Field label="Title">
+            <input
+              type="text"
+              name="title"
+              defaultValue="Sales Arborist"
+              className={`${inputCls} w-40`}
+            />
+          </Field>
+          <Field label="ISA #">
+            <input
+              type="text"
+              name="isa_number"
+              placeholder="optional"
+              className={`${inputCls} w-32`}
+            />
+          </Field>
+          <Field label="Order">
             <input
               type="number"
               name="display_order"
               defaultValue={
                 (salespeople[salespeople.length - 1]?.display_order ?? 100) + 10
               }
-              className="mt-1 w-24 rounded-1 border-2 border-paper-edge bg-white px-2 py-1.5 font-headline text-right focus:border-orange focus:outline-none"
+              className={`${inputCls} w-16 text-right`}
             />
+          </Field>
+          <label className="flex items-center gap-1.5 pb-1.5">
+            <input type="checkbox" name="certified" className="h-4 w-4" />
+            <span className="text-xs text-fg-2">Certified</span>
           </label>
           <button type="submit" className="bt-btn bt-btn-primary">
             Add

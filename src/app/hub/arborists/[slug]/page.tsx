@@ -1,10 +1,9 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { requireHubAccess, canAccessHub } from '@/lib/auth';
-import { serverClient } from '@/lib/supabase';
 import { SalespersonDetail } from '@/components/SalespersonDetail';
 import { HubSubNav } from '@/components/HubSubNav';
-import { getArborist } from '@/lib/hub-content';
+import { getRosterMemberBySlug } from '@/lib/roster-data';
 
 export const dynamic = 'force-dynamic';
 
@@ -37,28 +36,17 @@ export default async function ArboristDetailPage({
   const { slug } = await params;
   const sp = await searchParams;
 
-  const a = getArborist(slug);
+  const a = await getRosterMemberBySlug(slug);
   if (!a) notFound();
 
   const now = new Date();
   const year = parseIntInRange(sp.year, 2000, 2100) ?? now.getFullYear();
   const month = parseIntInRange(sp.month, 1, 12) ?? now.getMonth() + 1;
 
-  // Resolve the matching salesperson row in the dashboard, if any.
-  let salespersonId: string | null = null;
-  let salespersonPhotoUrl: string | null = null;
-  if (a.salesperson_name) {
-    const supabase = await serverClient();
-    const { data: person } = await supabase
-      .from('salespeople')
-      .select('id, photo_url')
-      .ilike('name', a.salesperson_name)
-      .maybeSingle();
-    salespersonId = person?.id ?? null;
-    salespersonPhotoUrl = person?.photo_url ?? null;
-  }
-  // Admin-uploaded photo wins over the markdown file's photo.
-  const photo = salespersonPhotoUrl ?? a.photo ?? null;
+  // The roster member IS a salesperson row, so its id and photo come straight
+  // through.
+  const salespersonId = a.id;
+  const photo = a.photo;
 
   const breadcrumb = (
     <>
@@ -78,23 +66,6 @@ export default async function ArboristDetailPage({
       </div>
     </>
   );
-
-  // No matching salesperson — fall back to a name-only page.
-  if (!salespersonId) {
-    return (
-      <main className="mx-auto max-w-4xl px-4 py-6 sm:px-6 sm:py-10">
-        {breadcrumb}
-        <h1 className="mt-2 font-display text-5xl uppercase tracking-wider text-ink">
-          {a.name}
-        </h1>
-        <p className="mt-2 text-fg-2">{a.title}</p>
-        <p className="mt-8 rounded-card border-2 border-dashed border-paper-edge bg-paper p-6 text-center text-sm text-fg-2">
-          No salesperson record found in the dashboard for &quot;
-          {a.salesperson_name ?? a.name}&quot;.
-        </p>
-      </main>
-    );
-  }
 
   return (
     <SalespersonDetail

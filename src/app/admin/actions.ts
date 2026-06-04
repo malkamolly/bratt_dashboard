@@ -163,13 +163,27 @@ export async function addSalesperson(formData: FormData): Promise<void> {
   const displayOrder = parseIntStrict(formData.get('display_order')) ?? 999;
   if (!name) redirect('/admin?error=missing_name');
 
+  // Roster fields: new salespeople are people, so they go on the roster.
+  const lastInitial = String(formData.get('last_initial') ?? '').trim() || null;
+  const title = String(formData.get('title') ?? '').trim() || 'Sales Arborist';
+  const isaNumber = String(formData.get('isa_number') ?? '').trim() || null;
+  const certified = formData.get('certified') === 'on';
+
   const supabase = await serverClient();
-  const { error } = await supabase
-    .from('salespeople')
-    .insert({ name, display_order: displayOrder, is_active: true });
+  const { error } = await supabase.from('salespeople').insert({
+    name,
+    display_order: displayOrder,
+    is_active: true,
+    last_initial: lastInitial,
+    title,
+    isa_number: isaNumber,
+    certified,
+    on_roster: true,
+  });
   if (error) redirect(`/admin/sales?error=${encodeURIComponent(error.message)}`);
 
   refreshAffectedPages();
+  revalidatePath('/hub/arborists');
   redirect('/admin/sales?saved=salesperson_added');
 }
 
@@ -229,14 +243,31 @@ export async function updateSalesperson(formData: FormData): Promise<void> {
   const isActive = formData.get('is_active') === 'on';
   if (!id || !name) redirect('/admin/sales?error=missing_fields');
 
+  // Roster fields. on_roster is intentionally left alone here so the attribution
+  // buckets ("Other", "Add-Ons") keep their off-roster flag.
+  const lastInitial = String(formData.get('last_initial') ?? '').trim() || null;
+  const title = String(formData.get('title') ?? '').trim() || 'Sales Arborist';
+  const isaNumber = String(formData.get('isa_number') ?? '').trim() || null;
+  const certified = formData.get('certified') === 'on';
+
   const supabase = await serverClient();
   const { error } = await supabase
     .from('salespeople')
-    .update({ name, display_order: displayOrder, is_active: isActive })
+    .update({
+      name,
+      display_order: displayOrder,
+      is_active: isActive,
+      last_initial: lastInitial,
+      title,
+      isa_number: isaNumber,
+      certified,
+    })
     .eq('id', id);
   if (error) redirect(`/admin/sales?error=${encodeURIComponent(error.message)}`);
 
   refreshAffectedPages();
+  revalidatePath('/hub/arborists');
+  revalidatePath('/hub/arborists/[slug]', 'page');
   redirect('/admin/sales?saved=salesperson_updated');
 }
 

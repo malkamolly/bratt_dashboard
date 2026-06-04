@@ -6,6 +6,15 @@ export type Salesperson = {
   display_order: number;
   is_active: boolean;
   photo_url?: string | null;
+  // Roster / profile fields (see migration 042). The roster shows
+  // `name + ' ' + last_initial` (e.g. "Alex P"); on_roster is false for the
+  // non-human attribution buckets ("Other", "Add-Ons").
+  last_initial?: string | null;
+  title?: string | null;
+  certified?: boolean | null;
+  isa_number?: string | null;
+  is_manager?: boolean | null;
+  on_roster?: boolean | null;
 };
 
 export type CrewKind = 'production' | 'phc' | 'stump' | 'unassigned' | 'clam';

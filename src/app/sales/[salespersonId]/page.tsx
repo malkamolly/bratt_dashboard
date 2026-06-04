@@ -3,7 +3,7 @@ import { redirect } from 'next/navigation';
 import { getAllowedUser, canAccessHub } from '@/lib/auth';
 import { serverClient } from '@/lib/supabase';
 import { SalespersonDetail } from '@/components/SalespersonDetail';
-import { getArboristBySalespersonName } from '@/lib/hub-content';
+import { getRosterMemberBySalespersonName } from '@/lib/roster-data';
 
 export const dynamic = 'force-dynamic';
 
@@ -46,9 +46,9 @@ export default async function SalespersonDetailPage({
     .eq('id', salespersonId)
     .maybeSingle();
   const arborist = person?.name
-    ? getArboristBySalespersonName(person.name)
+    ? await getRosterMemberBySalespersonName(person.name)
     : null;
-  // Admin-uploaded photo wins; otherwise fall back to the markdown file's photo.
+  // Admin-uploaded photo wins; otherwise fall back to the roster's default.
   const photo = person?.photo_url ?? arborist?.photo ?? null;
 
   const breadcrumb = (

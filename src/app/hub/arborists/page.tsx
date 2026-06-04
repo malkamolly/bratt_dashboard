@@ -1,36 +1,15 @@
 import Image from 'next/image';
 import Link from 'next/link';
 import { requireHubAccess } from '@/lib/auth';
-import { serverClient } from '@/lib/supabase';
 import { HubSubNav } from '@/components/HubSubNav';
-import { listArborists } from '@/lib/hub-content';
+import { listRoster } from '@/lib/roster-data';
 
 export const dynamic = 'force-dynamic';
 
 export default async function ArboristRosterPage() {
   await requireHubAccess('hub');
-  const arborists = listArborists();
+  const arborists = await listRoster();
   const certifiedCount = arborists.filter((a) => a.certified).length;
-
-  // Pull any admin-uploaded photos so they override the markdown defaults.
-  // Keyed by lowercased salesperson name to match `salesperson_name` frontmatter.
-  const supabase = await serverClient();
-  const { data: spRows } = await supabase
-    .from('salespeople')
-    .select('name, photo_url');
-  const photoOverrides = new Map<string, string>();
-  for (const row of spRows ?? []) {
-    if (row.photo_url && row.name) {
-      photoOverrides.set(String(row.name).toLowerCase(), String(row.photo_url));
-    }
-  }
-  const photoFor = (a: {
-    photo?: string | null;
-    salesperson_name?: string | null;
-  }): string | null => {
-    const key = a.salesperson_name?.toLowerCase();
-    return (key && photoOverrides.get(key)) || a.photo || null;
-  };
 
   return (
     <main className="mx-auto max-w-6xl px-6 py-10">
@@ -55,7 +34,7 @@ export default async function ArboristRosterPage() {
 
       <ul className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
         {arborists.map((a) => {
-          const photo = photoFor(a);
+          const photo = a.photo;
           return (
           <li key={a.slug}>
             <Link
