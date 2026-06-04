@@ -10,6 +10,7 @@ export type NavGroup = { label: string; items: NavItem[] };
 type Props = {
   user: { email: string; role: Role } | null;
   groups: NavGroup[];
+  adminGroup?: NavGroup | null;
 };
 
 function subtitleFor(pathname: string): string | null {
@@ -81,10 +82,13 @@ function NavDropdown({
   );
 }
 
-export function BrandHeaderClient({ user, groups }: Props) {
+export function BrandHeaderClient({ user, groups, adminGroup }: Props) {
   const pathname = usePathname();
   const subtitle = subtitleFor(pathname);
-  const activeHref = bestMatch(pathname, groups.flatMap((g) => g.items));
+  const activeHref = bestMatch(
+    pathname,
+    [...groups, ...(adminGroup ? [adminGroup] : [])].flatMap((g) => g.items),
+  );
 
   return (
     <header className="site">
@@ -117,13 +121,8 @@ export function BrandHeaderClient({ user, groups }: Props) {
             >
               Onboarding
             </Link>
-            {user.role === 'admin' && (
-              <Link
-                href="/admin"
-                className={isUnder(pathname, '/admin') ? 'active' : undefined}
-              >
-                Admin
-              </Link>
+            {adminGroup && (
+              <NavDropdown group={adminGroup} activeHref={activeHref} />
             )}
             <form action="/auth/signout" method="post">
               <button

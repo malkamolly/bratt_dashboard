@@ -36,5 +36,20 @@ export async function BrandHeader() {
       groups.push({ label: 'Production', items: productionItems });
   }
 
-  return <BrandHeaderClient user={user} groups={groups} />;
+  // Admin gets its own dropdown (admins only). Mirrors the cards on the
+  // /admin landing page.
+  const adminGroup: NavGroup | null =
+    user?.role === 'admin'
+      ? {
+          label: 'Admin',
+          items: [
+            { label: 'Overview', href: '/admin' },
+            { label: 'Sales Admin', href: '/admin/sales' },
+            { label: 'Production Admin', href: '/admin/production' },
+            { label: 'Access', href: '/admin/access' },
+          ],
+        }
+      : null;
+
+  return <BrandHeaderClient user={user} groups={groups} adminGroup={adminGroup} />;
 }

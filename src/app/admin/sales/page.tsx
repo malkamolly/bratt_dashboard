@@ -329,7 +329,7 @@ function Field({
 }
 
 const inputCls =
-  'rounded-1 border border-paper-edge bg-bone px-2 py-1 font-headline text-sm focus:border-orange focus:outline-none';
+  'h-8 rounded-1 border border-paper-edge bg-bone px-2 py-1 font-headline text-sm focus:border-orange focus:outline-none';
 
 function RosterSection({ salespeople }: { salespeople: Salesperson[] }) {
   return (
