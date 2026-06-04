@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import type { ComponentProps, ReactNode } from 'react';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { getAllowedUser } from '@/lib/auth';
@@ -331,6 +331,29 @@ function Field({
 const inputCls =
   'h-8 rounded-1 border border-paper-edge bg-bone px-2 py-1 font-headline text-sm focus:border-orange focus:outline-none';
 
+// Tell password managers (1Password, LastPass, Bitwarden, etc.) not to treat
+// these roster fields as logins. Without this they inject a "fill" icon into
+// the first text field, which both looks wrong and nudges that field's height
+// so its label no longer lines up with the others.
+const ignorePasswordManagers = {
+  autoComplete: 'off',
+  'data-1p-ignore': true,
+  'data-lpignore': 'true',
+  'data-bwignore': true,
+  'data-form-type': 'other',
+} as const;
+
+function TextInput({ className, ...props }: ComponentProps<'input'>) {
+  return (
+    <input
+      type="text"
+      {...ignorePasswordManagers}
+      {...props}
+      className={`${inputCls} ${className ?? ''}`}
+    />
+  );
+}
+
 function RosterSection({ salespeople }: { salespeople: Salesperson[] }) {
   return (
     <SectionCard
@@ -355,33 +378,30 @@ function RosterSection({ salespeople }: { salespeople: Salesperson[] }) {
                   fallbackInitial={sp.name.slice(0, 1)}
                 />
                 <Field label="First Name">
-                  <input type="text" name="name" defaultValue={sp.name} className={`${inputCls} w-32`} />
+                  <TextInput name="name" defaultValue={sp.name} className="w-32" />
                 </Field>
                 <Field label="Last Initial">
-                  <input
-                    type="text"
+                  <TextInput
                     name="last_initial"
                     maxLength={3}
                     defaultValue={sp.last_initial ?? ''}
                     placeholder="e.g. P"
-                    className={`${inputCls} w-16`}
+                    className="w-16"
                   />
                 </Field>
                 <Field label="Title">
-                  <input
-                    type="text"
+                  <TextInput
                     name="title"
                     defaultValue={sp.title ?? 'Sales Arborist'}
-                    className={`${inputCls} w-40`}
+                    className="w-40"
                   />
                 </Field>
                 <Field label="ISA #">
-                  <input
-                    type="text"
+                  <TextInput
                     name="isa_number"
                     defaultValue={sp.isa_number ?? ''}
                     placeholder="optional"
-                    className={`${inputCls} w-32`}
+                    className="w-32"
                   />
                 </Field>
                 <Field label="Order">
@@ -428,38 +448,21 @@ function RosterSection({ salespeople }: { salespeople: Salesperson[] }) {
           className="mt-3 flex flex-wrap items-end gap-3"
         >
           <Field label="First Name">
-            <input
-              type="text"
-              name="name"
-              required
-              placeholder="e.g. Maria"
-              className={`${inputCls} w-32`}
-            />
+            <TextInput name="name" required placeholder="e.g. Maria" className="w-32" />
           </Field>
           <Field label="Last Initial">
-            <input
-              type="text"
+            <TextInput
               name="last_initial"
               maxLength={3}
               placeholder="e.g. K"
-              className={`${inputCls} w-16`}
+              className="w-16"
             />
           </Field>
           <Field label="Title">
-            <input
-              type="text"
-              name="title"
-              defaultValue="Sales Arborist"
-              className={`${inputCls} w-40`}
-            />
+            <TextInput name="title" defaultValue="Sales Arborist" className="w-40" />
           </Field>
           <Field label="ISA #">
-            <input
-              type="text"
-              name="isa_number"
-              placeholder="optional"
-              className={`${inputCls} w-32`}
-            />
+            <TextInput name="isa_number" placeholder="optional" className="w-32" />
           </Field>
           <Field label="Order">
             <input
