@@ -371,12 +371,17 @@ function RosterSection({ salespeople }: { salespeople: Salesperson[] }) {
               className="rounded-2 border-2 border-paper-edge bg-white p-3"
             >
               <input type="hidden" name="id" value={sp.id} />
-              <div className="flex flex-wrap items-end gap-3">
-                <SalespersonPhotoUpload
-                  salespersonId={sp.id}
-                  currentPhotoUrl={photo}
-                  fallbackInitial={sp.name.slice(0, 1)}
-                />
+              {/* items-start anchors every field's label to the top row, so a
+                  password manager injecting an icon into a field can't shove
+                  that field's label out of line — the icon just lands below. */}
+              <div className="flex flex-wrap items-start gap-3">
+                <div className="mt-5">
+                  <SalespersonPhotoUpload
+                    salespersonId={sp.id}
+                    currentPhotoUrl={photo}
+                    fallbackInitial={sp.name.slice(0, 1)}
+                  />
+                </div>
                 <Field label="First Name">
                   <TextInput name="name" defaultValue={sp.name} className="w-32" />
                 </Field>
@@ -412,17 +417,17 @@ function RosterSection({ salespeople }: { salespeople: Salesperson[] }) {
                     className={`${inputCls} w-16 text-right`}
                   />
                 </Field>
-                <label className="flex items-center gap-1.5 pb-1.5">
+                <label className="mt-5 flex items-center gap-1.5">
                   <input type="checkbox" name="certified" defaultChecked={!!sp.certified} className="h-4 w-4" />
                   <span className="text-xs text-fg-2">Certified</span>
                 </label>
-                <label className="flex items-center gap-1.5 pb-1.5">
+                <label className="mt-5 flex items-center gap-1.5">
                   <input type="checkbox" name="is_active" defaultChecked={sp.is_active} className="h-4 w-4" />
                   <span className="text-xs text-fg-2">Active</span>
                 </label>
                 <button
                   type="submit"
-                  className="ml-auto rounded-full border-2 border-ink px-3 py-1 font-headline text-[10px] font-extrabold uppercase tracking-ribbon text-ink transition-colors hover:bg-ink hover:text-cream"
+                  className="ml-auto mt-5 rounded-full border-2 border-ink px-3 py-1 font-headline text-[10px] font-extrabold uppercase tracking-ribbon text-ink transition-colors hover:bg-ink hover:text-cream"
                 >
                   Save
                 </button>
@@ -445,7 +450,7 @@ function RosterSection({ salespeople }: { salespeople: Salesperson[] }) {
         </p>
         <form
           action={addSalesperson}
-          className="mt-3 flex flex-wrap items-end gap-3"
+          className="mt-3 flex flex-wrap items-start gap-3"
         >
           <Field label="First Name">
             <TextInput name="name" required placeholder="e.g. Maria" className="w-32" />
@@ -474,11 +479,11 @@ function RosterSection({ salespeople }: { salespeople: Salesperson[] }) {
               className={`${inputCls} w-16 text-right`}
             />
           </Field>
-          <label className="flex items-center gap-1.5 pb-1.5">
+          <label className="mt-5 flex items-center gap-1.5">
             <input type="checkbox" name="certified" className="h-4 w-4" />
             <span className="text-xs text-fg-2">Certified</span>
           </label>
-          <button type="submit" className="bt-btn bt-btn-primary">
+          <button type="submit" className="bt-btn bt-btn-primary mt-5">
             Add
           </button>
         </form>
