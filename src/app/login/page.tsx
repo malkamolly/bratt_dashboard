@@ -41,7 +41,7 @@ export default async function LoginPage({
                 Check your email
               </p>
               <p className="mt-1">
-                We sent a 6-digit code{email ? ` to ${email}` : ''}. Enter it below
+                We sent a sign-in code{email ? ` to ${email}` : ''}. Enter it below
                 to finish signing in. (On a laptop you can also just click the
                 sign-in link in that email.) The code is good for 1 hour.
               </p>
@@ -54,7 +54,7 @@ export default async function LoginPage({
               <input type="hidden" name="email" value={email ?? ''} />
               <input type="hidden" name="next" value={next ?? '/'} />
               <label className="font-headline text-xs font-extrabold uppercase tracking-ribbon text-bark-deep">
-                6-digit code
+                Sign-in code
                 <input
                   type="text"
                   name="code"
@@ -62,10 +62,10 @@ export default async function LoginPage({
                   inputMode="numeric"
                   autoComplete="one-time-code"
                   pattern="[0-9]*"
-                  maxLength={6}
-                  placeholder="123456"
+                  maxLength={10}
+                  placeholder="Enter code"
                   autoFocus
-                  className="mt-1 block w-full rounded-3 border-2 border-paper-edge bg-white px-4 py-3 text-center font-sans text-2xl font-bold tracking-[0.4em] text-ink placeholder:tracking-normal placeholder:text-fg-3 focus:border-ink focus:outline-none focus:ring-4 focus:ring-lime"
+                  className="mt-1 block w-full rounded-3 border-2 border-paper-edge bg-white px-4 py-3 text-center font-sans text-2xl font-bold tracking-[0.3em] text-ink placeholder:text-base placeholder:font-normal placeholder:tracking-normal placeholder:text-fg-3 focus:border-ink focus:outline-none focus:ring-4 focus:ring-lime"
                 />
               </label>
               {error && (
@@ -89,8 +89,8 @@ export default async function LoginPage({
         ) : (
           <>
             <p className="mt-3 text-sm text-fg-2">
-              Enter your work email. We&apos;ll email you a 6-digit sign-in code
-              (and a one-click link).
+              Enter your work email. We&apos;ll email you a sign-in code (and a
+              one-click link).
             </p>
             <form action={requestMagicLink} className="mt-6 flex flex-col gap-3 text-left">
               <input type="hidden" name="next" value={next ?? '/'} />

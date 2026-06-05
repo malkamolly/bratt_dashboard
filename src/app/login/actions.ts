@@ -74,8 +74,8 @@ export async function verifyCode(formData: FormData) {
   if (!email || !email.includes('@')) {
     redirect(back('Please start over and enter your email.'));
   }
-  if (code.length !== 6) {
-    redirect(back('Enter the 6-digit code from your email.'));
+  if (code.length < 6) {
+    redirect(back('Enter the code from your email.'));
   }
 
   const supabase = await serverClient();
