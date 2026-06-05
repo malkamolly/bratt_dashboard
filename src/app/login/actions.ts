@@ -5,7 +5,15 @@ import { headers } from 'next/headers';
 import { serverClient } from '@/lib/supabase';
 
 /**
- * Server Action: send a magic-link sign-in email.
+ * Server Action: send a sign-in email.
+ *
+ * The email contains BOTH a one-click magic link AND a 6-digit code (the code
+ * shows up only if the Supabase "Magic Link" email template includes the
+ * {{ .Token }} variable). The code path exists for iPhone/iPad users who open
+ * the dashboard from a home-screen shortcut: that shortcut runs in its own
+ * isolated browser "box", and the magic link always opens in Safari (a
+ * different box), so the link can never finish the login inside the shortcut.
+ * Typing the code keeps the whole login inside the box they're already in.
  *
  * Security note: we intentionally do NOT pre-check whether the email is on
  * the allowlist before sending. Pre-checking would leak "is this person on
@@ -37,7 +45,48 @@ export async function requestMagicLink(formData: FormData) {
   });
 
   if (error) {
-    redirect(`/login?error=${encodeURIComponent(error.message)}`);
+    redirect(
+      `/login?error=${encodeURIComponent(error.message)}&next=${encodeURIComponent(next)}`,
+    );
   }
-  redirect('/login?sent=1');
+  // Carry email + next forward so the code-entry step knows who is logging in.
+  redirect(
+    `/login?sent=1&email=${encodeURIComponent(email)}&next=${encodeURIComponent(next)}`,
+  );
+}
+
+/**
+ * Server Action: finish sign-in by verifying the 6-digit code from the email.
+ *
+ * Unlike the magic link, this completes the login in whatever browser context
+ * submitted the form — so it works inside an iOS home-screen shortcut.
+ */
+export async function verifyCode(formData: FormData) {
+  const email = String(formData.get('email') ?? '').trim().toLowerCase();
+  const code = String(formData.get('code') ?? '').replace(/\D/g, '');
+  const next = String(formData.get('next') ?? '/');
+
+  const back = (msg: string) =>
+    `/login?sent=1&email=${encodeURIComponent(email)}&next=${encodeURIComponent(
+      next,
+    )}&error=${encodeURIComponent(msg)}`;
+
+  if (!email || !email.includes('@')) {
+    redirect(back('Please start over and enter your email.'));
+  }
+  if (code.length !== 6) {
+    redirect(back('Enter the 6-digit code from your email.'));
+  }
+
+  const supabase = await serverClient();
+  const { error } = await supabase.auth.verifyOtp({
+    email,
+    token: code,
+    type: 'email',
+  });
+
+  if (error) {
+    redirect(back(error.message));
+  }
+  redirect(next);
 }
