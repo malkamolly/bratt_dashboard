@@ -168,6 +168,15 @@ function LiveMonthView({
   const stumpSummary = summarize(stumpCrewRows);
   const phcSummary = summarize(phcCrewRows);
 
+  // Production Crews is the key figure each month, so it gets its own
+  // ahead / on-pace / behind pill, computed the same way as the company one.
+  const productionStatus = paceStatus(
+    productionSummary.effective,
+    productionSummary.budget,
+    c.budgeted_days_been_through,
+    c.budgeted_days,
+  );
+
   const weeks = workingWeeksInMonth(year, month, data.holidays);
   const revByDate = new Map<IsoDate, number>();
   for (const e of data.entries) {
@@ -213,6 +222,41 @@ function LiveMonthView({
 
       <section className="mt-3 rounded-card bg-bark p-6 text-cream sm:p-8">
         <div className="grid grid-cols-1 gap-6 sm:grid-cols-4 sm:items-stretch">
+          {/* Production Crews is the key figure each month, so it leads the
+              row with the biggest type and its own pacing pill. */}
+          <div className="border-b border-bark-deep pb-4 sm:border-b-0 sm:border-r sm:pb-0 sm:pr-6">
+            <div className="flex items-start justify-between gap-3">
+              <p className="font-headline text-xs font-extrabold uppercase tracking-ribbon text-lime">
+                Production Crews
+              </p>
+              <span className={statusChipClass(productionStatus)}>
+                {statusLabel(productionStatus)}
+              </span>
+            </div>
+            <p className="mt-2 font-display text-5xl tracking-wider">
+              {fmtUsd(productionSummary.effective)}
+            </p>
+            <p className="mt-1 text-sm text-cream/80">
+              {productionSummary.budget > 0 ? (
+                <>
+                  of {fmtUsd(productionSummary.budget)} &middot;{' '}
+                  {fmtPct(productionSummary.effective / productionSummary.budget)}{' '}
+                  of budget
+                </>
+              ) : (
+                'no budget set'
+              )}
+            </p>
+            <p className="mt-1 text-xs text-cream/60">
+              {fmtUsd(productionSummary.mtd)} completed
+            </p>
+            {productionSummary.wip > 0 && (
+              <p className="mt-0.5 text-xs text-cream/60">
+                {fmtUsd(productionSummary.wip)} in progress
+              </p>
+            )}
+          </div>
+
           <div className="border-b border-bark-deep pb-4 sm:border-b-0 sm:border-r sm:pb-0 sm:pr-6">
             <div className="flex items-start justify-between gap-3">
               <p className="font-headline text-xs font-extrabold uppercase tracking-ribbon text-lime">
@@ -222,7 +266,7 @@ function LiveMonthView({
                 {statusLabel(companyStatus)}
               </span>
             </div>
-            <p className="mt-2 font-display text-5xl tracking-wider">
+            <p className="mt-2 font-display text-4xl tracking-wider">
               {fmtUsd(c.effective_mtd_revenue)}
             </p>
             <p className="mt-1 text-sm text-cream/80">
@@ -245,6 +289,15 @@ function LiveMonthView({
             </p>
           </div>
 
+          <div className="border-b border-bark-deep pb-4 sm:border-b-0 sm:border-r sm:pb-0 sm:pr-6">
+            <KindBreakdown label="Stump Grinding" summary={stumpSummary} />
+          </div>
+          <div className="border-b border-bark-deep pb-4 last:border-b-0 last:pb-0 sm:border-b-0 sm:pb-0">
+            <KindBreakdown label="PHC" summary={phcSummary} />
+          </div>
+        </div>
+
+        <div className="mt-6 grid grid-cols-1 gap-6 border-t border-bark-deep pt-5 sm:grid-cols-3">
           <Stat
             label="Pacing to finish"
             value={fmtUsd(c.total_pacing_revenue)}
@@ -266,12 +319,6 @@ function LiveMonthView({
               c.budgeted_days_remaining === 1 ? '' : 's'
             } left`}
           />
-        </div>
-
-        <div className="mt-6 grid grid-cols-1 gap-4 border-t border-bark-deep pt-5 sm:grid-cols-3">
-          <KindBreakdown label="Production Crews" summary={productionSummary} />
-          <KindBreakdown label="Stump Grinding" summary={stumpSummary} />
-          <KindBreakdown label="PHC" summary={phcSummary} />
         </div>
       </section>
 
