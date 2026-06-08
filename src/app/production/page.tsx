@@ -162,7 +162,8 @@ function LiveMonthView({
     const mtd = rows.reduce((s, r) => s + r.mtd_revenue, 0);
     const wip = rows.reduce((s, r) => s + r.in_progress_revenue, 0);
     const budget = rows.reduce((s, r) => s + r.budget, 0);
-    return { mtd, wip, effective: mtd + wip, budget };
+    const jobs = rows.reduce((s, r) => s + r.mtd_jobs, 0);
+    return { mtd, wip, effective: mtd + wip, budget, jobs };
   };
   const productionSummary = summarize(productionCrewRows);
   const stumpSummary = summarize(stumpCrewRows);
@@ -176,6 +177,24 @@ function LiveMonthView({
     c.budgeted_days_been_through,
     c.budgeted_days,
   );
+
+  // Pacing / daily figures for the top row, computed from Production Crews
+  // only (not the whole company) — same formulas as the combined totals.
+  const prodDaysThrough = c.budgeted_days_been_through;
+  const prodDaysRemaining = c.budgeted_days_remaining;
+  const prodDailyAvgRevenue =
+    prodDaysThrough > 0 ? productionSummary.mtd / prodDaysThrough : 0;
+  const prodDailyAvgJobs =
+    prodDaysThrough > 0 ? productionSummary.jobs / prodDaysThrough : 0;
+  // Book the completed run-rate forward to month-end, then add WIP as a
+  // one-time bump (WIP isn't part of the daily rate).
+  const prodPacingRevenue =
+    prodDailyAvgRevenue * c.budgeted_days + productionSummary.wip;
+  const prodDailyBudgetNeeded =
+    prodDaysRemaining > 0
+      ? Math.max(0, productionSummary.budget - productionSummary.effective) /
+        prodDaysRemaining
+      : 0;
 
   const weeks = workingWeeksInMonth(year, month, data.holidays);
   const revByDate = new Map<IsoDate, number>();
@@ -221,9 +240,9 @@ function LiveMonthView({
       <YtdStrip ytd={ytd} />
 
       <section className="mt-3 rounded-card bg-bark p-6 text-cream sm:p-8">
+        {/* Top row: Production Crews (the key figure) leads, with its pacing
+            stats to the right — all based on the Production Crews budget. */}
         <div className="grid grid-cols-1 gap-6 sm:grid-cols-4 sm:items-stretch">
-          {/* Production Crews is the key figure each month, so it leads the
-              row with the biggest type and its own pacing pill. */}
           <div className="border-b border-bark-deep pb-4 sm:border-b-0 sm:border-r sm:pb-0 sm:pr-6">
             <div className="flex items-start justify-between gap-3">
               <p className="font-headline text-xs font-extrabold uppercase tracking-ribbon text-lime">
@@ -257,68 +276,68 @@ function LiveMonthView({
             )}
           </div>
 
+          <Stat
+            label="Pacing to finish"
+            value={fmtUsd(prodPacingRevenue)}
+            hint={
+              productionSummary.wip > 0
+                ? 'Completed run-rate + in-progress'
+                : "If today's rate holds"
+            }
+          />
+          <Stat
+            label="Daily avg so far"
+            value={fmtUsd(prodDailyAvgRevenue)}
+            hint={`${prodDailyAvgJobs.toFixed(1)} jobs/day`}
+          />
+          <Stat
+            label="Daily needed for budget"
+            value={fmtUsd(prodDailyBudgetNeeded)}
+            hint={`Across ${prodDaysRemaining} day${
+              prodDaysRemaining === 1 ? '' : 's'
+            } left`}
+          />
+        </div>
+
+        {/* Second row: company-wide Combined MTD plus the other kinds. */}
+        <div className="mt-6 grid grid-cols-1 gap-6 border-t border-bark-deep pt-5 sm:grid-cols-3">
           <div className="border-b border-bark-deep pb-4 sm:border-b-0 sm:border-r sm:pb-0 sm:pr-6">
             <div className="flex items-start justify-between gap-3">
-              <p className="font-headline text-xs font-extrabold uppercase tracking-ribbon text-lime">
+              <p className="font-headline text-[10px] font-extrabold uppercase tracking-ribbon text-lime">
                 Combined MTD
               </p>
               <span className={statusChipClass(companyStatus)}>
                 {statusLabel(companyStatus)}
               </span>
             </div>
-            <p className="mt-2 font-display text-4xl tracking-wider">
+            <p className="mt-1 font-headline text-xl font-black sm:text-2xl">
               {fmtUsd(c.effective_mtd_revenue)}
             </p>
-            <p className="mt-1 text-sm text-cream/80">
+            <p className="mt-0.5 text-[11px] text-cream/70">
               of {fmtUsd(c.total_budget)} &middot;{' '}
               {c.total_budget > 0
                 ? fmtPct(c.effective_mtd_revenue / c.total_budget)
                 : '—'} of budget
             </p>
-            <p className="mt-1 text-xs text-cream/60">
+            <p className="mt-0.5 text-[11px] text-cream/60">
               {fmtUsd(c.mtd_revenue)} completed
             </p>
             {c.in_progress_revenue > 0 && (
-              <p className="mt-0.5 text-xs text-cream/60">
+              <p className="mt-0.5 text-[11px] text-cream/60">
                 {fmtUsd(c.in_progress_revenue)} in progress
               </p>
             )}
-            <p className="mt-1 text-xs text-cream/60">
+            <p className="mt-0.5 text-[11px] text-cream/60">
               {c.mtd_jobs} {c.mtd_jobs === 1 ? 'job' : 'jobs'} &middot; avg{' '}
               {fmtUsd(c.avg_job_size)}/job
             </p>
           </div>
-
           <div className="border-b border-bark-deep pb-4 sm:border-b-0 sm:border-r sm:pb-0 sm:pr-6">
             <KindBreakdown label="Stump Grinding" summary={stumpSummary} />
           </div>
           <div className="border-b border-bark-deep pb-4 last:border-b-0 last:pb-0 sm:border-b-0 sm:pb-0">
             <KindBreakdown label="PHC" summary={phcSummary} />
           </div>
-        </div>
-
-        <div className="mt-6 grid grid-cols-1 gap-6 border-t border-bark-deep pt-5 sm:grid-cols-3">
-          <Stat
-            label="Pacing to finish"
-            value={fmtUsd(c.total_pacing_revenue)}
-            hint={
-              c.in_progress_revenue > 0
-                ? "Completed run-rate + in-progress"
-                : "If today's rate holds"
-            }
-          />
-          <Stat
-            label="Daily avg so far"
-            value={fmtUsd(c.daily_avg_revenue)}
-            hint={`${c.daily_avg_jobs.toFixed(1)} jobs/day`}
-          />
-          <Stat
-            label="Daily needed for budget"
-            value={fmtUsd(c.total_daily_budget_needed)}
-            hint={`Across ${c.budgeted_days_remaining} day${
-              c.budgeted_days_remaining === 1 ? '' : 's'
-            } left`}
-          />
         </div>
       </section>
 
