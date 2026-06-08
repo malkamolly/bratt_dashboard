@@ -59,22 +59,19 @@ export function canEditMeetings(role: Role): boolean {
 }
 
 /**
- * Can this role use the PHC price calculator? Restricted to managers + admin
- * for now while the calculator is being tested. To open it up to the whole
- * Sales Arborist Hub later, change this to `canAccessHub(role, 'hub')`.
+ * Can this role use the PHC price calculator? Open to admin, the sales manager,
+ * and sales arborists.
  */
 export function canUseCalculator(role: Role): boolean {
-  return role === 'admin' || role === 'sales_manager';
+  return role === 'admin' || role === 'sales_manager' || role === 'sales_arborist';
 }
 
 /**
  * Can this role use the Site Markup tool (permit / power line clearance
- * plans)? Restricted to managers + admin for now while it's new. To open it
- * up to the whole Sales Arborist Hub later, change this to
- * `canAccessHub(role, 'hub')`.
+ * plans)? Open to admin, the sales manager, and sales arborists.
  */
 export function canUseSiteMarkup(role: Role): boolean {
-  return role === 'admin' || role === 'sales_manager';
+  return role === 'admin' || role === 'sales_manager' || role === 'sales_arborist';
 }
 
 /** Can this role create or edit Field Crew Hub data (skills, trainings, plans, huddles)? */
