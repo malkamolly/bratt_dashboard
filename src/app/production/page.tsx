@@ -165,7 +165,9 @@ function LiveMonthView({
     const jobs = rows.reduce((s, r) => s + r.mtd_jobs, 0);
     return { mtd, wip, effective: mtd + wip, budget, jobs };
   };
-  const productionSummary = summarize(productionCrewRows);
+  // Stump grinding rolls up into the headline Production Crews totals (it
+  // still gets its own breakdown card + detail table below).
+  const productionSummary = summarize([...productionCrewRows, ...stumpCrewRows]);
   const stumpSummary = summarize(stumpCrewRows);
   const phcSummary = summarize(phcCrewRows);
 
@@ -299,8 +301,9 @@ function LiveMonthView({
           />
         </div>
 
-        {/* Second row: company-wide Combined MTD plus the other kinds. */}
-        <div className="mt-6 grid grid-cols-1 gap-6 border-t border-bark-deep pt-5 sm:grid-cols-3">
+        {/* Second row: company-wide Combined MTD plus the other kinds. Uses
+            the same 4-column grid as the top row so the columns line up. */}
+        <div className="mt-6 grid grid-cols-1 gap-6 border-t border-bark-deep pt-5 sm:grid-cols-4">
           <div className="border-b border-bark-deep pb-4 sm:border-b-0 sm:border-r sm:pb-0 sm:pr-6">
             <div className="flex items-start justify-between gap-3">
               <p className="font-headline text-[10px] font-extrabold uppercase tracking-ribbon text-lime">
@@ -312,12 +315,6 @@ function LiveMonthView({
             </div>
             <p className="mt-1 font-headline text-xl font-black sm:text-2xl">
               {fmtUsd(c.effective_mtd_revenue)}
-            </p>
-            <p className="mt-0.5 text-[11px] text-cream/70">
-              of {fmtUsd(c.total_budget)} &middot;{' '}
-              {c.total_budget > 0
-                ? fmtPct(c.effective_mtd_revenue / c.total_budget)
-                : '—'} of budget
             </p>
             <p className="mt-0.5 text-[11px] text-cream/60">
               {fmtUsd(c.mtd_revenue)} completed
@@ -335,7 +332,7 @@ function LiveMonthView({
           <div className="border-b border-bark-deep pb-4 sm:border-b-0 sm:border-r sm:pb-0 sm:pr-6">
             <KindBreakdown label="Stump Grinding" summary={stumpSummary} />
           </div>
-          <div className="border-b border-bark-deep pb-4 last:border-b-0 last:pb-0 sm:border-b-0 sm:pb-0">
+          <div className="border-b border-bark-deep pb-4 last:border-b-0 last:pb-0 sm:border-b-0 sm:border-r sm:pb-0 sm:pr-6">
             <KindBreakdown label="PHC" summary={phcSummary} />
           </div>
         </div>
