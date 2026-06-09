@@ -34,19 +34,11 @@ export async function BrandHeader() {
     if (salesItems.length > 0) groups.push({ label: 'Sales', items: salesItems });
     if (productionItems.length > 0)
       groups.push({ label: 'Production', items: productionItems });
-
-    // The private My Projects hub gets its own nav entry, shown only to the
-    // single owner (gated by email, not role).
-    if (isOwner(user.email)) {
-      groups.push({
-        label: 'My Projects',
-        items: [{ label: 'My Projects', href: '/projects' }],
-      });
-    }
   }
 
   // Admin gets its own dropdown (admins only). Mirrors the cards on the
-  // /admin landing page.
+  // /admin landing page. The private My Projects hub is tucked in here too,
+  // but gated by email so only the single owner sees it — other admins don't.
   const adminGroup: NavGroup | null =
     user?.role === 'admin'
       ? {
@@ -56,6 +48,9 @@ export async function BrandHeader() {
             { label: 'Sales Admin', href: '/admin/sales' },
             { label: 'Production Admin', href: '/admin/production' },
             { label: 'Access', href: '/admin/access' },
+            ...(isOwner(user.email)
+              ? [{ label: 'My Projects', href: '/projects' }]
+              : []),
           ],
         }
       : null;
