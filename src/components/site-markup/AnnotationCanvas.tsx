@@ -5,8 +5,9 @@
 // ============================================================================
 // A self-contained drawing surface. You hand it a background image (a map
 // image or an uploaded photo) and it lets the user draw arrows, lines, boxes,
-// freehand pen strokes, and text labels on top, then export the whole thing
-// (background + drawings) as a single flattened JPEG.
+// freehand pen strokes, text labels, and auto-numbered markers (1, 2, 3…) on
+// top, then export the whole thing (background + drawings) as a single
+// flattened JPEG.
 //
 // How it works: we draw EVERYTHING onto one <canvas> — the background image
 // first, then every shape on top. So exporting is just `canvas.toDataURL()`.
@@ -35,7 +36,7 @@ export type AnnotationCanvasHandle = {
   hasContent: () => boolean;
 };
 
-type Tool = 'pen' | 'arrow' | 'line' | 'box' | 'text';
+type Tool = 'pen' | 'arrow' | 'line' | 'box' | 'text' | 'number';
 type SizeKey = 'S' | 'M' | 'L';
 
 type Point = { x: number; y: number };
@@ -43,7 +44,8 @@ type Point = { x: number; y: number };
 type Shape =
   | { kind: 'pen'; color: string; width: number; points: Point[] }
   | { kind: 'arrow' | 'line' | 'box'; color: string; width: number; x1: number; y1: number; x2: number; y2: number }
-  | { kind: 'text'; color: string; size: number; x: number; y: number; text: string };
+  | { kind: 'text'; color: string; size: number; x: number; y: number; text: string }
+  | { kind: 'number'; color: string; radius: number; x: number; y: number; value: number };
 
 type Props = {
   /** Background image URL, or null to show an empty placeholder. */
@@ -60,6 +62,7 @@ const TOOLS: { value: Tool; label: string; emoji: string }[] = [
   { value: 'box', label: 'Box', emoji: '▭' },
   { value: 'pen', label: 'Pen', emoji: '✎' },
   { value: 'text', label: 'Text', emoji: 'T' },
+  { value: 'number', label: 'Numbered marker — taps drop 1, 2, 3…', emoji: '①' },
 ];
 
 // Largest internal canvas width, to bound memory on big photos.
@@ -74,6 +77,14 @@ function strokePx(size: SizeKey, canvasW: number): number {
 
 function fontPx(size: SizeKey, canvasW: number): number {
   return strokePx(size, canvasW) * 5.5;
+}
+
+// Radius (in canvas pixels) of a numbered marker for each size button.
+function circleRadiusPx(size: SizeKey, canvasW: number): number {
+  const base = canvasW * 0.018;
+  if (size === 'S') return base * 0.7;
+  if (size === 'L') return base * 1.5;
+  return base;
 }
 
 export const AnnotationCanvas = forwardRef<AnnotationCanvasHandle, Props>(
@@ -106,6 +117,33 @@ export const AnnotationCanvas = forwardRef<AnnotationCanvasHandle, Props>(
         ctx.strokeText(s.text, s.x, s.y);
         ctx.fillStyle = s.color;
         ctx.fillText(s.text, s.x, s.y);
+        return;
+      }
+
+      if (s.kind === 'number') {
+        const r = s.radius;
+        // Light fills (white / yellow) need dark ink for the ring + number.
+        const lightFill = s.color === '#FFFFFF' || s.color === '#FACC15';
+        const ink = lightFill ? '#111111' : '#FFFFFF';
+        // Filled circle.
+        ctx.beginPath();
+        ctx.arc(s.x, s.y, r, 0, Math.PI * 2);
+        ctx.fillStyle = s.color;
+        ctx.fill();
+        // Contrasting ring so the marker reads over busy imagery.
+        ctx.lineWidth = Math.max(2, r * 0.12);
+        ctx.strokeStyle = ink;
+        ctx.stroke();
+        // Number, centered inside (smaller font for two-digit values).
+        const label = String(s.value);
+        const fontSize = r * (label.length >= 2 ? 1.1 : 1.35);
+        ctx.font = `bold ${fontSize}px ui-sans-serif, system-ui, sans-serif`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillStyle = ink;
+        ctx.fillText(label, s.x, s.y);
+        // Reset alignment so later text labels aren't knocked off-position.
+        ctx.textAlign = 'left';
         return;
       }
 
@@ -260,6 +298,23 @@ export const AnnotationCanvas = forwardRef<AnnotationCanvasHandle, Props>(
         return;
       }
 
+      if (tool === 'number') {
+        // Auto-increment: each tap drops the next number in sequence so you
+        // can mark tree 1, 2, 3… without retyping. Undo steps back through them.
+        const value =
+          shapesRef.current.filter((s) => s.kind === 'number').length + 1;
+        shapesRef.current.push({
+          kind: 'number',
+          color,
+          radius: circleRadiusPx(size, w),
+          x: p.x,
+          y: p.y,
+          value,
+        });
+        redraw();
+        return;
+      }
+
       drawingRef.current = true;
       e.currentTarget.setPointerCapture(e.pointerId);
       const width = strokePx(size, w);
@@ -276,7 +331,7 @@ export const AnnotationCanvas = forwardRef<AnnotationCanvasHandle, Props>(
       const d = draftRef.current;
       if (d.kind === 'pen') {
         d.points.push(p);
-      } else if (d.kind !== 'text') {
+      } else if (d.kind === 'arrow' || d.kind === 'line' || d.kind === 'box') {
         d.x2 = p.x;
         d.y2 = p.y;
       }
