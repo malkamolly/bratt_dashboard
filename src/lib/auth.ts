@@ -23,6 +23,17 @@ export type AllowedUser = {
 
 export type Hub = 'pace' | 'hub' | 'crew';
 
+// The single owner of the private "My Projects" hub. This hub is gated by
+// EMAIL, not by role, because it's a personal space for one person — even
+// other admins shouldn't see it. Keep this in sync with the RLS policy in
+// migration 047_personal_tasks.sql, which hardcodes the same address.
+export const OWNER_EMAIL = 'molly@bratttree.com';
+
+/** Is this the owner of the private My Projects hub? Case-insensitive. */
+export function isOwner(email: string | null | undefined): boolean {
+  return !!email && email.toLowerCase() === OWNER_EMAIL;
+}
+
 // Which roles can access which hubs. Admin sees everything; office staff
 // (user) and the sales manager can see Pace + Hub; sales_arborist +
 // field_crew are siloed to their own hub. field_manager mirrors
@@ -124,5 +135,16 @@ export async function requireHubAccess(hub: Hub): Promise<AllowedUser> {
   const u = await getAllowedUser();
   if (!u) redirect('/login');
   if (!canAccessHub(u.role, hub)) redirect('/access-denied');
+  return u;
+}
+
+/**
+ * Guards the private My Projects hub. Only the single owner email may enter;
+ * everyone else (including other admins) is bounced to /access-denied.
+ */
+export async function requireOwner(): Promise<AllowedUser> {
+  const u = await getAllowedUser();
+  if (!u) redirect('/login');
+  if (!isOwner(u.email)) redirect('/access-denied');
   return u;
 }

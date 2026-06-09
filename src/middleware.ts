@@ -76,6 +76,18 @@ export async function middleware(req: NextRequest) {
     return NextResponse.redirect(url);
   }
 
+  // The private "My Projects" hub is gated by EMAIL, not role — only the
+  // single owner may enter, even other admins. Keep this address in sync with
+  // OWNER_EMAIL in lib/auth.ts and the RLS policy in migration 047.
+  if (path === '/projects' || path.startsWith('/projects/')) {
+    if ((user.email ?? '').toLowerCase() !== 'molly@bratttree.com') {
+      const url = req.nextUrl.clone();
+      url.pathname = '/access-denied';
+      return NextResponse.redirect(url);
+    }
+    return res;
+  }
+
   // Hub-level access. The landing page (/) is open to any signed-in
   // allowlist user — it shows only the hub cards they can access.
   const role = allowed.role as

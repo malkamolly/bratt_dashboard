@@ -1,4 +1,4 @@
-import { getAllowedUser, canAccessHub, type Role } from '@/lib/auth';
+import { getAllowedUser, canAccessHub, isOwner, type Role } from '@/lib/auth';
 import { BrandHeaderClient, type NavGroup, type NavItem } from './BrandHeaderClient';
 
 // Tomorrow's Schedule + Forecast vs Actual are gated to office/admin (same as
@@ -34,6 +34,15 @@ export async function BrandHeader() {
     if (salesItems.length > 0) groups.push({ label: 'Sales', items: salesItems });
     if (productionItems.length > 0)
       groups.push({ label: 'Production', items: productionItems });
+
+    // The private My Projects hub gets its own nav entry, shown only to the
+    // single owner (gated by email, not role).
+    if (isOwner(user.email)) {
+      groups.push({
+        label: 'My Projects',
+        items: [{ label: 'My Projects', href: '/projects' }],
+      });
+    }
   }
 
   // Admin gets its own dropdown (admins only). Mirrors the cards on the

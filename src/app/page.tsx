@@ -1,7 +1,7 @@
 import Image from 'next/image';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
-import { allowedHubsFor, getAllowedUser, type Hub } from '@/lib/auth';
+import { allowedHubsFor, getAllowedUser, isOwner, type Hub } from '@/lib/auth';
 import { getCurrentEmployeeSlug } from '@/lib/crew-data';
 
 export const dynamic = 'force-dynamic';
@@ -125,6 +125,25 @@ export default async function LandingPage() {
               </p>
             </div>
           ),
+        )}
+
+        {/* Private personal hub — only the owner ever sees this card. */}
+        {isOwner(user.email) && (
+          <Link
+            href="/projects"
+            className="bt-card group transition-colors hover:!border-orange"
+          >
+            <p className="bt-eyebrow">Private</p>
+            <h2 className="mt-2 font-headline text-3xl font-black uppercase text-bark-deep">
+              My Projects
+            </h2>
+            <p className="mt-3 text-sm text-fg-2">
+              Your personal project checklist. Only you can see this.
+            </p>
+            <p className="mt-6 font-headline text-xs font-extrabold uppercase tracking-ribbon text-orange">
+              Open &rarr;
+            </p>
+          </Link>
         )}
       </section>
     </main>
