@@ -4,6 +4,7 @@ import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { getAllowedUser, isOwner } from '@/lib/auth';
 import { serverClient } from '@/lib/supabase';
+import { isStatus, type Status } from './status';
 
 // Every action re-checks ownership server-side. The middleware already blocks
 // non-owners from the route, but server actions can be invoked directly, so we
@@ -15,80 +16,132 @@ async function requireOwnerAction() {
   return u;
 }
 
-export async function addTask(formData: FormData): Promise<void> {
+// ---------------------------------------------------------------------------
+// Projects
+// ---------------------------------------------------------------------------
+
+export async function addProject(formData: FormData): Promise<void> {
   const u = await requireOwnerAction();
-
-  const title = String(formData.get('title') ?? '').trim();
-  const project = String(formData.get('project') ?? '').trim();
-  const dueRaw = String(formData.get('due_date') ?? '').trim();
-  const due_date = dueRaw || null;
-
-  // Silently ignore an empty add rather than erroring — keeps the form simple.
-  if (!title) {
-    revalidatePath('/projects');
-    return;
-  }
-
-  const supabase = await serverClient();
-  await supabase.from('personal_tasks').insert({
-    owner_email: u.email,
-    title,
-    project,
-    due_date,
-  });
-
-  revalidatePath('/projects');
-}
-
-export async function toggleTask(formData: FormData): Promise<void> {
-  await requireOwnerAction();
-
-  const id = String(formData.get('id') ?? '').trim();
-  // The checkbox posts "on" when checked, nothing when unchecked. We send the
-  // desired next state explicitly so the action doesn't have to read first.
-  const done = String(formData.get('done') ?? '') === 'true';
-  if (!id) return;
-
-  const supabase = await serverClient();
-  await supabase.from('personal_tasks').update({ done }).eq('id', id);
-
-  revalidatePath('/projects');
-}
-
-export async function updateTask(formData: FormData): Promise<void> {
-  await requireOwnerAction();
-
-  const id = String(formData.get('id') ?? '').trim();
-  if (!id) return;
-
-  const title = String(formData.get('title') ?? '').trim();
-  const project = String(formData.get('project') ?? '').trim();
-  const notes = String(formData.get('notes') ?? '').trim() || null;
-  const dueRaw = String(formData.get('due_date') ?? '').trim();
-  const due_date = dueRaw || null;
-
-  if (!title) {
+  const name = String(formData.get('name') ?? '').trim();
+  if (!name) {
     revalidatePath('/projects');
     return;
   }
 
   const supabase = await serverClient();
   await supabase
-    .from('personal_tasks')
-    .update({ title, project, notes, due_date })
-    .eq('id', id);
+    .from('personal_projects')
+    .insert({ owner_email: u.email, name });
 
   revalidatePath('/projects');
 }
 
-export async function deleteTask(formData: FormData): Promise<void> {
+export async function renameProject(formData: FormData): Promise<void> {
   await requireOwnerAction();
+  const id = String(formData.get('id') ?? '').trim();
+  const name = String(formData.get('name') ?? '').trim();
+  if (!id || !name) {
+    revalidatePath('/projects');
+    return;
+  }
 
+  const supabase = await serverClient();
+  await supabase.from('personal_projects').update({ name }).eq('id', id);
+
+  revalidatePath('/projects');
+}
+
+export async function deleteProject(formData: FormData): Promise<void> {
+  await requireOwnerAction();
   const id = String(formData.get('id') ?? '').trim();
   if (!id) return;
 
+  // Items cascade-delete in the database (ON DELETE CASCADE).
   const supabase = await serverClient();
-  await supabase.from('personal_tasks').delete().eq('id', id);
+  await supabase.from('personal_projects').delete().eq('id', id);
+
+  revalidatePath('/projects');
+}
+
+/** Called from the client status control. Plain args, not a form. */
+export async function setProjectStatus(
+  id: string,
+  status: Status,
+): Promise<void> {
+  await requireOwnerAction();
+  if (!id || !isStatus(status)) return;
+
+  const supabase = await serverClient();
+  await supabase.from('personal_projects').update({ status }).eq('id', id);
+
+  revalidatePath('/projects');
+}
+
+// ---------------------------------------------------------------------------
+// Items (tasks + sub-tasks share one table; a sub-task has a parent_item_id)
+// ---------------------------------------------------------------------------
+
+export async function addItem(formData: FormData): Promise<void> {
+  const u = await requireOwnerAction();
+  const projectId = String(formData.get('project_id') ?? '').trim();
+  const parentRaw = String(formData.get('parent_item_id') ?? '').trim();
+  const title = String(formData.get('title') ?? '').trim();
+  if (!projectId || !title) {
+    revalidatePath('/projects');
+    return;
+  }
+
+  const supabase = await serverClient();
+  await supabase.from('personal_project_items').insert({
+    owner_email: u.email,
+    project_id: projectId,
+    parent_item_id: parentRaw || null,
+    title,
+  });
+
+  revalidatePath('/projects');
+}
+
+export async function renameItem(formData: FormData): Promise<void> {
+  await requireOwnerAction();
+  const id = String(formData.get('id') ?? '').trim();
+  const title = String(formData.get('title') ?? '').trim();
+  if (!id || !title) {
+    revalidatePath('/projects');
+    return;
+  }
+
+  const supabase = await serverClient();
+  await supabase.from('personal_project_items').update({ title }).eq('id', id);
+
+  revalidatePath('/projects');
+}
+
+export async function deleteItem(formData: FormData): Promise<void> {
+  await requireOwnerAction();
+  const id = String(formData.get('id') ?? '').trim();
+  if (!id) return;
+
+  // Sub-tasks cascade-delete in the database (ON DELETE CASCADE).
+  const supabase = await serverClient();
+  await supabase.from('personal_project_items').delete().eq('id', id);
+
+  revalidatePath('/projects');
+}
+
+/** Called from the client status control. Plain args, not a form. */
+export async function setItemStatus(
+  id: string,
+  status: Status,
+): Promise<void> {
+  await requireOwnerAction();
+  if (!id || !isStatus(status)) return;
+
+  const supabase = await serverClient();
+  await supabase
+    .from('personal_project_items')
+    .update({ status })
+    .eq('id', id);
 
   revalidatePath('/projects');
 }

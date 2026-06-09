@@ -1,72 +1,67 @@
 import Link from 'next/link';
 import { requireOwner } from '@/lib/auth';
 import { serverClient } from '@/lib/supabase';
-import { addTask, toggleTask, updateTask, deleteTask } from './actions';
+import { StatusControl } from './StatusControl';
+import { type Status } from './status';
+import {
+  addProject,
+  renameProject,
+  deleteProject,
+  addItem,
+  renameItem,
+  deleteItem,
+} from './actions';
 
 export const dynamic = 'force-dynamic';
 
-type Task = {
+type Project = {
   id: string;
-  project: string;
-  title: string;
-  notes: string | null;
-  done: boolean;
-  due_date: string | null;
-  sort_order: number;
-  created_at: string;
+  name: string;
+  status: Status;
 };
 
-const INBOX = 'Inbox';
-
-// Format an ISO date (yyyy-mm-dd) as "Jun 9" without dragging in a date lib —
-// the value is already a plain calendar date, no timezone math needed.
-function formatDue(iso: string): string {
-  const [y, m, d] = iso.split('-').map(Number);
-  const date = new Date(y, (m ?? 1) - 1, d ?? 1);
-  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-}
-
-function isOverdue(iso: string): boolean {
-  const today = new Date();
-  const todayKey = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
-  return iso < todayKey;
-}
+type Item = {
+  id: string;
+  project_id: string;
+  parent_item_id: string | null;
+  title: string;
+  status: Status;
+};
 
 export default async function ProjectsPage() {
   await requireOwner();
 
   const supabase = await serverClient();
-  const { data } = await supabase
-    .from('personal_tasks')
-    .select('id, project, title, notes, done, due_date, sort_order, created_at')
-    .order('done', { ascending: true })
-    .order('sort_order', { ascending: true })
-    .order('created_at', { ascending: true });
+  const [{ data: projectData }, { data: itemData }] = await Promise.all([
+    supabase
+      .from('personal_projects')
+      .select('id, name, status')
+      .order('sort_order', { ascending: true })
+      .order('created_at', { ascending: true }),
+    supabase
+      .from('personal_project_items')
+      .select('id, project_id, parent_item_id, title, status')
+      .order('sort_order', { ascending: true })
+      .order('created_at', { ascending: true }),
+  ]);
 
-  const tasks = (data ?? []) as Task[];
+  const projects = (projectData ?? []) as Project[];
+  const items = (itemData ?? []) as Item[];
 
-  // Group tasks by project name (blank => Inbox). Build an ordered list of
-  // group names so rendering is deterministic: Inbox first, then the rest
-  // alphabetically.
-  const groups = new Map<string, Task[]>();
-  for (const t of tasks) {
-    const key = t.project.trim() || INBOX;
-    if (!groups.has(key)) groups.set(key, []);
-    groups.get(key)!.push(t);
+  // Index items by project, splitting top-level tasks from sub-tasks.
+  const topTasksByProject = new Map<string, Item[]>();
+  const subTasksByParent = new Map<string, Item[]>();
+  for (const it of items) {
+    if (it.parent_item_id) {
+      if (!subTasksByParent.has(it.parent_item_id))
+        subTasksByParent.set(it.parent_item_id, []);
+      subTasksByParent.get(it.parent_item_id)!.push(it);
+    } else {
+      if (!topTasksByProject.has(it.project_id))
+        topTasksByProject.set(it.project_id, []);
+      topTasksByProject.get(it.project_id)!.push(it);
+    }
   }
-  const groupNames = Array.from(groups.keys()).sort((a, b) => {
-    if (a === INBOX) return -1;
-    if (b === INBOX) return 1;
-    return a.localeCompare(b);
-  });
-
-  // Existing project names power the datalist on the add form, so typing an
-  // existing project autocompletes instead of accidentally creating a new one.
-  const projectOptions = Array.from(
-    new Set(tasks.map((t) => t.project.trim()).filter(Boolean)),
-  ).sort((a, b) => a.localeCompare(b));
-
-  const openCount = tasks.filter((t) => !t.done).length;
 
   return (
     <main className="mx-auto max-w-3xl px-6 py-10">
@@ -81,177 +76,217 @@ export default async function ProjectsPage() {
         My Projects
       </h1>
       <p className="mt-4 max-w-2xl text-fg-2">
-        Your private project checklist &mdash; only you can see this.{' '}
-        {openCount === 0
-          ? 'Nothing open right now.'
-          : `${openCount} open ${openCount === 1 ? 'item' : 'items'}.`}
+        Your private project board &mdash; only you can see this. Each project,
+        task, and sub-task tracks its own status.
       </p>
 
-      {/* Add a new task ---------------------------------------------------- */}
+      {/* Add a new project ------------------------------------------------- */}
       <form
-        action={addTask}
-        className="mt-8 rounded-lg border border-line bg-white p-4 shadow-sm"
+        action={addProject}
+        className="mt-8 flex flex-col gap-3 rounded-lg border border-line bg-white p-4 shadow-sm sm:flex-row sm:items-end"
       >
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
-          <label className="flex-1">
-            <span className="bt-eyebrow block">Task</span>
-            <input
-              name="title"
-              required
-              placeholder="What needs doing?"
-              className="mt-1 w-full rounded-md border border-line px-3 py-2 text-ink focus:border-orange focus:outline-none"
-            />
-          </label>
-          <label className="sm:w-44">
-            <span className="bt-eyebrow block">Project</span>
-            <input
-              name="project"
-              list="project-options"
-              placeholder="Inbox"
-              className="mt-1 w-full rounded-md border border-line px-3 py-2 text-ink focus:border-orange focus:outline-none"
-            />
-            <datalist id="project-options">
-              {projectOptions.map((p) => (
-                <option key={p} value={p} />
-              ))}
-            </datalist>
-          </label>
-          <label className="sm:w-40">
-            <span className="bt-eyebrow block">Due</span>
-            <input
-              type="date"
-              name="due_date"
-              className="mt-1 w-full rounded-md border border-line px-3 py-2 text-ink focus:border-orange focus:outline-none"
-            />
-          </label>
-          <button type="submit" className="bt-btn bt-btn-primary sm:mb-[1px]">
-            Add
-          </button>
-        </div>
+        <label className="flex-1">
+          <span className="bt-eyebrow block">New project</span>
+          <input
+            name="name"
+            required
+            placeholder="Name your project"
+            className="mt-1 w-full rounded-md border border-line px-3 py-2 text-ink focus:border-orange focus:outline-none"
+          />
+        </label>
+        <button type="submit" className="bt-btn bt-btn-primary sm:mb-[1px]">
+          Add project
+        </button>
       </form>
 
-      {/* Grouped checklist ------------------------------------------------- */}
-      {groupNames.length === 0 ? (
+      {/* Project list ------------------------------------------------------ */}
+      {projects.length === 0 ? (
         <p className="mt-10 text-center text-fg-3">
-          No tasks yet. Add your first one above.
+          No projects yet. Add your first one above.
         </p>
       ) : (
-        <div className="mt-8 space-y-8">
-          {groupNames.map((name) => {
-            const items = groups.get(name)!;
-            const remaining = items.filter((t) => !t.done).length;
+        <div className="mt-8 space-y-6">
+          {projects.map((project) => {
+            const tasks = topTasksByProject.get(project.id) ?? [];
+            const doneCount = tasks.filter((t) => t.status === 'done').length;
             return (
-              <section key={name}>
-                <div className="flex items-baseline justify-between border-b border-line pb-2">
+              <section key={project.id} className="bt-card">
+                {/* Project header */}
+                <div className="flex flex-wrap items-center justify-between gap-3">
                   <h2 className="font-headline text-2xl font-black uppercase text-bark-deep">
-                    {name}
+                    {project.name}
                   </h2>
-                  <span className="text-sm text-fg-3">
-                    {remaining} of {items.length} open
-                  </span>
+                  <div className="flex items-center gap-3">
+                    {tasks.length > 0 && (
+                      <span className="text-xs text-fg-3">
+                        {doneCount}/{tasks.length} done
+                      </span>
+                    )}
+                    <StatusControl
+                      id={project.id}
+                      kind="project"
+                      status={project.status}
+                    />
+                  </div>
                 </div>
-                <ul className="mt-2 divide-y divide-line">
-                  {items.map((t) => (
-                    <li key={t.id} className="py-2">
-                      <div className="flex items-start gap-3">
-                        {/* Toggle done — a tiny form so it works without JS. */}
-                        <form action={toggleTask}>
-                          <input type="hidden" name="id" value={t.id} />
-                          <input
-                            type="hidden"
-                            name="done"
-                            value={t.done ? 'false' : 'true'}
-                          />
-                          <button
-                            type="submit"
-                            aria-label={t.done ? 'Mark not done' : 'Mark done'}
-                            className={`mt-0.5 flex h-5 w-5 items-center justify-center rounded border ${
-                              t.done
-                                ? 'border-orange bg-orange text-white'
-                                : 'border-fg-3 bg-white text-transparent hover:border-orange'
-                            }`}
+
+                {/* Rename / delete project, tucked behind a disclosure */}
+                <details className="mt-1">
+                  <summary className="cursor-pointer text-xs font-semibold uppercase tracking-wide text-fg-3 hover:text-orange">
+                    Edit project
+                  </summary>
+                  <div className="mt-2 flex flex-col gap-2 sm:flex-row sm:items-center">
+                    <form action={renameProject} className="flex flex-1 gap-2">
+                      <input type="hidden" name="id" value={project.id} />
+                      <input
+                        name="name"
+                        defaultValue={project.name}
+                        required
+                        className="flex-1 rounded-md border border-line px-2 py-1 text-sm"
+                      />
+                      <button
+                        type="submit"
+                        className="bt-btn bt-btn-primary text-sm"
+                      >
+                        Rename
+                      </button>
+                    </form>
+                    <form action={deleteProject}>
+                      <input type="hidden" name="id" value={project.id} />
+                      <button
+                        type="submit"
+                        className="bt-btn bt-btn-ghost text-sm text-red-600"
+                      >
+                        Delete project
+                      </button>
+                    </form>
+                  </div>
+                </details>
+
+                {/* Tasks */}
+                <ul className="mt-3 space-y-3">
+                  {tasks.map((task) => {
+                    const subs = subTasksByParent.get(task.id) ?? [];
+                    return (
+                      <li
+                        key={task.id}
+                        className="rounded-md border border-line p-3"
+                      >
+                        <div className="flex flex-wrap items-center justify-between gap-2">
+                          <span
+                            className={
+                              task.status === 'done'
+                                ? 'text-fg-3 line-through'
+                                : 'text-ink'
+                            }
                           >
-                            ✓
-                          </button>
-                        </form>
+                            {task.title}
+                          </span>
+                          <StatusControl
+                            id={task.id}
+                            kind="item"
+                            status={task.status}
+                          />
+                        </div>
 
-                        <div className="flex-1">
-                          <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-                            <span
-                              className={
-                                t.done
-                                  ? 'text-fg-3 line-through'
-                                  : 'text-ink'
-                              }
-                            >
-                              {t.title}
-                            </span>
-                            {t.due_date && (
-                              <span
-                                className={`rounded px-1.5 py-0.5 text-xs font-semibold ${
-                                  !t.done && isOverdue(t.due_date)
-                                    ? 'bg-red-100 text-red-700'
-                                    : 'bg-cream text-fg-2'
-                                }`}
+                        {/* Sub-tasks */}
+                        {subs.length > 0 && (
+                          <ul className="mt-2 space-y-1 border-l border-line pl-3">
+                            {subs.map((sub) => (
+                              <li
+                                key={sub.id}
+                                className="flex flex-wrap items-center justify-between gap-2"
                               >
-                                {formatDue(t.due_date)}
-                              </span>
-                            )}
-                          </div>
-                          {t.notes && (
-                            <p className="mt-0.5 text-sm text-fg-2">{t.notes}</p>
-                          )}
-
-                          {/* Edit / delete tucked behind a disclosure so the
-                              list stays clean. */}
-                          <details className="mt-1">
-                            <summary className="cursor-pointer text-xs font-semibold uppercase tracking-wide text-fg-3 hover:text-orange">
-                              Edit
-                            </summary>
-                            <form
-                              action={updateTask}
-                              className="mt-2 space-y-2 rounded-md border border-line bg-cream/50 p-3"
-                            >
-                              <input type="hidden" name="id" value={t.id} />
-                              <div className="flex flex-col gap-2 sm:flex-row">
-                                <input
-                                  name="title"
-                                  defaultValue={t.title}
-                                  required
-                                  className="flex-1 rounded-md border border-line px-2 py-1 text-sm"
-                                />
-                                <input
-                                  name="project"
-                                  defaultValue={t.project}
-                                  list="project-options"
-                                  placeholder="Inbox"
-                                  className="rounded-md border border-line px-2 py-1 text-sm sm:w-40"
-                                />
-                                <input
-                                  type="date"
-                                  name="due_date"
-                                  defaultValue={t.due_date ?? ''}
-                                  className="rounded-md border border-line px-2 py-1 text-sm sm:w-36"
-                                />
-                              </div>
-                              <textarea
-                                name="notes"
-                                defaultValue={t.notes ?? ''}
-                                placeholder="Notes (optional)"
-                                rows={2}
-                                className="w-full rounded-md border border-line px-2 py-1 text-sm"
-                              />
-                              <div className="flex justify-end gap-2">
-                                <button
-                                  type="submit"
-                                  className="bt-btn bt-btn-primary text-sm"
+                                <span
+                                  className={`text-sm ${
+                                    sub.status === 'done'
+                                      ? 'text-fg-3 line-through'
+                                      : 'text-fg-2'
+                                  }`}
                                 >
-                                  Save
-                                </button>
-                              </div>
+                                  {sub.title}
+                                </span>
+                                <div className="flex items-center gap-2">
+                                  <StatusControl
+                                    id={sub.id}
+                                    kind="item"
+                                    status={sub.status}
+                                  />
+                                  <form action={deleteItem}>
+                                    <input
+                                      type="hidden"
+                                      name="id"
+                                      value={sub.id}
+                                    />
+                                    <button
+                                      type="submit"
+                                      aria-label="Delete sub-task"
+                                      className="text-fg-3 hover:text-red-600"
+                                    >
+                                      &times;
+                                    </button>
+                                  </form>
+                                </div>
+                              </li>
+                            ))}
+                          </ul>
+                        )}
+
+                        {/* Add a sub-task + edit/delete this task */}
+                        <div className="mt-2 flex flex-wrap items-center gap-2">
+                          <form
+                            action={addItem}
+                            className="flex flex-1 gap-2"
+                          >
+                            <input
+                              type="hidden"
+                              name="project_id"
+                              value={project.id}
+                            />
+                            <input
+                              type="hidden"
+                              name="parent_item_id"
+                              value={task.id}
+                            />
+                            <input
+                              name="title"
+                              placeholder="Add a sub-task…"
+                              className="flex-1 rounded-md border border-line px-2 py-1 text-sm"
+                            />
+                            <button
+                              type="submit"
+                              className="bt-btn bt-btn-ghost text-sm"
+                            >
+                              + Sub-task
+                            </button>
+                          </form>
+                        </div>
+
+                        <details className="mt-1">
+                          <summary className="cursor-pointer text-xs font-semibold uppercase tracking-wide text-fg-3 hover:text-orange">
+                            Edit task
+                          </summary>
+                          <div className="mt-2 flex flex-col gap-2 sm:flex-row sm:items-center">
+                            <form
+                              action={renameItem}
+                              className="flex flex-1 gap-2"
+                            >
+                              <input type="hidden" name="id" value={task.id} />
+                              <input
+                                name="title"
+                                defaultValue={task.title}
+                                required
+                                className="flex-1 rounded-md border border-line px-2 py-1 text-sm"
+                              />
+                              <button
+                                type="submit"
+                                className="bt-btn bt-btn-primary text-sm"
+                              >
+                                Rename
+                              </button>
                             </form>
-                            <form action={deleteTask} className="mt-2">
-                              <input type="hidden" name="id" value={t.id} />
+                            <form action={deleteItem}>
+                              <input type="hidden" name="id" value={task.id} />
                               <button
                                 type="submit"
                                 className="bt-btn bt-btn-ghost text-sm text-red-600"
@@ -259,12 +294,25 @@ export default async function ProjectsPage() {
                                 Delete task
                               </button>
                             </form>
-                          </details>
-                        </div>
-                      </div>
-                    </li>
-                  ))}
+                          </div>
+                        </details>
+                      </li>
+                    );
+                  })}
                 </ul>
+
+                {/* Add a top-level task */}
+                <form action={addItem} className="mt-3 flex gap-2">
+                  <input type="hidden" name="project_id" value={project.id} />
+                  <input
+                    name="title"
+                    placeholder="Add a task or note…"
+                    className="flex-1 rounded-md border border-line px-3 py-2 text-sm focus:border-orange focus:outline-none"
+                  />
+                  <button type="submit" className="bt-btn bt-btn-dark text-sm">
+                    Add task
+                  </button>
+                </form>
               </section>
             );
           })}
