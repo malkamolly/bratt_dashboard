@@ -52,7 +52,7 @@ export default async function InProgressPage({
   }
 
   return (
-    <main className="mx-auto max-w-3xl px-6 py-10">
+    <main className="bt-page">
       <p className="bt-eyebrow">
         <Link href="/production" className="hover:underline">
           Production PACE

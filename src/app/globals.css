@@ -196,6 +196,15 @@ body {
 
 /* ---------- Brand components ---------- */
 @layer components {
+  /* The standard page container. Use this on the top-level <main> of every
+     content page (dashboards, lists, hubs) so they all share one width and
+     gutter. ~1152px max, centered, with side + vertical padding. New pages
+     should default to this. Deliberately-narrow screens (login, single-entry
+     forms) are the only exceptions. */
+  .bt-page {
+    @apply mx-auto w-full max-w-6xl px-6 py-10;
+  }
+
   /* The canonical "BRATT TREE" card: paper-warmth gradient + lime keyline */
   .bt-card {
     @apply rounded-card border-[3px] border-lime p-6;

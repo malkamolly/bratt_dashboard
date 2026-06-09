@@ -12,7 +12,7 @@ export default async function SitePlanPage() {
   if (!canUseSiteMarkup(user.role)) redirect('/access-denied');
 
   return (
-    <main className="mx-auto max-w-4xl px-6 py-10">
+    <main className="bt-page">
       <p className="bt-eyebrow">
         <Link href="/" className="hover:underline">
           Bratt Tree

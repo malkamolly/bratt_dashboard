@@ -45,7 +45,7 @@ export default async function ForecastAccuracyPage({
   const diffTotal = data.actualTotal - data.projectedTotal;
 
   return (
-    <main className="mx-auto max-w-5xl px-6 py-10">
+    <main className="bt-page">
       <div className="mb-3 flex justify-end">
         <CopyAsImageButton targetId="forecast-accuracy-snapshot" />
       </div>

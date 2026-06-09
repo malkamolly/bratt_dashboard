@@ -86,7 +86,7 @@ export default async function ProgressDigestPage() {
   const fmtHours = (n: number) => (Number.isInteger(n) ? String(n) : n.toFixed(1));
 
   return (
-    <main className="mx-auto max-w-5xl px-6 py-10">
+    <main className="bt-page">
       <p className="bt-eyebrow">
         <Link href="/crew" className="hover:underline">
           Field Crew Hub

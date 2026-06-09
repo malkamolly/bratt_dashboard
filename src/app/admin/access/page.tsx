@@ -54,7 +54,7 @@ export default async function AccessAdminPage({
   const myEmailLower = user.email.toLowerCase();
 
   return (
-    <main className="mx-auto max-w-4xl px-6 py-10">
+    <main className="bt-page">
       <p className="bt-eyebrow">
         <Link href="/admin" className="hover:underline">
           Admin
