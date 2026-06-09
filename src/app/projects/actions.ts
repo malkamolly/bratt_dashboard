@@ -78,44 +78,21 @@ export async function setProjectStatus(
 }
 
 /**
- * Move a project up or down one slot. Projects render in sort_order, so we
- * read the current order, swap the project with its neighbor, then write
- * fresh sequential sort_order values back. Reassigning the whole list (rather
- * than just the two swapped rows) keeps things stable even though existing
- * rows all start at sort_order 0.
+ * Persist a new project order after a drag-and-drop. The client sends the full
+ * list of project ids in their new order; we write each one's array index back
+ * as its sort_order so the next render matches.
  */
-export async function moveProject(formData: FormData): Promise<void> {
+export async function reorderProjects(orderedIds: string[]): Promise<void> {
   await requireOwnerAction();
-  const id = String(formData.get('id') ?? '').trim();
-  const direction = String(formData.get('direction') ?? '').trim();
-  if (!id || (direction !== 'up' && direction !== 'down')) return;
+  if (!Array.isArray(orderedIds) || orderedIds.length === 0) return;
 
   const supabase = await serverClient();
-  const { data } = await supabase
-    .from('personal_projects')
-    .select('id')
-    .order('sort_order', { ascending: true })
-    .order('created_at', { ascending: true });
-
-  const list = (data ?? []) as { id: string }[];
-  const idx = list.findIndex((p) => p.id === id);
-  if (idx === -1) return;
-
-  const swapWith = direction === 'up' ? idx - 1 : idx + 1;
-  if (swapWith < 0 || swapWith >= list.length) return;
-
-  const reordered = [...list];
-  [reordered[idx], reordered[swapWith]] = [
-    reordered[swapWith],
-    reordered[idx],
-  ];
-
   await Promise.all(
-    reordered.map((p, i) =>
+    orderedIds.map((id, i) =>
       supabase
         .from('personal_projects')
         .update({ sort_order: i })
-        .eq('id', p.id),
+        .eq('id', id),
     ),
   );
 

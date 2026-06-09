@@ -1,13 +1,14 @@
 import Link from 'next/link';
 import { requireOwner } from '@/lib/auth';
 import { serverClient } from '@/lib/supabase';
+import { SortableGrid } from '@/components/SortableGrid';
 import { StatusControl } from './StatusControl';
 import { type Status } from './status';
 import {
   addProject,
   renameProject,
   deleteProject,
-  moveProject,
+  reorderProjects,
   addItem,
   renameItem,
   deleteItem,
@@ -106,46 +107,21 @@ export default async function ProjectsPage() {
           No projects yet. Add your first one above.
         </p>
       ) : (
-        <div className="mt-8 space-y-6">
-          {projects.map((project, idx) => {
+        <SortableGrid
+          className="mt-8 grid grid-cols-1 items-start gap-6 lg:grid-cols-2"
+          onReorder={reorderProjects}
+          items={projects.map((project) => {
             const tasks = topTasksByProject.get(project.id) ?? [];
             const doneCount = tasks.filter((t) => t.status === 'done').length;
-            return (
-              <section key={project.id} className="bt-card">
-                {/* Project header */}
-                <div className="flex flex-wrap items-center justify-between gap-3">
-                  <div className="flex items-center gap-2">
-                    {/* Reorder arrows — disabled at the ends of the list. */}
-                    <div className="flex flex-col leading-none">
-                      <form action={moveProject}>
-                        <input type="hidden" name="id" value={project.id} />
-                        <input type="hidden" name="direction" value="up" />
-                        <button
-                          type="submit"
-                          disabled={idx === 0}
-                          aria-label="Move project up"
-                          className="text-fg-3 hover:text-orange disabled:opacity-30"
-                        >
-                          &#9650;
-                        </button>
-                      </form>
-                      <form action={moveProject}>
-                        <input type="hidden" name="id" value={project.id} />
-                        <input type="hidden" name="direction" value="down" />
-                        <button
-                          type="submit"
-                          disabled={idx === projects.length - 1}
-                          aria-label="Move project down"
-                          className="text-fg-3 hover:text-orange disabled:opacity-30"
-                        >
-                          &#9660;
-                        </button>
-                      </form>
-                    </div>
-                    <h2 className="font-headline text-2xl font-black uppercase text-bark-deep">
-                      {project.name}
-                    </h2>
-                  </div>
+            return {
+              id: project.id,
+              content: (
+              <section className="bt-card">
+                {/* Project header (grip handle sits in the top padding) */}
+                <div className="flex flex-wrap items-center justify-between gap-3 pt-2">
+                  <h2 className="font-headline text-2xl font-black uppercase text-bark-deep">
+                    {project.name}
+                  </h2>
                   <div className="flex items-center gap-3">
                     {tasks.length > 0 && (
                       <span className="text-xs text-fg-3">
@@ -344,9 +320,10 @@ export default async function ProjectsPage() {
                   </button>
                 </form>
               </section>
-            );
+              ),
+            };
           })}
-        </div>
+        />
       )}
     </main>
   );

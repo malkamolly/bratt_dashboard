@@ -22,6 +22,18 @@ Treat me as **very capable but a beginner**. I can follow detailed instructions,
 
 Always store and display people's names as **First Name + Last Initial** (e.g. `Taylor M`, `Shay S`, `Sean B`). Never use full last names anywhere in the database, UI, or seed data. When two people share a first name + initial, extend the initial (e.g. `Sean B`, `Sean-Paul`) — don't fall back to a full last name. This applies to crew members, salespeople, arborists, and any other person record.
 
+## UI conventions (standards going forward)
+
+- **Page width:** Every content page (dashboards, lists, hubs) uses the shared
+  `.bt-page` container class (defined in `src/app/globals.css`) for its
+  top-level `<main>` — a centered ~1152px max width with standard gutters. New
+  pages should default to `className="bt-page"`. The only exceptions are
+  deliberately-narrow screens like login and single-record entry forms.
+- **Reordering:** When the user needs to reorder a list or grid, use
+  **drag-and-drop**, not up/down arrow buttons. The standard control is the
+  reusable `SortableGrid` component (`src/components/SortableGrid.tsx`), built
+  on `@dnd-kit`. It persists the new order via a server action.
+
 ## When I'm stuck or frustrated
 
 Ask one specific clarifying question rather than offering 3 options. If I've already rejected the "proper" path once in a conversation, don't re-suggest it.
