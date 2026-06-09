@@ -1,6 +1,7 @@
 'use client';
 
 import { useTransition } from 'react';
+import { ChevronDown } from 'lucide-react';
 import { setProjectStatus, setItemStatus } from './actions';
 import { STATUSES, STATUS_CLASSES, type Status } from './status';
 
@@ -19,29 +20,40 @@ export function StatusControl({
   const [pending, startTransition] = useTransition();
 
   return (
-    <select
-      value={status}
-      disabled={pending}
-      aria-label="Status"
-      onChange={(e) => {
-        const next = e.target.value as Status;
-        startTransition(async () => {
-          if (kind === 'project') {
-            await setProjectStatus(id, next);
-          } else {
-            await setItemStatus(id, next);
-          }
-        });
-      }}
-      className={`rounded-full border px-2 py-1 text-xs font-semibold ${STATUS_CLASSES[status]} ${
+    <span
+      className={`relative inline-flex items-center rounded-full border text-xs font-semibold ${STATUS_CLASSES[status]} ${
         pending ? 'opacity-50' : ''
       }`}
     >
-      {STATUSES.map((s) => (
-        <option key={s.value} value={s.value}>
-          {s.label}
-        </option>
-      ))}
-    </select>
+      <select
+        value={status}
+        disabled={pending}
+        aria-label="Status"
+        onChange={(e) => {
+          const next = e.target.value as Status;
+          startTransition(async () => {
+            if (kind === 'project') {
+              await setProjectStatus(id, next);
+            } else {
+              await setItemStatus(id, next);
+            }
+          });
+        }}
+        // appearance-none drops the browser's default arrow so we can place
+        // our own snug against the label instead of it floating at the edge.
+        className="cursor-pointer appearance-none rounded-full bg-transparent py-1 pl-3 pr-6 font-semibold focus:outline-none"
+      >
+        {STATUSES.map((s) => (
+          <option key={s.value} value={s.value}>
+            {s.label}
+          </option>
+        ))}
+      </select>
+      <ChevronDown
+        size={13}
+        className="pointer-events-none absolute right-2"
+        aria-hidden
+      />
+    </span>
   );
 }

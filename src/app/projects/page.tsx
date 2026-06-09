@@ -108,7 +108,7 @@ export default async function ProjectsPage() {
         </p>
       ) : (
         <SortableGrid
-          className="mt-8 grid grid-cols-1 items-start gap-6 lg:grid-cols-2"
+          className="mt-8 grid grid-cols-1 items-start gap-4 lg:grid-cols-2"
           onReorder={reorderProjects}
           items={projects.map((project) => {
             const tasks = topTasksByProject.get(project.id) ?? [];
@@ -116,10 +116,10 @@ export default async function ProjectsPage() {
             return {
               id: project.id,
               content: (
-              <section className="bt-card">
+              <section className="bt-card px-5 pb-4 pt-6">
                 {/* Project header (grip handle sits in the top padding) */}
-                <div className="flex flex-wrap items-center justify-between gap-3 pt-2">
-                  <h2 className="font-headline text-2xl font-black uppercase text-bark-deep">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <h2 className="font-headline text-xl font-black uppercase text-bark-deep">
                     {project.name}
                   </h2>
                   <div className="flex items-center gap-3">
@@ -170,7 +170,7 @@ export default async function ProjectsPage() {
                 </details>
 
                 {/* Tasks */}
-                <ul className="mt-3 space-y-3">
+                <ul className="mt-2 space-y-2">
                   {tasks.map((task) => {
                     const subs = subTasksByParent.get(task.id) ?? [];
                     return (
@@ -308,12 +308,12 @@ export default async function ProjectsPage() {
                 </ul>
 
                 {/* Add a top-level task */}
-                <form action={addItem} className="mt-3 flex gap-2">
+                <form action={addItem} className="mt-2 flex gap-2">
                   <input type="hidden" name="project_id" value={project.id} />
                   <input
                     name="title"
                     placeholder="Add a task or note…"
-                    className="flex-1 rounded-md border border-line px-3 py-2 text-sm focus:border-orange focus:outline-none"
+                    className="flex-1 rounded-md border border-line px-3 py-1.5 text-sm focus:border-orange focus:outline-none"
                   />
                   <button type="submit" className="bt-btn bt-btn-dark text-sm">
                     Add task
