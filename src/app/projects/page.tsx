@@ -113,7 +113,8 @@ export default async function ProjectsPage() {
         </p>
       ) : (
         <SortableGrid
-          className="mt-8 grid grid-cols-1 items-start gap-4 lg:grid-cols-2"
+          className="mt-8 gap-4 [column-fill:balance] columns-1 lg:columns-2"
+          itemClassName="mb-4 break-inside-avoid"
           onReorder={reorderProjects}
           items={activeProjects.map((project) => {
             const tasks = topTasksByProject.get(project.id) ?? [];
@@ -331,49 +332,38 @@ export default async function ProjectsPage() {
         />
       )}
 
-      {/* Done projects — parked at the bottom in a concise box ------------- */}
+      {/* Done projects — parked at the bottom as concise chips ------------- */}
       {doneProjects.length > 0 && (
         <section className="mt-10">
           <p className="bt-eyebrow">Done ({doneProjects.length})</p>
-          <ul className="mt-2 divide-y divide-line rounded-lg border border-line bg-white/60">
-            {doneProjects.map((project) => {
-              const tasks = topTasksByProject.get(project.id) ?? [];
-              const doneCount = tasks.filter((t) => t.status === 'done').length;
-              return (
-                <li
-                  key={project.id}
-                  className="flex flex-wrap items-center justify-between gap-2 px-4 py-2"
-                >
-                  <span className="font-headline text-sm font-extrabold uppercase tracking-wide text-fg-3 line-through">
-                    {project.name}
-                  </span>
-                  <div className="flex items-center gap-2">
-                    {tasks.length > 0 && (
-                      <span className="text-xs text-fg-3">
-                        {doneCount}/{tasks.length} done
-                      </span>
-                    )}
-                    {/* Reopen by changing status away from Done. */}
-                    <StatusControl
-                      id={project.id}
-                      kind="project"
-                      status={project.status}
-                    />
-                    <form action={deleteProject}>
-                      <input type="hidden" name="id" value={project.id} />
-                      <button
-                        type="submit"
-                        aria-label="Delete project"
-                        className="text-fg-3 hover:text-red-600"
-                      >
-                        &times;
-                      </button>
-                    </form>
-                  </div>
-                </li>
-              );
-            })}
-          </ul>
+          <div className="mt-2 flex flex-wrap gap-2">
+            {doneProjects.map((project) => (
+              <div
+                key={project.id}
+                className="flex items-center gap-2 rounded-lg border border-line bg-white/60 px-3 py-1.5"
+              >
+                <span className="text-sm font-semibold text-fg-3 line-through">
+                  {project.name}
+                </span>
+                {/* Reopen by changing status away from Done. */}
+                <StatusControl
+                  id={project.id}
+                  kind="project"
+                  status={project.status}
+                />
+                <form action={deleteProject}>
+                  <input type="hidden" name="id" value={project.id} />
+                  <button
+                    type="submit"
+                    aria-label="Delete project"
+                    className="text-fg-3 hover:text-red-600"
+                  >
+                    &times;
+                  </button>
+                </form>
+              </div>
+            ))}
+          </div>
         </section>
       )}
     </main>

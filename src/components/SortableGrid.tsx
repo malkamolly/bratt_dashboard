@@ -46,10 +46,13 @@ export function SortableGrid({
   items,
   onReorder,
   className = '',
+  itemClassName = '',
 }: {
   items: SortableEntry[];
   onReorder: (orderedIds: string[]) => Promise<void> | void;
   className?: string;
+  /** Extra classes for each card wrapper — e.g. masonry break/margin utils. */
+  itemClassName?: string;
 }) {
   const [order, setOrder] = useState<string[]>(() => items.map((i) => i.id));
   const [, startTransition] = useTransition();
@@ -96,7 +99,7 @@ export function SortableGrid({
       <SortableContext items={order} strategy={rectSortingStrategy}>
         <div className={className}>
           {order.map((id) => (
-            <SortableCard key={id} id={id}>
+            <SortableCard key={id} id={id} className={itemClassName}>
               {byId.get(id)}
             </SortableCard>
           ))}
@@ -106,7 +109,15 @@ export function SortableGrid({
   );
 }
 
-function SortableCard({ id, children }: { id: string; children: ReactNode }) {
+function SortableCard({
+  id,
+  className = '',
+  children,
+}: {
+  id: string;
+  className?: string;
+  children: ReactNode;
+}) {
   const {
     attributes,
     listeners,
@@ -125,7 +136,7 @@ function SortableCard({ id, children }: { id: string; children: ReactNode }) {
     <div
       ref={setNodeRef}
       style={style}
-      className={`relative ${isDragging ? 'z-10 opacity-80' : ''}`}
+      className={`relative ${isDragging ? 'z-10 opacity-80' : ''} ${className}`}
     >
       {/* Grip handle — the only draggable spot, so the rest of the card stays
           clickable. Sits in the card's top padding, clear of the content. */}
