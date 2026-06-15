@@ -107,8 +107,8 @@ export function PhotoPicker({ canvasRef }: Props) {
           type="file"
           // Allow HEIC/HEIF explicitly so desktop file dialogs don't hide them.
           accept="image/*,.heic,.heif"
-          // `capture` hints phones to offer the camera directly.
-          capture="environment"
+          // No `capture` attribute: phones then show the full menu (Photo
+          // Library / Take Photo / Choose File) instead of forcing the camera.
           className="hidden"
           onChange={onFile}
         />
