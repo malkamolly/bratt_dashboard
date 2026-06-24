@@ -342,21 +342,24 @@ a: C) At least 2 feet away | Closer than 2 ft and your hand can be pulled into t
 a: B) Too many wraps | Too many wraps = too much friction. Carefully unwrap one loop, keeping your hands clear of the device.
 a: A) 200–400 lb light loads in a safe zone | Practice in an unoccupied area until you understand how wraps control weight.
 
-@resources
+@two-column
 eyebrow: Wrap-Up
-title: Resources & sign-off
-subtitle: Where to go next — and what we need from you.
-panel-title: Reference Materials
-link: Notch Portawrap product info | notchequipment.com
-link: Manufacturer instructions | Portawrap Instructions (this packet)
-link: Internal SOP — Rigging & Controlled Lowering | See ops binder
-link: Rigging gear inspection & retirement log | Yard office
-link: Emergency contacts | Posted in every truck
-signature-statement: I have completed the Portawrap training course. I understand the inspection requirements, rigging setup, lowering operation, and lock-off procedure.
-field: Operator name (print)
-field: Operator signature
-field: Trainer signature
-field: Date
+title: How you get certified
+subtitle: No paper sign-off — the hub tracks your certification automatically.
+left-header: Your path to certification
+left-icon: ✓
+left: Your manager assigns you the Portawrap module
+left: Work through this deck until you know it cold
+left: Pass the written test — 85% or higher, with every safety-critical question correct
+left: Complete the practical test-out with a trainer on the gear
+left: Your certificate is issued automatically once both the test and the practical are done
+right-header: Reference materials
+right-icon: ↗
+right: Notch Portawrap product info — notchequipment.com
+right: Manufacturer instructions — this packet
+right: Internal SOP — Rigging & Controlled Lowering — ops binder
+right: Rigging gear inspection & retirement log — yard office
+right: Emergency contacts — posted in every truck
 
 @closing
 mark: BT
