@@ -78,7 +78,7 @@ eyebrow: Welcome
 title: Welcome to controlled lowering.
 subtitle: The Portawrap is simple. The loads are not.
 body: The Portawrap is a stainless-steel rope friction device. It lets one ground worker lower heavy cut sections — limbs, logs, and tops — down to the ground under full control, instead of letting them free-fall.
-body: It looks simple, and it is. But it is controlling thousands of pounds through a few wraps of rope. This device requires training, then practice with **light loads**, until cause and effect are second nature. We do not learn this on a live pick.
+body: It looks simple, and it is. But it is controlling thousands of pounds through a few wraps of rope. This device requires training and practice until cause and effect are second nature.
 quote: Lowering heavy objects is dangerous — it takes knowledge, not just strength.
 
 @agenda
@@ -101,7 +101,6 @@ eyebrow: Section 1 · Equipment
 title: Meet the Portawrap
 subtitle: A stainless-steel friction device for controlled lowering.
 stat: 2,000 | lbs | Working Load Limit (10:1)
-stat: 330 | lbs | Controlled per wrap
 stat: 20,000 | lbs | Min. sling strength
 panel-title: Why we run the Portawrap
 point: **Controlled lowering** — heavy cut sections come down at a speed the ground worker sets, instead of free-falling onto the jobsite.
@@ -117,14 +116,14 @@ panel-title: Know These Parts
 fact: Guide Loop | Top loop. The rigging (running) line is fed through here first.
 fact: Long Leg | The long tube — the working end you wrap the line around.
 fact: Short Leg | The shorter tube of the body.
-fact: Retention Pin | Removable pin used to hitch and lock off the line.
-fact: Sling Loop | The long loop where the anchor sling girth-hitches on.
+fact: Retention Pin (Horn) | Fixed pin (the "horn") you hitch the line onto to lock it off.
+fact: Sling Loop | The long loop where the anchor sling attaches to the device.
 list-title: How it all works together
-- The sling girth-hitches to the sling loop and ties the device to the anchor
+- The sling connects the device to the anchor (attached at the sling loop)
 - The rigging line feeds in through the guide loop at the top
 - You wrap the line around the working end (long leg) to build friction
 - More wraps = more friction = more control over heavier loads
-- The retention pin lets you lock the line off hands-free
+- The retention pin (horn) lets you lock the line off hands-free
 
 @table
 eyebrow: Section 1 · Equipment
@@ -132,14 +131,13 @@ title: Specifications you should know
 subtitle: These numbers decide what you can rig and how.
 cols: Specification | Value
 row: Working Load Limit (10:1) | 2,000 lbs (900 kg)
-row: Control per wrap | ~330 lbs per wrap
 row: Weight — Medium | 3.75 lbs
 row: Weight — Large | 7.25 lbs
 row: Rope range — Medium | 11–16 mm (7/16 – 5/8 in)
 row: Rope range — Large | 11–19 mm (7/16 – 3/4 in)
 row: Recommended rope | Polyester-jacketed double-braid or solid braid
 row: Rope to AVOID | 3-strand / twisted rope (hockling risk)
-row: Anchor sling | Whoopie (adjustable) or eye sling with 12-in (30 cm) spliced eye
+row: Anchor sling | Dead-eye sling with a spliced eye
 row: Min. sling tensile strength | 20,000 lbs (9,000 kg)
 tip: "10:1" means the device is built to ten times its 2,000 lb working load limit. That margin is for the unexpected — not a reason to push past 2,000 lbs.
 
@@ -147,19 +145,6 @@ tip: "10:1" means the device is built to ten times its 2,000 lb working load lim
 number: 02
 title: Safety
 tagline: This device is only as safe as your inspection and your anchor.
-
-@big-stat
-eyebrow: Section 2 · Safety
-title: Trained professionals only
-subtitle: This is not a device you learn on a live load.
-stat: 10:1
-stat-caption: design factor — the Portawrap is built to roughly **ten times** its 2,000 lb working load limit. That margin is for the unexpected, **not** a reason to push past the limit.
-source: Source: Notch Equipment Portawrap instructions
-panel-title: Before you ever run a real load
-- **Get trained**, then practice with **light loads (200–400 lbs)** in a safe, unoccupied area
-- **Understand cause and effect** — how wraps, rope, and anchor behave — before a real pick
-- **Know the whole system** — device, rope, anchor strength, and shock-load risk
-- **Never assume.** Expect the unexpected and always keep an escape route.
 
 @ppe-grid
 eyebrow: Section 2 · Safety
@@ -179,7 +164,7 @@ eyebrow: Section 2 · Safety
 title: Pre-use inspection
 subtitle: Inspect the device AND the system before every job. Replace anything worn.
 - Portawrap body — no cracks, deep gouges, sharp edges, or deformation
-- Retention pin present, undamaged, and seats fully
+- Retention pin (horn) undamaged and the rope path is smooth
 - Anchor sling — no cuts, glazing, or broken strands; eye/splice intact
 - Rigging line — no cuts, glazing, flat spots, or exposed core
 - No gear that has been shock-loaded stays in service — tag it out if in doubt
@@ -200,26 +185,26 @@ item: Underground Failure | Tree failures can start below ground. Inspect the su
 item: Shock Loading | A dropped or snatched load multiplies force fast. Rig to lower smoothly, not to catch a free-fall.
 item: The Rope Path | Never control the rope within 2 ft of the device — your hand can be pulled into the rope path.
 item: Not Enough Rope | Make sure you have enough rope to land the load safely in the landing zone before you cut.
-item: Wrong Connector | Never connect the sling to the device with a snap or metal connector — girth hitch directly to the sling loop.
+item: Wrong Connector | Never connect the sling to the device with a snap or metal connector — attach it to the sling loop directly.
 
 @two-column
 eyebrow: Section 2 · Safety
 title: The hard rules
 subtitle: Learn these cold. Every one of them is in the manufacturer's warnings.
-left-header: Never
-left-icon: ×
-left: Connect the Portawrap to the sling with a snap or any metal connector
-left: Put your hands within 2 ft of the device while controlling rope
-left: Operate with loose clothing or unbundled long hair
-left: Change wrapping direction partway through a setup
-left: Over-estimate your anchor or rope strength
-right-header: Always
-right-icon: ✓
-right: Girth-hitch the sling directly to the sling loop
-right: Wear thick leather gloves when feeding rope
-right: Remove all slack before the load comes on
-right: Keep enough rope to land the load in the zone
-right: Have a planned escape route from the hazard zone
+left-header: Always
+left-icon: ✓
+left: Attach the sling to the device directly — no snaps or metal connectors
+left: Wear thick leather gloves when feeding rope
+left: Remove all slack before the load comes on
+left: Keep enough rope to land the load in the zone
+left: Have a planned escape route from the hazard zone
+right-header: Never
+right-icon: ×
+right: Connect the Portawrap to the sling with a snap or any metal connector
+right: Put your hands within 2 ft of the device while controlling rope
+right: Operate with loose clothing or unbundled long hair
+right: Change wrapping direction partway through a setup
+right: Over-estimate your anchor or rope strength
 
 @section-divider
 number: 03
@@ -231,8 +216,8 @@ eyebrow: Section 3 · Operation
 title: Setting up the Portawrap
 subtitle: Get the rigging RIGHT before any load goes overhead.
 step: Inspect everything | Device, pin, sling, and rope — no damage or excessive wear.
-step: Anchor the sling | Girth-hitch a Whoopie or eye sling to a sound anchor sized for the load.
-step: Attach to the device | Thread the sling's eye through the sling loop and pass it over the device — a cinching (girth) hitch. NO metal connectors.
+step: Anchor the sling | Tie a dead-eye sling to a sound anchor sized for the load — use a cow hitch or a timber hitch.
+step: Attach to the device | Connect the sling to the device's sling loop directly. NO snaps or metal connectors.
 step: Install the running line | Feed a bite of rigging line through the guide loop (top), following the path shown in the manual.
 step: Wrap the working end | Wrap the line around the working end (long leg). Start with 2–3 wraps. Keep wrapping the SAME direction the whole time.
 step: Prep the line | Flake the line out so it feeds freely through your hands — no sticks, twigs, or tangles between the pile and you.
@@ -243,7 +228,7 @@ eyebrow: Section 3 · Operation
 title: Lowering a load
 subtitle: One person runs it. Friction holds the load — you meter it out.
 lead: Pull all the slack out, glove up, and let the wraps do the work. You are not muscling the load down; you are controlling how fast the rope runs.
-card: Wraps Control the Load | About 330 lbs per wrap. More wraps = more friction = more holding power. Build the wrap count to the weight you expect.
+card: Wraps Control the Load | More wraps = more friction = more holding power. Build the wrap count to the weight you expect.
 card: Feeding Rope | Rope should flow smoothly through gloved hands. Let it run; don't fight it. Keep your hands well back from the device.
 card: Too Much Friction | If the rope won't move under full load, you have too many wraps. Carefully unwrap ONE loop — hands clear of the device.
 card: The Half-Wrap Trick | If half a wrap is causing too much friction, move to the other side of the rope exit position to fine-tune.
@@ -256,8 +241,8 @@ eyebrow: Section 3 · Operation
 title: Locking off the line
 subtitle: Only when you need both hands free for another task.
 step: Decide to lock off | Lock off only when you genuinely need to free your hands mid-task.
-step: Build your wraps | Take as many wraps as possible between the guide loop and the retention pin — without overlapping the line.
-step: Hitch the pin | Hitch the line off on the retention pin as shown in the manual.
+step: Build your wraps | Take as many wraps as possible between the guide loop and the retention pin (horn) — without overlapping the line.
+step: Hitch it off | Hitch the line off on the retention pin (horn) as shown in the manual.
 step: Why the wraps matter | Too few wraps before lock-off and a strong load can cinch the rope so tight you'll need a knife to free it.
 
 @section-divider
@@ -273,8 +258,7 @@ left-header: Use
 left-icon: ✓
 left: Polyester-jacketed double-braid rope
 left: Solid-braid rope
-left: A Whoopie (adjustable) sling, or an eye sling with a 12-in spliced eye
-left: A sling rated at least 20,000 lbs tensile strength
+left: A dead-eye sling with a spliced eye, rated at least 20,000 lbs
 left: Rope sized for the device (Med 11–16 mm, Lg 11–19 mm)
 right-header: Avoid
 right-icon: ×
@@ -292,14 +276,13 @@ subtitle: Every one of these has cost someone control of a load. Don't add yours
 - Too many wraps — the rope jams and won't feed
 - Controlling the rope right at the device — your hand gets pulled in
 - Changing wrap direction halfway — friction goes unpredictable
-- Connecting the sling with a snap instead of a girth hitch
+- Connecting the sling with a snap or metal connector instead of tying it on directly
 - Not pulling the slack out before the load is cut
 - Running out of rope before the load reaches the ground
 - Locking off without enough wraps — the rope cinches and needs a knife
 - Trusting an anchor or rope without inspecting it
 - Loose sleeves or unbundled hair near the rope path
 - No escape plan out of the hazard zone
-- Skipping light-load practice and learning on a real pick
 
 @section-divider
 number: 05
@@ -313,34 +296,35 @@ subtitle: Trainer signs off each item. You must complete ALL before the written 
 cols: Area | Task | Pass | Trainer Initials
 row: Inspection | Inspect device, pin, sling, and rope and call out any defects | ☐ |
 row: Anchor | Select and rig a sound anchor sized for the test load | ☐ |
-row: Setup | Girth-hitch the sling to the sling loop (no metal connectors) | ☐ |
+row: Setup | Tie the dead-eye sling to the anchor (cow hitch or timber hitch) | ☐ |
+row: Setup | Attach the sling to the sling loop directly (no metal connectors) | ☐ |
 row: Setup | Install the running line through the guide loop correctly | ☐ |
-row: Wraps | Apply correct wraps for a light load, same direction throughout | ☐ |
-row: Operation | Remove all slack and lower a 200–400 lb load under control | ☐ |
+row: Wraps | Apply correct wraps for the load, same direction throughout | ☐ |
+row: Operation | Remove all slack and lower a controlled test load | ☐ |
 row: Operation | Demonstrate gloved feeding with hands clear of the device | ☐ |
 row: Adjust | Add or remove a wrap mid-task to correct friction safely | ☐ |
-row: Lock-Off | Lock off the line on the retention pin with adequate wraps | ☐ |
+row: Lock-Off | Lock off the line on the retention pin (horn) with adequate wraps | ☐ |
 row: Judgment | Confirm enough rope to land the load and state the escape plan | ☐ |
 
 @quiz
 eyebrow: Section 5 · Test-Out
 title: Knowledge check — 5 sample questions
 subtitle: Try these as a warm-up. The full written test is in your training packet.
-q: Approximately how much load does ONE wrap on the Portawrap control? | About 100 lbs | About 330 lbs | About 1,000 lbs | About 2,000 lbs
-q: How should the anchor sling be connected to the Portawrap? | With a steel snap hook | With a carabiner | Girth-hitched directly to the sling loop | Tied with any knot
+q: Adding more wraps of rope around the Portawrap will: | Reduce your control of the load | Increase friction and holding power | Have no effect on the load | Make the rope feed faster
+q: How should the anchor sling be connected to the Portawrap? | With a steel snap hook | With a carabiner | Attached to the sling loop directly, no metal connectors | With any quick connector
 q: The closest you should control the rope to the device is: | Touching the device | Within 6 inches | At least 2 feet away | Distance doesn't matter
 q: If the rope won't feed under a full load, you most likely have: | Too few wraps | Too many wraps | The wrong gloves | A bad anchor
-q: Before using the Portawrap on a real load, you should practice with: | 200–400 lb light loads in a safe zone | Maximum loads right away | No practice is needed | Loads over 2,000 lbs
+q: How is the dead-eye sling tied to the anchor? | With a cow hitch or a timber hitch | With a snap hook | With a carabiner | It doesn't need a knot
 
 @quiz-answers
 eyebrow: Section 5 · Test-Out
 title: Sample question answers
 subtitle: Check your work, then ask the trainer if anything is unclear.
-a: B) About 330 lbs | One wrap controls roughly 330 lbs. Add wraps for heavier loads — and learn the feel on light loads first.
-a: C) Girth-hitched directly to the sling loop | Never use a snap or metal connector. Thread the sling's eye through the sling loop and over the device.
+a: B) Increase friction and holding power | More wraps = more friction = more control. Add wraps for heavier loads.
+a: C) Attached to the sling loop directly, no metal connectors | Never use a snap or metal connector. Connect the dead-eye sling straight to the sling loop.
 a: C) At least 2 feet away | Closer than 2 ft and your hand can be pulled into the rope path and into the device.
 a: B) Too many wraps | Too many wraps = too much friction. Carefully unwrap one loop, keeping your hands clear of the device.
-a: A) 200–400 lb light loads in a safe zone | Practice in an unoccupied area until you understand how wraps control weight.
+a: A) With a cow hitch or a timber hitch | Tie the dead-eye sling to the anchor with a cow hitch or a timber hitch — no metal hardware.
 
 @two-column
 eyebrow: Wrap-Up
@@ -378,7 +362,36 @@ on conflict (slug) do update set
   source_text = excluded.source_text;
 
 -- ---------------------------------------------------------------------
--- 3. Written test — questions, choices, answer key (16)
+-- 2b. Re-run cleanup (trainer revisions)
+--   • Drop the three questions the trainer cut (positions 11, 12, 16).
+--   • Clear all choices/answer keys for this module so edited wording
+--     (e.g. Q2, Q6) re-seeds cleanly — the on-conflict inserts below do
+--     NOT overwrite existing child rows on their own.
+--   attempt_answers has no ON DELETE CASCADE, so clear those first.
+-- ---------------------------------------------------------------------
+delete from field_crew_training_attempt_answers
+  where question_id in (
+    select id from field_crew_training_module_questions
+    where module_slug = 'portawrap_operator' and position in (11, 12, 16)
+  );
+
+delete from field_crew_training_module_questions
+  where module_slug = 'portawrap_operator' and position in (11, 12, 16);
+
+delete from field_crew_training_module_choices
+  where question_id in (
+    select id from field_crew_training_module_questions
+    where module_slug = 'portawrap_operator'
+  );
+
+delete from field_crew_training_module_answer_key
+  where question_id in (
+    select id from field_crew_training_module_questions
+    where module_slug = 'portawrap_operator'
+  );
+
+-- ---------------------------------------------------------------------
+-- 3. Written test — questions, choices, answer key (13)
 -- ---------------------------------------------------------------------
 
 -- Q1
@@ -408,21 +421,21 @@ on conflict do nothing;
 with q as (
   insert into field_crew_training_module_questions (module_slug, position, section, prompt, safety_critical)
   values ('portawrap_operator', 2, 'Equipment',
-    $prompt$Approximately how much load does ONE wrap of rope on the Portawrap control?$prompt$,
+    $prompt$Adding more wraps of rope around the Portawrap will:$prompt$,
     false)
   on conflict (module_slug, position) do update set prompt = excluded.prompt, section = excluded.section, safety_critical = excluded.safety_critical returning id
 )
 insert into field_crew_training_module_choices (question_id, letter, text)
 select q.id, v.letter, v.text from q cross join (values
-  ('A', $$About 100 lbs$$),
-  ('B', $$About 330 lbs$$),
-  ('C', $$About 1,000 lbs$$),
-  ('D', $$About 2,000 lbs$$)
+  ('A', $$Reduce your control of the load$$),
+  ('B', $$Increase friction and give you more holding power$$),
+  ('C', $$Have no effect on the load$$),
+  ('D', $$Make the rope feed faster under load$$)
 ) as v(letter, text)
 on conflict do nothing;
 
 insert into field_crew_training_module_answer_key (question_id, correct_choice, rationale)
-select id, 'B', $rationale$One wrap controls roughly 330 lbs. Add wraps for heavier loads.$rationale$
+select id, 'B', $rationale$More wraps = more friction = more holding power. Add wraps to control heavier loads.$rationale$
 from field_crew_training_module_questions
 where module_slug = 'portawrap_operator' and position = 2
 on conflict do nothing;
@@ -508,13 +521,13 @@ insert into field_crew_training_module_choices (question_id, letter, text)
 select q.id, v.letter, v.text from q cross join (values
   ('A', $$A steel snap hook$$),
   ('B', $$A carabiner$$),
-  ('C', $$Girth-hitching it directly to the sling loop$$),
+  ('C', $$Attaching it to the sling loop directly, with no metal connectors$$),
   ('D', $$Any quick connector that fits$$)
 ) as v(letter, text)
 on conflict do nothing;
 
 insert into field_crew_training_module_answer_key (question_id, correct_choice, rationale)
-select id, 'C', $rationale$Never use a snap or metal connector. Girth-hitch the sling's eye directly to the sling loop.$rationale$
+select id, 'C', $rationale$Never use a snap or metal connector. Connect the dead-eye sling directly to the device's sling loop.$rationale$
 from field_crew_training_module_questions
 where module_slug = 'portawrap_operator' and position = 6
 on conflict do nothing;
@@ -611,52 +624,6 @@ from field_crew_training_module_questions
 where module_slug = 'portawrap_operator' and position = 10
 on conflict do nothing;
 
--- Q11
-with q as (
-  insert into field_crew_training_module_questions (module_slug, position, section, prompt, safety_critical)
-  values ('portawrap_operator', 11, 'Safety',
-    $prompt$Tree failures during a lower can also begin:$prompt$,
-    true)
-  on conflict (module_slug, position) do update set prompt = excluded.prompt, section = excluded.section, safety_critical = excluded.safety_critical returning id
-)
-insert into field_crew_training_module_choices (question_id, letter, text)
-select q.id, v.letter, v.text from q cross join (values
-  ('A', $$Only in the canopy$$),
-  ('B', $$They never start anywhere but the cut$$),
-  ('C', $$Below ground, at the roots$$),
-  ('D', $$Only in the rope$$)
-) as v(letter, text)
-on conflict do nothing;
-
-insert into field_crew_training_module_answer_key (question_id, correct_choice, rationale)
-select id, 'C', $rationale$Failures can start underground. Inspect the surrounding ground for root decay or weakness.$rationale$
-from field_crew_training_module_questions
-where module_slug = 'portawrap_operator' and position = 11
-on conflict do nothing;
-
--- Q12
-with q as (
-  insert into field_crew_training_module_questions (module_slug, position, section, prompt, safety_critical)
-  values ('portawrap_operator', 12, 'Operation',
-    $prompt$Before the load is introduced from above, the operator should:$prompt$,
-    true)
-  on conflict (module_slug, position) do update set prompt = excluded.prompt, section = excluded.section, safety_critical = excluded.safety_critical returning id
-)
-insert into field_crew_training_module_choices (question_id, letter, text)
-select q.id, v.letter, v.text from q cross join (values
-  ('A', $$Add slack to the line for a soft start$$),
-  ('B', $$Remove all possible slack so the line is taut$$),
-  ('C', $$Walk away from the device$$),
-  ('D', $$Loosen the wraps$$)
-) as v(letter, text)
-on conflict do nothing;
-
-insert into field_crew_training_module_answer_key (question_id, correct_choice, rationale)
-select id, 'B', $rationale$Remove all possible slack first. Slack lets the load accelerate before friction engages.$rationale$
-from field_crew_training_module_questions
-where module_slug = 'portawrap_operator' and position = 12
-on conflict do nothing;
-
 -- Q13
 with q as (
   insert into field_crew_training_module_questions (module_slug, position, section, prompt, safety_critical)
@@ -724,29 +691,6 @@ insert into field_crew_training_module_answer_key (question_id, correct_choice, 
 select id, 'A', $rationale$Too few wraps before lock-off and a strong load can cinch the rope so tight it needs a knife to remove.$rationale$
 from field_crew_training_module_questions
 where module_slug = 'portawrap_operator' and position = 15
-on conflict do nothing;
-
--- Q16
-with q as (
-  insert into field_crew_training_module_questions (module_slug, position, section, prompt, safety_critical)
-  values ('portawrap_operator', 16, 'Best Practices',
-    $prompt$Before using the Portawrap on a real load, you should practice with:$prompt$,
-    false)
-  on conflict (module_slug, position) do update set prompt = excluded.prompt, section = excluded.section, safety_critical = excluded.safety_critical returning id
-)
-insert into field_crew_training_module_choices (question_id, letter, text)
-select q.id, v.letter, v.text from q cross join (values
-  ('A', $$200–400 lb light loads in an unoccupied safe zone$$),
-  ('B', $$Maximum loads right away$$),
-  ('C', $$No practice is needed$$),
-  ('D', $$Loads over 2,000 lbs$$)
-) as v(letter, text)
-on conflict do nothing;
-
-insert into field_crew_training_module_answer_key (question_id, correct_choice, rationale)
-select id, 'A', $rationale$Practice with 200–400 lb light loads in a safe, unoccupied zone until cause and effect are understood.$rationale$
-from field_crew_training_module_questions
-where module_slug = 'portawrap_operator' and position = 16
 on conflict do nothing;
 
 -- ---------------------------------------------------------------------
