@@ -105,11 +105,11 @@ tagline: This device is only as safe as your inspection and your anchor.
 eyebrow: Section 2 · Safety
 title: Trained professionals only
 subtitle: This is not a device you learn on a live load.
-stat: 200–400
-stat-caption: pounds — the **light** practice loads you learn on, in a safe and unoccupied zone, until you understand how wraps control weight.
+stat: 10:1
+stat-caption: design factor — the Portawrap is built to roughly **ten times** its 2,000 lb working load limit. That margin is for the unexpected, **not** a reason to push past the limit.
 source: Source: Notch Equipment Portawrap instructions
 panel-title: Before you ever run a real load
-- **Get trained**, then practice with light loads in a safe, unoccupied area
+- **Get trained**, then practice with **light loads (200–400 lbs)** in a safe, unoccupied area
 - **Understand cause and effect** — how wraps, rope, and anchor behave — before a real pick
 - **Know the whole system** — device, rope, anchor strength, and shock-load risk
 - **Never assume.** Expect the unexpected and always keep an escape route.
