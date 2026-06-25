@@ -91,6 +91,15 @@ export function canEditCrew(role: Role): boolean {
 }
 
 /**
+ * Can this role see the Tree Removal Cost Analysis? Leadership review tool —
+ * limited to admins and the sales manager because it surfaces pricing and
+ * per-salesperson comparisons.
+ */
+export function canSeeCostAnalysis(role: Role): boolean {
+  return role === 'admin' || role === 'sales_manager';
+}
+
+/**
  * Returns the current user's email + role if they are signed in AND on the
  * allowlist. Returns null otherwise.
  */

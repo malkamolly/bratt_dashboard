@@ -1,7 +1,7 @@
 import Image from 'next/image';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
-import { allowedHubsFor, getAllowedUser, isOwner, type Hub } from '@/lib/auth';
+import { allowedHubsFor, canSeeCostAnalysis, getAllowedUser, isOwner, type Hub } from '@/lib/auth';
 import { getCurrentEmployeeSlug } from '@/lib/crew-data';
 
 export const dynamic = 'force-dynamic';
@@ -125,6 +125,26 @@ export default async function LandingPage() {
               </p>
             </div>
           ),
+        )}
+
+        {/* Cost Analysis — leadership review tool (admins + sales manager). */}
+        {canSeeCostAnalysis(user.role) && (
+          <Link
+            href="/cost-analysis"
+            className="bt-card group transition-colors hover:!border-orange"
+          >
+            <p className="bt-eyebrow">Leadership</p>
+            <h2 className="mt-2 font-headline text-3xl font-black uppercase text-bark-deep">
+              Cost Analysis
+            </h2>
+            <p className="mt-3 text-sm text-fg-2">
+              Tree removal pricing over the last year, by tree size &mdash; the
+              groundwork for a standard pricing guide.
+            </p>
+            <p className="mt-6 font-headline text-xs font-extrabold uppercase tracking-ribbon text-orange">
+              Open &rarr;
+            </p>
+          </Link>
         )}
 
         {/* Private personal hub — only the owner ever sees this card. */}

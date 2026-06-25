@@ -1,4 +1,4 @@
-import { getAllowedUser, canAccessHub, isOwner, type Role } from '@/lib/auth';
+import { getAllowedUser, canAccessHub, canSeeCostAnalysis, isOwner, type Role } from '@/lib/auth';
 import { BrandHeaderClient, type NavGroup, type NavItem } from './BrandHeaderClient';
 
 // Tomorrow's Schedule + Forecast vs Actual are gated to office/admin (same as
@@ -20,6 +20,7 @@ export async function BrandHeader() {
     const salesItems: NavItem[] = [];
     if (canAccessHub(r, 'pace')) salesItems.push({ label: 'Sales PACE', href: '/sales' });
     if (canAccessHub(r, 'hub')) salesItems.push({ label: 'Sales Arborist Hub', href: '/hub' });
+    if (canSeeCostAnalysis(r)) salesItems.push({ label: 'Cost Analysis', href: '/cost-analysis' });
 
     const productionItems: NavItem[] = [];
     if (canAccessHub(r, 'pace'))
