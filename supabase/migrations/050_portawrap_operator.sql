@@ -694,21 +694,22 @@ where module_slug = 'portawrap_operator' and position = 15
 on conflict do nothing;
 
 -- ---------------------------------------------------------------------
--- 4. Practical test-out items (10)
+-- 4. Practical test-out items (11)
 -- ---------------------------------------------------------------------
 insert into field_crew_training_module_practical_items
   (module_slug, position, area, task)
 values
   ('portawrap_operator',  1, 'Inspection', 'Inspect device, pin, sling, and rope and call out any defects'),
   ('portawrap_operator',  2, 'Anchor',     'Select and rig a sound anchor sized for the test load'),
-  ('portawrap_operator',  3, 'Setup',      'Girth-hitch the sling to the sling loop (no metal connectors)'),
-  ('portawrap_operator',  4, 'Setup',      'Install the running line through the guide loop correctly'),
-  ('portawrap_operator',  5, 'Wraps',      'Apply correct wraps for a light load, same direction throughout'),
-  ('portawrap_operator',  6, 'Operation',  'Remove all slack and lower a 200-400 lb load under control'),
-  ('portawrap_operator',  7, 'Operation',  'Demonstrate gloved feeding with hands clear of the device'),
-  ('portawrap_operator',  8, 'Adjust',     'Add or remove a wrap mid-task to correct friction safely'),
-  ('portawrap_operator',  9, 'Lock-Off',   'Lock off the line on the retention pin with adequate wraps'),
-  ('portawrap_operator', 10, 'Judgment',   'Confirm enough rope to land the load and state the escape plan')
+  ('portawrap_operator',  3, 'Setup',      'Tie the dead-eye sling to the anchor (cow hitch or timber hitch)'),
+  ('portawrap_operator',  4, 'Setup',      'Attach the sling to the sling loop directly (no metal connectors)'),
+  ('portawrap_operator',  5, 'Setup',      'Install the running line through the guide loop correctly'),
+  ('portawrap_operator',  6, 'Wraps',      'Apply correct wraps for the load, same direction throughout'),
+  ('portawrap_operator',  7, 'Operation',  'Remove all slack and lower a controlled test load'),
+  ('portawrap_operator',  8, 'Operation',  'Demonstrate gloved feeding with hands clear of the device'),
+  ('portawrap_operator',  9, 'Adjust',     'Add or remove a wrap mid-task to correct friction safely'),
+  ('portawrap_operator', 10, 'Lock-Off',   'Lock off the line on the retention pin (horn) with adequate wraps'),
+  ('portawrap_operator', 11, 'Judgment',   'Confirm enough rope to land the load and state the escape plan')
 on conflict (module_slug, position) do update
   set area = excluded.area, task = excluded.task;
 
