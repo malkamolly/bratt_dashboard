@@ -3,12 +3,14 @@ import { redirect } from 'next/navigation';
 import { getAllowedUser, canSeeCostAnalysis } from '@/lib/auth';
 import { buildCostAnalysis } from '@/lib/cost-analysis';
 import { fmtUsd } from '@/lib/format';
+import { PriceVsSizeScatter } from './Charts';
 import {
-  PriceVsSizeScatter,
-  MedianBySizeBar,
-  SellerComparisonBar,
-  SpeciesComparisonBar,
-} from './Charts';
+  SizeBandSection,
+  HaulingSection,
+  HeightGridSection,
+  SellerSection,
+  SpeciesSection,
+} from './Sections';
 
 export const dynamic = 'force-dynamic';
 
@@ -78,33 +80,7 @@ export default async function CostAnalysisPage() {
           cheapest and priciest quarter), so it reflects everyday pricing, not
           freak jobs.
         </p>
-        <div className="grid gap-6 lg:grid-cols-2">
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b-2 border-bark/20 text-left text-fg-2">
-                  <th className="py-2 pr-4 font-extrabold uppercase tracking-wide">Trunk size</th>
-                  <th className="py-2 pr-4 font-extrabold uppercase tracking-wide"># jobs</th>
-                  <th className="py-2 pr-4 font-extrabold uppercase tracking-wide">Typical</th>
-                  <th className="py-2 font-extrabold uppercase tracking-wide">Normal range</th>
-                </tr>
-              </thead>
-              <tbody>
-                {a.bands.map((b) => (
-                  <tr key={b.label} className="border-b border-bark/10">
-                    <td className="py-2 pr-4 font-bold text-ink">{b.label}</td>
-                    <td className="py-2 pr-4 text-fg-2">{b.count}</td>
-                    <td className="py-2 pr-4 font-bold text-orange">{fmtUsd(b.median)}</td>
-                    <td className="py-2 text-fg-2">
-                      {fmtUsd(b.p25)} – {fmtUsd(b.p75)}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-          <MedianBySizeBar bands={a.bands} />
-        </div>
+        <SizeBandSection bands={a.bands} />
       </Card>
 
       {/* ---------- Drivers: hauling + height ---------- */}
@@ -115,17 +91,7 @@ export default async function CostAnalysisPage() {
             debris away bill noticeably more than &ldquo;no hauling&rdquo; jobs
             &mdash; a clean, defensible line item for the guide.
           </p>
-          <div className="flex gap-4">
-            {a.hauling.map((h) => (
-              <div key={h.label} className="flex-1 rounded-card border-[3px] border-lime p-4 text-center">
-                <div className="text-xs font-extrabold uppercase tracking-wide text-fg-2">
-                  {h.label}
-                </div>
-                <div className="mt-1 font-display text-3xl text-orange">{fmtUsd(h.median)}</div>
-                <div className="mt-1 text-xs text-fg-3">{h.count} jobs</div>
-              </div>
-            ))}
-          </div>
+          <HaulingSection data={a.hauling} />
         </Card>
 
         <Card title="Taller trees cost more (same trunk size)">
@@ -134,34 +100,7 @@ export default async function CostAnalysisPage() {
             price climbs with height &mdash; height is the second real driver
             after trunk size. Blank cells had too few jobs to be reliable.
           </p>
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="text-left text-fg-2">
-                  <th className="py-1 pr-3 font-extrabold uppercase tracking-wide">Size</th>
-                  {a.heightGrid.heightCols.map((c) => (
-                    <th key={c} className="py-1 pr-3 font-extrabold">{c}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {a.heightGrid.rows.map((row) => (
-                  <tr key={row.band} className="border-t border-bark/10">
-                    <td className="py-1.5 pr-3 font-bold text-ink">{row.band}</td>
-                    {row.cells.map((c, i) => (
-                      <td key={i} className="py-1.5 pr-3">
-                        {c ? (
-                          <span className="font-bold text-ink">{fmtUsd(c.median)}</span>
-                        ) : (
-                          <span className="text-fg-3">—</span>
-                        )}
-                      </td>
-                    ))}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <HeightGridSection grid={a.heightGrid} />
         </Card>
       </section>
 
@@ -175,7 +114,7 @@ export default async function CostAnalysisPage() {
           difficulty) &mdash; but a spread this wide across hundreds of jobs is
           inconsistency we can tighten up.
         </p>
-        <SellerComparisonBar data={a.sellers} />
+        <SellerSection data={a.sellers} />
       </Card>
 
       {/* ---------- Species ---------- */}
@@ -186,7 +125,7 @@ export default async function CostAnalysisPage() {
           ornamentals run lower. A candidate modifier for the guide. Only
           species with 8+ jobs shown.
         </p>
-        <SpeciesComparisonBar data={a.species} />
+        <SpeciesSection data={a.species} />
       </Card>
 
       {/* ---------- Outliers ---------- */}

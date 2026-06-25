@@ -43,6 +43,40 @@ export type RemovalRow = {
  */
 const MIN_REAL_PRICE = 100;
 
+/**
+ * A single job, slimmed down for the click-to-expand invoice lists. Every
+ * grouping below the hero chart carries the jobs behind it so leadership can
+ * drill in and read off the invoice numbers.
+ */
+export type JobRef = {
+  inv: string | null;
+  dbh: number;
+  height: number | null;
+  price: number;
+  seller: string | null;
+  species: string | null;
+  haul: boolean;
+  date: string | null;
+};
+
+function toJob(r: RemovalRow): JobRef {
+  return {
+    inv: r.inv,
+    dbh: r.dbh!,
+    height: r.height,
+    price: r.price!,
+    seller: r.seller,
+    species: r.species,
+    haul: r.haul,
+    date: r.date,
+  };
+}
+
+/** Map rows to JobRefs, priciest first (the order leadership reads them in). */
+function toJobs(rows: RemovalRow[]): JobRef[] {
+  return rows.map(toJob).sort((a, b) => b.price - a.price);
+}
+
 /** The mid-size band we hold constant when isolating a single price driver. */
 const REF_LO = 13;
 const REF_HI = 24;
@@ -127,6 +161,7 @@ export type BandStat = {
   median: number;
   p75: number;
   max: number;
+  items: JobRef[];
 };
 
 export type ScatterPoint = { dbh: number; price: number; haul: boolean };
@@ -135,9 +170,10 @@ export type DriverCompare = {
   label: string;
   count: number;
   median: number;
+  items: JobRef[];
 };
 
-export type HeightCell = { median: number; count: number } | null;
+export type HeightCell = { median: number; count: number; items: JobRef[] } | null;
 export type HeightGrid = {
   heightCols: string[];
   rows: { band: string; cells: HeightCell[] }[];
@@ -169,12 +205,12 @@ export type CostAnalysis = {
   lowOutliers: Outlier[];
 };
 
-/** Median price + count for a slice of comparable rows. */
+/** Median price + count + member jobs for a slice of comparable rows. */
 function compare(rows: RemovalRow[], label: string): DriverCompare | null {
-  const prices = rows.map((r) => r.price!).filter((p): p is number => p != null);
-  const m = median(prices);
+  const valid = rows.filter((r) => r.price != null);
+  const m = median(valid.map((r) => r.price!));
   if (m == null) return null;
-  return { label, count: prices.length, median: Math.round(m) };
+  return { label, count: valid.length, median: Math.round(m), items: toJobs(valid) };
 }
 
 export function buildCostAnalysis(): CostAnalysis {
@@ -199,9 +235,8 @@ export function buildCostAnalysis(): CostAnalysis {
 
   // Size band table — the seed of the future pricing guide.
   const bands: BandStat[] = SIZE_BANDS.map((b) => {
-    const prices = comparable
-      .filter((r) => r.dbh! >= b.lo && r.dbh! <= b.hi)
-      .map((r) => r.price!);
+    const rows = comparable.filter((r) => r.dbh! >= b.lo && r.dbh! <= b.hi);
+    const prices = rows.map((r) => r.price!);
     if (prices.length === 0) return null;
     return {
       label: b.label,
@@ -211,6 +246,7 @@ export function buildCostAnalysis(): CostAnalysis {
       median: round(median(prices))!,
       p75: round(quantile(prices, 0.75))!,
       max: round(quantile(prices, 1))!,
+      items: toJobs(rows),
     } satisfies BandStat;
   }).filter((b): b is BandStat => b !== null);
 
@@ -254,11 +290,13 @@ export function buildCostAnalysis(): CostAnalysis {
         (r) => r.dbh! >= b.lo && r.dbh! <= b.hi && r.height != null,
       );
       const cells: HeightCell[] = heightCols.map((_, ci) => {
-        const prices = inBand
-          .filter((r) => heightClass(r.height!) === ci)
-          .map((r) => r.price!);
-        if (prices.length < 5) return null; // too thin to trust
-        return { median: round(median(prices))!, count: prices.length };
+        const rows = inBand.filter((r) => heightClass(r.height!) === ci);
+        if (rows.length < 5) return null; // too thin to trust
+        return {
+          median: round(median(rows.map((r) => r.price!)))!,
+          count: rows.length,
+          items: toJobs(rows),
+        };
       });
       return { band: b.label, cells };
     }).filter((row) => row.cells.some((c) => c !== null)),
@@ -313,17 +351,22 @@ function groupCompare(
   key: (r: RemovalRow) => string,
   minN: number,
 ): DriverCompare[] {
-  const groups = new Map<string, number[]>();
+  const groups = new Map<string, RemovalRow[]>();
   for (const r of rows) {
     if (r.price == null) continue;
     const k = key(r);
     if (!groups.has(k)) groups.set(k, []);
-    groups.get(k)!.push(r.price);
+    groups.get(k)!.push(r);
   }
   const out: DriverCompare[] = [];
-  for (const [label, prices] of groups) {
-    if (prices.length < minN) continue;
-    out.push({ label, count: prices.length, median: round(median(prices))! });
+  for (const [label, rs] of groups) {
+    if (rs.length < minN) continue;
+    out.push({
+      label,
+      count: rs.length,
+      median: round(median(rs.map((r) => r.price!)))!,
+      items: toJobs(rs),
+    });
   }
   return out.sort((a, b) => b.median - a.median);
 }
