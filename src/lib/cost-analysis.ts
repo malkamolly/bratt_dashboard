@@ -35,10 +35,11 @@ export type RemovalRow = {
   /** ISO date (YYYY-MM-DD) of the invoice. */
   date: string | null;
   /**
-   * Municipal (government) customer — city / county / township / public
-   * department. Excluded from this analysis per leadership: municipal work is
-   * bid differently (contract / volume) than residential, so it would skew the
-   * pricing picture. Golf courses, incl. city-owned ones, are NOT municipal.
+   * Municipal (government) job, taken from the office's own "Tree Work -
+   * Municipal" Job Business Unit tag — the authoritative classification, not
+   * a guess from the customer name. Excluded from this analysis per
+   * leadership: municipal work is bid differently (contract / volume) than
+   * residential, so it would skew the pricing picture.
    */
   muni: boolean;
 };
