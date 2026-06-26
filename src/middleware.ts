@@ -17,6 +17,7 @@ import { createServerClient, type CookieOptions } from '@supabase/ssr';
 
 const PUBLIC_PATHS = [
   '/login',
+  '/easy-login',
   '/auth/callback',
   '/auth/signout',
   '/access-denied',
