@@ -49,6 +49,7 @@ const FLASH_LABELS: Record<string, string> = {
   email_added: 'Person added.',
   email_removed: 'Person removed.',
   role_updated: 'Role updated.',
+  password_set: 'Password saved. They can now sign in at /easy-login.',
 };
 
 export function FlashBanner({

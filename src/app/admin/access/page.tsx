@@ -12,6 +12,7 @@ import {
   addAllowedEmail,
   updateAllowedEmailRole,
   removeAllowedEmail,
+  setUserPassword,
 } from '../actions';
 
 export const dynamic = 'force-dynamic';
@@ -199,6 +200,65 @@ export default async function AccessAdminPage({
               })}
             </ul>
           )}
+        </SectionCard>
+
+        <SectionCard
+          eyebrow="Password login"
+          title="Set a Password"
+          description="For people who struggle with the emailed code. Pick the person, type a password, and tell it to them. They sign in at /easy-login with their email + this password instead of waiting for an email. Setting a new password here also resets any old one."
+        >
+          {rows.length === 0 ? (
+            <p className="text-sm text-fg-2">Add someone above first.</p>
+          ) : (
+            <form
+              action={setUserPassword}
+              className="flex flex-col gap-3 sm:flex-row sm:items-end"
+            >
+              <label className="flex-1">
+                <span className="block font-headline text-xs font-extrabold uppercase tracking-ribbon text-fg-2">
+                  Person
+                </span>
+                <select
+                  name="email"
+                  className="mt-1 w-full rounded-2 border-2 border-paper-edge bg-white px-3 py-2 font-headline text-sm focus:border-orange focus:outline-none"
+                >
+                  {rows.map((row) => (
+                    <option key={row.email} value={row.email}>
+                      {row.email}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="flex-1">
+                <span className="block font-headline text-xs font-extrabold uppercase tracking-ribbon text-fg-2">
+                  New password
+                </span>
+                <input
+                  type="text"
+                  name="password"
+                  required
+                  minLength={8}
+                  autoComplete="off"
+                  placeholder="At least 8 characters"
+                  className="mt-1 w-full rounded-2 border-2 border-paper-edge bg-white px-3 py-2 font-sans text-sm normal-case focus:border-orange focus:outline-none"
+                />
+              </label>
+              <button
+                type="submit"
+                className="bt-btn bt-btn-primary justify-center sm:w-auto"
+              >
+                Set Password
+              </button>
+            </form>
+          )}
+          <p className="mt-3 text-xs text-fg-3">
+            Tip: bookmark a personalized link for them so they only type their
+            password &mdash; e.g.{' '}
+            <code className="rounded bg-paper-edge px-1 py-0.5">
+              /easy-login?email=name@bratttree.com
+            </code>
+            .
+          </p>
         </SectionCard>
       </div>
     </main>

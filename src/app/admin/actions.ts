@@ -10,7 +10,7 @@
 
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
-import { serverClient } from '@/lib/supabase';
+import { serverClient, adminClient } from '@/lib/supabase';
 import { requireAdmin } from '@/lib/auth';
 
 function parseMoney(raw: FormDataEntryValue | null): number | null {
@@ -677,6 +677,67 @@ export async function updateAllowedEmailRole(formData: FormData): Promise<void> 
 
   revalidatePath('/admin/access');
   redirect('/admin/access?saved=role_updated');
+}
+
+/**
+ * Set (or reset) a password for an allowlisted person, so they can sign in at
+ * /easy-login with email + password instead of a magic-link / emailed code.
+ *
+ * Uses the service-role admin API. If the person has signed in before, we
+ * update their existing auth user; if they never have, we create a confirmed
+ * user on the spot. Either way they end up able to sign in with this password.
+ */
+export async function setUserPassword(formData: FormData): Promise<void> {
+  await requireAdmin();
+  const email = normalizeEmail(formData.get('email'));
+  const password = String(formData.get('password') ?? '');
+  if (!email || !email.includes('@')) {
+    redirect(`/admin/access?error=${encodeURIComponent('Pick a person first.')}`);
+  }
+  if (password.length < 8) {
+    redirect(
+      `/admin/access?error=${encodeURIComponent('Password must be at least 8 characters.')}`,
+    );
+  }
+
+  let admin: ReturnType<typeof adminClient>;
+  try {
+    admin = adminClient();
+  } catch {
+    redirect(
+      `/admin/access?error=${encodeURIComponent(
+        "Password login isn't configured yet: the SUPABASE_SERVICE_ROLE_KEY environment variable is missing on the server. Add it in Vercel, then try again.",
+      )}`,
+    );
+  }
+
+  // Find the existing auth user by email. listUsers is paginated; a tiny team
+  // fits in one page, but loop defensively just in case.
+  let userId: string | null = null;
+  for (let page = 1; page <= 20 && !userId; page++) {
+    const { data, error } = await admin.auth.admin.listUsers({ page, perPage: 200 });
+    if (error) redirect(`/admin/access?error=${encodeURIComponent(error.message)}`);
+    const match = data.users.find(
+      (u) => (u.email ?? '').toLowerCase() === email,
+    );
+    if (match) userId = match.id;
+    if (data.users.length < 200) break;
+  }
+
+  if (userId) {
+    const { error } = await admin.auth.admin.updateUserById(userId, { password });
+    if (error) redirect(`/admin/access?error=${encodeURIComponent(error.message)}`);
+  } else {
+    const { error } = await admin.auth.admin.createUser({
+      email,
+      password,
+      email_confirm: true,
+    });
+    if (error) redirect(`/admin/access?error=${encodeURIComponent(error.message)}`);
+  }
+
+  revalidatePath('/admin/access');
+  redirect('/admin/access?saved=password_set');
 }
 
 export async function removeAllowedEmail(formData: FormData): Promise<void> {
