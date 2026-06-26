@@ -34,6 +34,13 @@ export type RemovalRow = {
   seller: string | null;
   /** ISO date (YYYY-MM-DD) of the invoice. */
   date: string | null;
+  /**
+   * Municipal (government) customer — city / county / township / public
+   * department. Excluded from this analysis per leadership: municipal work is
+   * bid differently (contract / volume) than residential, so it would skew the
+   * pricing picture. Golf courses, incl. city-owned ones, are NOT municipal.
+   */
+  muni: boolean;
 };
 
 /**
@@ -149,6 +156,8 @@ export type Summary = {
   comparable: number;
   totalRevenue: number;
   medianPrice: number | null;
+  /** Municipal jobs filtered out before any of the above was computed. */
+  excludedMunicipal: number;
   dateFrom: string | null;
   dateTo: string | null;
 };
@@ -215,7 +224,11 @@ function compare(rows: RemovalRow[], label: string): DriverCompare | null {
 
 export function buildCostAnalysis(): CostAnalysis {
   const all = loadRemovals();
-  const removals = all; // every row in this file is a removal line item
+  // Drop municipal (government) jobs up front — leadership's call. Everything
+  // downstream (counts, revenue, bands, drivers, outliers) sees only the
+  // remaining residential/commercial removals.
+  const removals = all.filter((r) => !r.muni);
+  const excludedMunicipal = all.length - removals.length;
 
   const comparable = removals.filter(isComparable);
   const dates = removals.map((r) => r.date).filter((d): d is string => !!d).sort();
@@ -229,6 +242,7 @@ export function buildCostAnalysis(): CostAnalysis {
       removals.reduce((s, r) => s + (r.price ?? 0), 0),
     ),
     medianPrice: round(median(removals.map((r) => r.price).filter((p): p is number => p != null))),
+    excludedMunicipal,
     dateFrom: dates[0] ?? null,
     dateTo: dates[dates.length - 1] ?? null,
   };

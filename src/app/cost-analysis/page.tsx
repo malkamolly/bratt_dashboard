@@ -45,7 +45,9 @@ export default async function CostAnalysisPage() {
         size, so we can see how consistent our pricing is and lay the
         groundwork for a standard pricing guide. Based on{' '}
         <strong>{s.totalRemovals.toLocaleString()}</strong> removal line items
-        from {fmtDate(s.dateFrom)} to {fmtDate(s.dateTo)}.
+        from {fmtDate(s.dateFrom)} to {fmtDate(s.dateTo)} &mdash; with{' '}
+        <strong>{s.excludedMunicipal}</strong> municipal (city / county) jobs
+        set aside, since those are bid differently than residential work.
       </p>
 
       {/* ---------- Headline numbers ---------- */}
@@ -147,6 +149,14 @@ export default async function CostAnalysisPage() {
       {/* ---------- Method / caveats ---------- */}
       <Card title="How to read this & what's left out" className="mt-8">
         <ul className="list-disc space-y-2 pl-5 text-sm text-fg-2">
+          <li>
+            <strong>{s.excludedMunicipal}</strong> municipal jobs (City of New
+            Hope, City of Minneapolis, Hennepin County, and the like) are
+            excluded entirely &mdash; they&apos;re bid on contract / volume
+            terms, not like residential work, so leaving them in would distort
+            the pricing. Privately-owned golf courses and country clubs are kept
+            as normal commercial jobs.
+          </li>
           <li>
             Size pricing uses <strong>{s.comparable.toLocaleString()}</strong>{' '}
             single-trunk jobs with a recorded size and a price of $100+. Prices
