@@ -158,11 +158,25 @@ export const SIZE_BANDS: SizeBand[] = [
   { label: '19–24"', lo: 19, hi: 24, floor: 900 },
   { label: '25–30"', lo: 25, hi: 30, floor: 1300 },
   { label: '31–36"', lo: 31, hi: 36, floor: 2000 },
-  { label: '37"+', lo: 37, hi: Infinity, floor: 3500 },
+  { label: '37–42"', lo: 37, hi: 42, floor: 3500 },
+  { label: '43–48"', lo: 43, hi: 48, floor: 3500 },
+  { label: '49–54"', lo: 49, hi: 54, floor: 3500 },
+  { label: '55"+', lo: 55, hi: Infinity, floor: 3500 },
 ];
 
+/**
+ * The band a tree belongs to, assigned by lower bound so there are no gaps:
+ * each band runs from its `lo` up to the next band's `lo`. (The integer `hi`
+ * is only for labels — matching on lo/hi would drop fractional sizes like
+ * 6.5" or 42.5" that fall between two bands' edges.)
+ */
 function bandFor(dbh: number): SizeBand {
-  return SIZE_BANDS.find((b) => dbh >= b.lo && dbh <= b.hi) ?? SIZE_BANDS[SIZE_BANDS.length - 1];
+  let chosen = SIZE_BANDS[0];
+  for (const b of SIZE_BANDS) {
+    if (dbh >= b.lo) chosen = b;
+    else break;
+  }
+  return chosen;
 }
 
 // ---------------------------------------------------------------------------
@@ -299,7 +313,7 @@ export function buildCostAnalysis(): CostAnalysis {
 
   // Size band table — the seed of the future pricing guide.
   const bands: BandStat[] = SIZE_BANDS.map((b) => {
-    const rows = comparable.filter((r) => r.dbh! >= b.lo && r.dbh! <= b.hi);
+    const rows = comparable.filter((r) => bandFor(r.dbh!) === b);
     const prices = rows.map((r) => r.price!);
     if (prices.length === 0) return null;
     return {
@@ -352,7 +366,7 @@ export function buildCostAnalysis(): CostAnalysis {
     heightCols,
     rows: SIZE_BANDS.map((b) => {
       const inBand = comparable.filter(
-        (r) => r.dbh! >= b.lo && r.dbh! <= b.hi && r.height != null,
+        (r) => bandFor(r.dbh!) === b && r.height != null,
       );
       const cells: HeightCell[] = heightCols.map((_, ci) => {
         const rows = inBand.filter((r) => heightClass(r.height!) === ci);
