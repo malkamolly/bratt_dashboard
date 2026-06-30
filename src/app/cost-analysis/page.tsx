@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { getAllowedUser, canSeeCostAnalysis } from '@/lib/auth';
-import { buildCostAnalysis } from '@/lib/cost-analysis';
+import { buildCostAnalysis, SIZE_BANDS } from '@/lib/cost-analysis';
 import { fmtUsd } from '@/lib/format';
 import { PriceVsSizeScatter } from './Charts';
 import {
@@ -215,10 +215,13 @@ export default async function CostAnalysisPage() {
             full cost, so they&apos;re excluded.
           </li>
           <li>
-            In the <strong>37&Prime;+</strong> band, line items under{' '}
-            <strong>$3,500</strong> are also dropped &mdash; a genuine big-tree
-            removal costs more than that, so those are partial line items (one
-            tree split across rows) or miscoded sizes.
+            Each size band also has a <strong>minimum realistic price</strong>{' '}
+            (set with leadership); line items below it are dropped as partials
+            (one tree split across rows) or miscoded sizes:{' '}
+            {SIZE_BANDS.filter((b) => b.floor > 100)
+              .map((b) => `${b.label} ${fmtUsd(b.floor)}`)
+              .join(', ')}
+            .
           </li>
           <li>
             <strong>{s.multiStem.toLocaleString()}</strong> multi-stem / clump

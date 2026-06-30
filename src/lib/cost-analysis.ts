@@ -59,15 +59,6 @@ export type RemovalRow = {
 const MIN_REAL_PRICE = 100;
 
 /**
- * Floor for the biggest-tree band: a genuine 37"+ removal is a major job, so
- * anything billed under $3,500 in that band is a partial line item (one tree's
- * cost split across rows) or a miscoded size. Per leadership, drop those from
- * the size-pricing set so the 37"+ figures reflect real big-tree pricing.
- */
-const BIG_TREE_MIN_DBH = 37;
-const BIG_TREE_PRICE_FLOOR = 3500;
-
-/**
  * A single job, slimmed down for the click-to-expand invoice lists. Every
  * grouping below the hero chart carries the jobs behind it so leadership can
  * drill in and read off the invoice numbers.
@@ -151,16 +142,23 @@ export type SizeBand = {
   label: string;
   lo: number; // inclusive, inches
   hi: number; // inclusive, inches (Infinity for the open top band)
+  /**
+   * Per-band price floor (set by leadership). A real removal of a tree this
+   * size costs at least this much, so anything billed below it is a partial
+   * line item (one tree split across rows) or a miscoded size, and is dropped
+   * from the size-pricing set.
+   */
+  floor: number;
 };
 
 export const SIZE_BANDS: SizeBand[] = [
-  { label: '1–6"', lo: 0, hi: 6 },
-  { label: '7–12"', lo: 7, hi: 12 },
-  { label: '13–18"', lo: 13, hi: 18 },
-  { label: '19–24"', lo: 19, hi: 24 },
-  { label: '25–30"', lo: 25, hi: 30 },
-  { label: '31–36"', lo: 31, hi: 36 },
-  { label: '37"+', lo: 37, hi: Infinity },
+  { label: '1–6"', lo: 0, hi: 6, floor: MIN_REAL_PRICE },
+  { label: '7–12"', lo: 7, hi: 12, floor: 280 },
+  { label: '13–18"', lo: 13, hi: 18, floor: 400 },
+  { label: '19–24"', lo: 19, hi: 24, floor: 900 },
+  { label: '25–30"', lo: 25, hi: 30, floor: 1300 },
+  { label: '31–36"', lo: 31, hi: 36, floor: 2000 },
+  { label: '37"+', lo: 37, hi: Infinity, floor: 3500 },
 ];
 
 function bandFor(dbh: number): SizeBand {
@@ -268,7 +266,7 @@ export function buildCostAnalysis(): CostAnalysis {
 
   const comparable = removals
     .filter(isComparable)
-    .filter((r) => !(r.dbh >= BIG_TREE_MIN_DBH && r.price < BIG_TREE_PRICE_FLOOR));
+    .filter((r) => r.price >= bandFor(r.dbh).floor);
   const dates = removals.map((r) => r.date).filter((d): d is string => !!d).sort();
 
   // Roll line items up to whole jobs (invoices): sum every tree on an invoice.
