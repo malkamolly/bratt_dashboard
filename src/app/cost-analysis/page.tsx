@@ -52,15 +52,57 @@ export default async function CostAnalysisPage() {
 
       {/* ---------- Headline numbers ---------- */}
       <section className="mt-8 grid grid-cols-2 gap-4 lg:grid-cols-4">
-        <Stat label="Removals (line items)" value={s.totalRemovals.toLocaleString()} />
-        <Stat label="Total removal revenue" value={fmtUsd(s.totalRevenue)} />
-        <Stat label="Median price (all)" value={fmtUsd(s.medianPrice)} />
         <Stat
-          label="Comparable single-trunk jobs"
+          label="Jobs (invoices)"
+          value={s.jobCount.toLocaleString()}
+          sub={`${s.totalRemovals.toLocaleString()} trees across them`}
+        />
+        <Stat label="Total removal revenue" value={fmtUsd(s.totalRevenue)} />
+        <Stat
+          label="Avg. job value"
+          value={fmtUsd(s.jobMean)}
+          sub={`median ${fmtUsd(s.jobMedian)}`}
+        />
+        <Stat
+          label="Comparable single-trunk trees"
           value={s.comparable.toLocaleString()}
-          sub={`of ${s.totalRemovals.toLocaleString()} — used for size pricing`}
+          sub="used for size pricing below"
         />
       </section>
+
+      {/* ---------- Per-tree vs per-job ---------- */}
+      <Card title="Per tree vs. per whole job" className="mt-8">
+        <p className="mb-4 max-w-3xl text-sm text-fg-2">
+          The size charts below price <strong>one tree at a time</strong> &mdash;
+          the right unit for a pricing guide. But most invoices cover several
+          trees, so a whole <strong>job</strong> bills more than any single
+          tree. Both views, side by side (<em>median</em> = the middle job;{' '}
+          <em>average</em> = total &divide; count, pulled up by big jobs):
+        </p>
+        <div className="overflow-x-auto">
+          <table className="w-full max-w-xl text-sm">
+            <thead>
+              <tr className="border-b-2 border-bark/20 text-left text-fg-2">
+                <th className="py-2 pr-4 font-extrabold uppercase tracking-wide"></th>
+                <th className="py-2 pr-4 font-extrabold uppercase tracking-wide">Median</th>
+                <th className="py-2 font-extrabold uppercase tracking-wide">Average</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr className="border-b border-bark/10">
+                <td className="py-2 pr-4 font-bold text-ink">Per tree</td>
+                <td className="py-2 pr-4 text-fg-2">{fmtUsd(s.medianPrice)}</td>
+                <td className="py-2 text-fg-2">{fmtUsd(s.meanPrice)}</td>
+              </tr>
+              <tr>
+                <td className="py-2 pr-4 font-bold text-ink">Per whole job</td>
+                <td className="py-2 pr-4 font-bold text-orange">{fmtUsd(s.jobMedian)}</td>
+                <td className="py-2 font-bold text-orange">{fmtUsd(s.jobMean)}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </Card>
 
       {/* ---------- Hero scatter ---------- */}
       <Card title="Price climbs with trunk size" className="mt-10">
@@ -76,11 +118,12 @@ export default async function CostAnalysisPage() {
       {/* ---------- Pricing reference table + bar ---------- */}
       <Card title="Typical price by tree size" className="mt-8">
         <p className="mb-4 text-sm text-fg-2">
-          The seed of a pricing guide. <strong>Typical</strong> is the median
-          (middle) price &mdash; half cost more, half less. The{' '}
-          <strong>normal range</strong> is the middle 50% of jobs (we ignore the
-          cheapest and priciest quarter), so it reflects everyday pricing, not
-          freak jobs.
+          The seed of a pricing guide, priced per tree. <strong>Typical</strong>{' '}
+          is the median (middle) price &mdash; half cost more, half less.{' '}
+          <strong>Average</strong> is higher because a few big removals pull it
+          up. The <strong>normal range</strong> is the middle 50% of trees (we
+          ignore the cheapest and priciest quarter), so it reflects everyday
+          pricing, not freak jobs.
         </p>
         <SizeBandSection bands={a.bands} />
       </Card>
@@ -149,6 +192,13 @@ export default async function CostAnalysisPage() {
       {/* ---------- Method / caveats ---------- */}
       <Card title="How to read this & what's left out" className="mt-8">
         <ul className="list-disc space-y-2 pl-5 text-sm text-fg-2">
+          <li>
+            <strong>{s.excludedNonTree}</strong> line items billed under the
+            tree-removal code were actually <strong>stump, vine, or shrub</strong>{' '}
+            jobs (the salesperson picked the wrong pricebook item). They&apos;re
+            read from the description and excluded, so only genuine tree
+            removals are priced here.
+          </li>
           <li>
             <strong>{s.excludedMunicipal}</strong> municipal jobs are excluded
             entirely &mdash; identified by the office&apos;s own &ldquo;Tree

@@ -42,6 +42,13 @@ export type RemovalRow = {
    * residential, so it would skew the pricing picture.
    */
   muni: boolean;
+  /**
+   * What the line item's DESCRIPTION actually is. The pricebook code is
+   * unreliable — salespeople sometimes pick "Tree Removal" for stump / vine /
+   * shrub work — so this is read from the description template. Only 'tree'
+   * rows are real tree removals; the rest are excluded from the analysis.
+   */
+  kind: 'tree' | 'stump' | 'vine' | 'shrub';
 };
 
 /**
@@ -101,6 +108,11 @@ function median(xs: number[]): number | null {
   return quantile(xs, 0.5);
 }
 
+function mean(xs: number[]): number | null {
+  if (xs.length === 0) return null;
+  return xs.reduce((s, x) => s + x, 0) / xs.length;
+}
+
 /** Linear-interpolated quantile. Returns null for an empty list. */
 function quantile(xs: number[], q: number): number | null {
   if (xs.length === 0) return null;
@@ -156,9 +168,17 @@ export type Summary = {
   multiStem: number;
   comparable: number;
   totalRevenue: number;
+  /** Per-tree (per line item) price across all removals. */
   medianPrice: number | null;
+  meanPrice: number | null;
+  /** Per-job (per invoice) totals — every tree on an invoice summed together. */
+  jobCount: number;
+  jobMedian: number | null;
+  jobMean: number | null;
   /** Municipal jobs filtered out before any of the above was computed. */
   excludedMunicipal: number;
+  /** Miscoded stump / vine / shrub line items filtered out up front. */
+  excludedNonTree: number;
   dateFrom: string | null;
   dateTo: string | null;
 };
@@ -169,6 +189,7 @@ export type BandStat = {
   min: number;
   p25: number;
   median: number;
+  mean: number;
   p75: number;
   max: number;
   items: JobRef[];
@@ -225,14 +246,28 @@ function compare(rows: RemovalRow[], label: string): DriverCompare | null {
 
 export function buildCostAnalysis(): CostAnalysis {
   const all = loadRemovals();
-  // Drop municipal (government) jobs up front — leadership's call. Everything
-  // downstream (counts, revenue, bands, drivers, outliers) sees only the
-  // remaining residential/commercial removals.
-  const removals = all.filter((r) => !r.muni);
-  const excludedMunicipal = all.length - removals.length;
+  // Two exclusions up front, before any number is computed:
+  //  1. Non-tree services (stump / vine / shrub) miscoded under the tree
+  //     removal pricebook code — they're different work at different prices.
+  //  2. Municipal (government) jobs — leadership's call; bid on contract terms.
+  // Everything downstream (counts, revenue, bands, drivers, outliers) sees only
+  // the remaining residential/commercial TREE removals.
+  const trees = all.filter((r) => r.kind === 'tree');
+  const excludedNonTree = all.length - trees.length;
+  const removals = trees.filter((r) => !r.muni);
+  const excludedMunicipal = trees.length - removals.length;
 
   const comparable = removals.filter(isComparable);
   const dates = removals.map((r) => r.date).filter((d): d is string => !!d).sort();
+
+  // Roll line items up to whole jobs (invoices): sum every tree on an invoice.
+  const byInvoice = new Map<string, number>();
+  for (const r of removals) {
+    if (r.price == null || r.inv == null) continue;
+    byInvoice.set(r.inv, (byInvoice.get(r.inv) ?? 0) + r.price);
+  }
+  const jobTotals = [...byInvoice.values()];
+  const allPrices = removals.map((r) => r.price).filter((p): p is number => p != null);
 
   const summary: Summary = {
     totalRemovals: removals.length,
@@ -242,8 +277,13 @@ export function buildCostAnalysis(): CostAnalysis {
     totalRevenue: Math.round(
       removals.reduce((s, r) => s + (r.price ?? 0), 0),
     ),
-    medianPrice: round(median(removals.map((r) => r.price).filter((p): p is number => p != null))),
+    medianPrice: round(median(allPrices)),
+    meanPrice: round(mean(allPrices)),
+    jobCount: jobTotals.length,
+    jobMedian: round(median(jobTotals)),
+    jobMean: round(mean(jobTotals)),
     excludedMunicipal,
+    excludedNonTree,
     dateFrom: dates[0] ?? null,
     dateTo: dates[dates.length - 1] ?? null,
   };
@@ -259,6 +299,7 @@ export function buildCostAnalysis(): CostAnalysis {
       min: round(quantile(prices, 0))!,
       p25: round(quantile(prices, 0.25))!,
       median: round(median(prices))!,
+      mean: round(mean(prices))!,
       p75: round(quantile(prices, 0.75))!,
       max: round(quantile(prices, 1))!,
       items: toJobs(rows),

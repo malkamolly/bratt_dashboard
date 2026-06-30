@@ -19,6 +19,7 @@ import {
   YAxis,
   CartesianGrid,
   Tooltip,
+  Legend,
   Cell,
   LabelList,
 } from 'recharts';
@@ -127,8 +128,9 @@ export function SizeBandSection({ bands }: { bands: BandStat[] }) {
             <thead>
               <tr className="border-b-2 border-bark/20 text-left text-fg-2">
                 <th className="py-2 pr-4 font-extrabold uppercase tracking-wide">Trunk size</th>
-                <th className="py-2 pr-4 font-extrabold uppercase tracking-wide"># jobs</th>
+                <th className="py-2 pr-4 font-extrabold uppercase tracking-wide"># trees</th>
                 <th className="py-2 pr-4 font-extrabold uppercase tracking-wide">Typical</th>
+                <th className="py-2 pr-4 font-extrabold uppercase tracking-wide">Average</th>
                 <th className="py-2 font-extrabold uppercase tracking-wide">Normal range</th>
               </tr>
             </thead>
@@ -144,6 +146,7 @@ export function SizeBandSection({ bands }: { bands: BandStat[] }) {
                   <td className="py-2 pr-4 font-bold text-ink">{b.label}</td>
                   <td className="py-2 pr-4 text-fg-2">{b.count}</td>
                   <td className="py-2 pr-4 font-bold text-orange">{fmtUsd(b.median)}</td>
+                  <td className="py-2 pr-4 text-fg-2">{fmtUsd(b.mean)}</td>
                   <td className="py-2 text-fg-2">
                     {fmtUsd(b.p25)} – {fmtUsd(b.p75)}
                   </td>
@@ -154,8 +157,8 @@ export function SizeBandSection({ bands }: { bands: BandStat[] }) {
           <Hint>Click any size to list its invoices below.</Hint>
         </div>
         <div>
-          <ResponsiveContainer width="100%" height={320}>
-            <BarChart data={bands} margin={{ top: 20, right: 20, bottom: 30, left: 10 }}>
+          <ResponsiveContainer width="100%" height={340}>
+            <BarChart data={bands} margin={{ top: 24, right: 20, bottom: 30, left: 10 }}>
               <CartesianGrid stroke={GRID} vertical={false} />
               <XAxis
                 dataKey="label"
@@ -164,9 +167,10 @@ export function SizeBandSection({ bands }: { bands: BandStat[] }) {
               />
               <YAxis tickFormatter={usd0} tick={{ fontSize: 12, fill: BARK }} width={70} />
               <Tooltip formatter={(v: number) => usd0(v)} cursor={{ fill: 'rgba(235,76,27,0.08)' }} />
+              <Legend verticalAlign="top" height={26} />
               <Bar
                 dataKey="median"
-                name="Typical price"
+                name="Typical (median)"
                 radius={[4, 4, 0, 0]}
                 onClick={(d: { label?: string }) => d?.label && toggle(d.label)}
                 className="cursor-pointer"
@@ -174,7 +178,17 @@ export function SizeBandSection({ bands }: { bands: BandStat[] }) {
                 {bands.map((b) => (
                   <Cell key={b.label} fill={sel && sel !== b.label ? DIM : ORANGE} />
                 ))}
-                <LabelList dataKey="median" position="top" formatter={usd0} style={{ fontSize: 11, fill: BARK }} />
+              </Bar>
+              <Bar
+                dataKey="mean"
+                name="Average"
+                radius={[4, 4, 0, 0]}
+                onClick={(d: { label?: string }) => d?.label && toggle(d.label)}
+                className="cursor-pointer"
+              >
+                {bands.map((b) => (
+                  <Cell key={b.label} fill={sel && sel !== b.label ? DIM : BARK} />
+                ))}
               </Bar>
             </BarChart>
           </ResponsiveContainer>
