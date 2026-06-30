@@ -23,7 +23,7 @@ import {
   Cell,
   LabelList,
 } from 'recharts';
-import type { BandStat, DriverCompare, HeightGrid, JobRef } from '@/lib/cost-analysis';
+import type { BandStat, DriverCompare, MeasureGrid, JobRef } from '@/lib/cost-analysis';
 import { fmtUsd } from '@/lib/format';
 
 const ORANGE = '#EB4C1B';
@@ -230,9 +230,9 @@ export function HaulingSection({ data }: { data: DriverCompare[] }) {
 }
 
 // ---------------------------------------------------------------------------
-// Height grid — clickable cells
+// Measurement grid (height, crown spread) — clickable cells
 // ---------------------------------------------------------------------------
-export function HeightGridSection({ grid }: { grid: HeightGrid }) {
+export function GridSection({ grid }: { grid: MeasureGrid }) {
   const [sel, setSel] = useState<string | null>(null);
   // Find the selected cell's items + a readable title.
   let selItems: JobRef[] | null = null;
@@ -242,7 +242,7 @@ export function HeightGridSection({ grid }: { grid: HeightGrid }) {
       const key = `${row.band}|${ci}`;
       if (c && key === sel) {
         selItems = c.items;
-        selTitle = `${row.band} · ${grid.heightCols[ci]}`;
+        selTitle = `${row.band} · ${grid.cols[ci]}`;
       }
     });
   }
@@ -253,7 +253,7 @@ export function HeightGridSection({ grid }: { grid: HeightGrid }) {
           <thead>
             <tr className="text-left text-fg-2">
               <th className="py-1 pr-3 font-extrabold uppercase tracking-wide">Size</th>
-              {grid.heightCols.map((c) => (
+              {grid.cols.map((c) => (
                 <th key={c} className="py-1 pr-3 font-extrabold">{c}</th>
               ))}
             </tr>

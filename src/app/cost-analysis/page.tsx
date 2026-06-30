@@ -7,7 +7,7 @@ import { PriceVsSizeScatter } from './Charts';
 import {
   SizeBandSection,
   HaulingSection,
-  HeightGridSection,
+  GridSection,
   SellerSection,
   SpeciesSection,
 } from './Sections';
@@ -145,9 +145,23 @@ export default async function CostAnalysisPage() {
             price climbs with height &mdash; height is the second real driver
             after trunk size. Blank cells had too few jobs to be reliable.
           </p>
-          <HeightGridSection grid={a.heightGrid} />
+          <GridSection grid={a.heightGrid} />
         </Card>
       </section>
+
+      {/* ---------- Crown spread (canopy width) ---------- */}
+      <Card title="Crown spread (canopy width) by size" className="mt-8">
+        <p className="mb-4 max-w-3xl text-sm text-fg-2">
+          Median price by size <em>and</em> crown spread &mdash; how wide the
+          canopy is. Same layout as the height grid. Two caveats: crown spread
+          is only recorded on about two-thirds of jobs (so each cell is built
+          from fewer trees), and historically it&apos;s been a much weaker price
+          driver than trunk size or height. We&apos;re tracking it now so
+          it&apos;s ready as a factor when we build the pricing guide. Click any
+          price to see its invoices; blank cells had too few jobs.
+        </p>
+        <GridSection grid={a.crownGrid} />
+      </Card>
 
       {/* ---------- Seller consistency (the case for a guide) ---------- */}
       <Card title="Same-size trees, very different prices by salesperson" className="mt-8 border-orange">

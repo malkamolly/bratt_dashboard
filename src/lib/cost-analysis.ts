@@ -225,10 +225,14 @@ export type DriverCompare = {
   items: JobRef[];
 };
 
-export type HeightCell = { median: number; count: number; items: JobRef[] } | null;
-export type HeightGrid = {
-  heightCols: string[];
-  rows: { band: string; cells: HeightCell[] }[];
+export type GridCell = { median: number; count: number; items: JobRef[] } | null;
+/**
+ * A size-band × second-factor grid of median prices. Used for both the height
+ * grid and the crown-spread grid — same shape, different columns.
+ */
+export type MeasureGrid = {
+  cols: string[];
+  rows: { band: string; cells: GridCell[] }[];
 };
 
 export type Outlier = {
@@ -249,7 +253,8 @@ export type CostAnalysis = {
   bands: BandStat[];
   scatter: ScatterPoint[];
   hauling: DriverCompare[];
-  heightGrid: HeightGrid;
+  heightGrid: MeasureGrid;
+  crownGrid: MeasureGrid;
   species: DriverCompare[];
   sellers: DriverCompare[];
   refBandLabel: string;
@@ -359,27 +364,28 @@ export function buildCostAnalysis(): CostAnalysis {
     12,
   );
 
-  // --- Height grid: size band (rows) x height class (cols), median price ---
-  const heightCols = ['Short (≤30′)', 'Medium (31–50′)', 'Tall (>50′)'];
-  const heightClass = (h: number) => (h <= 30 ? 0 : h <= 50 ? 1 : 2);
-  const heightGrid: HeightGrid = {
-    heightCols,
-    rows: SIZE_BANDS.map((b) => {
-      const inBand = comparable.filter(
-        (r) => bandFor(r.dbh!) === b && r.height != null,
-      );
-      const cells: HeightCell[] = heightCols.map((_, ci) => {
-        const rows = inBand.filter((r) => heightClass(r.height!) === ci);
-        if (rows.length < 5) return null; // too thin to trust
-        return {
-          median: round(median(rows.map((r) => r.price!)))!,
-          count: rows.length,
-          items: toJobs(rows),
-        };
-      });
-      return { band: b.label, cells };
-    }).filter((row) => row.cells.some((c) => c !== null)),
-  };
+  // --- Size band (rows) x second-factor class (cols) grids of median price ---
+  // Height: standard short/medium/tall.
+  const heightGrid = buildMeasureGrid(
+    comparable,
+    ['Short (≤30′)', 'Medium (31–50′)', 'Tall (>50′)'],
+    (r) => (r.height == null ? -1 : r.height <= 30 ? 0 : r.height <= 50 ? 1 : 2),
+  );
+  // Crown spread (canopy width): narrow/medium/wide. Crown is only recorded on
+  // ~2/3 of jobs and has the occasional junk value, so we ignore anything that
+  // isn't a plausible 1–100′ measurement.
+  const crownGrid = buildMeasureGrid(
+    comparable,
+    ['Narrow (≤15′)', 'Medium (16–30′)', 'Wide (>30′)'],
+    (r) =>
+      r.crown == null || r.crown <= 0 || r.crown > 100
+        ? -1
+        : r.crown <= 15
+        ? 0
+        : r.crown <= 30
+        ? 1
+        : 2,
+  );
 
   // --- Outliers: jobs far from their own band's median ---
   const bandMedians = new Map(bands.map((b) => [b.label, b.median]));
@@ -416,11 +422,40 @@ export function buildCostAnalysis(): CostAnalysis {
     scatter,
     hauling,
     heightGrid,
+    crownGrid,
     species,
     sellers,
     refBandLabel,
     highOutliers,
     lowOutliers,
+  };
+}
+
+/**
+ * Build a size-band × class grid of median prices. `classify` maps a row to a
+ * column index (or -1 to skip it, e.g. the measurement is missing). Cells with
+ * fewer than 5 jobs are left blank, and all-blank rows are dropped.
+ */
+function buildMeasureGrid(
+  comparable: RemovalRow[],
+  cols: string[],
+  classify: (r: RemovalRow) => number,
+): MeasureGrid {
+  return {
+    cols,
+    rows: SIZE_BANDS.map((b) => {
+      const inBand = comparable.filter((r) => bandFor(r.dbh!) === b);
+      const cells: GridCell[] = cols.map((_, ci) => {
+        const rs = inBand.filter((r) => classify(r) === ci);
+        if (rs.length < 5) return null; // too thin to trust
+        return {
+          median: round(median(rs.map((r) => r.price!)))!,
+          count: rs.length,
+          items: toJobs(rs),
+        };
+      });
+      return { band: b.label, cells };
+    }).filter((row) => row.cells.some((c) => c !== null)),
   };
 }
 
