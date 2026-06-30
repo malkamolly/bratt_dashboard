@@ -50,7 +50,22 @@ export default async function AdminLandingPage() {
           </p>
         </Link>
 
-        <Link href="/admin/access" className="bt-card group transition-colors hover:!border-orange md:col-span-2">
+        <Link href="/admin/phc-timing" className="bt-card group transition-colors hover:!border-orange">
+          <p className="bt-eyebrow">Admin 4</p>
+          <h2 className="mt-2 font-headline text-3xl font-black uppercase text-bark-deep">
+            PHC Treatment Timing
+          </h2>
+          <p className="mt-3 text-sm text-fg-2">
+            Season windows, visit counts, and the &ldquo;must go first&rdquo;
+            rules for every Plant Health Care treatment. Drives renewal
+            scheduling.
+          </p>
+          <p className="mt-6 font-headline text-xs font-extrabold uppercase tracking-ribbon text-orange">
+            Open &rarr;
+          </p>
+        </Link>
+
+        <Link href="/admin/access" className="bt-card group transition-colors hover:!border-orange">
           <p className="bt-eyebrow">Admin 3</p>
           <h2 className="mt-2 font-headline text-3xl font-black uppercase text-bark-deep">
             Access
