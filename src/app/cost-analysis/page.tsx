@@ -215,6 +215,12 @@ export default async function CostAnalysisPage() {
             full cost, so they&apos;re excluded.
           </li>
           <li>
+            In the <strong>37&Prime;+</strong> band, line items under{' '}
+            <strong>$3,500</strong> are also dropped &mdash; a genuine big-tree
+            removal costs more than that, so those are partial line items (one
+            tree split across rows) or miscoded sizes.
+          </li>
+          <li>
             <strong>{s.multiStem.toLocaleString()}</strong> multi-stem / clump
             removals are held out of the size tables &mdash; their price
             doesn&apos;t track trunk size, so they need their own pricing

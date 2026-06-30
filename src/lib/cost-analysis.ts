@@ -59,6 +59,15 @@ export type RemovalRow = {
 const MIN_REAL_PRICE = 100;
 
 /**
+ * Floor for the biggest-tree band: a genuine 37"+ removal is a major job, so
+ * anything billed under $3,500 in that band is a partial line item (one tree's
+ * cost split across rows) or a miscoded size. Per leadership, drop those from
+ * the size-pricing set so the 37"+ figures reflect real big-tree pricing.
+ */
+const BIG_TREE_MIN_DBH = 37;
+const BIG_TREE_PRICE_FLOOR = 3500;
+
+/**
  * A single job, slimmed down for the click-to-expand invoice lists. Every
  * grouping below the hero chart carries the jobs behind it so leadership can
  * drill in and read off the invoice numbers.
@@ -257,7 +266,9 @@ export function buildCostAnalysis(): CostAnalysis {
   const removals = trees.filter((r) => !r.muni);
   const excludedMunicipal = trees.length - removals.length;
 
-  const comparable = removals.filter(isComparable);
+  const comparable = removals
+    .filter(isComparable)
+    .filter((r) => !(r.dbh >= BIG_TREE_MIN_DBH && r.price < BIG_TREE_PRICE_FLOOR));
   const dates = removals.map((r) => r.date).filter((d): d is string => !!d).sort();
 
   // Roll line items up to whole jobs (invoices): sum every tree on an invoice.
