@@ -250,90 +250,245 @@ function loadImage(src: string): Promise<HTMLImageElement> {
   });
 }
 
-/** Composite a branded header (logo + bold address + purpose/date) onto the top
- *  of a marked-up image, so an individually-downloaded JPEG matches the PDF. */
+/** Split `text` into lines that each fit within `maxWidth` for the ctx's
+ *  current font. Wraps on spaces; an over-long single word stays on its line. */
+function wrapText(
+  ctx: CanvasRenderingContext2D,
+  text: string,
+  maxWidth: number,
+): string[] {
+  const words = text.trim().split(/\s+/).filter(Boolean);
+  if (words.length === 0) return [];
+  const lines: string[] = [];
+  let line = words[0];
+  for (let i = 1; i < words.length; i++) {
+    const trial = `${line} ${words[i]}`;
+    if (ctx.measureText(trial).width <= maxWidth) {
+      line = trial;
+    } else {
+      lines.push(line);
+      line = words[i];
+    }
+  }
+  lines.push(line);
+  return lines;
+}
+
+/** Trace a rounded-rectangle path (caller then fills / clips / strokes it). */
+function roundRectPath(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  w: number,
+  h: number,
+  r: number,
+): void {
+  const rr = Math.max(0, Math.min(r, w / 2, h / 2));
+  ctx.beginPath();
+  ctx.moveTo(x + rr, y);
+  ctx.arcTo(x + w, y, x + w, y + h, rr);
+  ctx.arcTo(x + w, y + h, x, y + h, rr);
+  ctx.arcTo(x, y + h, x, y, rr);
+  ctx.arcTo(x, y, x + w, y, rr);
+  ctx.closePath();
+}
+
+/** Compose the full marked-up image into a single standalone document JPEG —
+ *  the same layout as the Print / Save-as-PDF output (logo, address, purpose
+ *  pill, customer / date / notes, a section heading, the image, and the
+ *  footer). Built entirely on <canvas> so it renders reliably on iPads. */
 async function brandImage(
   markupUrl: string,
   opts: {
     logoUrl: string;
+    customer: string;
     address: string;
     purpose: string;
+    notes: string;
     date: string;
-    label: string;
+    label: string; // section heading, e.g. "Site Map"
   },
 ): Promise<string> {
-  const { logoUrl, address, purpose, date, label } = opts;
+  const { logoUrl, customer, address, purpose, notes, date, label } = opts;
   const markup = await loadImage(markupUrl);
   let logo: HTMLImageElement | null = null;
   try {
     logo = await loadImage(logoUrl);
   } catch {
-    logo = null; // brand text still renders even if the logo fails to load
+    logo = null; // the rest of the document still renders without the logo
   }
 
   const W = markup.naturalWidth;
   const mH = markup.naturalHeight;
-  const headerH = Math.round(W * 0.125);
-  const pad = Math.round(W * 0.022);
-  const rule = Math.max(3, Math.round(W * 0.003));
 
+  // Everything scales off the image width so downloads look consistent
+  // regardless of the source map/photo resolution.
+  const M = Math.round(W * 0.055); // page margin
+  const contentW = W; // the image spans the full content column
+  const canvasW = contentW + M * 2;
+  const leftX = M;
+  const rightX = canvasW - M;
+
+  const eyebrowF = Math.round(W * 0.013);
+  const addrF = Math.round(W * 0.023);
+  const badgeF = Math.round(W * 0.013);
+  const labelF = Math.round(W * 0.0135);
+  const valueF = Math.round(W * 0.018);
+  const sectionF = Math.round(W * 0.0165);
+  const footF = Math.round(W * 0.012);
+  const rule = Math.max(3, Math.round(W * 0.0035));
+  const gapS = Math.round(W * 0.006);
+
+  // A throwaway context purely for measuring text: sizing the real canvas
+  // wipes it, so we must know the final height before we create it.
+  const meas = document.createElement('canvas').getContext('2d');
+  if (!meas) return markupUrl;
+
+  // ---- Header geometry -----------------------------------------------------
+  const logoH = Math.round(W * 0.06);
+  const logoW =
+    logo && logo.naturalHeight > 0
+      ? Math.round(logoH * (logo.naturalWidth / logo.naturalHeight))
+      : 0;
+
+  const rightColMaxW = Math.round(contentW * 0.66);
+  meas.font = `800 ${addrF}px sans-serif`;
+  const addrLines = wrapText(meas, address, rightColMaxW);
+  const addrLineH = Math.round(addrF * 1.2);
+
+  const pillPadX = Math.round(badgeF * 0.95);
+  const pillPadY = Math.round(badgeF * 0.55);
+  const pillH = badgeF + pillPadY * 2;
+
+  let yTop = M;
+  const eyebrowY = yTop;
+  const addrY = eyebrowY + eyebrowF + gapS;
+  const badgeY = addrY + addrLines.length * addrLineH + gapS;
+  const rightStackBottom = badgeY + pillH;
+  const headerBottom = Math.max(yTop + logoH, rightStackBottom);
+
+  const ruleY = headerBottom + Math.round(W * 0.014);
+  let y = ruleY + rule + Math.round(W * 0.022);
+
+  // ---- Info rows (skip any that are empty) ---------------------------------
+  const infoRows = ([
+    ['Customer', customer],
+    ['Date', date],
+    ['Notes', notes],
+  ] as const).filter(([, v]) => v && v.trim());
+
+  meas.font = `700 ${labelF}px sans-serif`;
+  let labelColW = 0;
+  for (const [k] of infoRows) {
+    labelColW = Math.max(labelColW, meas.measureText(k.toUpperCase()).width);
+  }
+  labelColW = Math.round(labelColW + W * 0.028);
+  const valueX = leftX + labelColW;
+  const valueMaxW = contentW - labelColW;
+  const valueLineH = Math.round(valueF * 1.4);
+  const rowGap = Math.round(W * 0.011);
+
+  const rowLayouts: { k: string; lines: string[]; y: number }[] = [];
+  for (const [k, v] of infoRows) {
+    meas.font = `600 ${valueF}px sans-serif`;
+    const lines = wrapText(meas, v, valueMaxW);
+    rowLayouts.push({ k, lines, y });
+    y += Math.max(valueLineH, lines.length * valueLineH) + rowGap;
+  }
+  if (infoRows.length) y += Math.round(W * 0.012);
+
+  // ---- Section heading + image + footer ------------------------------------
+  const sectionY = y;
+  y += Math.round(sectionF * 1.1) + Math.round(W * 0.014);
+
+  const imgY = y;
+  y = imgY + mH;
+
+  y += Math.round(W * 0.022);
+  const footY = y;
+  y += Math.round(footF * 1.3);
+
+  const totalH = y + M;
+
+  // ---- Draw ----------------------------------------------------------------
   const canvas = document.createElement('canvas');
-  canvas.width = W;
-  canvas.height = headerH + mH;
+  canvas.width = canvasW;
+  canvas.height = totalH;
   const ctx = canvas.getContext('2d');
   if (!ctx) return markupUrl;
 
   ctx.fillStyle = '#ffffff';
-  ctx.fillRect(0, 0, W, canvas.height);
+  ctx.fillRect(0, 0, canvasW, totalH);
 
-  // Logo (left)
-  let logoRight = pad;
-  if (logo && logo.naturalHeight > 0) {
-    const lH = Math.round(headerH * 0.42);
-    const lW = Math.round(lH * (logo.naturalWidth / logo.naturalHeight));
-    ctx.drawImage(logo, pad, Math.round((headerH - lH) / 2), lW, lH);
-    logoRight = pad + lW;
+  // Logo (top-left)
+  if (logo && logoW > 0) {
+    ctx.drawImage(logo, leftX, yTop, logoW, logoH);
   }
 
-  // Text block (right-aligned)
-  const eyebrowF = Math.round(W * 0.0135);
-  const addrF = Math.round(W * 0.023);
-  const metaF = Math.round(W * 0.0135);
-  const gap = Math.round(W * 0.006);
-  const blockH = eyebrowF + gap + addrF + gap + metaF;
-  const rightX = W - pad;
-  let y = Math.round((headerH - rule - blockH) / 2);
-
+  // Right-aligned header text
   ctx.textAlign = 'right';
   ctx.textBaseline = 'top';
 
   ctx.fillStyle = '#7A6B55';
   ctx.font = `800 ${eyebrowF}px sans-serif`;
-  ctx.fillText(`SITE WORK PLAN · ${label.toUpperCase()}`, rightX, y);
-  y += eyebrowF + gap;
+  ctx.fillText('SITE WORK PLAN', rightX, eyebrowY);
 
-  // Address — shrink to fit the space between the logo and the right edge.
-  const availW = W - logoRight - pad - pad;
-  let af = addrF;
   ctx.fillStyle = '#1A0E05';
-  ctx.font = `800 ${af}px sans-serif`;
-  while (af > metaF && ctx.measureText(address).width > availW) {
-    af -= 1;
-    ctx.font = `800 ${af}px sans-serif`;
-  }
-  ctx.fillText(address, rightX, y);
-  y += addrF + gap;
+  ctx.font = `800 ${addrF}px sans-serif`;
+  addrLines.forEach((ln, i) => ctx.fillText(ln, rightX, addrY + i * addrLineH));
 
-  ctx.fillStyle = '#7A6B55';
-  ctx.font = `600 ${metaF}px sans-serif`;
-  ctx.fillText(`${purpose}  ·  ${date}`, rightX, y);
-
-  // Brand-orange rule under the header
+  // Purpose "pill" (right-aligned, brand orange)
+  ctx.font = `800 ${badgeF}px sans-serif`;
+  const pillText = purpose.toUpperCase();
+  const pillW = Math.round(ctx.measureText(pillText).width) + pillPadX * 2;
+  const pillX = rightX - pillW;
   ctx.fillStyle = '#EB4C1B';
-  ctx.fillRect(0, headerH - rule, W, rule);
+  roundRectPath(ctx, pillX, badgeY, pillW, pillH, pillH / 2);
+  ctx.fill();
+  ctx.fillStyle = '#ffffff';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(pillText, pillX + pillW / 2, badgeY + pillH / 2 + 1);
 
-  // The marked-up image below
-  ctx.drawImage(markup, 0, headerH, W, mH);
+  // Orange rule under the header
+  ctx.fillStyle = '#EB4C1B';
+  ctx.fillRect(leftX, ruleY, contentW, rule);
+
+  // Info rows
+  ctx.textAlign = 'left';
+  ctx.textBaseline = 'top';
+  for (const rowItem of rowLayouts) {
+    ctx.fillStyle = '#7A6B55';
+    ctx.font = `700 ${labelF}px sans-serif`;
+    ctx.fillText(rowItem.k.toUpperCase(), leftX, rowItem.y + Math.round(valueF * 0.15));
+    ctx.fillStyle = '#1A0E05';
+    ctx.font = `600 ${valueF}px sans-serif`;
+    rowItem.lines.forEach((ln, i) =>
+      ctx.fillText(ln, valueX, rowItem.y + i * valueLineH),
+    );
+  }
+
+  // Section heading
+  ctx.fillStyle = '#EB4C1B';
+  ctx.font = `800 ${sectionF}px sans-serif`;
+  ctx.fillText(label.toUpperCase(), leftX, sectionY);
+
+  // The marked-up image, with rounded corners + a light border
+  const imgR = Math.round(W * 0.006);
+  ctx.save();
+  roundRectPath(ctx, leftX, imgY, contentW, mH, imgR);
+  ctx.clip();
+  ctx.drawImage(markup, leftX, imgY, contentW, mH);
+  ctx.restore();
+  ctx.strokeStyle = '#E8DCC0';
+  ctx.lineWidth = Math.max(1, Math.round(W * 0.0012));
+  roundRectPath(ctx, leftX, imgY, contentW, mH, imgR);
+  ctx.stroke();
+
+  // Footer
+  ctx.fillStyle = '#9b8a73';
+  ctx.font = `600 ${footF}px sans-serif`;
+  ctx.fillText('Prepared with the Bratt Tree Sales Arborist Hub', leftX, footY);
 
   return canvas.toDataURL('image/jpeg', 0.92);
 }
@@ -378,8 +533,10 @@ export function SiteMarkupTool() {
     try {
       const branded = await brandImage(url, {
         logoUrl: logoUrl(),
+        customer,
         address,
         purpose,
+        notes,
         date: format(new Date(), 'PP'),
         label: 'Site Map',
       });
@@ -400,8 +557,10 @@ export function SiteMarkupTool() {
     try {
       const branded = await brandImage(url, {
         logoUrl: logoUrl(),
+        customer,
         address,
         purpose,
+        notes,
         date: format(new Date(), 'PP'),
         label: 'Tree / Work Location',
       });
