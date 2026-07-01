@@ -14,7 +14,7 @@
 // proxy (which keeps the Google key private).
 // ============================================================================
 
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { format } from 'date-fns';
 import { MapPicker } from './MapPicker';
 import { PhotoPicker } from './PhotoPicker';
@@ -240,7 +240,10 @@ function printDocument(html: string, filename: string) {
 function loadImage(src: string): Promise<HTMLImageElement> {
   return new Promise((resolve, reject) => {
     const img = new Image();
-    img.crossOrigin = 'anonymous';
+    // No crossOrigin: both callers pass same-origin sources (a data: URL for
+    // the marked-up image, our own /assets logo). Setting crossOrigin on a
+    // data: URL makes iOS Safari fail the load, which used to make brandImage
+    // throw and silently fall back to the unbranded image.
     img.onload = () => resolve(img);
     img.onerror = reject;
     img.src = src;
@@ -354,6 +357,15 @@ export function SiteMarkupTool() {
   }
 
   const logoUrl = () => `${window.location.origin}/assets/img/logotype-color.png`;
+
+  // Warm the browser cache for the header logo on load. On iPads the save uses
+  // the native share sheet, which must open within a few seconds of the tap; if
+  // the logo had to be fetched fresh at that moment, branding could run long
+  // enough for the share to be blocked. Pre-fetching keeps the tap instant.
+  useEffect(() => {
+    const img = new Image();
+    img.src = logoUrl();
+  }, []);
 
   async function handleDownloadMap() {
     const url = mapCanvas.current?.getDataUrl();
