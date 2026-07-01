@@ -26,13 +26,54 @@ const PURPOSES = [
   'Other',
 ] as const;
 
-function download(dataUrl: string, filename: string) {
+/** Convert a data: URL (e.g. from canvas.toDataURL) into a Blob. */
+function dataUrlToBlob(dataUrl: string): Blob {
+  const [head, body] = dataUrl.split(',');
+  const mime = /:(.*?);/.exec(head)?.[1] ?? 'image/jpeg';
+  const bin = atob(body);
+  const bytes = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+  return new Blob([bytes], { type: mime });
+}
+
+/**
+ * Save a generated image to the device.
+ *
+ * iPads / iPhones (Safari) ignore the <a download> attribute — tapping such a
+ * link just opens the image in the same tab instead of saving a file, which is
+ * why the sales team couldn't get their .jpgs. On devices that support it we
+ * hand the file to the native share sheet instead, where "Save Image" (Photos)
+ * or "Save to Files" does the actual save. Desktop / Android keep the classic
+ * download-link path.
+ */
+async function saveImage(dataUrl: string, filename: string): Promise<void> {
+  const blob = dataUrlToBlob(dataUrl);
+  const file = new File([blob], filename, { type: blob.type });
+
+  const nav = navigator as Navigator & {
+    canShare?: (data: { files: File[] }) => boolean;
+    share?: (data: { files: File[]; title?: string }) => Promise<void>;
+  };
+  if (typeof nav.share === 'function' && nav.canShare?.({ files: [file] })) {
+    try {
+      await nav.share({ files: [file], title: filename });
+      return;
+    } catch (err) {
+      // AbortError = the user tapped "Cancel" on the share sheet; that's a
+      // deliberate no-op, not something to fall back from. Any other error
+      // falls through to the download-link path below.
+      if ((err as Error)?.name === 'AbortError') return;
+    }
+  }
+
+  const objectUrl = URL.createObjectURL(blob);
   const a = document.createElement('a');
-  a.href = dataUrl;
+  a.href = objectUrl;
   a.download = filename;
   document.body.appendChild(a);
   a.click();
   a.remove();
+  setTimeout(() => URL.revokeObjectURL(objectUrl), 10_000);
 }
 
 function escapeHtml(s: string): string {
@@ -330,9 +371,9 @@ export function SiteMarkupTool() {
         date: format(new Date(), 'PP'),
         label: 'Site Map',
       });
-      download(branded, name);
+      await saveImage(branded, name);
     } catch {
-      download(url, name); // fall back to the unbranded image if compositing fails
+      await saveImage(url, name); // fall back to the unbranded image if compositing fails
     }
   }
 
@@ -352,9 +393,9 @@ export function SiteMarkupTool() {
         date: format(new Date(), 'PP'),
         label: 'Tree / Work Location',
       });
-      download(branded, name);
+      await saveImage(branded, name);
     } catch {
-      download(url, name);
+      await saveImage(url, name);
     }
   }
 
