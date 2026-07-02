@@ -1,0 +1,295 @@
+// ============================================================================
+// PHC renewals — shared parsing + scheduling-view logic
+// ============================================================================
+// Pure helpers (no database / no exceljs imports) shared by the upload action
+// and the hub pages:
+//   - parseDescription: pull tree fields out of the free-text Item Description
+//   - deriveType / stripPrefix: normalize the treatment name + type
+//   - buildProperties: join services to treatment timing, compute flags,
+//     detect duplicates, group by property, and order the call list
+// ============================================================================
+
+export const MONTHS = [
+  'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+  'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+];
+
+export const STATUS_LABELS: Record<string, string> = {
+  not_started: 'Not started',
+  called: 'Called',
+  voicemail: 'Left voicemail',
+  scheduled: 'Scheduled',
+  declined: 'Declined',
+};
+
+export const STATUS_ORDER = ['not_started', 'called', 'voicemail', 'scheduled', 'declined'];
+
+/** A parsed tree from one Item Description. */
+export type ParsedTree = {
+  count: string;
+  species: string;
+  treeLocation: string;
+  dbh: string;
+};
+
+/** Strip the "Tree Health Care: " prefix so names match the timing table. */
+export function stripPrefix(name: string): string {
+  return name.replace(/\u00a0/g, ' ').replace(/^Tree Health Care:\s*/i, '').trim();
+}
+
+/** 'injection' | 'spray' | null, inferred from a treatment name. */
+export function deriveType(name: string): 'spray' | 'injection' | null {
+  const n = name.toLowerCase();
+  if (n.includes('inject')) return 'injection';
+  if (n.includes('spray') || n.includes('drench')) return 'spray';
+  return null;
+}
+
+function matchField(desc: string, patterns: RegExp[]): string {
+  for (const line of desc.split('\n')) {
+    const t = line.trim();
+    for (const p of patterns) {
+      const m = t.match(p);
+      if (m) return m[1].trim().replace(/^["\s]+|["\s]+$/g, '');
+    }
+  }
+  return '';
+}
+
+/** Pull #trees / species / location / DBH out of the messy description text. */
+export function parseDescription(rawIn: string): ParsedTree {
+  const desc = (rawIn || '').replace(/\u00a0/g, ' ');
+  return {
+    count: matchField(desc, [/^#\s*of\s*tree\(?s?\)?\s*:?\s*(.*)$/i, /^#of\s*trees?\s*:?\s*(.*)$/i]),
+    species: matchField(desc, [/^(?:tree\s*)?species\s*:?\s*(.*)$/i]),
+    treeLocation: matchField(desc, [/^location(?:\s*of\s*tree\(?s?\)?)?\s*:?\s*(.*)$/i]),
+    dbh: matchField(desc, [/^(?:total\s*)?dbh\s*:?\s*(.*)$/i]),
+  };
+}
+
+/** First non-empty line of a description (used for type-mismatch detection). */
+export function descTitle(rawIn: string): string {
+  const desc = (rawIn || '').replace(/\u00a0/g, ' ');
+  for (const line of desc.split('\n')) {
+    if (line.trim()) return line.trim();
+  }
+  return '';
+}
+
+// ----------------------------------------------------------------------------
+// Timing + service shapes (subset of the DB rows we need here).
+// ----------------------------------------------------------------------------
+
+export type TimingInfo = {
+  name: string;
+  treatment_type: 'spray' | 'injection' | null;
+  visits: number;
+  visit_interval_days: number;
+  anytime: boolean;
+  is_first_of_season: boolean;
+  window_start_month: number | null;
+  window_end_month: number | null;
+  window2_start_month: number | null;
+  window2_end_month: number | null;
+  needs_pricing: boolean;
+  timing_note: string | null;
+};
+
+export type ServiceRow = {
+  id: string;
+  event_id: string | null;
+  customer_id: string | null;
+  customer_name: string | null;
+  location_id: string | null;
+  location_address: string | null;
+  treatment_name: string;
+  treatment_type: 'spray' | 'injection' | null;
+  num_trees: string | null;
+  species: string | null;
+  tree_location: string | null;
+  dbh: string | null;
+  desc_title: string | null;
+};
+
+export type StatusRow = {
+  location_id: string;
+  status: string;
+  note: string | null;
+  updated_at: string;
+};
+
+/** A human window label like "Anytime", "May", "May or Sep", "Apr–Jun". */
+export function windowLabel(t: TimingInfo | undefined): string {
+  if (!t) return '—';
+  if (t.anytime) return 'Anytime';
+  const fmt = (a: number | null, b: number | null) =>
+    a == null ? null : a === b || b == null ? MONTHS[a - 1] : `${MONTHS[a - 1]}–${MONTHS[b - 1]}`;
+  const w1 = fmt(t.window_start_month, t.window_end_month);
+  const w2 = fmt(t.window2_start_month, t.window2_end_month);
+  if (w1 && w2) return `${w1} or ${w2}`;
+  return w1 ?? w2 ?? 'No window set';
+}
+
+/** Lower = earlier in the season = higher call priority. */
+function timingOrder(t: TimingInfo | undefined): number {
+  if (!t) return 50;
+  if (t.is_first_of_season) return 0;
+  if (t.anytime) return 90;
+  const starts = [t.window_start_month, t.window2_start_month].filter(
+    (m): m is number => m != null,
+  );
+  return starts.length ? Math.min(...starts) : 50;
+}
+
+export type EnrichedService = ServiceRow & {
+  timing?: TimingInfo;
+  windowLabel: string;
+  visits: number;
+  isFirst: boolean;
+  flags: string[];
+  isDuplicate: boolean;
+};
+
+export type PropertyGroup = {
+  locationId: string;
+  customer: string;
+  address: string;
+  services: EnrichedService[];
+  status: string;
+  note: string;
+  hasFirst: boolean;
+  needsInfoCount: number;
+  hasMismatch: boolean;
+  hasDuplicate: boolean;
+  order: number;
+};
+
+export type ViewSummary = {
+  totalServices: number;
+  totalProperties: number;
+  bundles: number;
+  bundlesWithFirst: number;
+  needsInfo: number;
+  mismatches: number;
+  duplicates: number;
+  unpriced: number;
+  notStarted: number;
+};
+
+/** Flags for a single service given its timing. */
+function serviceFlags(s: ServiceRow, t: TimingInfo | undefined): string[] {
+  const f: string[] = [];
+  const type = t?.treatment_type ?? s.treatment_type ?? deriveType(s.treatment_name);
+  if (!(s.tree_location || '').trim()) f.push('No location');
+  if (!(s.species || '').trim()) f.push('No species');
+  if (type === 'injection' && !(s.dbh || '').trim()) f.push('No DBH (needed)');
+  const titleType = deriveType(s.desc_title || '');
+  if (type && titleType && type !== titleType) f.push('Type mismatch');
+  if (t?.needs_pricing) f.push('Not in price book');
+  return f;
+}
+
+/**
+ * Join services to timing, compute flags + duplicates, group by property, and
+ * order the list for the spring call-through (must-go-first + tightest windows
+ * bubble up). Pure — pass in the three tables' rows.
+ */
+export function buildProperties(
+  services: ServiceRow[],
+  timing: TimingInfo[],
+  statuses: StatusRow[],
+): { properties: PropertyGroup[]; summary: ViewSummary } {
+  const timingMap = new Map(timing.map((t) => [t.name.toLowerCase(), t]));
+  const statusMap = new Map(statuses.map((s) => [s.location_id, s]));
+
+  // Group raw services by property first, so we can detect duplicates within.
+  const byLoc = new Map<string, ServiceRow[]>();
+  for (const s of services) {
+    const key = s.location_id || `noloc-${s.id}`;
+    (byLoc.get(key) ?? byLoc.set(key, []).get(key)!).push(s);
+  }
+
+  const properties: PropertyGroup[] = [];
+  let needsInfo = 0, mismatches = 0, duplicates = 0, unpriced = 0;
+
+  for (const [locId, rows] of byLoc) {
+    // Duplicate detection: same treatment + identical species/location/DBH.
+    const dupIds = new Set<string>();
+    const byTreatment = new Map<string, ServiceRow[]>();
+    for (const s of rows) {
+      const k = s.treatment_name.toLowerCase();
+      (byTreatment.get(k) ?? byTreatment.set(k, []).get(k)!).push(s);
+    }
+    for (const g of byTreatment.values()) {
+      if (g.length < 2) continue;
+      const seen = new Map<string, string>();
+      for (const s of g) {
+        const sig = `${(s.species || '').toLowerCase()}|${(s.tree_location || '').toLowerCase()}|${(s.dbh || '').toLowerCase()}`;
+        if (seen.has(sig)) {
+          dupIds.add(s.id);
+          dupIds.add(seen.get(sig)!);
+        } else {
+          seen.set(sig, s.id);
+        }
+      }
+    }
+
+    const enriched: EnrichedService[] = rows.map((s) => {
+      const t = timingMap.get(s.treatment_name.toLowerCase());
+      const flags = serviceFlags(s, t);
+      const isDuplicate = dupIds.has(s.id);
+      if (flags.some((x) => x !== 'Type mismatch' && x !== 'Not in price book' ? x.startsWith('No ') : false)) needsInfo++;
+      if (flags.includes('Type mismatch')) mismatches++;
+      if (flags.includes('Not in price book')) unpriced++;
+      if (isDuplicate) duplicates++;
+      return {
+        ...s,
+        timing: t,
+        windowLabel: windowLabel(t),
+        visits: t?.visits ?? 1,
+        isFirst: !!t?.is_first_of_season,
+        flags,
+        isDuplicate,
+      };
+    });
+
+    const st = statusMap.get(locId);
+    const hasFirst = enriched.some((e) => e.isFirst);
+    properties.push({
+      locationId: locId,
+      customer: rows[0].customer_name || '(no name)',
+      address: rows[0].location_address || '',
+      services: enriched,
+      status: st?.status || 'not_started',
+      note: st?.note || '',
+      hasFirst,
+      needsInfoCount: enriched.filter((e) =>
+        e.flags.some((f) => f.startsWith('No ')),
+      ).length,
+      hasMismatch: enriched.some((e) => e.flags.includes('Type mismatch')),
+      hasDuplicate: enriched.some((e) => e.isDuplicate),
+      order: Math.min(...enriched.map((e) => timingOrder(e.timing))),
+    });
+  }
+
+  // Call-list order: earliest/must-go-first first, then bigger bundles.
+  properties.sort(
+    (a, b) => a.order - b.order || b.services.length - a.services.length ||
+      a.customer.localeCompare(b.customer),
+  );
+
+  const bundles = properties.filter((p) => p.services.length >= 2);
+  const summary: ViewSummary = {
+    totalServices: services.length,
+    totalProperties: properties.length,
+    bundles: bundles.length,
+    bundlesWithFirst: bundles.filter((p) => p.hasFirst).length,
+    needsInfo,
+    mismatches,
+    duplicates,
+    unpriced,
+    notStarted: properties.filter((p) => p.status === 'not_started').length,
+  };
+
+  return { properties, summary };
+}

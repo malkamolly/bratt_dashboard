@@ -1,7 +1,7 @@
 import Image from 'next/image';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
-import { allowedHubsFor, canSeeCostAnalysis, getAllowedUser, isOwner, type Hub } from '@/lib/auth';
+import { allowedHubsFor, canSeeCostAnalysis, canUsePhcScheduling, getAllowedUser, isOwner, type Hub } from '@/lib/auth';
 import { getCurrentEmployeeSlug } from '@/lib/crew-data';
 
 export const dynamic = 'force-dynamic';
@@ -125,6 +125,27 @@ export default async function LandingPage() {
               </p>
             </div>
           ),
+        )}
+
+        {/* PHC Scheduling — office/dispatch renewal scheduling tool. */}
+        {canUsePhcScheduling(user.role) && (
+          <Link
+            href="/phc"
+            className="bt-card group transition-colors hover:!border-orange"
+          >
+            <p className="bt-eyebrow">Plant Health Care</p>
+            <h2 className="mt-2 font-headline text-3xl font-black uppercase text-bark-deep">
+              PHC Scheduling
+            </h2>
+            <p className="mt-3 text-sm text-fg-2">
+              Turn the season&apos;s renewals export into an organized call list
+              &mdash; bundled by property, flagged for missing info, ordered by
+              treatment timing.
+            </p>
+            <p className="mt-6 font-headline text-xs font-extrabold uppercase tracking-ribbon text-orange">
+              Open &rarr;
+            </p>
+          </Link>
         )}
 
         {/* Cost Analysis — leadership review tool (admins + sales manager). */}

@@ -91,6 +91,16 @@ export function canEditCrew(role: Role): boolean {
 }
 
 /**
+ * Can this role use the PHC Scheduling Hub (upload renewals, work the call
+ * list)? This is dispatch/office work, so admin + office (user) + the sales
+ * manager. Note: adjusting treatment TIMING stays admin-only — that's the
+ * separate /admin/phc-timing screen.
+ */
+export function canUsePhcScheduling(role: Role): boolean {
+  return role === 'admin' || role === 'user' || role === 'sales_manager';
+}
+
+/**
  * Can this role see the Tree Removal Cost Analysis? Leadership review tool —
  * limited to admins and the sales manager because it surfaces pricing and
  * per-salesperson comparisons.
