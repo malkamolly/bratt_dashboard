@@ -152,6 +152,7 @@ export type EnrichedService = ServiceRow & {
 
 export type PropertyGroup = {
   locationId: string;
+  customerId: string;
   customer: string;
   address: string;
   services: EnrichedService[];
@@ -257,6 +258,7 @@ export function buildProperties(
     const hasFirst = enriched.some((e) => e.isFirst);
     properties.push({
       locationId: locId,
+      customerId: rows[0].customer_id || '',
       customer: rows[0].customer_name || '(no name)',
       address: rows[0].location_address || '',
       services: enriched,

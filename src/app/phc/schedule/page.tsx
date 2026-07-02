@@ -146,6 +146,11 @@ export default async function PhcSchedulePage({ searchParams }: { searchParams: 
                   )}
                 </div>
                 <p className="mt-1 text-xs text-fg-3">{p.address}</p>
+                <p className="mt-1 font-mono text-[11px] text-fg-3">
+                  {p.customerId && <>Customer&nbsp;ID {p.customerId}</>}
+                  {p.customerId && p.locationId && <span className="mx-1.5">·</span>}
+                  {p.locationId && <>Location&nbsp;ID {p.locationId}</>}
+                </p>
               </div>
 
               {/* Status control */}
@@ -219,6 +224,11 @@ export default async function PhcSchedulePage({ searchParams }: { searchParams: 
                         </span>
                       ))}
                     </div>
+                    {(s.flags.length > 0 || s.isDuplicate) && s.event_id && (
+                      <p className="mt-1 font-mono text-[11px] text-fg-3">
+                        Fix in ServiceTitan · Service&nbsp;ID {s.event_id}
+                      </p>
+                    )}
                   </div>
                   <span className="shrink-0 rounded-2 bg-paper-edge/60 px-2 py-1 text-xs font-bold text-bark-deep">
                     {s.windowLabel}
