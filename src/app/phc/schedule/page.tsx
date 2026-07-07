@@ -2,7 +2,7 @@ import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { getAllowedUser, canUsePhcScheduling } from '@/lib/auth';
 import { loadActiveView } from '@/lib/phc-data';
-import { STATUS_LABELS, STATUS_ORDER, type PropertyGroup } from '@/lib/phc-renewals';
+import { STATUS_LABELS, nextStatus, type PropertyGroup } from '@/lib/phc-renewals';
 import { updateStatus } from '../actions';
 
 export const dynamic = 'force-dynamic';
@@ -13,17 +13,19 @@ const PAGE_SIZE = 50;
 
 const FILTERS: { key: string; label: string; test: (p: PropertyGroup) => boolean }[] = [
   { key: 'all', label: 'All', test: () => true },
-  { key: 'not_started', label: 'Not called', test: (p) => p.status === 'not_started' },
+  { key: 'not_started', label: 'Not started', test: (p) => p.status === 'not_started' },
+  { key: 'awaiting', label: 'Awaiting reply', test: (p) => p.status === 'text_1' || p.status === 'text_2' },
+  { key: 'with_sales', label: 'With sales', test: (p) => p.status === 'with_sales' },
   { key: 'first', label: 'Must go first', test: (p) => p.hasFirst },
-  { key: 'bundles', label: 'Bundles (2+)', test: (p) => p.services.length >= 2 },
   { key: 'needs_info', label: 'Needs info', test: (p) => p.needsInfoCount > 0 },
   { key: 'issues', label: 'Mismatch / dup', test: (p) => p.hasMismatch || p.hasDuplicate },
 ];
 
 const STATUS_STYLE: Record<string, string> = {
   not_started: 'bg-paper-edge text-fg-2',
-  called: 'bg-orange/15 text-orange-press',
-  voicemail: 'bg-orange/15 text-orange-press',
+  text_1: 'bg-orange/15 text-orange-press',
+  text_2: 'bg-orange/25 text-orange-press',
+  with_sales: 'bg-bark-deep/10 text-bark-deep',
   scheduled: 'bg-green/15 text-green-dark',
   declined: 'bg-fg-3/15 text-fg-2',
 };
@@ -130,9 +132,9 @@ export default async function PhcSchedulePage({ searchParams }: { searchParams: 
                     {p.customer}
                   </h2>
                   <span
-                    className={`rounded-full px-2 py-0.5 text-[10px] font-extrabold uppercase tracking-ribbon ${STATUS_STYLE[p.status]}`}
+                    className={`rounded-full px-2 py-0.5 text-[10px] font-extrabold uppercase tracking-ribbon ${STATUS_STYLE[p.status] ?? 'bg-paper-edge text-fg-2'}`}
                   >
-                    {STATUS_LABELS[p.status]}
+                    {STATUS_LABELS[p.status] ?? p.status}
                   </span>
                   {p.hasFirst && (
                     <span className="rounded-full bg-orange/15 px-2 py-0.5 text-[10px] font-extrabold uppercase tracking-ribbon text-orange-press">
@@ -153,36 +155,65 @@ export default async function PhcSchedulePage({ searchParams }: { searchParams: 
                 </p>
               </div>
 
-              {/* Status control */}
+              {/* Status control — advance the outreach cadence in one click */}
               <form
                 action={updateStatus}
-                className="flex shrink-0 flex-col gap-2 sm:w-72"
+                className="flex shrink-0 flex-col gap-2 sm:w-80"
               >
                 <input type="hidden" name="batch_id" value={batchId} />
                 <input type="hidden" name="location_id" value={p.locationId} />
-                <div className="flex gap-2">
-                  <select
-                    name="status"
-                    defaultValue={p.status}
-                    className="flex-1 rounded-2 border-2 border-paper-edge bg-white px-2 py-1.5 font-headline text-sm focus:border-orange focus:outline-none"
-                  >
-                    {STATUS_ORDER.map((s) => (
-                      <option key={s} value={s}>
-                        {STATUS_LABELS[s]}
-                      </option>
-                    ))}
-                  </select>
-                  <button type="submit" className="bt-btn bt-btn-ghost text-xs">
-                    Save
-                  </button>
-                </div>
                 <input
                   type="text"
                   name="note"
                   defaultValue={p.note}
-                  placeholder="Note (e.g. callback Fri, wants injections only)"
+                  placeholder="Note (e.g. wants injections only, callback Fri)"
                   className="w-full rounded-2 border-2 border-paper-edge bg-white px-2 py-1.5 font-sans text-sm normal-case focus:border-orange focus:outline-none"
                 />
+                <div className="flex flex-wrap gap-1.5">
+                  {nextStatus(p.status) && (
+                    <button
+                      name="status"
+                      value={nextStatus(p.status)!}
+                      className="rounded-2 bg-bark-deep px-3 py-1.5 font-headline text-[11px] font-extrabold uppercase tracking-ribbon text-white hover:bg-bark"
+                    >
+                      &rarr; {STATUS_LABELS[nextStatus(p.status)!]}
+                    </button>
+                  )}
+                  {p.status !== 'scheduled' && (
+                    <button
+                      name="status"
+                      value="scheduled"
+                      className="rounded-2 bg-green px-3 py-1.5 font-headline text-[11px] font-extrabold uppercase tracking-ribbon text-white hover:bg-green-dark"
+                    >
+                      Scheduled &#10003;
+                    </button>
+                  )}
+                  {p.status !== 'declined' && (
+                    <button
+                      name="status"
+                      value="declined"
+                      className="rounded-2 border-2 border-paper-edge px-3 py-1 font-headline text-[11px] font-extrabold uppercase tracking-ribbon text-fg-2 hover:border-orange-press hover:text-orange-press"
+                    >
+                      Declined
+                    </button>
+                  )}
+                  {(p.status === 'scheduled' || p.status === 'declined') && (
+                    <button
+                      name="status"
+                      value="not_started"
+                      className="rounded-2 border-2 border-paper-edge px-3 py-1 font-headline text-[11px] font-extrabold uppercase tracking-ribbon text-fg-2 hover:border-orange"
+                    >
+                      Reopen
+                    </button>
+                  )}
+                  <button
+                    name="status"
+                    value={p.status}
+                    className="rounded-2 px-2 py-1 font-headline text-[11px] font-extrabold uppercase tracking-ribbon text-fg-3 hover:text-bark-deep"
+                  >
+                    Save note
+                  </button>
+                </div>
               </form>
             </div>
 

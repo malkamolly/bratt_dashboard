@@ -14,15 +14,34 @@ export const MONTHS = [
   'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
 ];
 
+// The outreach cadence: two texts, then hand to the salesperson to confirm,
+// ending in Scheduled or Declined.
 export const STATUS_LABELS: Record<string, string> = {
   not_started: 'Not started',
-  called: 'Called',
-  voicemail: 'Left voicemail',
+  text_1: '1st text sent',
+  text_2: '2nd text sent',
+  with_sales: 'With salesperson',
   scheduled: 'Scheduled',
   declined: 'Declined',
 };
 
-export const STATUS_ORDER = ['not_started', 'called', 'voicemail', 'scheduled', 'declined'];
+// All valid statuses (used for validation).
+export const STATUS_ORDER = [
+  'not_started', 'text_1', 'text_2', 'with_sales', 'scheduled', 'declined',
+];
+
+// The linear happy-path funnel. "declined" sits off the funnel as an outcome
+// that can happen at any point.
+export const STATUS_FUNNEL = [
+  'not_started', 'text_1', 'text_2', 'with_sales', 'scheduled',
+];
+
+/** The next step in the funnel, or null if there isn't one (terminal). */
+export function nextStatus(current: string): string | null {
+  const i = STATUS_FUNNEL.indexOf(current);
+  if (i < 0 || i >= STATUS_FUNNEL.length - 1) return null;
+  return STATUS_FUNNEL[i + 1];
+}
 
 /** A parsed tree from one Item Description. */
 export type ParsedTree = {

@@ -115,7 +115,7 @@ export default async function PhcHomePage({ searchParams }: { searchParams: Sear
             <Stat label="Services" value={view.summary.totalServices} />
             <Stat label="Properties" value={view.summary.totalProperties} />
             <Stat label="To bundle (2+ services)" value={view.summary.bundles} />
-            <Stat label="Not called yet" value={view.summary.notStarted} />
+            <Stat label="Not started" value={view.summary.notStarted} />
             <Stat label="Missing info" value={view.summary.needsInfo} tone="warn" />
             <Stat label="Type mismatches" value={view.summary.mismatches} tone="bad" />
             <Stat label="Possible duplicates" value={view.summary.duplicates} tone="warn" />
