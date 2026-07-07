@@ -79,8 +79,6 @@ export default async function PhcSchedulePage({ searchParams }: { searchParams: 
   const qs = (obj: Record<string, string | number>) =>
     new URLSearchParams({ filter: activeFilter.key, ...obj } as Record<string, string>).toString();
 
-  const batchId = view.batch.id;
-
   return (
     <main className="bt-page">
       <p className="bt-eyebrow">
@@ -165,7 +163,6 @@ export default async function PhcSchedulePage({ searchParams }: { searchParams: 
               {/* Status control — advance the outreach cadence in one click */}
               <div className="flex shrink-0 flex-col gap-2 sm:w-80">
               <form action={updateStatus} className="flex flex-col gap-2">
-                <input type="hidden" name="batch_id" value={batchId} />
                 <input type="hidden" name="location_id" value={p.locationId} />
                 <select
                   name="assigned_salesperson_id"

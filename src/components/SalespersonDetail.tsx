@@ -45,6 +45,9 @@ type Props = {
   /** When true, day rows are clickable to edit that single (date, person)
    *  cell. When false, day rows render as plain (non-link) list items. */
   canEdit?: boolean;
+  /** Optional extra content rendered at the bottom of the page (e.g. the PHC
+   *  renewals assigned to this arborist). */
+  footer?: React.ReactNode;
 };
 
 export async function SalespersonDetail({
@@ -55,6 +58,7 @@ export async function SalespersonDetail({
   basePath,
   arborist,
   canEdit = false,
+  footer,
 }: Props) {
   const supabase = await serverClient();
   const { start, end } = monthRange(year, month);
@@ -308,6 +312,7 @@ export async function SalespersonDetail({
           </div>
         </section>
       )}
+      {footer}
     </main>
   );
 }

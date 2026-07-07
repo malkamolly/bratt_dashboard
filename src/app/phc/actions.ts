@@ -174,29 +174,29 @@ export async function uploadRenewals(formData: FormData): Promise<void> {
 
 export async function updateStatus(formData: FormData): Promise<void> {
   const user = await requirePhc();
-  const batchId = String(formData.get('batch_id') ?? '').trim();
   const locationId = String(formData.get('location_id') ?? '').trim();
   const status = String(formData.get('status') ?? '').trim();
   const note = String(formData.get('note') ?? '').trim() || null;
   const assigned = String(formData.get('assigned_salesperson_id') ?? '').trim() || null;
-  if (!batchId || !locationId) {
+  if (!locationId) {
     redirect(`/phc/schedule?error=${encodeURIComponent('Missing property reference.')}`);
   }
   if (!STATUS_ORDER.includes(status)) {
     redirect(`/phc/schedule?error=${encodeURIComponent('Invalid status.')}`);
   }
 
+  // Keyed by location_id (the ServiceTitan property), so status + assignment
+  // persist across re-uploads.
   const supabase = await serverClient();
   const { error } = await supabase.from('phc_property_status').upsert(
     {
-      batch_id: batchId,
       location_id: locationId,
       status,
       note,
       assigned_salesperson_id: assigned,
       updated_by: user.email,
     },
-    { onConflict: 'batch_id,location_id' },
+    { onConflict: 'location_id' },
   );
   if (error) redirect(`/phc/schedule?error=${encodeURIComponent(error.message)}`);
 

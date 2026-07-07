@@ -68,8 +68,8 @@ export default async function PhcHomePage({ searchParams }: { searchParams: Sear
         <p className="mt-2 text-sm text-fg-2">
           The &ldquo;Location Recurring Service With Invoice Template Details&rdquo;
           export (.xlsx), straight from your service software &mdash; no
-          reformatting needed. A new upload replaces the current worklist (call
-          statuses reset).
+          reformatting needed. A new upload refreshes the treatment list; each
+          property&apos;s call status and arborist assignment stick to it.
         </p>
         <form
           action={uploadRenewals}

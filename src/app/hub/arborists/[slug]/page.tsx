@@ -3,6 +3,7 @@ import { notFound } from 'next/navigation';
 import { requireHubAccess, canAccessHub } from '@/lib/auth';
 import { SalespersonDetail } from '@/components/SalespersonDetail';
 import { HubSubNav } from '@/components/HubSubNav';
+import { PhcAssignedRenewals } from '@/components/PhcAssignedRenewals';
 import { getRosterMemberBySlug } from '@/lib/roster-data';
 
 export const dynamic = 'force-dynamic';
@@ -81,6 +82,9 @@ export default async function ArboristDetailPage({
         isa_number: a.isa_number ?? null,
         manager: !!a.manager,
       }}
+      footer={
+        <PhcAssignedRenewals salespersonId={a.id} salespersonName={a.name} />
+      }
     />
   );
 }

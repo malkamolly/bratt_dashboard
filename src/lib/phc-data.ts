@@ -52,10 +52,11 @@ export async function loadActiveView(): Promise<ActiveView> {
         .select(
           'name, treatment_type, visits, visit_interval_days, anytime, is_first_of_season, window_start_month, window_end_month, window2_start_month, window2_end_month, needs_pricing, timing_note',
         ),
+      // Status + assignment are keyed by property (location_id), not batch, so
+      // they persist across uploads — read them all and match by location.
       supabase
         .from('phc_property_status')
-        .select('location_id, status, note, assigned_salesperson_id, updated_at')
-        .eq('batch_id', batch.id),
+        .select('location_id, status, note, assigned_salesperson_id, updated_at'),
       supabase
         .from('salespeople')
         .select('id, name, last_initial, on_roster, is_active, display_order')
