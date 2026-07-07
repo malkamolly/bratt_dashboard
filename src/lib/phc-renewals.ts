@@ -134,8 +134,12 @@ export type StatusRow = {
   location_id: string;
   status: string;
   note: string | null;
+  assigned_salesperson_id: string | null;
   updated_at: string;
 };
+
+/** A sales arborist option (display name already composed as "First L"). */
+export type Salesperson = { id: string; name: string };
 
 /** A human window label like "Anytime", "May", "May or Sep", "Apr–Jun". */
 export function windowLabel(t: TimingInfo | undefined): string {
@@ -177,6 +181,8 @@ export type PropertyGroup = {
   services: EnrichedService[];
   status: string;
   note: string;
+  assignedSalespersonId: string;
+  assignedName: string;
   hasFirst: boolean;
   needsInfoCount: number;
   hasMismatch: boolean;
@@ -195,6 +201,36 @@ export type ViewSummary = {
   unpriced: number;
   notStarted: number;
 };
+
+/**
+ * A plain-text summary of a property's renewals, ready to paste into a text or
+ * DM to the sales arborist who's confirming it.
+ */
+export function buildHandoffText(p: PropertyGroup): string {
+  const lines: string[] = [`Renewal to confirm — ${p.customer}`];
+  if (p.address) lines.push(p.address);
+  const ids = [
+    p.customerId && `Customer ${p.customerId}`,
+    p.locationId && `Location ${p.locationId}`,
+  ]
+    .filter(Boolean)
+    .join(' · ');
+  if (ids) lines.push(`ServiceTitan: ${ids}`);
+  lines.push('', 'Treatments:');
+  for (const s of p.services) {
+    const details = [
+      s.num_trees && `${s.num_trees} tree(s)`,
+      s.species,
+      s.tree_location,
+      s.dbh && `DBH ${s.dbh}`,
+    ]
+      .filter(Boolean)
+      .join(', ');
+    lines.push(`• ${s.treatment_name} (${s.windowLabel})${details ? ` — ${details}` : ''}`);
+  }
+  if (p.note) lines.push('', `Note: ${p.note}`);
+  return lines.join('\n');
+}
 
 /** Flags for a single service given its timing. */
 function serviceFlags(s: ServiceRow, t: TimingInfo | undefined): string[] {
@@ -218,9 +254,11 @@ export function buildProperties(
   services: ServiceRow[],
   timing: TimingInfo[],
   statuses: StatusRow[],
+  salespeople: Salesperson[] = [],
 ): { properties: PropertyGroup[]; summary: ViewSummary } {
   const timingMap = new Map(timing.map((t) => [t.name.toLowerCase(), t]));
   const statusMap = new Map(statuses.map((s) => [s.location_id, s]));
+  const salesMap = new Map(salespeople.map((sp) => [sp.id, sp.name]));
 
   // Group raw services by property first, so we can detect duplicates within.
   const byLoc = new Map<string, ServiceRow[]>();
@@ -283,6 +321,8 @@ export function buildProperties(
       services: enriched,
       status: st?.status || 'not_started',
       note: st?.note || '',
+      assignedSalespersonId: st?.assigned_salesperson_id || '',
+      assignedName: (st?.assigned_salesperson_id && salesMap.get(st.assigned_salesperson_id)) || '',
       hasFirst,
       needsInfoCount: enriched.filter((e) =>
         e.flags.some((f) => f.startsWith('No ')),

@@ -178,6 +178,7 @@ export async function updateStatus(formData: FormData): Promise<void> {
   const locationId = String(formData.get('location_id') ?? '').trim();
   const status = String(formData.get('status') ?? '').trim();
   const note = String(formData.get('note') ?? '').trim() || null;
+  const assigned = String(formData.get('assigned_salesperson_id') ?? '').trim() || null;
   if (!batchId || !locationId) {
     redirect(`/phc/schedule?error=${encodeURIComponent('Missing property reference.')}`);
   }
@@ -192,6 +193,7 @@ export async function updateStatus(formData: FormData): Promise<void> {
       location_id: locationId,
       status,
       note,
+      assigned_salesperson_id: assigned,
       updated_by: user.email,
     },
     { onConflict: 'batch_id,location_id' },

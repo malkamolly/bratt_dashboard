@@ -14,6 +14,7 @@ import {
   type StatusRow,
   type PropertyGroup,
   type ViewSummary,
+  type Salesperson,
 } from '@/lib/phc-renewals';
 
 export type ActiveView =
@@ -22,6 +23,7 @@ export type ActiveView =
       batch: { id: string; label: string; uploaded_at: string; uploaded_by: string };
       properties: PropertyGroup[];
       summary: ViewSummary;
+      salespeople: Salesperson[];
     };
 
 export async function loadActiveView(): Promise<ActiveView> {
@@ -37,29 +39,46 @@ export async function loadActiveView(): Promise<ActiveView> {
 
   if (!batch) return { batch: null };
 
-  const [{ data: services }, { data: timing }, { data: statuses }] = await Promise.all([
-    supabase
-      .from('phc_renewal_services')
-      .select(
-        'id, event_id, customer_id, customer_name, location_id, location_address, treatment_name, treatment_type, num_trees, species, tree_location, dbh, desc_title',
-      )
-      .eq('batch_id', batch.id),
-    supabase
-      .from('phc_treatment_timing')
-      .select(
-        'name, treatment_type, visits, visit_interval_days, anytime, is_first_of_season, window_start_month, window_end_month, window2_start_month, window2_end_month, needs_pricing, timing_note',
-      ),
-    supabase
-      .from('phc_property_status')
-      .select('location_id, status, note, updated_at')
-      .eq('batch_id', batch.id),
-  ]);
+  const [{ data: services }, { data: timing }, { data: statuses }, { data: roster }] =
+    await Promise.all([
+      supabase
+        .from('phc_renewal_services')
+        .select(
+          'id, event_id, customer_id, customer_name, location_id, location_address, treatment_name, treatment_type, num_trees, species, tree_location, dbh, desc_title',
+        )
+        .eq('batch_id', batch.id),
+      supabase
+        .from('phc_treatment_timing')
+        .select(
+          'name, treatment_type, visits, visit_interval_days, anytime, is_first_of_season, window_start_month, window_end_month, window2_start_month, window2_end_month, needs_pricing, timing_note',
+        ),
+      supabase
+        .from('phc_property_status')
+        .select('location_id, status, note, assigned_salesperson_id, updated_at')
+        .eq('batch_id', batch.id),
+      supabase
+        .from('salespeople')
+        .select('id, name, last_initial, on_roster, is_active, display_order')
+        .eq('on_roster', true)
+        .eq('is_active', true)
+        .order('display_order', { ascending: true })
+        .order('name', { ascending: true }),
+    ]);
+
+  // Compose display names as "First L" per the naming convention.
+  const salespeople: Salesperson[] = (roster ?? []).map(
+    (r: { id: string; name: string; last_initial: string | null }) => ({
+      id: r.id,
+      name: r.last_initial ? `${r.name} ${r.last_initial}` : r.name,
+    }),
+  );
 
   const { properties, summary } = buildProperties(
     (services ?? []) as ServiceRow[],
     (timing ?? []) as TimingInfo[],
     (statuses ?? []) as StatusRow[],
+    salespeople,
   );
 
-  return { batch, properties, summary };
+  return { batch, properties, summary, salespeople };
 }

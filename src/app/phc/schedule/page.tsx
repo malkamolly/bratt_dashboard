@@ -2,7 +2,8 @@ import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { getAllowedUser, canUsePhcScheduling } from '@/lib/auth';
 import { loadActiveView } from '@/lib/phc-data';
-import { STATUS_LABELS, nextStatus, type PropertyGroup } from '@/lib/phc-renewals';
+import { STATUS_LABELS, nextStatus, buildHandoffText, type PropertyGroup } from '@/lib/phc-renewals';
+import { CopyButton } from '@/components/CopyButton';
 import { updateStatus } from '../actions';
 
 export const dynamic = 'force-dynamic';
@@ -14,7 +15,8 @@ const PAGE_SIZE = 50;
 const FILTERS: { key: string; label: string; test: (p: PropertyGroup) => boolean }[] = [
   { key: 'all', label: 'All', test: () => true },
   { key: 'not_started', label: 'Not started', test: (p) => p.status === 'not_started' },
-  { key: 'awaiting', label: 'Awaiting reply', test: (p) => p.status === 'text_1' || p.status === 'text_2' },
+  { key: 'text_1', label: '1st sent — needs 2nd', test: (p) => p.status === 'text_1' },
+  { key: 'text_2', label: '2nd sent — pass to sales', test: (p) => p.status === 'text_2' },
   { key: 'with_sales', label: 'With sales', test: (p) => p.status === 'with_sales' },
   { key: 'first', label: 'Must go first', test: (p) => p.hasFirst },
   { key: 'needs_info', label: 'Needs info', test: (p) => p.needsInfoCount > 0 },
@@ -146,6 +148,11 @@ export default async function PhcSchedulePage({ searchParams }: { searchParams: 
                       Bundle · {p.services.length}
                     </span>
                   )}
+                  {p.assignedName && (
+                    <span className="rounded-full bg-green/15 px-2 py-0.5 text-[10px] font-extrabold uppercase tracking-ribbon text-green-dark">
+                      &rarr; {p.assignedName}
+                    </span>
+                  )}
                 </div>
                 <p className="mt-1 text-xs text-fg-3">{p.address}</p>
                 <p className="mt-1 font-mono text-[11px] text-fg-3">
@@ -156,12 +163,22 @@ export default async function PhcSchedulePage({ searchParams }: { searchParams: 
               </div>
 
               {/* Status control — advance the outreach cadence in one click */}
-              <form
-                action={updateStatus}
-                className="flex shrink-0 flex-col gap-2 sm:w-80"
-              >
+              <div className="flex shrink-0 flex-col gap-2 sm:w-80">
+              <form action={updateStatus} className="flex flex-col gap-2">
                 <input type="hidden" name="batch_id" value={batchId} />
                 <input type="hidden" name="location_id" value={p.locationId} />
+                <select
+                  name="assigned_salesperson_id"
+                  defaultValue={p.assignedSalespersonId}
+                  className="w-full rounded-2 border-2 border-paper-edge bg-white px-2 py-1.5 font-headline text-sm focus:border-orange focus:outline-none"
+                >
+                  <option value="">Assign sales arborist…</option>
+                  {view.salespeople.map((sp) => (
+                    <option key={sp.id} value={sp.id}>
+                      {sp.name}
+                    </option>
+                  ))}
+                </select>
                 <input
                   type="text"
                   name="note"
@@ -215,6 +232,12 @@ export default async function PhcSchedulePage({ searchParams }: { searchParams: 
                   </button>
                 </div>
               </form>
+              <CopyButton
+                text={buildHandoffText(p)}
+                label="Copy details for sales"
+                className="self-start"
+              />
+              </div>
             </div>
 
             {/* Services */}
