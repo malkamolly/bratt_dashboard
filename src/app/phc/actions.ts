@@ -172,10 +172,11 @@ export async function uploadRenewals(formData: FormData): Promise<void> {
   redirect(`/phc?saved=${encodeURIComponent(`Loaded ${rows.length} services.`)}`);
 }
 
-export async function updateStatus(formData: FormData): Promise<void> {
+// `status` is bound per-button in the page (updateStatus.bind(null, status)),
+// so its value can't be lost in form serialization.
+export async function updateStatus(status: string, formData: FormData): Promise<void> {
   const user = await requirePhc();
   const locationId = String(formData.get('location_id') ?? '').trim();
-  const status = String(formData.get('status') ?? '').trim();
   const note = String(formData.get('note') ?? '').trim() || null;
   const assigned = String(formData.get('assigned_salesperson_id') ?? '').trim() || null;
   if (!locationId) {
@@ -185,20 +186,29 @@ export async function updateStatus(formData: FormData): Promise<void> {
     redirect(`/phc/schedule?error=${encodeURIComponent('Invalid status.')}`);
   }
 
-  // Keyed by location_id (the ServiceTitan property), so status + assignment
-  // persist across re-uploads.
+  // Status + assignment are keyed by location_id (the stable ServiceTitan
+  // property) so they persist across re-uploads. Update-then-insert rather than
+  // an ON CONFLICT upsert, so this works regardless of the unique-constraint
+  // name in the database.
   const supabase = await serverClient();
-  const { error } = await supabase.from('phc_property_status').upsert(
-    {
-      location_id: locationId,
-      status,
-      note,
-      assigned_salesperson_id: assigned,
-      updated_by: user.email,
-    },
-    { onConflict: 'location_id' },
-  );
-  if (error) redirect(`/phc/schedule?error=${encodeURIComponent(error.message)}`);
+  const payload = {
+    status,
+    note,
+    assigned_salesperson_id: assigned,
+    updated_by: user.email,
+  };
+  const { data: updated, error: updErr } = await supabase
+    .from('phc_property_status')
+    .update(payload)
+    .eq('location_id', locationId)
+    .select('id');
+  if (updErr) redirect(`/phc/schedule?error=${encodeURIComponent(updErr.message)}`);
+  if (!updated || updated.length === 0) {
+    const { error: insErr } = await supabase
+      .from('phc_property_status')
+      .insert({ location_id: locationId, ...payload });
+    if (insErr) redirect(`/phc/schedule?error=${encodeURIComponent(insErr.message)}`);
+  }
 
   revalidatePath('/phc/schedule');
   redirect('/phc/schedule?saved=1');

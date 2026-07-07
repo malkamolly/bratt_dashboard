@@ -96,6 +96,17 @@ export default async function PhcSchedulePage({ searchParams }: { searchParams: 
         first. Work down the list, set each property&apos;s status, and jot a note.
       </p>
 
+      {sp.saved && (
+        <div className="mt-4 rounded-2 border-2 border-green bg-green/10 px-4 py-2 text-sm font-bold text-green-dark">
+          Saved.
+        </div>
+      )}
+      {sp.error && (
+        <div className="mt-4 rounded-2 border-2 border-orange-press bg-orange/10 px-4 py-2 text-sm font-bold text-orange-press">
+          Couldn&apos;t save: {decodeURIComponent(sp.error)}
+        </div>
+      )}
+
       {/* Filters */}
       <div className="mt-5 flex flex-wrap gap-2">
         {FILTERS.map((f) => {
@@ -162,7 +173,7 @@ export default async function PhcSchedulePage({ searchParams }: { searchParams: 
 
               {/* Status control — advance the outreach cadence in one click */}
               <div className="flex shrink-0 flex-col gap-2 sm:w-80">
-              <form action={updateStatus} className="flex flex-col gap-2">
+              <form action={updateStatus.bind(null, p.status)} className="flex flex-col gap-2">
                 <input type="hidden" name="location_id" value={p.locationId} />
                 <select
                   name="assigned_salesperson_id"
@@ -186,8 +197,7 @@ export default async function PhcSchedulePage({ searchParams }: { searchParams: 
                 <div className="flex flex-wrap gap-1.5">
                   {nextStatus(p.status) && (
                     <button
-                      name="status"
-                      value={nextStatus(p.status)!}
+                      formAction={updateStatus.bind(null, nextStatus(p.status)!)}
                       className="rounded-2 bg-bark-deep px-3 py-1.5 font-headline text-[11px] font-extrabold uppercase tracking-ribbon text-white hover:bg-bark"
                     >
                       &rarr; {STATUS_LABELS[nextStatus(p.status)!]}
@@ -195,8 +205,7 @@ export default async function PhcSchedulePage({ searchParams }: { searchParams: 
                   )}
                   {p.status !== 'scheduled' && (
                     <button
-                      name="status"
-                      value="scheduled"
+                      formAction={updateStatus.bind(null, 'scheduled')}
                       className="rounded-2 bg-green px-3 py-1.5 font-headline text-[11px] font-extrabold uppercase tracking-ribbon text-white hover:bg-green-dark"
                     >
                       Scheduled &#10003;
@@ -204,8 +213,7 @@ export default async function PhcSchedulePage({ searchParams }: { searchParams: 
                   )}
                   {p.status !== 'declined' && (
                     <button
-                      name="status"
-                      value="declined"
+                      formAction={updateStatus.bind(null, 'declined')}
                       className="rounded-2 border-2 border-paper-edge px-3 py-1 font-headline text-[11px] font-extrabold uppercase tracking-ribbon text-fg-2 hover:border-orange-press hover:text-orange-press"
                     >
                       Declined
@@ -213,19 +221,14 @@ export default async function PhcSchedulePage({ searchParams }: { searchParams: 
                   )}
                   {(p.status === 'scheduled' || p.status === 'declined') && (
                     <button
-                      name="status"
-                      value="not_started"
+                      formAction={updateStatus.bind(null, 'not_started')}
                       className="rounded-2 border-2 border-paper-edge px-3 py-1 font-headline text-[11px] font-extrabold uppercase tracking-ribbon text-fg-2 hover:border-orange"
                     >
                       Reopen
                     </button>
                   )}
-                  <button
-                    name="status"
-                    value={p.status}
-                    className="rounded-2 px-2 py-1 font-headline text-[11px] font-extrabold uppercase tracking-ribbon text-fg-3 hover:text-bark-deep"
-                  >
-                    Save note
+                  <button className="rounded-2 px-2 py-1 font-headline text-[11px] font-extrabold uppercase tracking-ribbon text-fg-3 hover:text-bark-deep">
+                    Save
                   </button>
                 </div>
               </form>
