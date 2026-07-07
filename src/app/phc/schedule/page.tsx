@@ -171,34 +171,38 @@ export default async function PhcSchedulePage({ searchParams }: { searchParams: 
                 </p>
               </div>
 
-              {/* Status control — advance the outreach cadence in one click */}
-              <div className="flex shrink-0 flex-col gap-2 sm:w-80">
-              <form action={updateStatus.bind(null, p.status)} className="flex flex-col gap-2">
+              {/* Status control — compact */}
+              <form
+                action={updateStatus.bind(null, p.status)}
+                className="flex shrink-0 flex-col gap-1.5 sm:w-72"
+              >
                 <input type="hidden" name="location_id" value={p.locationId} />
-                <select
-                  name="assigned_salesperson_id"
-                  defaultValue={p.assignedSalespersonId}
-                  className="w-full rounded-2 border-2 border-paper-edge bg-white px-2 py-1.5 font-headline text-sm focus:border-orange focus:outline-none"
-                >
-                  <option value="">Assign sales arborist…</option>
-                  {view.salespeople.map((sp) => (
-                    <option key={sp.id} value={sp.id}>
-                      {sp.name}
-                    </option>
-                  ))}
-                </select>
-                <input
-                  type="text"
-                  name="note"
-                  defaultValue={p.note}
-                  placeholder="Note (e.g. wants injections only, callback Fri)"
-                  className="w-full rounded-2 border-2 border-paper-edge bg-white px-2 py-1.5 font-sans text-sm normal-case focus:border-orange focus:outline-none"
-                />
-                <div className="flex flex-wrap gap-1.5">
+                <div className="flex gap-1.5">
+                  <select
+                    name="assigned_salesperson_id"
+                    defaultValue={p.assignedSalespersonId}
+                    className="min-w-0 flex-1 rounded-2 border-2 border-paper-edge bg-white px-2 py-1 font-headline text-xs focus:border-orange focus:outline-none"
+                  >
+                    <option value="">Assign arborist…</option>
+                    {view.salespeople.map((sp) => (
+                      <option key={sp.id} value={sp.id}>
+                        {sp.name}
+                      </option>
+                    ))}
+                  </select>
+                  <input
+                    type="text"
+                    name="note"
+                    defaultValue={p.note}
+                    placeholder="Note…"
+                    className="min-w-0 flex-1 rounded-2 border-2 border-paper-edge bg-white px-2 py-1 font-sans text-xs normal-case focus:border-orange focus:outline-none"
+                  />
+                </div>
+                <div className="flex flex-wrap gap-1">
                   {nextStatus(p.status) && (
                     <button
                       formAction={updateStatus.bind(null, nextStatus(p.status)!)}
-                      className="rounded-2 bg-bark-deep px-3 py-1.5 font-headline text-[11px] font-extrabold uppercase tracking-ribbon text-white hover:bg-bark"
+                      className="rounded-2 bg-bark-deep px-2 py-1 font-headline text-[10px] font-extrabold uppercase tracking-ribbon text-white hover:bg-bark"
                     >
                       &rarr; {STATUS_LABELS[nextStatus(p.status)!]}
                     </button>
@@ -206,15 +210,15 @@ export default async function PhcSchedulePage({ searchParams }: { searchParams: 
                   {p.status !== 'scheduled' && (
                     <button
                       formAction={updateStatus.bind(null, 'scheduled')}
-                      className="rounded-2 bg-green px-3 py-1.5 font-headline text-[11px] font-extrabold uppercase tracking-ribbon text-white hover:bg-green-dark"
+                      className="rounded-2 bg-green px-2 py-1 font-headline text-[10px] font-extrabold uppercase tracking-ribbon text-white hover:bg-green-dark"
                     >
-                      Scheduled &#10003;
+                      Sched &#10003;
                     </button>
                   )}
                   {p.status !== 'declined' && (
                     <button
                       formAction={updateStatus.bind(null, 'declined')}
-                      className="rounded-2 border-2 border-paper-edge px-3 py-1 font-headline text-[11px] font-extrabold uppercase tracking-ribbon text-fg-2 hover:border-orange-press hover:text-orange-press"
+                      className="rounded-2 border-2 border-paper-edge px-2 py-1 font-headline text-[10px] font-extrabold uppercase tracking-ribbon text-fg-2 hover:border-orange-press hover:text-orange-press"
                     >
                       Declined
                     </button>
@@ -222,22 +226,17 @@ export default async function PhcSchedulePage({ searchParams }: { searchParams: 
                   {(p.status === 'scheduled' || p.status === 'declined') && (
                     <button
                       formAction={updateStatus.bind(null, 'not_started')}
-                      className="rounded-2 border-2 border-paper-edge px-3 py-1 font-headline text-[11px] font-extrabold uppercase tracking-ribbon text-fg-2 hover:border-orange"
+                      className="rounded-2 border-2 border-paper-edge px-2 py-1 font-headline text-[10px] font-extrabold uppercase tracking-ribbon text-fg-2 hover:border-orange"
                     >
                       Reopen
                     </button>
                   )}
-                  <button className="rounded-2 px-2 py-1 font-headline text-[11px] font-extrabold uppercase tracking-ribbon text-fg-3 hover:text-bark-deep">
+                  <button className="rounded-2 px-2 py-1 font-headline text-[10px] font-extrabold uppercase tracking-ribbon text-fg-3 hover:text-bark-deep">
                     Save
                   </button>
+                  <CopyButton text={buildHandoffText(p)} label="Copy" />
                 </div>
               </form>
-              <CopyButton
-                text={buildHandoffText(p)}
-                label="Copy details for sales"
-                className="self-start"
-              />
-              </div>
             </div>
 
             {/* Services */}
