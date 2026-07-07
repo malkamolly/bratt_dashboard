@@ -44,7 +44,7 @@ export async function loadActiveView(): Promise<ActiveView> {
       supabase
         .from('phc_renewal_services')
         .select(
-          'id, event_id, customer_id, customer_name, location_id, location_address, treatment_name, treatment_type, num_trees, species, tree_location, dbh, desc_title',
+          'id, event_id, customer_id, customer_name, location_id, location_address, customer_phone, location_phone, treatment_name, treatment_type, num_trees, species, tree_location, dbh, desc_title',
         )
         .eq('batch_id', batch.id),
       supabase

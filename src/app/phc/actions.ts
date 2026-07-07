@@ -88,6 +88,15 @@ export async function uploadRenewals(formData: FormData): Promise<void> {
     return v == null ? '' : String(v).trim();
   };
 
+  // Optional columns (phones) — accept a couple of header spellings.
+  const cellAny = (row: unknown[], names: string[]): string => {
+    for (const n of names) {
+      const v = cell(row, n);
+      if (v) return v;
+    }
+    return '';
+  };
+
   type Insert = {
     event_id: string;
     customer_id: string;
@@ -95,6 +104,8 @@ export async function uploadRenewals(formData: FormData): Promise<void> {
     location_id: string;
     location_name: string;
     location_address: string;
+    customer_phone: string;
+    location_phone: string;
     treatment_name: string;
     treatment_type: string | null;
     num_trees: string;
@@ -120,6 +131,8 @@ export async function uploadRenewals(formData: FormData): Promise<void> {
       location_id: cell(row, 'Location ID'),
       location_name: cell(row, 'Location Name'),
       location_address: cell(row, 'Location Address'),
+      customer_phone: cellAny(row, ['Customer Phone', 'Customer Phone Number']),
+      location_phone: cellAny(row, ['Location Phone', 'Location Phone Number']),
       treatment_name: name,
       treatment_type: deriveType(name),
       num_trees: p.count,

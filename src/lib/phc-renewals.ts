@@ -22,7 +22,8 @@ export const STATUS_LABELS: Record<string, string> = {
   text_2: '2nd text sent',
   with_sales: 'With salesperson',
   scheduled: 'Scheduled',
-  declined: 'Declined',
+  // Kept the internal key 'declined' but shown as "Dismissed" to match ServiceTitan.
+  declined: 'Dismissed',
 };
 
 // All valid statuses (used for validation).
@@ -128,6 +129,8 @@ export type ServiceRow = {
   customer_name: string | null;
   location_id: string | null;
   location_address: string | null;
+  customer_phone: string | null;
+  location_phone: string | null;
   treatment_name: string;
   treatment_type: 'spray' | 'injection' | null;
   num_trees: string | null;
@@ -185,6 +188,8 @@ export type PropertyGroup = {
   customerId: string;
   customer: string;
   address: string;
+  customerPhone: string;
+  locationPhone: string;
   services: EnrichedService[];
   status: string;
   note: string;
@@ -223,6 +228,13 @@ export function buildHandoffText(p: PropertyGroup): string {
     .filter(Boolean)
     .join(' · ');
   if (ids) lines.push(`ServiceTitan: ${ids}`);
+  const phones = [
+    p.customerPhone && `Customer ${p.customerPhone}`,
+    p.locationPhone && `Location ${p.locationPhone}`,
+  ]
+    .filter(Boolean)
+    .join(' · ');
+  if (phones) lines.push(`Phone: ${phones}`);
   lines.push('', 'Treatments:');
   for (const s of p.services) {
     const details = [
@@ -325,6 +337,8 @@ export function buildProperties(
       customerId: rows[0].customer_id || '',
       customer: rows[0].customer_name || '(no name)',
       address: rows[0].location_address || '',
+      customerPhone: rows[0].customer_phone || '',
+      locationPhone: rows[0].location_phone || '',
       services: enriched,
       status: st?.status || 'not_started',
       note: st?.note || '',

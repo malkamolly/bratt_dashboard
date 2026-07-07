@@ -38,9 +38,14 @@ export default async function PhcHomePage({ searchParams }: { searchParams: Sear
         <span className="mx-2 text-fg-3">/</span>
         PHC Scheduling
       </p>
-      <h1 className="mt-2 font-display text-5xl uppercase tracking-wider text-ink sm:text-6xl">
-        PHC Scheduling
-      </h1>
+      <div className="mt-2 flex flex-wrap items-center justify-between gap-3">
+        <h1 className="font-display text-5xl uppercase tracking-wider text-ink sm:text-6xl">
+          PHC Scheduling
+        </h1>
+        <Link href="/hub/arborists" className="bt-btn bt-btn-ghost text-sm">
+          Team Roster &rarr;
+        </Link>
+      </div>
       <p className="mt-4 max-w-2xl text-fg-2">
         Upload the season&apos;s renewals export and the hub organizes it into a
         call list &mdash; grouping treatments by property, flagging services

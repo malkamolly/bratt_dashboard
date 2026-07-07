@@ -2,7 +2,7 @@ import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { getAllowedUser, canUsePhcScheduling } from '@/lib/auth';
 import { loadActiveView } from '@/lib/phc-data';
-import { STATUS_LABELS, nextStatus, prevStatus, buildHandoffText, type PropertyGroup } from '@/lib/phc-renewals';
+import { STATUS_LABELS, nextStatus, buildHandoffText, type PropertyGroup } from '@/lib/phc-renewals';
 import { CopyButton } from '@/components/CopyButton';
 import { updateStatus } from '../actions';
 
@@ -101,9 +101,14 @@ export default async function PhcSchedulePage({ searchParams }: { searchParams: 
         <span className="mx-2 text-fg-3">/</span>
         Call List
       </p>
-      <h1 className="mt-2 font-display text-4xl uppercase tracking-wider text-ink">
-        Call List
-      </h1>
+      <div className="mt-2 flex flex-wrap items-center justify-between gap-3">
+        <h1 className="font-display text-4xl uppercase tracking-wider text-ink">
+          Call List
+        </h1>
+        <Link href="/hub/arborists" className="bt-btn bt-btn-ghost text-sm">
+          Team Roster &rarr;
+        </Link>
+      </div>
       <p className="mt-2 text-sm text-fg-2">
         Ordered so the tightest windows and &ldquo;must go first&rdquo; jobs come
         first. Work down the list, set each property&apos;s status, and jot a note.
@@ -197,6 +202,16 @@ export default async function PhcSchedulePage({ searchParams }: { searchParams: 
                   )}
                 </div>
                 <p className="mt-1 text-xs text-fg-3">{p.address}</p>
+                {(p.locationPhone || p.customerPhone) && (
+                  <p className="mt-1 text-xs font-bold text-bark-deep">
+                    ☎{' '}
+                    {p.locationPhone && <>{p.locationPhone}</>}
+                    {p.locationPhone && p.customerPhone && p.customerPhone !== p.locationPhone && (
+                      <span className="font-normal text-fg-3"> · cust {p.customerPhone}</span>
+                    )}
+                    {!p.locationPhone && p.customerPhone && <>{p.customerPhone}</>}
+                  </p>
+                )}
                 <p className="mt-1 font-mono text-[11px] text-fg-3">
                   {p.customerId && <>Customer&nbsp;ID {p.customerId}</>}
                   {p.customerId && p.locationId && <span className="mx-1.5">·</span>}
@@ -232,15 +247,6 @@ export default async function PhcSchedulePage({ searchParams }: { searchParams: 
                   />
                 </div>
                 <div className="flex flex-wrap gap-1">
-                  {prevStatus(p.status) && p.status !== 'scheduled' && p.status !== 'declined' && (
-                    <button
-                      formAction={updateStatus.bind(null, prevStatus(p.status)!)}
-                      title={`Back to ${STATUS_LABELS[prevStatus(p.status)!]}`}
-                      className="rounded-2 border-2 border-paper-edge px-2 py-1 font-headline text-[10px] font-extrabold uppercase tracking-ribbon text-fg-2 hover:border-orange"
-                    >
-                      &larr; Back
-                    </button>
-                  )}
                   {nextStatus(p.status) && (
                     <button
                       formAction={updateStatus.bind(null, nextStatus(p.status)!)}
@@ -262,15 +268,16 @@ export default async function PhcSchedulePage({ searchParams }: { searchParams: 
                       formAction={updateStatus.bind(null, 'declined')}
                       className="rounded-2 border-2 border-paper-edge px-2 py-1 font-headline text-[10px] font-extrabold uppercase tracking-ribbon text-fg-2 hover:border-orange-press hover:text-orange-press"
                     >
-                      Declined
+                      Dismissed
                     </button>
                   )}
-                  {(p.status === 'scheduled' || p.status === 'declined') && (
+                  {p.status !== 'not_started' && (
                     <button
                       formAction={updateStatus.bind(null, 'not_started')}
+                      title="Clear all outreach progress back to Not started"
                       className="rounded-2 border-2 border-paper-edge px-2 py-1 font-headline text-[10px] font-extrabold uppercase tracking-ribbon text-fg-2 hover:border-orange"
                     >
-                      Reopen
+                      &#8635; Reset
                     </button>
                   )}
                   <button className="rounded-2 px-2 py-1 font-headline text-[10px] font-extrabold uppercase tracking-ribbon text-fg-3 hover:text-bark-deep">
