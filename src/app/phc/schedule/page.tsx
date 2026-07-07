@@ -12,16 +12,28 @@ type Search = Promise<{ filter?: string; page?: string; saved?: string; error?: 
 
 const PAGE_SIZE = 50;
 
-const FILTERS: { key: string; label: string; test: (p: PropertyGroup) => boolean }[] = [
+type Filter = { key: string; label: string; test: (p: PropertyGroup) => boolean };
+
+// Left column: what kind of work / data issues.
+const VIEW_FILTERS: Filter[] = [
   { key: 'all', label: 'All', test: () => true },
-  { key: 'not_started', label: 'Not started', test: (p) => p.status === 'not_started' },
-  { key: 'text_1', label: '1st sent — needs 2nd', test: (p) => p.status === 'text_1' },
-  { key: 'text_2', label: '2nd sent — pass to sales', test: (p) => p.status === 'text_2' },
-  { key: 'with_sales', label: 'With sales', test: (p) => p.status === 'with_sales' },
   { key: 'first', label: 'Must go first', test: (p) => p.hasFirst },
   { key: 'needs_info', label: 'Needs info', test: (p) => p.needsInfoCount > 0 },
   { key: 'issues', label: 'Mismatch / dup', test: (p) => p.hasMismatch || p.hasDuplicate },
 ];
+
+// Right column: where each property is in the outreach + sales hand-off.
+const OUTREACH_FILTERS: Filter[] = [
+  { key: 'not_started', label: 'Not started', test: (p) => p.status === 'not_started' },
+  { key: 'text_1', label: '1st sent — needs 2nd', test: (p) => p.status === 'text_1' },
+  { key: 'text_2', label: '2nd sent — pass to sales', test: (p) => p.status === 'text_2' },
+  { key: 'with_sales', label: 'With sales', test: (p) => p.status === 'with_sales' },
+  // No current arborist — either never assigned, or assigned to someone who's
+  // no longer on the active roster (left the company).
+  { key: 'unassigned', label: 'Unassigned', test: (p) => !p.assignedName },
+];
+
+const ALL_FILTERS: Filter[] = [...VIEW_FILTERS, ...OUTREACH_FILTERS];
 
 const STATUS_STYLE: Record<string, string> = {
   not_started: 'bg-paper-edge text-fg-2',
@@ -69,8 +81,9 @@ export default async function PhcSchedulePage({ searchParams }: { searchParams: 
     );
   }
 
-  const activeFilter = FILTERS.find((f) => f.key === sp.filter) ?? FILTERS[0];
+  const activeFilter = ALL_FILTERS.find((f) => f.key === sp.filter) ?? VIEW_FILTERS[0];
   const filtered = view.properties.filter(activeFilter.test);
+  const filteredCopyText = filtered.map(buildHandoffText).join('\n\n————————————\n\n');
 
   const page = Math.max(1, Number(sp.page) || 1);
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
@@ -107,31 +120,51 @@ export default async function PhcSchedulePage({ searchParams }: { searchParams: 
         </div>
       )}
 
-      {/* Filters */}
-      <div className="mt-5 flex flex-wrap gap-2">
-        {FILTERS.map((f) => {
-          const count = view.properties.filter(f.test).length;
-          const active = f.key === activeFilter.key;
-          return (
-            <Link
-              key={f.key}
-              href={`/phc/schedule?filter=${f.key}&page=1`}
-              className={`rounded-full px-3 py-1 font-headline text-xs font-extrabold uppercase tracking-ribbon transition-colors ${
-                active
-                  ? 'bg-bark-deep text-white'
-                  : 'bg-paper-edge text-fg-2 hover:bg-paper-edge/70'
-              }`}
-            >
-              {f.label} ({count})
-            </Link>
-          );
-        })}
+      {/* Filters — two columns: "view" on the left, outreach/sales on the right */}
+      <div className="mt-5 grid grid-cols-1 gap-4 sm:grid-cols-2">
+        {[
+          { title: 'View', filters: VIEW_FILTERS },
+          { title: 'Outreach & sales', filters: OUTREACH_FILTERS },
+        ].map((group) => (
+          <div key={group.title}>
+            <p className="mb-1.5 font-headline text-[10px] font-extrabold uppercase tracking-ribbon text-fg-3">
+              {group.title}
+            </p>
+            <div className="flex flex-wrap gap-2">
+              {group.filters.map((f) => {
+                const count = view.properties.filter(f.test).length;
+                const active = f.key === activeFilter.key;
+                return (
+                  <Link
+                    key={f.key}
+                    href={`/phc/schedule?filter=${f.key}&page=1`}
+                    className={`rounded-full px-3 py-1 font-headline text-xs font-extrabold uppercase tracking-ribbon transition-colors ${
+                      active
+                        ? 'bg-bark-deep text-white'
+                        : 'bg-paper-edge text-fg-2 hover:bg-paper-edge/70'
+                    }`}
+                  >
+                    {f.label} ({count})
+                  </Link>
+                );
+              })}
+            </div>
+          </div>
+        ))}
       </div>
 
-      <p className="mt-4 text-sm text-fg-3">
-        Showing {slice.length} of {filtered.length} properties
-        {totalPages > 1 && ` · page ${clamped} of ${totalPages}`}
-      </p>
+      <div className="mt-4 flex flex-wrap items-center justify-between gap-2">
+        <p className="text-sm text-fg-3">
+          Showing {slice.length} of {filtered.length} properties
+          {totalPages > 1 && ` · page ${clamped} of ${totalPages}`}
+        </p>
+        {filtered.length > 0 && (
+          <CopyButton
+            text={filteredCopyText}
+            label={`Copy all ${filtered.length} (${activeFilter.label})`}
+          />
+        )}
+      </div>
 
       <div className="mt-4 space-y-4">
         {slice.map((p) => (
@@ -183,7 +216,7 @@ export default async function PhcSchedulePage({ searchParams }: { searchParams: 
                     defaultValue={p.assignedSalespersonId}
                     className="min-w-0 flex-1 rounded-2 border-2 border-paper-edge bg-white px-2 py-1 font-headline text-xs focus:border-orange focus:outline-none"
                   >
-                    <option value="">Assign arborist…</option>
+                    <option value="">— Unassigned —</option>
                     {view.salespeople.map((sp) => (
                       <option key={sp.id} value={sp.id}>
                         {sp.name}
