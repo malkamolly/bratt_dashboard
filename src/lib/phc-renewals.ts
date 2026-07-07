@@ -43,6 +43,13 @@ export function nextStatus(current: string): string | null {
   return STATUS_FUNNEL[i + 1];
 }
 
+/** The previous step in the funnel, or null if at the start / off-funnel. */
+export function prevStatus(current: string): string | null {
+  const i = STATUS_FUNNEL.indexOf(current);
+  if (i <= 0) return null;
+  return STATUS_FUNNEL[i - 1];
+}
+
 /** A parsed tree from one Item Description. */
 export type ParsedTree = {
   count: string;

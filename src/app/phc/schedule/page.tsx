@@ -2,7 +2,7 @@ import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { getAllowedUser, canUsePhcScheduling } from '@/lib/auth';
 import { loadActiveView } from '@/lib/phc-data';
-import { STATUS_LABELS, nextStatus, buildHandoffText, type PropertyGroup } from '@/lib/phc-renewals';
+import { STATUS_LABELS, nextStatus, prevStatus, buildHandoffText, type PropertyGroup } from '@/lib/phc-renewals';
 import { CopyButton } from '@/components/CopyButton';
 import { updateStatus } from '../actions';
 
@@ -199,6 +199,15 @@ export default async function PhcSchedulePage({ searchParams }: { searchParams: 
                   />
                 </div>
                 <div className="flex flex-wrap gap-1">
+                  {prevStatus(p.status) && p.status !== 'scheduled' && p.status !== 'declined' && (
+                    <button
+                      formAction={updateStatus.bind(null, prevStatus(p.status)!)}
+                      title={`Back to ${STATUS_LABELS[prevStatus(p.status)!]}`}
+                      className="rounded-2 border-2 border-paper-edge px-2 py-1 font-headline text-[10px] font-extrabold uppercase tracking-ribbon text-fg-2 hover:border-orange"
+                    >
+                      &larr; Back
+                    </button>
+                  )}
                   {nextStatus(p.status) && (
                     <button
                       formAction={updateStatus.bind(null, nextStatus(p.status)!)}
