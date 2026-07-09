@@ -257,6 +257,15 @@ export default async function PhcSchedulePage({ searchParams }: { searchParams: 
                       &rarr; {STATUS_LABELS[nextStatus(p.status)!]}
                     </button>
                   )}
+                  {p.status !== 'with_sales' && nextStatus(p.status) !== 'with_sales' && (
+                    <button
+                      formAction={updateStatus.bind(null, 'with_sales')}
+                      title="Hand straight to the salesperson (skip texting)"
+                      className="rounded-2 border-2 border-bark-deep/40 px-2 py-1 font-headline text-[10px] font-extrabold uppercase tracking-ribbon text-bark-deep hover:border-bark-deep"
+                    >
+                      With sales
+                    </button>
+                  )}
                   {p.status !== 'scheduled' && (
                     <button
                       formAction={updateStatus.bind(null, 'scheduled')}
