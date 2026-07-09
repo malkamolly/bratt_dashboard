@@ -260,7 +260,7 @@ function serviceFlags(s: ServiceRow, t: TimingInfo | undefined): string[] {
   if (type === 'injection' && !(s.dbh || '').trim()) f.push('No DBH (needed)');
   const titleType = deriveType(s.desc_title || '');
   if (type && titleType && type !== titleType) f.push('Type mismatch');
-  if (t?.needs_pricing) f.push('Not in price book');
+  if (t?.needs_pricing) f.push('Not in PHC Calculator');
   return f;
 }
 
@@ -315,9 +315,9 @@ export function buildProperties(
       const t = timingMap.get(s.treatment_name.toLowerCase());
       const flags = serviceFlags(s, t);
       const isDuplicate = dupIds.has(s.id);
-      if (flags.some((x) => x !== 'Type mismatch' && x !== 'Not in price book' ? x.startsWith('No ') : false)) needsInfo++;
+      if (flags.some((x) => x !== 'Type mismatch' && x !== 'Not in PHC Calculator' ? x.startsWith('No ') : false)) needsInfo++;
       if (flags.includes('Type mismatch')) mismatches++;
-      if (flags.includes('Not in price book')) unpriced++;
+      if (flags.includes('Not in PHC Calculator')) unpriced++;
       if (isDuplicate) duplicates++;
       return {
         ...s,

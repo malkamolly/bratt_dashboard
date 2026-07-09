@@ -192,11 +192,17 @@ export async function updateStatus(status: string, formData: FormData): Promise<
   const locationId = String(formData.get('location_id') ?? '').trim();
   const note = String(formData.get('note') ?? '').trim() || null;
   const assigned = String(formData.get('assigned_salesperson_id') ?? '').trim() || null;
+  // Preserve the caller's place in the list: same filter + page, and jump back
+  // to the property they just edited via a #loc-<id> anchor.
+  const filter = String(formData.get('filter') ?? 'all').trim() || 'all';
+  const page = String(formData.get('page') ?? '1').trim() || '1';
   if (!locationId) {
     redirect(`/phc/schedule?error=${encodeURIComponent('Missing property reference.')}`);
   }
+  const back = (extra = ''): string =>
+    `/phc/schedule?filter=${encodeURIComponent(filter)}&page=${encodeURIComponent(page)}${extra}#loc-${encodeURIComponent(locationId)}`;
   if (!STATUS_ORDER.includes(status)) {
-    redirect(`/phc/schedule?error=${encodeURIComponent('Invalid status.')}`);
+    redirect(back(`&error=${encodeURIComponent('Invalid status.')}`));
   }
 
   // Status + assignment are keyed by location_id (the stable ServiceTitan
@@ -215,14 +221,14 @@ export async function updateStatus(status: string, formData: FormData): Promise<
     .update(payload)
     .eq('location_id', locationId)
     .select('id');
-  if (updErr) redirect(`/phc/schedule?error=${encodeURIComponent(updErr.message)}`);
+  if (updErr) redirect(back(`&error=${encodeURIComponent(updErr.message)}`));
   if (!updated || updated.length === 0) {
     const { error: insErr } = await supabase
       .from('phc_property_status')
       .insert({ location_id: locationId, ...payload });
-    if (insErr) redirect(`/phc/schedule?error=${encodeURIComponent(insErr.message)}`);
+    if (insErr) redirect(back(`&error=${encodeURIComponent(insErr.message)}`));
   }
 
   revalidatePath('/phc/schedule');
-  redirect('/phc/schedule?saved=1');
+  redirect(back('&saved=1'));
 }

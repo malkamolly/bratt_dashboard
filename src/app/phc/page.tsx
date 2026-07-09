@@ -124,7 +124,7 @@ export default async function PhcHomePage({ searchParams }: { searchParams: Sear
             <Stat label="Missing info" value={view.summary.needsInfo} tone="warn" />
             <Stat label="Type mismatches" value={view.summary.mismatches} tone="bad" />
             <Stat label="Possible duplicates" value={view.summary.duplicates} tone="warn" />
-            <Stat label="Not in price book" value={view.summary.unpriced} tone="warn" />
+            <Stat label="Not in PHC Calculator" value={view.summary.unpriced} tone="warn" />
           </div>
         </section>
       )}

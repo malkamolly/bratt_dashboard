@@ -47,7 +47,7 @@ const STATUS_STYLE: Record<string, string> = {
 const FLAG_STYLE = (f: string) =>
   f === 'Type mismatch'
     ? 'bg-orange-press/15 text-orange-press'
-    : f === 'Not in price book'
+    : f === 'Not in PHC Calculator'
       ? 'bg-orange-press/10 text-orange-press'
       : 'bg-orange/15 text-orange-press';
 
@@ -173,7 +173,7 @@ export default async function PhcSchedulePage({ searchParams }: { searchParams: 
 
       <div className="mt-4 space-y-4">
         {slice.map((p) => (
-          <section key={p.locationId} className="bt-card">
+          <section key={p.locationId} id={`loc-${p.locationId}`} className="bt-card scroll-mt-6">
             <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
               <div className="min-w-0">
                 <div className="flex flex-wrap items-center gap-2">
@@ -225,6 +225,8 @@ export default async function PhcSchedulePage({ searchParams }: { searchParams: 
                 className="flex shrink-0 flex-col gap-1.5 sm:w-72"
               >
                 <input type="hidden" name="location_id" value={p.locationId} />
+                <input type="hidden" name="filter" value={activeFilter.key} />
+                <input type="hidden" name="page" value={clamped} />
                 <div className="flex gap-1.5">
                   <select
                     name="assigned_salesperson_id"
