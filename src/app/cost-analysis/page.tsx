@@ -50,6 +50,20 @@ export default async function CostAnalysisPage() {
         those are bid differently than residential work.
       </p>
 
+      <Link
+        href="/cost-analysis/job-costing"
+        className="mt-6 block rounded-card border-[3px] border-orange bg-white/70 p-5 transition-colors hover:bg-lime/20"
+      >
+        <p className="bt-eyebrow">New — Job Costing</p>
+        <p className="mt-1 font-headline text-lg font-black uppercase text-bark-deep">
+          What does labor actually cost us? &rarr;
+        </p>
+        <p className="mt-1 text-sm text-fg-2">
+          A sample of 14 big jobs with real crew hours costed out — labor as a
+          share of revenue, and why multi-day jobs cost more.
+        </p>
+      </Link>
+
       {/* ---------- Headline numbers ---------- */}
       <section className="mt-8 grid grid-cols-2 gap-4 lg:grid-cols-4">
         <Stat

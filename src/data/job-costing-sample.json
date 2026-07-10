@@ -1,0 +1,503 @@
+[
+ {
+  "inv": "211822251",
+  "seller": "Dave A",
+  "trees": 1,
+  "sizes": [
+   31
+  ],
+  "revenue": 5000,
+  "days": 1,
+  "crewSize": 2,
+  "crewHours": 8.2,
+  "laborCost": 279,
+  "laborPct": 0.0558,
+  "crew": [
+   {
+    "name": "Sean-Paul M",
+    "hours": 4.6
+   },
+   {
+    "name": "Los R",
+    "hours": 3.6
+   }
+  ]
+ },
+ {
+  "inv": "180879684",
+  "seller": "Ian F",
+  "trees": 2,
+  "sizes": [
+   32,
+   1
+  ],
+  "revenue": 5025,
+  "days": 1,
+  "crewSize": 3,
+  "crewHours": 21.5,
+  "laborCost": 737,
+  "laborPct": 0.1467,
+  "crew": [
+   {
+    "name": "Andrew M",
+    "hours": 7.4
+   },
+   {
+    "name": "Jackson S",
+    "hours": 7.3
+   },
+   {
+    "name": "Los R",
+    "hours": 6.8
+   }
+  ]
+ },
+ {
+  "inv": "201540100",
+  "seller": "Jacob S",
+  "trees": 1,
+  "sizes": [
+   64
+  ],
+  "revenue": 5700,
+  "days": 1,
+  "crewSize": 2,
+  "crewHours": 18.6,
+  "laborCost": 455,
+  "laborPct": 0.0798,
+  "crew": [
+   {
+    "name": "Roy P",
+    "hours": 9.3
+   },
+   {
+    "name": "Sean-Paul M",
+    "hours": 9.3
+   }
+  ]
+ },
+ {
+  "inv": "176239417",
+  "seller": "Clayton T",
+  "trees": 5,
+  "sizes": [
+   20,
+   20,
+   18,
+   11,
+   5
+  ],
+  "revenue": 5740,
+  "days": 1,
+  "crewSize": 4,
+  "crewHours": 30.4,
+  "laborCost": 749,
+  "laborPct": 0.1305,
+  "crew": [
+   {
+    "name": "Nate W",
+    "hours": 7.9
+   },
+   {
+    "name": "Sage S",
+    "hours": 7.7
+   },
+   {
+    "name": "Sean B",
+    "hours": 7.6
+   },
+   {
+    "name": "Nolan M",
+    "hours": 7.2
+   }
+  ]
+ },
+ {
+  "inv": "169661982",
+  "seller": "Hayden R",
+  "trees": 2,
+  "sizes": [
+   29,
+   28
+  ],
+  "revenue": 7150,
+  "days": 1,
+  "crewSize": 2,
+  "crewHours": 16.9,
+  "laborCost": 653,
+  "laborPct": 0.0913,
+  "crew": [
+   {
+    "name": "Jackson S",
+    "hours": 8.6
+   },
+   {
+    "name": "Los R",
+    "hours": 8.3
+   }
+  ]
+ },
+ {
+  "inv": "203092339",
+  "seller": "Caleb O",
+  "trees": 1,
+  "sizes": [
+   49
+  ],
+  "revenue": 7400,
+  "days": 4,
+  "crewSize": 7,
+  "crewHours": 70.3,
+  "laborCost": 2219,
+  "laborPct": 0.2999,
+  "crew": [
+   {
+    "name": "Andrew M",
+    "hours": 16.4
+   },
+   {
+    "name": "Jackson S",
+    "hours": 15.4
+   },
+   {
+    "name": "Los R",
+    "hours": 14.3
+   },
+   {
+    "name": "Brauc E",
+    "hours": 13.5
+   },
+   {
+    "name": "Charles P",
+    "hours": 3.7
+   },
+   {
+    "name": "Roy P",
+    "hours": 3.5
+   },
+   {
+    "name": "Sean-Paul M",
+    "hours": 3.5
+   }
+  ]
+ },
+ {
+  "inv": "219464528",
+  "seller": "Jake T",
+  "trees": 1,
+  "sizes": [
+   52
+  ],
+  "revenue": 7499,
+  "days": 1,
+  "crewSize": 4,
+  "crewHours": 30.5,
+  "laborCost": 795,
+  "laborPct": 0.106,
+  "crew": [
+   {
+    "name": "Scott M",
+    "hours": 10.2
+   },
+   {
+    "name": "Sean-Paul M",
+    "hours": 9.6
+   },
+   {
+    "name": "Jackson S",
+    "hours": 5.4
+   },
+   {
+    "name": "Braeden R",
+    "hours": 5.3
+   }
+  ]
+ },
+ {
+  "inv": "213477629",
+  "seller": "Brent B",
+  "trees": 2,
+  "sizes": [],
+  "revenue": 9995,
+  "days": 2,
+  "crewSize": 6,
+  "crewHours": 48.8,
+  "laborCost": 1322,
+  "laborPct": 0.1323,
+  "crew": [
+   {
+    "name": "Ross A",
+    "hours": 9.5
+   },
+   {
+    "name": "Eric S",
+    "hours": 9.3
+   },
+   {
+    "name": "Berkeley D",
+    "hours": 9.2
+   },
+   {
+    "name": "Jackson S",
+    "hours": 7.0
+   },
+   {
+    "name": "Andrew M",
+    "hours": 6.9
+   },
+   {
+    "name": "Braeden R",
+    "hours": 6.9
+   }
+  ]
+ },
+ {
+  "inv": "211759731",
+  "seller": "Ian F",
+  "trees": 2,
+  "sizes": [
+   40
+  ],
+  "revenue": 10101,
+  "days": 2,
+  "crewSize": 4,
+  "crewHours": 44.6,
+  "laborCost": 1362,
+  "laborPct": 0.1348,
+  "crew": [
+   {
+    "name": "Sean-Paul M",
+    "hours": 17.8
+   },
+   {
+    "name": "Trevor N",
+    "hours": 9.5
+   },
+   {
+    "name": "Los R",
+    "hours": 8.7
+   },
+   {
+    "name": "Eric S",
+    "hours": 8.6
+   }
+  ]
+ },
+ {
+  "inv": "169199500",
+  "seller": "Brent B",
+  "trees": 4,
+  "sizes": [
+   28,
+   14,
+   10
+  ],
+  "revenue": 11660,
+  "days": 1,
+  "crewSize": 5,
+  "crewHours": 45.7,
+  "laborCost": 1349,
+  "laborPct": 0.1157,
+  "crew": [
+   {
+    "name": "Los R",
+    "hours": 10.1
+   },
+   {
+    "name": "Jackson S",
+    "hours": 9.8
+   },
+   {
+    "name": "Brauc E",
+    "hours": 8.6
+   },
+   {
+    "name": "Mathias M",
+    "hours": 8.6
+   },
+   {
+    "name": "Anders M",
+    "hours": 8.6
+   }
+  ]
+ },
+ {
+  "inv": "209936998",
+  "seller": "Caleb O",
+  "trees": 1,
+  "sizes": [
+   25
+  ],
+  "revenue": 13460,
+  "days": 4,
+  "crewSize": 8,
+  "crewHours": 155.6,
+  "laborCost": 4102,
+  "laborPct": 0.3048,
+  "crew": [
+   {
+    "name": "Andrew M",
+    "hours": 29.2
+   },
+   {
+    "name": "Nathen K",
+    "hours": 28.0
+   },
+   {
+    "name": "Nathan R",
+    "hours": 27.4
+   },
+   {
+    "name": "Bryan C",
+    "hours": 27.3
+   },
+   {
+    "name": "Jackson S",
+    "hours": 18.9
+   },
+   {
+    "name": "Roy P",
+    "hours": 10.9
+   },
+   {
+    "name": "Los R",
+    "hours": 9.6
+   },
+   {
+    "name": "Sean-Paul M",
+    "hours": 4.3
+   }
+  ]
+ },
+ {
+  "inv": "175897588",
+  "seller": "Patrick W",
+  "trees": 1,
+  "sizes": [
+   36
+  ],
+  "revenue": 14125,
+  "days": 2,
+  "crewSize": 9,
+  "crewHours": 66.0,
+  "laborCost": 1868,
+  "laborPct": 0.1322,
+  "crew": [
+   {
+    "name": "Charles P",
+    "hours": 9.1
+   },
+   {
+    "name": "Jaidyn A",
+    "hours": 9.1
+   },
+   {
+    "name": "Meghan G",
+    "hours": 8.8
+   },
+   {
+    "name": "Shay S",
+    "hours": 8.8
+   },
+   {
+    "name": "Taylor M",
+    "hours": 8.4
+   },
+   {
+    "name": "Ezra V",
+    "hours": 5.7
+   },
+   {
+    "name": "Tyler B",
+    "hours": 5.5
+   },
+   {
+    "name": "Los R",
+    "hours": 5.4
+   },
+   {
+    "name": "Thor B",
+    "hours": 5.2
+   }
+  ]
+ },
+ {
+  "inv": "169201760",
+  "seller": "Caleb O",
+  "trees": 3,
+  "sizes": [
+   40,
+   35,
+   20
+  ],
+  "revenue": 15200,
+  "days": 4,
+  "crewSize": 8,
+  "crewHours": 64.1,
+  "laborCost": 1949,
+  "laborPct": 0.1282,
+  "crew": [
+   {
+    "name": "Jackson S",
+    "hours": 20.1
+   },
+   {
+    "name": "Los R",
+    "hours": 10.0
+   },
+   {
+    "name": "Judson C",
+    "hours": 9.6
+   },
+   {
+    "name": "Mathias M",
+    "hours": 9.3
+   },
+   {
+    "name": "Sean-Paul M",
+    "hours": 4.1
+   },
+   {
+    "name": "Andrew M",
+    "hours": 3.9
+   },
+   {
+    "name": "Taylor M",
+    "hours": 3.8
+   },
+   {
+    "name": "Nathan R",
+    "hours": 3.3
+   }
+  ]
+ },
+ {
+  "inv": "205420203",
+  "seller": "Ian F",
+  "trees": 2,
+  "sizes": [
+   55,
+   10
+  ],
+  "revenue": 17062,
+  "days": 1,
+  "crewSize": 3,
+  "crewHours": 21.2,
+  "laborCost": 598,
+  "laborPct": 0.035,
+  "crew": [
+   {
+    "name": "Jackson S",
+    "hours": 7.2
+   },
+   {
+    "name": "Braeden R",
+    "hours": 7.0
+   },
+   {
+    "name": "Andrew M",
+    "hours": 7.0
+   }
+  ]
+ }
+]

@@ -21,6 +21,7 @@ export async function BrandHeader() {
     if (canAccessHub(r, 'pace')) salesItems.push({ label: 'Sales PACE', href: '/sales' });
     if (canAccessHub(r, 'hub')) salesItems.push({ label: 'Sales Arborist Hub', href: '/hub' });
     if (canSeeCostAnalysis(r)) salesItems.push({ label: 'Cost Analysis', href: '/cost-analysis' });
+    if (canSeeCostAnalysis(r)) salesItems.push({ label: 'Job Costing', href: '/cost-analysis/job-costing' });
 
     const productionItems: NavItem[] = [];
     if (canAccessHub(r, 'pace'))
