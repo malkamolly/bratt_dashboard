@@ -125,12 +125,22 @@ function quantile(xs: number[], q: number): number | null {
   return s[lo] + (s[hi] - s[lo]) * (pos - lo);
 }
 
-function isComparable(r: RemovalRow): r is RemovalRow & { dbh: number; price: number } {
+// Per leadership: to really analyze pricing we zoom in on the cleanest records
+// only — single-trunk trees that are FULLY MEASURED (DBH + Height + Crown all
+// recorded). (The "one tree per job" requirement is applied in buildCostAnalysis,
+// since it needs the per-invoice line-item count.)
+function isComparable(
+  r: RemovalRow,
+): r is RemovalRow & { dbh: number; price: number; height: number; crown: number } {
   return (
     r.dbh != null &&
     r.stems === 1 &&
     r.price != null &&
-    r.price >= MIN_REAL_PRICE
+    r.price >= MIN_REAL_PRICE &&
+    r.height != null &&
+    r.crown != null &&
+    r.crown > 0 &&
+    r.crown <= 100
   );
 }
 
@@ -184,18 +194,16 @@ function bandFor(dbh: number): SizeBand {
 // ---------------------------------------------------------------------------
 
 export type Summary = {
-  totalRemovals: number;
-  withSize: number;
-  multiStem: number;
-  comparable: number;
+  /** Records in the clean analysis subset (single-tree, fully-measured). */
+  analyzed: number;
+  /** All non-municipal tree-removal line items, before the narrowing. */
+  totalTreeRemovals: number;
+  /** Invoices whose whole tree-removal work was a single tree. */
+  singleTreeJobs: number;
   totalRevenue: number;
-  /** Per-tree (per line item) price across all removals. */
+  /** Per-tree price (= per-job here, since every record is one tree/job). */
   medianPrice: number | null;
   meanPrice: number | null;
-  /** Per-job (per invoice) totals — every tree on an invoice summed together. */
-  jobCount: number;
-  jobMedian: number | null;
-  jobMean: number | null;
   /** Municipal jobs filtered out before any of the above was computed. */
   excludedMunicipal: number;
   /** Miscoded stump / vine / shrub line items filtered out up front. */
@@ -283,33 +291,33 @@ export function buildCostAnalysis(): CostAnalysis {
   const removals = trees.filter((r) => !r.muni);
   const excludedMunicipal = trees.length - removals.length;
 
+  // "One tree per job": keep only invoices whose entire tree-removal work was a
+  // single line item. (Counts tree line items per invoice across all non-muni
+  // removals, before the measurement narrowing.)
+  const treesPerInvoice = new Map<string, number>();
+  for (const r of removals) {
+    if (!r.inv) continue;
+    treesPerInvoice.set(r.inv, (treesPerInvoice.get(r.inv) ?? 0) + 1);
+  }
+  const singleTreeJobs = [...treesPerInvoice.values()].filter((n) => n === 1).length;
+
+  // The analysis universe: single-tree jobs, single trunk, fully measured
+  // (DBH + Height + Crown), priced at or above the band floor.
   const comparable = removals
     .filter(isComparable)
-    .filter((r) => r.price >= bandFor(r.dbh).floor);
-  const dates = removals.map((r) => r.date).filter((d): d is string => !!d).sort();
+    .filter((r) => r.price >= bandFor(r.dbh).floor)
+    .filter((r) => r.inv != null && treesPerInvoice.get(r.inv) === 1);
+  const dates = comparable.map((r) => r.date).filter((d): d is string => !!d).sort();
 
-  // Roll line items up to whole jobs (invoices): sum every tree on an invoice.
-  const byInvoice = new Map<string, number>();
-  for (const r of removals) {
-    if (r.price == null || r.inv == null) continue;
-    byInvoice.set(r.inv, (byInvoice.get(r.inv) ?? 0) + r.price);
-  }
-  const jobTotals = [...byInvoice.values()];
-  const allPrices = removals.map((r) => r.price).filter((p): p is number => p != null);
+  const prices = comparable.map((r) => r.price);
 
   const summary: Summary = {
-    totalRemovals: removals.length,
-    withSize: removals.filter((r) => r.dbh != null).length,
-    multiStem: removals.filter((r) => r.stems > 1).length,
-    comparable: comparable.length,
-    totalRevenue: Math.round(
-      removals.reduce((s, r) => s + (r.price ?? 0), 0),
-    ),
-    medianPrice: round(median(allPrices)),
-    meanPrice: round(mean(allPrices)),
-    jobCount: jobTotals.length,
-    jobMedian: round(median(jobTotals)),
-    jobMean: round(mean(jobTotals)),
+    analyzed: comparable.length,
+    totalTreeRemovals: removals.length,
+    singleTreeJobs,
+    totalRevenue: Math.round(comparable.reduce((s, r) => s + r.price, 0)),
+    medianPrice: round(median(prices)),
+    meanPrice: round(mean(prices)),
     excludedMunicipal,
     excludedNonTree,
     dateFrom: dates[0] ?? null,

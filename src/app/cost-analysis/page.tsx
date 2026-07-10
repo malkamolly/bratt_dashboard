@@ -42,12 +42,12 @@ export default async function CostAnalysisPage() {
       </h1>
       <p className="mt-4 max-w-3xl text-fg-2">
         What we charged to remove trees over the last year, grouped by tree
-        size, so we can see how consistent our pricing is and lay the
-        groundwork for a standard pricing guide. Based on{' '}
-        <strong>{s.totalRemovals.toLocaleString()}</strong> removal line items
-        from {fmtDate(s.dateFrom)} to {fmtDate(s.dateTo)} &mdash; with{' '}
-        <strong>{s.excludedMunicipal}</strong> municipal jobs set aside, since
-        those are bid differently than residential work.
+        size, to see how consistent our pricing is and lay the groundwork for a
+        standard pricing guide. To get the cleanest read, this zooms in on{' '}
+        <strong>{s.analyzed.toLocaleString()}</strong> removals that were{' '}
+        <strong>a single tree, on its own job, with every measurement recorded</strong>{' '}
+        (DBH, height, and crown spread) &mdash; the apples-to-apples set for
+        analyzing price. Dates {fmtDate(s.dateFrom)} to {fmtDate(s.dateTo)}.
       </p>
 
       <Link
@@ -67,56 +67,18 @@ export default async function CostAnalysisPage() {
       {/* ---------- Headline numbers ---------- */}
       <section className="mt-8 grid grid-cols-2 gap-4 lg:grid-cols-4">
         <Stat
-          label="Jobs (invoices)"
-          value={s.jobCount.toLocaleString()}
-          sub={`${s.totalRemovals.toLocaleString()} trees across them`}
+          label="Trees analyzed"
+          value={s.analyzed.toLocaleString()}
+          sub="single tree, fully measured"
         />
-        <Stat label="Total removal revenue" value={fmtUsd(s.totalRevenue)} />
+        <Stat label="Total revenue" value={fmtUsd(s.totalRevenue)} />
+        <Stat label="Typical price (median)" value={fmtUsd(s.medianPrice)} />
         <Stat
-          label="Avg. job value"
-          value={fmtUsd(s.jobMean)}
-          sub={`median ${fmtUsd(s.jobMedian)}`}
-        />
-        <Stat
-          label="Comparable single-trunk trees"
-          value={s.comparable.toLocaleString()}
-          sub="used for size pricing below"
+          label="Average price"
+          value={fmtUsd(s.meanPrice)}
+          sub="higher — big removals pull it up"
         />
       </section>
-
-      {/* ---------- Per-tree vs per-job ---------- */}
-      <Card title="Per tree vs. per whole job" className="mt-8">
-        <p className="mb-4 max-w-3xl text-sm text-fg-2">
-          The size charts below price <strong>one tree at a time</strong> &mdash;
-          the right unit for a pricing guide. But most invoices cover several
-          trees, so a whole <strong>job</strong> bills more than any single
-          tree. Both views, side by side (<em>median</em> = the middle job;{' '}
-          <em>average</em> = total &divide; count, pulled up by big jobs):
-        </p>
-        <div className="overflow-x-auto">
-          <table className="w-full max-w-xl text-sm">
-            <thead>
-              <tr className="border-b-2 border-bark/20 text-left text-fg-2">
-                <th className="py-2 pr-4 font-extrabold uppercase tracking-wide"></th>
-                <th className="py-2 pr-4 font-extrabold uppercase tracking-wide">Median</th>
-                <th className="py-2 font-extrabold uppercase tracking-wide">Average</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr className="border-b border-bark/10">
-                <td className="py-2 pr-4 font-bold text-ink">Per tree</td>
-                <td className="py-2 pr-4 text-fg-2">{fmtUsd(s.medianPrice)}</td>
-                <td className="py-2 text-fg-2">{fmtUsd(s.meanPrice)}</td>
-              </tr>
-              <tr>
-                <td className="py-2 pr-4 font-bold text-ink">Per whole job</td>
-                <td className="py-2 pr-4 font-bold text-orange">{fmtUsd(s.jobMedian)}</td>
-                <td className="py-2 font-bold text-orange">{fmtUsd(s.jobMean)}</td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-      </Card>
 
       {/* ---------- Hero scatter ---------- */}
       <Card title="Price climbs with trunk size" className="mt-10">
@@ -167,12 +129,12 @@ export default async function CostAnalysisPage() {
       <Card title="Crown spread (canopy width) by size" className="mt-8">
         <p className="mb-4 max-w-3xl text-sm text-fg-2">
           Median price by size <em>and</em> crown spread &mdash; how wide the
-          canopy is. Same layout as the height grid. Two caveats: crown spread
-          is only recorded on about two-thirds of jobs (so each cell is built
-          from fewer trees), and historically it&apos;s been a much weaker price
-          driver than trunk size or height. We&apos;re tracking it now so
-          it&apos;s ready as a factor when we build the pricing guide. Click any
-          price to see its invoices; blank cells had too few jobs.
+          canopy is. Same layout as the height grid. Every tree in this analysis
+          has a crown measurement, so these cells are on equal footing with the
+          height grid. Crown is a weaker price driver than trunk size or height,
+          but a real one within a size band &mdash; a candidate modifier for the
+          pricing guide. Click any price to see its invoices; blank cells had too
+          few trees.
         </p>
         <GridSection grid={a.crownGrid} />
       </Card>
@@ -237,25 +199,28 @@ export default async function CostAnalysisPage() {
             commercial jobs.
           </li>
           <li>
-            Size pricing uses <strong>{s.comparable.toLocaleString()}</strong>{' '}
-            single-trunk jobs with a recorded size and a price of $100+. Prices
-            under $100 are almost always partial line items, not a tree&apos;s
-            full cost, so they&apos;re excluded.
+            This page zooms in on the cleanest records only:{' '}
+            <strong>{s.analyzed.toLocaleString()}</strong> removals that were a{' '}
+            <strong>single tree on its own job</strong> (one tree-removal on the
+            invoice), <strong>single-trunk</strong>, and had{' '}
+            <strong>all three measurements recorded — DBH, height, and crown
+            spread</strong>. That&apos;s the apples-to-apples set for judging
+            price. Of {s.singleTreeJobs.toLocaleString()} single-tree jobs, this
+            is the share that were single-trunk and fully measured.
+          </li>
+          <li>
+            Multi-stem clumps are excluded (a clump has several DBH numbers, so
+            &ldquo;the size&rdquo; is ambiguous), and so are removals missing any
+            of the three measurements.
           </li>
           <li>
             Each size band also has a <strong>minimum realistic price</strong>{' '}
-            (set with leadership); line items below it are dropped as partials
-            (one tree split across rows) or miscoded sizes:{' '}
+            (set with leadership); anything below it is dropped as a partial or
+            miscoded size:{' '}
             {SIZE_BANDS.filter((b) => b.floor > 100)
               .map((b) => `${b.label} ${fmtUsd(b.floor)}`)
               .join(', ')}
             .
-          </li>
-          <li>
-            <strong>{s.multiStem.toLocaleString()}</strong> multi-stem / clump
-            removals are held out of the size tables &mdash; their price
-            doesn&apos;t track trunk size, so they need their own pricing
-            approach (a good next project).
           </li>
           <li>
             Single-driver comparisons (hauling, height, species, salesperson)
