@@ -59,7 +59,7 @@ export default async function CostAnalysisPage() {
           What does labor actually cost us? &rarr;
         </p>
         <p className="mt-1 text-sm text-fg-2">
-          A sample of 14 big jobs with real crew hours costed out — labor as a
+          A sample of big jobs with real crew hours costed out — labor as a
           share of revenue, and why multi-day jobs cost more.
         </p>
       </Link>

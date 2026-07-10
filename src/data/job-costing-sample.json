@@ -510,64 +510,6 @@
   ]
  },
  {
-  "inv": "209936998",
-  "seller": "Caleb O",
-  "trees": 1,
-  "sizes": [
-   25
-  ],
-  "revenue": 13460,
-  "days": 4,
-  "crewSize": 8,
-  "crewHours": 155.6,
-  "laborCost": 4102,
-  "laborPct": 0.3048,
-  "crew": [
-   {
-    "name": "Andrew M",
-    "hours": 29.2
-   },
-   {
-    "name": "Nathen K",
-    "hours": 28.0
-   },
-   {
-    "name": "Nathan R",
-    "hours": 27.4
-   },
-   {
-    "name": "Bryan C",
-    "hours": 27.3
-   },
-   {
-    "name": "Jackson S",
-    "hours": 18.9
-   },
-   {
-    "name": "Roy P",
-    "hours": 10.9
-   },
-   {
-    "name": "Los R",
-    "hours": 9.6
-   },
-   {
-    "name": "Sean-Paul M",
-    "hours": 4.3
-   }
-  ],
-  "treeDetails": [
-   {
-    "species": "Various Ash Maple Cherry Cottonwood",
-    "dbh": 25.0,
-    "height": 65.0,
-    "crown": 300.0,
-    "haul": true,
-    "price": 13460
-   }
-  ]
- },
- {
   "inv": "175897588",
   "seller": "Patrick W",
   "trees": 1,
