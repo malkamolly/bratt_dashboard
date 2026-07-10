@@ -63,21 +63,6 @@ export default async function JobCostingPage() {
         />
       </section>
 
-      {/* ---------- Labor share chart ---------- */}
-      <section className="bt-card mt-8">
-        <h2 className="font-headline text-2xl font-black uppercase text-bark-deep">
-          How labor-heavy was each job?
-        </h2>
-        <p className="mt-2 mb-3 max-w-3xl text-sm text-fg-2">
-          Each bar is one job&apos;s base labor as a share of what it billed.{' '}
-          <strong>Multi-day jobs (dark) are the labor-heavy ones</strong> &mdash;
-          they run about {fmtPct(s.multiDayLaborPct)} labor vs.{' '}
-          {fmtPct(s.singleDayLaborPct)} for single-day jobs. Number of days on
-          site is the clearest cost driver.
-        </p>
-        <LaborShareChart jobs={jobs} />
-      </section>
-
       {/* ---------- Table ---------- */}
       <section className="bt-card mt-8">
         <h2 className="font-headline text-2xl font-black uppercase text-bark-deep">
@@ -120,6 +105,21 @@ export default async function JobCostingPage() {
             overhead. This page is the labor foundation for that.
           </li>
         </ul>
+      </section>
+
+      {/* ---------- Labor share chart (at the bottom) ---------- */}
+      <section className="bt-card mt-8">
+        <h2 className="font-headline text-2xl font-black uppercase text-bark-deep">
+          How labor-heavy was each job?
+        </h2>
+        <p className="mt-2 mb-3 max-w-3xl text-sm text-fg-2">
+          Each bar is one job&apos;s base labor as a share of what it billed.{' '}
+          <strong>Multi-day jobs (dark) are the labor-heavy ones</strong> &mdash;
+          they run about {fmtPct(s.multiDayLaborPct)} labor vs.{' '}
+          {fmtPct(s.singleDayLaborPct)} for single-day jobs. Number of days on
+          site is the clearest cost driver.
+        </p>
+        <LaborShareChart jobs={jobs} />
       </section>
     </main>
   );
