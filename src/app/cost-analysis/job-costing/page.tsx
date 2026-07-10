@@ -84,8 +84,10 @@ export default async function JobCostingPage() {
           The {s.jobs} jobs
         </h2>
         <p className="mt-2 mb-3 max-w-3xl text-sm text-fg-2">
-          Click any job to see who worked it and their hours. (Crew shown with
-          hours only — individual pay isn&apos;t stored in this tool.)
+          Everything at a glance — what was removed (size, height, hauling), the
+          crew and their hours, revenue, base labor, and labor&apos;s share of
+          the job. Multi-day jobs are shaded. (Crew shown with hours only —
+          individual pay isn&apos;t stored in this tool.)
         </p>
         <JobCostTable jobs={jobs} />
       </section>

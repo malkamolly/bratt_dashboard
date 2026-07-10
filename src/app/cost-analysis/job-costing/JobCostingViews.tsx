@@ -4,7 +4,6 @@
 // Job-costing visuals (client). Fed pre-computed job data — no wages here.
 // ============================================================================
 
-import { Fragment, useState } from 'react';
 import {
   ResponsiveContainer,
   BarChart,
@@ -71,98 +70,76 @@ export function LaborShareChart({ jobs }: { jobs: CostedJob[] }) {
 }
 
 // ---------------------------------------------------------------------------
-// The job table, click a row to reveal the crew + hours
+// The job table — everything visible at a glance (no clicking to expand)
 // ---------------------------------------------------------------------------
+function truncate(s: string, n: number): string {
+  return s.length > n ? s.slice(0, n - 1) + '…' : s;
+}
+
+function TreeLine({ t }: { t: CostedJob['treeDetails'][number] }) {
+  const meta = [
+    t.height != null ? `${Math.round(t.height)}′ tall` : null,
+    t.crown != null && t.crown <= 100 ? `${Math.round(t.crown)}′ crown` : null,
+    t.haul ? 'haul' : null,
+  ].filter(Boolean);
+  return (
+    <div className="whitespace-nowrap">
+      <span className="font-semibold text-ink">{t.dbh != null ? `${Math.round(t.dbh)}"` : '?'}</span>{' '}
+      {truncate(t.species ?? 'Unknown', 26)}
+      {meta.length > 0 && <span className="text-fg-3"> · {meta.join(' · ')}</span>}
+    </div>
+  );
+}
+
 export function JobCostTable({ jobs }: { jobs: CostedJob[] }) {
-  const [open, setOpen] = useState<string | null>(null);
   const data = [...jobs].sort((a, b) => a.revenue - b.revenue);
   return (
     <div className="overflow-x-auto">
       <table className="w-full text-sm">
         <thead>
-          <tr className="border-b-2 border-bark/20 text-left text-fg-2">
-            <th className="py-2 pr-3 font-extrabold uppercase tracking-wide">Job #</th>
-            <th className="py-2 pr-3 font-extrabold uppercase tracking-wide">Seller</th>
+          <tr className="border-b-2 border-bark/20 text-left align-bottom text-fg-2">
+            <th className="py-2 pr-3 font-extrabold uppercase tracking-wide">Job / Seller</th>
+            <th className="py-2 pr-3 font-extrabold uppercase tracking-wide">What was removed</th>
             <th className="py-2 pr-3 font-extrabold uppercase tracking-wide">Days</th>
             <th className="py-2 pr-3 font-extrabold uppercase tracking-wide">Crew</th>
-            <th className="py-2 pr-3 font-extrabold uppercase tracking-wide">Hrs</th>
-            <th className="py-2 pr-3 font-extrabold uppercase tracking-wide">Revenue</th>
-            <th className="py-2 pr-3 font-extrabold uppercase tracking-wide">Labor</th>
-            <th className="py-2 font-extrabold uppercase tracking-wide">Labor %</th>
+            <th className="py-2 pr-3 text-right font-extrabold uppercase tracking-wide">Revenue</th>
+            <th className="py-2 pr-3 text-right font-extrabold uppercase tracking-wide">Base labor</th>
+            <th className="py-2 text-right font-extrabold uppercase tracking-wide">Labor %</th>
           </tr>
         </thead>
         <tbody>
           {data.map((j) => (
-            <Fragment key={j.inv}>
-              <tr
-                onClick={() => setOpen((o) => (o === j.inv ? null : j.inv))}
-                className={`cursor-pointer border-b border-bark/10 transition-colors hover:bg-lime/20 ${
-                  open === j.inv ? 'bg-lime/30' : ''
-                }`}
-              >
-                <td className="py-2 pr-3 font-bold text-ink">{j.inv}</td>
-                <td className="py-2 pr-3 text-fg-2">{j.seller ?? '—'}</td>
-                <td className="py-2 pr-3 text-fg-2">{j.days}</td>
-                <td className="py-2 pr-3 text-fg-2">{j.crewSize}</td>
-                <td className="py-2 pr-3 text-fg-2">{j.crewHours.toFixed(1)}</td>
-                <td className="py-2 pr-3 font-bold text-ink">{fmtUsd(j.revenue)}</td>
-                <td className="py-2 pr-3 text-fg-2">{fmtUsd(j.laborCost)}</td>
-                <td className={`py-2 font-bold ${j.laborPct >= 0.2 ? 'text-orange' : 'text-ink'}`}>
-                  {pct0(j.laborPct)}
-                </td>
-              </tr>
-              {open === j.inv && (
-                <tr className="bg-white/60">
-                  <td colSpan={8} className="px-4 py-4">
-                    {/* What was removed */}
-                    <div className="text-xs font-extrabold uppercase tracking-wide text-fg-2">
-                      What was removed — {j.trees} tree{j.trees > 1 ? 's' : ''}
-                    </div>
-                    <div className="mt-2 overflow-x-auto">
-                      <table className="text-xs sm:text-sm">
-                        <thead>
-                          <tr className="text-left text-fg-3">
-                            <th className="py-1 pr-4 font-bold uppercase">Species</th>
-                            <th className="py-1 pr-4 font-bold uppercase">DBH</th>
-                            <th className="py-1 pr-4 font-bold uppercase">Height</th>
-                            <th className="py-1 pr-4 font-bold uppercase">Crown</th>
-                            <th className="py-1 pr-4 font-bold uppercase">Haul</th>
-                            <th className="py-1 font-bold uppercase">Price</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {j.treeDetails.map((t, i) => (
-                            <tr key={i} className="border-t border-bark/10">
-                              <td className="py-1 pr-4 text-ink">{t.species ?? '—'}</td>
-                              <td className="py-1 pr-4 text-fg-2">{t.dbh != null ? `${Math.round(t.dbh)}"` : '—'}</td>
-                              <td className="py-1 pr-4 text-fg-2">{t.height != null ? `${Math.round(t.height)}'` : '—'}</td>
-                              <td className="py-1 pr-4 text-fg-2">{t.crown != null && t.crown <= 100 ? `${Math.round(t.crown)}'` : '—'}</td>
-                              <td className="py-1 pr-4 text-fg-2">{t.haul ? '✓' : '—'}</td>
-                              <td className="py-1 text-fg-2">{fmtUsd(t.price)}</td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-
-                    {/* Crew */}
-                    <div className="mt-4 text-xs font-extrabold uppercase tracking-wide text-fg-2">
-                      Crew ({j.crewSize} people · {j.crewHours.toFixed(1)} hrs · {fmtUsd(j.laborCost)} base labor)
-                    </div>
-                    <div className="mt-2 flex flex-wrap gap-2">
-                      {j.crew.map((c, i) => (
-                        <span
-                          key={i}
-                          className="rounded-full border-2 border-bark/20 px-3 py-1 text-xs text-ink"
-                        >
-                          {c.name} · {c.hours.toFixed(1)}h
-                        </span>
-                      ))}
-                    </div>
-                  </td>
-                </tr>
-              )}
-            </Fragment>
+            <tr key={j.inv} className={`border-b border-bark/10 align-top ${j.days > 1 ? 'bg-lime/10' : ''}`}>
+              <td className="py-3 pr-3">
+                <div className="font-bold text-ink">{j.inv}</div>
+                <div className="text-xs text-fg-3">{j.seller ?? '—'}</div>
+              </td>
+              <td className="py-3 pr-3 text-fg-2">
+                {j.treeDetails.map((t, i) => (
+                  <TreeLine key={i} t={t} />
+                ))}
+              </td>
+              <td className="py-3 pr-3">
+                {j.days > 1 ? (
+                  <span className="font-bold text-orange">{j.days}</span>
+                ) : (
+                  <span className="text-fg-2">1</span>
+                )}
+              </td>
+              <td className="py-3 pr-3 text-fg-2">
+                <div className="whitespace-nowrap">
+                  {j.crewSize} · {j.crewHours.toFixed(1)}h
+                </div>
+                <div className="max-w-[16rem] text-xs text-fg-3">
+                  {j.crew.map((c) => c.name).join(', ')}
+                </div>
+              </td>
+              <td className="py-3 pr-3 text-right font-bold text-ink">{fmtUsd(j.revenue)}</td>
+              <td className="py-3 pr-3 text-right text-fg-2">{fmtUsd(j.laborCost)}</td>
+              <td className={`py-3 text-right font-bold ${j.laborPct >= 0.2 ? 'text-orange' : 'text-ink'}`}>
+                {pct0(j.laborPct)}
+              </td>
+            </tr>
           ))}
         </tbody>
       </table>
