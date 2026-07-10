@@ -102,6 +102,7 @@ export function JobCostTable({ jobs }: { jobs: CostedJob[] }) {
             <th className="py-2 pr-3 font-extrabold uppercase tracking-wide">What was removed</th>
             <th className="py-2 pr-3 font-extrabold uppercase tracking-wide">Days</th>
             <th className="py-2 pr-3 font-extrabold uppercase tracking-wide">Crew</th>
+            <th className="py-2 pr-3 text-right font-extrabold uppercase tracking-wide">Total hrs</th>
             <th className="py-2 pr-3 text-right font-extrabold uppercase tracking-wide">Revenue</th>
             <th className="py-2 pr-3 text-right font-extrabold uppercase tracking-wide">Base labor</th>
             <th className="py-2 text-right font-extrabold uppercase tracking-wide">Labor %</th>
@@ -127,13 +128,14 @@ export function JobCostTable({ jobs }: { jobs: CostedJob[] }) {
                 )}
               </td>
               <td className="py-3 pr-3 text-fg-2">
-                <div className="whitespace-nowrap">
-                  {j.crewSize} · {j.crewHours.toFixed(1)}h
+                <div className="whitespace-nowrap font-semibold text-ink">
+                  {j.crewSize} {j.crewSize === 1 ? 'person' : 'people'}
                 </div>
                 <div className="max-w-[16rem] text-xs text-fg-3">
                   {j.crew.map((c) => c.name).join(', ')}
                 </div>
               </td>
+              <td className="py-3 pr-3 text-right text-fg-2">{j.crewHours.toFixed(1)}h</td>
               <td className="py-3 pr-3 text-right font-bold text-ink">{fmtUsd(j.revenue)}</td>
               <td className="py-3 pr-3 text-right text-fg-2">{fmtUsd(j.laborCost)}</td>
               <td className={`py-3 text-right font-bold ${j.laborPct >= 0.2 ? 'text-orange' : 'text-ink'}`}>
