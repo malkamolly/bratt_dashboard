@@ -21,6 +21,16 @@
     "name": "Los R",
     "hours": 3.6
    }
+  ],
+  "treeDetails": [
+   {
+    "species": "Silver Maple And Cottonwood",
+    "dbh": 31.0,
+    "height": 59.0,
+    "crown": 50.0,
+    "haul": true,
+    "price": 5000
+   }
   ]
  },
  {
@@ -50,6 +60,24 @@
     "name": "Los R",
     "hours": 6.8
    }
+  ],
+  "treeDetails": [
+   {
+    "species": "Silver Maple",
+    "dbh": 32.0,
+    "height": null,
+    "crown": null,
+    "haul": true,
+    "price": 4825
+   },
+   {
+    "species": "Volunteer",
+    "dbh": 1.0,
+    "height": null,
+    "crown": null,
+    "haul": true,
+    "price": 200
+   }
   ]
  },
  {
@@ -73,6 +101,16 @@
    {
     "name": "Sean-Paul M",
     "hours": 9.3
+   }
+  ],
+  "treeDetails": [
+   {
+    "species": "Elm",
+    "dbh": 64.0,
+    "height": 64.0,
+    "crown": null,
+    "haul": true,
+    "price": 5700
    }
   ]
  },
@@ -110,6 +148,48 @@
     "name": "Nolan M",
     "hours": 7.2
    }
+  ],
+  "treeDetails": [
+   {
+    "species": "Boxelder",
+    "dbh": 20.0,
+    "height": null,
+    "crown": null,
+    "haul": true,
+    "price": 1680
+   },
+   {
+    "species": "Ash",
+    "dbh": 20.0,
+    "height": null,
+    "crown": null,
+    "haul": true,
+    "price": 1690
+   },
+   {
+    "species": "Ash",
+    "dbh": 18.0,
+    "height": null,
+    "crown": null,
+    "haul": true,
+    "price": 1450
+   },
+   {
+    "species": "Spruce",
+    "dbh": 11.0,
+    "height": null,
+    "crown": null,
+    "haul": true,
+    "price": 790
+   },
+   {
+    "species": "Crab Apple",
+    "dbh": 5.0,
+    "height": null,
+    "crown": null,
+    "haul": true,
+    "price": 130
+   }
   ]
  },
  {
@@ -134,6 +214,24 @@
    {
     "name": "Los R",
     "hours": 8.3
+   }
+  ],
+  "treeDetails": [
+   {
+    "species": "Ashlocation Of Tree S Backyard Centerdbh",
+    "dbh": 29.0,
+    "height": null,
+    "crown": null,
+    "haul": true,
+    "price": 5000
+   },
+   {
+    "species": "Ashlocation Of Tree S Front Yard Centerdbh",
+    "dbh": 28.0,
+    "height": null,
+    "crown": null,
+    "haul": true,
+    "price": 2150
    }
   ]
  },
@@ -179,6 +277,16 @@
     "name": "Sean-Paul M",
     "hours": 3.5
    }
+  ],
+  "treeDetails": [
+   {
+    "species": "Elm",
+    "dbh": 49.0,
+    "height": null,
+    "crown": null,
+    "haul": true,
+    "price": 7400
+   }
   ]
  },
  {
@@ -210,6 +318,16 @@
    {
     "name": "Braeden R",
     "hours": 5.3
+   }
+  ],
+  "treeDetails": [
+   {
+    "species": "Elm",
+    "dbh": 52.0,
+    "height": 60.0,
+    "crown": 38.0,
+    "haul": true,
+    "price": 7498.89
    }
   ]
  },
@@ -249,6 +367,24 @@
     "name": "Braeden R",
     "hours": 6.9
    }
+  ],
+  "treeDetails": [
+   {
+    "species": "Ash",
+    "dbh": null,
+    "height": null,
+    "crown": null,
+    "haul": true,
+    "price": 5000
+   },
+   {
+    "species": "Ash",
+    "dbh": null,
+    "height": null,
+    "crown": null,
+    "haul": true,
+    "price": 4995
+   }
   ]
  },
  {
@@ -280,6 +416,24 @@
    {
     "name": "Eric S",
     "hours": 8.6
+   }
+  ],
+  "treeDetails": [
+   {
+    "species": "Buroak",
+    "dbh": 40.0,
+    "height": 45.0,
+    "crown": 40.0,
+    "haul": true,
+    "price": 10100
+   },
+   {
+    "species": "Arborvitae And Hackberry",
+    "dbh": null,
+    "height": 40.0,
+    "crown": 40.0,
+    "haul": true,
+    "price": 1
    }
   ]
  },
@@ -318,6 +472,40 @@
    {
     "name": "Anders M",
     "hours": 8.6
+   }
+  ],
+  "treeDetails": [
+   {
+    "species": "Ashremoval Of Six Ash At Vera Cruz Remove Tree To As Close To Ground Level As Possible Our Team Will Remove And Haul All Debris Dbh Diameter At Breast Height Location Of Tree S Side Of Home Along Fence",
+    "dbh": 28.0,
+    "height": 28.0,
+    "crown": null,
+    "haul": true,
+    "price": 10150
+   },
+   {
+    "species": "Elmremove Tree To As Close To Ground Level As Possible Our Team Will Remove And Haul All Debris Dbh Diameter At Breast Height Location Of Tree Backyard Near Fence",
+    "dbh": 14.0,
+    "height": 14.0,
+    "crown": null,
+    "haul": true,
+    "price": 695
+   },
+   {
+    "species": "Elmremove Tree To As Close To Ground Level As Possible Our Team Will Remove And Haul All Debris Dbh Diameter At Breast Height Location Of Tree Backyard Near Home",
+    "dbh": 10.0,
+    "height": 10.0,
+    "crown": null,
+    "haul": true,
+    "price": 500
+   },
+   {
+    "species": "Various Treese Corner Of Property Between Garages Removal Of Roughly - Volunteer Ash Trees",
+    "dbh": null,
+    "height": null,
+    "crown": null,
+    "haul": true,
+    "price": 315
    }
   ]
  },
@@ -366,6 +554,16 @@
    {
     "name": "Sean-Paul M",
     "hours": 4.3
+   }
+  ],
+  "treeDetails": [
+   {
+    "species": "Various Ash Maple Cherry Cottonwood",
+    "dbh": 25.0,
+    "height": 65.0,
+    "crown": 300.0,
+    "haul": true,
+    "price": 13460
    }
   ]
  },
@@ -419,6 +617,16 @@
     "name": "Thor B",
     "hours": 5.2
    }
+  ],
+  "treeDetails": [
+   {
+    "species": "Red Oak",
+    "dbh": 36.0,
+    "height": 65.0,
+    "crown": 50.0,
+    "haul": true,
+    "price": 14124.88
+   }
   ]
  },
  {
@@ -469,6 +677,32 @@
     "name": "Nathan R",
     "hours": 3.3
    }
+  ],
+  "treeDetails": [
+   {
+    "species": "Elmlocation Of Tree S Back Yard Splitting Property Line With West Neighbordbh",
+    "dbh": 40.0,
+    "height": null,
+    "crown": null,
+    "haul": true,
+    "price": 3200
+   },
+   {
+    "species": "Elmlocation Of Tree S Back Yard Inside Fencedbh",
+    "dbh": 35.0,
+    "height": null,
+    "crown": null,
+    "haul": true,
+    "price": 11000
+   },
+   {
+    "species": "Elmlocation Of Tree S Front Yarddbh",
+    "dbh": 20.0,
+    "height": null,
+    "crown": null,
+    "haul": true,
+    "price": 1000
+   }
   ]
  },
  {
@@ -497,6 +731,24 @@
    {
     "name": "Andrew M",
     "hours": 7.0
+   }
+  ],
+  "treeDetails": [
+   {
+    "species": "Bur Oak",
+    "dbh": 55.0,
+    "height": 55.0,
+    "crown": 45.0,
+    "haul": true,
+    "price": 16300
+   },
+   {
+    "species": "Ash And Elm",
+    "dbh": 10.0,
+    "height": null,
+    "crown": null,
+    "haul": true,
+    "price": 762
    }
   ]
  }

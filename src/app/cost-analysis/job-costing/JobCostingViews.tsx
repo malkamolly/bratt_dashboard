@@ -113,10 +113,41 @@ export function JobCostTable({ jobs }: { jobs: CostedJob[] }) {
               </tr>
               {open === j.inv && (
                 <tr className="bg-white/60">
-                  <td colSpan={8} className="px-4 py-3">
+                  <td colSpan={8} className="px-4 py-4">
+                    {/* What was removed */}
                     <div className="text-xs font-extrabold uppercase tracking-wide text-fg-2">
-                      Crew on this job ({j.trees} tree{j.trees > 1 ? 's' : ''}
-                      {j.sizes.length ? `, ${j.sizes.join('", ')}"` : ''})
+                      What was removed — {j.trees} tree{j.trees > 1 ? 's' : ''}
+                    </div>
+                    <div className="mt-2 overflow-x-auto">
+                      <table className="text-xs sm:text-sm">
+                        <thead>
+                          <tr className="text-left text-fg-3">
+                            <th className="py-1 pr-4 font-bold uppercase">Species</th>
+                            <th className="py-1 pr-4 font-bold uppercase">DBH</th>
+                            <th className="py-1 pr-4 font-bold uppercase">Height</th>
+                            <th className="py-1 pr-4 font-bold uppercase">Crown</th>
+                            <th className="py-1 pr-4 font-bold uppercase">Haul</th>
+                            <th className="py-1 font-bold uppercase">Price</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {j.treeDetails.map((t, i) => (
+                            <tr key={i} className="border-t border-bark/10">
+                              <td className="py-1 pr-4 text-ink">{t.species ?? '—'}</td>
+                              <td className="py-1 pr-4 text-fg-2">{t.dbh != null ? `${Math.round(t.dbh)}"` : '—'}</td>
+                              <td className="py-1 pr-4 text-fg-2">{t.height != null ? `${Math.round(t.height)}'` : '—'}</td>
+                              <td className="py-1 pr-4 text-fg-2">{t.crown != null && t.crown <= 100 ? `${Math.round(t.crown)}'` : '—'}</td>
+                              <td className="py-1 pr-4 text-fg-2">{t.haul ? '✓' : '—'}</td>
+                              <td className="py-1 text-fg-2">{fmtUsd(t.price)}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+
+                    {/* Crew */}
+                    <div className="mt-4 text-xs font-extrabold uppercase tracking-wide text-fg-2">
+                      Crew ({j.crewSize} people · {j.crewHours.toFixed(1)} hrs · {fmtUsd(j.laborCost)} base labor)
                     </div>
                     <div className="mt-2 flex flex-wrap gap-2">
                       {j.crew.map((c, i) => (

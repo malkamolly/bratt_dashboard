@@ -18,6 +18,15 @@ import rawJobs from '@/data/job-costing-sample.json';
 
 export type CrewMemberHours = { name: string; hours: number };
 
+export type TreeDetail = {
+  species: string | null;
+  dbh: number | null;
+  height: number | null;
+  crown: number | null;
+  haul: boolean;
+  price: number | null;
+};
+
 export type CostedJob = {
   inv: string;
   seller: string | null;
@@ -31,6 +40,7 @@ export type CostedJob = {
   /** laborCost / revenue, 0..1 */
   laborPct: number;
   crew: CrewMemberHours[];
+  treeDetails: TreeDetail[];
 };
 
 export type JobCostingSummary = {
