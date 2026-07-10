@@ -88,14 +88,18 @@ export async function uploadRenewals(formData: FormData): Promise<void> {
     return v == null ? '' : String(v).trim();
   };
 
-  // Optional columns (phones) — accept a couple of header spellings.
-  const cellAny = (row: unknown[], names: string[]): string => {
-    for (const n of names) {
-      const v = cell(row, n);
-      if (v) return v;
+  // Phone columns are optional and their exact header varies, so match loosely
+  // (case-insensitive, any header containing the right words).
+  const findCol = (pred: (lower: string) => boolean): number | undefined => {
+    for (let i = 0; i < header.length; i++) {
+      if (header[i] && pred(header[i].toLowerCase())) return i;
     }
-    return '';
+    return undefined;
   };
+  const custPhoneCol = findCol((n) => n.includes('phone') && n.includes('customer'));
+  const locPhoneCol = findCol((n) => n.includes('phone') && n.includes('location'));
+  const byIndex = (row: unknown[], i: number | undefined): string =>
+    i == null || row[i] == null ? '' : String(row[i]).trim();
 
   type Insert = {
     event_id: string;
@@ -131,8 +135,8 @@ export async function uploadRenewals(formData: FormData): Promise<void> {
       location_id: cell(row, 'Location ID'),
       location_name: cell(row, 'Location Name'),
       location_address: cell(row, 'Location Address'),
-      customer_phone: cellAny(row, ['Customer Phone', 'Customer Phone Number']),
-      location_phone: cellAny(row, ['Location Phone', 'Location Phone Number']),
+      customer_phone: byIndex(row, custPhoneCol),
+      location_phone: byIndex(row, locPhoneCol),
       treatment_name: name,
       treatment_type: deriveType(name),
       num_trees: p.count,
