@@ -19,6 +19,9 @@ export type SopDocument = {
   category: string | null;
   body_text: string;
   body_html: string;
+  /** Editable Markdown source. Empty for docs uploaded before in-app editing;
+   *  the edit screen backfills it from body_html on first open. */
+  body_markdown: string;
   source_filename: string | null;
   storage_path: string | null;
   created_by: string | null;
@@ -27,7 +30,10 @@ export type SopDocument = {
 };
 
 /** A lighter shape for the list view — omits the heavy body fields. */
-export type SopSummary = Omit<SopDocument, 'body_text' | 'body_html'> & {
+export type SopSummary = Omit<
+  SopDocument,
+  'body_text' | 'body_html' | 'body_markdown'
+> & {
   /** First ~200 chars of the plain text, for a preview line on the card. */
   excerpt: string;
 };
@@ -39,6 +45,7 @@ function rowToDocument(row: Record<string, unknown>): SopDocument {
     category: (row.category as string | null) ?? null,
     body_text: (row.body_text as string) ?? '',
     body_html: (row.body_html as string) ?? '',
+    body_markdown: (row.body_markdown as string) ?? '',
     source_filename: (row.source_filename as string | null) ?? null,
     storage_path: (row.storage_path as string | null) ?? null,
     created_by: (row.created_by as string | null) ?? null,
@@ -89,6 +96,39 @@ export async function getSop(id: string): Promise<SopDocument | null> {
 }
 
 import { parse, type HTMLElement, type Node } from 'node-html-parser';
+import { marked } from 'marked';
+import TurndownService from 'turndown';
+import { gfm } from 'turndown-plugin-gfm';
+
+// ----------------------------------------------------------------------------
+// Format conversion (Markdown <-> HTML <-> plain text)
+// ----------------------------------------------------------------------------
+// The reading view renders body_html; the editor edits body_markdown; search
+// and the future ask-the-docs feature use body_text. These keep the three in
+// sync. Editors are trusted office/admin users, so we don't sanitize the HTML
+// (same trust model as the mammoth-extracted upload HTML we already render).
+
+const turndown = new TurndownService({
+  headingStyle: 'atx',
+  codeBlockStyle: 'fenced',
+  bulletListMarker: '-',
+});
+turndown.use(gfm); // tables, strikethrough
+
+/** Markdown -> HTML for the reading view. */
+export function markdownToHtml(md: string): string {
+  return marked.parse(md, { async: false }) as string;
+}
+
+/** HTML -> Markdown, used to seed the editor from an uploaded doc's HTML. */
+export function htmlToMarkdown(html: string): string {
+  return turndown.turndown(html);
+}
+
+/** HTML -> plain text for search / AI. */
+export function htmlToPlainText(html: string): string {
+  return parse(html).text.replace(/\s+/g, ' ').trim();
+}
 
 export type TocItem = { id: string; text: string };
 export type SopSection = { id: string; title: string; html: string };

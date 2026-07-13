@@ -6,7 +6,7 @@
 // All writes for the office SOP library:
 //   - uploadSop        parse an uploaded Word (.docx) or text (.txt) file into
 //                      a new sop_documents row + stash the original file.
-//   - updateSopMeta    rename / recategorize an existing doc.
+//   - saveSopContent   edit a doc's title, category, and content (markdown).
 //   - deleteSop        soft-delete a doc (and remove its stored original).
 //   - downloadSop      redirect to a short-lived signed URL for the original.
 // Every action is gated to office roles (canUseSops); RLS on the table +
@@ -18,6 +18,11 @@ import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { serverClient } from '@/lib/supabase';
 import { getAllowedUser, canUseSops } from '@/lib/auth';
+import {
+  htmlToMarkdown,
+  markdownToHtml,
+  htmlToPlainText,
+} from '@/lib/sop-data';
 
 const SOP_BUCKET = 'sop-files';
 const MAX_BYTES = 15 * 1024 * 1024; // 15 MB
@@ -63,9 +68,10 @@ export async function uploadSop(formData: FormData): Promise<void> {
     ? f.name.split('.').pop()!.toLowerCase()
     : '';
 
-  // --- Extract text + formatted HTML from the file -------------------------
+  // --- Extract text + formatted HTML + editable markdown from the file -----
   let bodyText = '';
   let bodyHtml = '';
+  let bodyMarkdown = '';
   const buffer = Buffer.from(await f.arrayBuffer());
 
   if (ext === 'docx') {
@@ -78,6 +84,7 @@ export async function uploadSop(formData: FormData): Promise<void> {
       ]);
       bodyHtml = htmlResult.value;
       bodyText = textResult.value;
+      bodyMarkdown = htmlToMarkdown(bodyHtml);
     } catch {
       redirect(
         `/sops?error=${encodeURIComponent(
@@ -85,9 +92,15 @@ export async function uploadSop(formData: FormData): Promise<void> {
         )}`,
       );
     }
-  } else if (ext === 'txt' || ext === 'md') {
+  } else if (ext === 'md') {
+    // A markdown file is already in our editable format.
+    bodyMarkdown = buffer.toString('utf8');
+    bodyHtml = markdownToHtml(bodyMarkdown);
+    bodyText = htmlToPlainText(bodyHtml);
+  } else if (ext === 'txt') {
     bodyText = buffer.toString('utf8');
     bodyHtml = textToHtml(bodyText);
+    bodyMarkdown = bodyText;
   } else {
     redirect(
       `/sops?error=${encodeURIComponent(
@@ -140,6 +153,7 @@ export async function uploadSop(formData: FormData): Promise<void> {
       category,
       body_text: bodyText,
       body_html: bodyHtml,
+      body_markdown: bodyMarkdown,
       source_filename: f.name,
       storage_path: savedPath,
       created_by: user.email,
@@ -155,24 +169,42 @@ export async function uploadSop(formData: FormData): Promise<void> {
   redirect(`/sops/${inserted!.id}`);
 }
 
-export async function updateSopMeta(formData: FormData): Promise<void> {
+/**
+ * Save an in-app edit of a document's title, category, and content. The
+ * markdown from the editor is the source of truth; we regenerate the reading
+ * HTML and the plain-text (search / AI) body from it.
+ */
+export async function saveSopContent(formData: FormData): Promise<void> {
   await requireSopEditor();
   const id = String(formData.get('id') ?? '').trim();
   if (!id) redirect('/sops');
 
   const title = String(formData.get('title') ?? '').trim();
   const category = String(formData.get('category') ?? '').trim() || null;
+  const markdown = String(formData.get('body_markdown') ?? '');
+
   if (!title) {
-    redirect(`/sops/${id}?error=${encodeURIComponent('Title cannot be empty.')}`);
+    redirect(
+      `/sops/${id}/edit?error=${encodeURIComponent('Title cannot be empty.')}`,
+    );
   }
+
+  const bodyHtml = markdownToHtml(markdown);
+  const bodyText = htmlToPlainText(bodyHtml);
 
   const supabase = await serverClient();
   const { error } = await supabase
     .from('sop_documents')
-    .update({ title, category })
+    .update({
+      title,
+      category,
+      body_markdown: markdown,
+      body_html: bodyHtml,
+      body_text: bodyText,
+    })
     .eq('id', id);
   if (error) {
-    redirect(`/sops/${id}?error=${encodeURIComponent(error.message)}`);
+    redirect(`/sops/${id}/edit?error=${encodeURIComponent(error.message)}`);
   }
 
   revalidatePath('/sops');
