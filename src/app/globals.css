@@ -217,24 +217,46 @@ body {
   }
 
   /* Reading view for uploaded SOP documents (the HTML mammoth extracts from
-     Word). Keeps the office docs legible without pulling in a typography
-     plugin. */
+     Word). Tuned for comfortable long-form reading without pulling in a
+     typography plugin: generous line-height, a readable measure (set by the
+     sheet), and clear heading hierarchy in the brand fonts. */
   .sop-prose {
-    @apply max-w-3xl text-ink leading-relaxed;
+    @apply text-[1.0625rem] leading-[1.75] text-fg-1;
   }
-  .sop-prose h1 { @apply mt-8 mb-3 font-headline text-2xl font-black uppercase text-bark-deep; }
-  .sop-prose h2 { @apply mt-7 mb-2 font-headline text-xl font-black uppercase text-bark-deep; }
-  .sop-prose h3 { @apply mt-6 mb-2 font-headline text-lg font-extrabold uppercase text-bark-deep; }
-  .sop-prose p { @apply my-3; }
-  .sop-prose ul { @apply my-3 list-disc pl-6; }
-  .sop-prose ol { @apply my-3 list-decimal pl-6; }
-  .sop-prose li { @apply my-1; }
-  .sop-prose a { @apply text-orange underline; }
-  .sop-prose strong { @apply font-bold; }
-  .sop-prose table { @apply my-4 w-full border-collapse text-sm; }
-  .sop-prose th,
-  .sop-prose td { @apply border border-paper-edge px-3 py-1.5 text-left align-top; }
-  .sop-prose img { @apply my-4 max-w-full rounded-2; }
+  /* Anchor offset so TOC jumps don't hide the heading under the sticky nav. */
+  .sop-prose :is(h1, h2, h3, h4) { scroll-margin-top: 6rem; }
+
+  .sop-prose h1 { @apply mb-4 mt-10 font-headline text-3xl font-black uppercase leading-tight tracking-wide text-bark-deep; }
+  .sop-prose h2 { @apply mb-3 mt-10 border-b-2 border-paper-edge pb-2 font-headline text-2xl font-black uppercase leading-tight text-bark-deep; }
+  .sop-prose h3 { @apply mb-2 mt-8 font-headline text-lg font-extrabold uppercase tracking-wide text-wood; }
+  .sop-prose h4 { @apply mb-2 mt-6 font-headline text-base font-extrabold text-fg-2; }
+  .sop-prose > :first-child { @apply mt-0; }
+
+  .sop-prose p { @apply my-4; }
+  /* Lead paragraph: the first paragraph reads a touch larger, like an intro. */
+  .sop-prose > p:first-of-type { @apply text-[1.15rem] leading-relaxed text-fg-2; }
+
+  .sop-prose ul { @apply my-4 list-disc space-y-1.5 pl-6 marker:text-orange; }
+  .sop-prose ol { @apply my-4 list-decimal space-y-1.5 pl-6 marker:font-bold marker:text-orange; }
+  .sop-prose li { @apply pl-1; }
+  .sop-prose li > ul,
+  .sop-prose li > ol { @apply my-1.5; }
+
+  .sop-prose a { @apply font-semibold text-orange underline decoration-orange/40 underline-offset-2 hover:decoration-orange; }
+  .sop-prose strong { @apply font-bold text-ink; }
+  .sop-prose em { @apply italic; }
+
+  .sop-prose blockquote { @apply my-6 border-l-4 border-lime bg-paper/60 py-2 pl-5 pr-4 italic text-fg-2; }
+  .sop-prose hr { @apply my-8 border-0 border-t-2 border-paper-edge; }
+  .sop-prose code { @apply rounded-1 bg-paper px-1.5 py-0.5 font-mono text-[0.9em] text-rust; }
+
+  .sop-prose table { @apply my-6 block w-full overflow-x-auto border-collapse text-sm; }
+  .sop-prose thead { @apply bg-paper; }
+  .sop-prose th { @apply border border-paper-edge px-3 py-2 text-left align-top font-headline text-xs font-extrabold uppercase tracking-wide text-bark-deep; }
+  .sop-prose td { @apply border border-paper-edge px-3 py-2 text-left align-top; }
+  .sop-prose tbody tr:nth-child(even) { @apply bg-bone/40; }
+
+  .sop-prose img { @apply my-6 max-w-full rounded-2 border-2 border-paper-edge; }
 
   /* Pill buttons */
   .bt-btn {

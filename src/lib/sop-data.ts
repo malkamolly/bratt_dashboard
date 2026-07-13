@@ -88,6 +88,45 @@ export async function getSop(id: string): Promise<SopDocument | null> {
   return data ? rowToDocument(data) : null;
 }
 
+export type TocItem = { id: string; text: string; level: number };
+
+/**
+ * Give every top-level heading in the document body a stable `id` and pull out
+ * a table of contents. Word docs that were written with real heading styles
+ * come through mammoth as <h1>/<h2>/<h3>; this lets the reading view show an
+ * "On this page" jump list and lets those links scroll to the right spot.
+ * Docs with no headings just get an empty toc and render as a single column.
+ */
+export function buildToc(html: string): { html: string; toc: TocItem[] } {
+  const toc: TocItem[] = [];
+  const used = new Set<string>();
+
+  const out = html.replace(
+    /<h([1-3])>([\s\S]*?)<\/h\1>/gi,
+    (_match, lvl: string, inner: string) => {
+      const level = Number(lvl);
+      const text = inner.replace(/<[^>]+>/g, '').trim();
+      if (!text) return `<h${lvl}>${inner}</h${lvl}>`;
+
+      const base =
+        text
+          .toLowerCase()
+          .replace(/[^a-z0-9]+/g, '-')
+          .replace(/^-|-$/g, '')
+          .slice(0, 60) || 'section';
+      let id = base;
+      let n = 2;
+      while (used.has(id)) id = `${base}-${n++}`;
+      used.add(id);
+
+      toc.push({ id, text, level });
+      return `<h${lvl} id="${id}">${inner}</h${lvl}>`;
+    },
+  );
+
+  return { html: out, toc };
+}
+
 /** The distinct category names in use, sorted, for the filter chips. */
 export function collectCategories(docs: SopSummary[]): string[] {
   const set = new Set<string>();
