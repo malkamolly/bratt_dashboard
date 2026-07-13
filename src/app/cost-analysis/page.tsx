@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { getAllowedUser, canSeeCostAnalysis } from '@/lib/auth';
-import { buildCostAnalysis, SIZE_BANDS } from '@/lib/cost-analysis';
+import { buildCostAnalysis, SIZE_BANDS, type CostPerInchGrid } from '@/lib/cost-analysis';
 import { fmtUsd } from '@/lib/format';
 import { PriceVsSizeScatter } from './Charts';
 import {
@@ -139,6 +139,24 @@ export default async function CostAnalysisPage() {
         <GridSection grid={a.crownGrid} />
       </Card>
 
+      {/* ---------- Cost per inch heatmap ---------- */}
+      <Card title="Cost per inch — trunk size isn't the whole story" className="mt-8 border-orange">
+        <p className="mb-4 max-w-3xl text-sm text-fg-2">
+          This is <strong>cost per inch of trunk</strong> (price &divide; DBH),
+          split by height and canopy width. If trunk size were all that mattered,
+          every cell would be the same. Instead it <strong>roughly doubles</strong>{' '}
+          from short &amp; narrow to tall &amp; wide &mdash; a tall, wide-canopy
+          tree costs about {a.costPerInch.max > 0 && a.costPerInch.min > 0
+            ? `${(a.costPerInch.max / a.costPerInch.min).toFixed(1)}×`
+            : 'much'}{' '}
+          as much per inch as a short, compact one of the same diameter. Overall
+          median is <strong>${a.costPerInch.overallPerInch}/inch</strong>. The
+          takeaway: a pricing guide should factor <strong>height and canopy</strong>,
+          not just trunk size.
+        </p>
+        <CostPerInchHeatmap grid={a.costPerInch} />
+      </Card>
+
       {/* ---------- Seller consistency (the case for a guide) ---------- */}
       <Card title="Same-size trees, very different prices by salesperson" className="mt-8 border-orange">
         <p className="mb-4 max-w-3xl text-sm text-fg-2">
@@ -241,6 +259,67 @@ export default async function CostAnalysisPage() {
 // ---------------------------------------------------------------------------
 // Small presentational helpers
 // ---------------------------------------------------------------------------
+
+function CostPerInchHeatmap({ grid }: { grid: CostPerInchGrid }) {
+  const { heightRows, crownCols, cells, min, max } = grid;
+  const span = max - min || 1;
+  return (
+    <div className="overflow-x-auto">
+      <p className="mb-1 text-xs font-extrabold uppercase tracking-wide text-fg-2">
+        Canopy width &rarr;
+      </p>
+      <table className="border-separate" style={{ borderSpacing: '4px' }}>
+        <thead>
+          <tr>
+            <th className="text-left text-xs font-extrabold uppercase text-fg-2">Height &darr;</th>
+            {crownCols.map((c) => (
+              <th key={c} className="px-3 pb-1 text-center text-xs font-extrabold uppercase text-fg-2">
+                {c}
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {heightRows.map((h, hi) => (
+            <tr key={h}>
+              <th className="whitespace-nowrap pr-3 text-right text-xs font-extrabold uppercase text-fg-2">
+                {h}
+              </th>
+              {cells[hi].map((cell, ci) => {
+                if (!cell) {
+                  return (
+                    <td
+                      key={ci}
+                      className="min-w-[7rem] rounded-md bg-paper-edge/40 px-4 py-5 text-center text-fg-3"
+                    >
+                      —
+                    </td>
+                  );
+                }
+                const t = (cell.perInch - min) / span;
+                const light = t < 0.55;
+                return (
+                  <td
+                    key={ci}
+                    className="min-w-[7rem] rounded-md px-4 py-5 text-center"
+                    style={{ backgroundColor: `rgba(235,76,27,${(0.12 + t * 0.8).toFixed(2)})` }}
+                  >
+                    <div className={`font-display text-2xl ${light ? 'text-ink' : 'text-white'}`}>
+                      ${cell.perInch}
+                    </div>
+                    <div className={`text-[10px] ${light ? 'text-fg-2' : 'text-cream'}`}>
+                      /inch · {cell.count} trees
+                    </div>
+                  </td>
+                );
+              })}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
 
 function Stat({ label, value, sub }: { label: string; value: string; sub?: string }) {
   return (

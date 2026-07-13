@@ -243,6 +243,21 @@ export type MeasureGrid = {
   rows: { band: string; cells: GridCell[] }[];
 };
 
+export type CpiCell = { perInch: number; count: number } | null;
+/**
+ * Cost per inch of trunk (price ÷ DBH), laid out by height (rows) × crown
+ * spread (cols). Shows that two same-DBH trees cost very differently depending
+ * on how tall and wide they are — the case for pricing on more than trunk size.
+ */
+export type CostPerInchGrid = {
+  heightRows: string[];
+  crownCols: string[];
+  cells: CpiCell[][];
+  overallPerInch: number;
+  min: number;
+  max: number;
+};
+
 export type Outlier = {
   inv: string | null;
   dbh: number;
@@ -263,6 +278,7 @@ export type CostAnalysis = {
   hauling: DriverCompare[];
   heightGrid: MeasureGrid;
   crownGrid: MeasureGrid;
+  costPerInch: CostPerInchGrid;
   species: DriverCompare[];
   sellers: DriverCompare[];
   refBandLabel: string;
@@ -395,6 +411,30 @@ export function buildCostAnalysis(): CostAnalysis {
         : 2,
   );
 
+  // --- Cost per inch (price / DBH) by height × crown ---
+  const cpiHeightRows = ['Short (≤30′)', 'Medium (31–50′)', 'Tall (>50′)'];
+  const cpiCrownCols = ['Narrow (≤15′)', 'Medium (16–30′)', 'Wide (>30′)'];
+  const hCls = (h: number) => (h <= 30 ? 0 : h <= 50 ? 1 : 2);
+  const cCls = (c: number) => (c <= 15 ? 0 : c <= 30 ? 1 : 2);
+  const cpiCells: CpiCell[][] = cpiHeightRows.map((_, hi) =>
+    cpiCrownCols.map((_, ci) => {
+      const vals = comparable
+        .filter((r) => hCls(r.height) === hi && cCls(r.crown) === ci)
+        .map((r) => r.price / r.dbh);
+      if (vals.length < 5) return null;
+      return { perInch: round(median(vals))!, count: vals.length };
+    }),
+  );
+  const cpiPresent = cpiCells.flat().filter((c): c is { perInch: number; count: number } => c !== null);
+  const costPerInch: CostPerInchGrid = {
+    heightRows: cpiHeightRows,
+    crownCols: cpiCrownCols,
+    cells: cpiCells,
+    overallPerInch: round(median(comparable.map((r) => r.price / r.dbh)))!,
+    min: Math.min(...cpiPresent.map((c) => c.perInch)),
+    max: Math.max(...cpiPresent.map((c) => c.perInch)),
+  };
+
   // --- Outliers: jobs far from their own band's median ---
   const bandMedians = new Map(bands.map((b) => [b.label, b.median]));
   const withRatio: Outlier[] = comparable
@@ -431,6 +471,7 @@ export function buildCostAnalysis(): CostAnalysis {
     hauling,
     heightGrid,
     crownGrid,
+    costPerInch,
     species,
     sellers,
     refBandLabel,
