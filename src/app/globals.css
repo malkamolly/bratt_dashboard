@@ -231,10 +231,13 @@ body {
   .sop-prose h3 { @apply mb-2 mt-8 font-headline text-lg font-extrabold uppercase tracking-wide text-wood; }
   .sop-prose h4 { @apply mb-2 mt-6 font-headline text-base font-extrabold text-fg-2; }
   .sop-prose > :first-child { @apply mt-0; }
+  .sop-prose > :last-child { @apply mb-0; }
 
   .sop-prose p { @apply my-4; }
-  /* Lead paragraph: the first paragraph reads a touch larger, like an intro. */
-  .sop-prose > p:first-of-type { @apply text-[1.15rem] leading-relaxed text-fg-2; }
+  /* Lead-in card: the document's opening paragraphs, a touch larger. */
+  .sop-prose-lead { @apply text-[1.15rem] leading-relaxed text-fg-2; }
+  .sop-prose-lead > :first-child { @apply mt-0; }
+  .sop-prose-lead > :last-child { @apply mb-0; }
 
   .sop-prose ul { @apply my-4 list-disc space-y-1.5 pl-6 marker:text-orange; }
   .sop-prose ol { @apply my-4 list-decimal space-y-1.5 pl-6 marker:font-bold marker:text-orange; }

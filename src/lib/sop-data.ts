@@ -88,43 +88,91 @@ export async function getSop(id: string): Promise<SopDocument | null> {
   return data ? rowToDocument(data) : null;
 }
 
-export type TocItem = { id: string; text: string; level: number };
+import { parse, type HTMLElement, type Node } from 'node-html-parser';
+
+export type TocItem = { id: string; text: string };
+export type SopSection = { id: string; title: string; html: string };
+export type SopContent = {
+  /** Any content before the first section heading (the doc's lead-in). */
+  intro: string;
+  /** The document split into titled sections, one card each. */
+  sections: SopSection[];
+  /** Jump list built from the section titles. */
+  toc: TocItem[];
+};
+
+function slugify(text: string): string {
+  return (
+    text
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-|-$/g, '')
+      .slice(0, 60) || 'section'
+  );
+}
+
+const HEADING_TAGS = new Set(['H1', 'H2', 'H3']);
 
 /**
- * Give every top-level heading in the document body a stable `id` and pull out
- * a table of contents. Word docs that were written with real heading styles
- * come through mammoth as <h1>/<h2>/<h3>; this lets the reading view show an
- * "On this page" jump list and lets those links scroll to the right spot.
- * Docs with no headings just get an empty toc and render as a single column.
+ * Is this node a "section title"? Either a real heading (from a Word heading
+ * style) or a paragraph whose whole content is a single short bold run — which
+ * is how a lot of Word docs mark sections instead of using heading styles.
+ * Treating both as boundaries means the card layout works either way.
  */
-export function buildToc(html: string): { html: string; toc: TocItem[] } {
-  const toc: TocItem[] = [];
+function isSectionBoundary(node: Node): node is HTMLElement {
+  const el = node as HTMLElement;
+  const tag = el.tagName;
+  if (!tag) return false;
+  if (HEADING_TAGS.has(tag)) return el.text.trim().length > 0;
+
+  if (tag === 'P') {
+    const kids = el.childNodes.filter(
+      (n) => !(n.nodeType === 3 && !n.rawText.trim()),
+    );
+    if (kids.length !== 1) return false;
+    const only = kids[0] as HTMLElement;
+    if (only.tagName !== 'STRONG' && only.tagName !== 'B') return false;
+    const text = el.text.trim();
+    return text.length > 0 && text.length <= 80;
+  }
+  return false;
+}
+
+/**
+ * Split the extracted document HTML into an intro plus a list of titled
+ * sections, so the reading view can render each section as its own card. If
+ * the document has no detectable section titles, `sections` is empty and the
+ * whole body comes back as `intro` (rendered as a single card).
+ */
+export function splitDocument(html: string): SopContent {
+  const root = parse(html);
   const used = new Set<string>();
 
-  const out = html.replace(
-    /<h([1-3])>([\s\S]*?)<\/h\1>/gi,
-    (_match, lvl: string, inner: string) => {
-      const level = Number(lvl);
-      const text = inner.replace(/<[^>]+>/g, '').trim();
-      if (!text) return `<h${lvl}>${inner}</h${lvl}>`;
+  let introHtml = '';
+  const sections: SopSection[] = [];
+  let current: SopSection | null = null;
 
-      const base =
-        text
-          .toLowerCase()
-          .replace(/[^a-z0-9]+/g, '-')
-          .replace(/^-|-$/g, '')
-          .slice(0, 60) || 'section';
-      let id = base;
+  for (const node of root.childNodes) {
+    if (isSectionBoundary(node)) {
+      const title = node.text.trim();
+      let id = slugify(title);
       let n = 2;
-      while (used.has(id)) id = `${base}-${n++}`;
+      while (used.has(id)) id = `${slugify(title)}-${n++}`;
       used.add(id);
+      current = { id, title, html: '' };
+      sections.push(current);
+    } else if (current) {
+      current.html += node.toString();
+    } else {
+      introHtml += node.toString();
+    }
+  }
 
-      toc.push({ id, text, level });
-      return `<h${lvl} id="${id}">${inner}</h${lvl}>`;
-    },
-  );
-
-  return { html: out, toc };
+  return {
+    intro: introHtml.trim(),
+    sections,
+    toc: sections.map((s) => ({ id: s.id, text: s.title })),
+  };
 }
 
 /** The distinct category names in use, sorted, for the filter chips. */

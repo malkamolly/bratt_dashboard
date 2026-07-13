@@ -2,7 +2,7 @@ import Link from 'next/link';
 import { redirect, notFound } from 'next/navigation';
 import { ArrowLeft, Download, List, Pencil, Trash2 } from 'lucide-react';
 import { getAllowedUser, canUseSops } from '@/lib/auth';
-import { getSop, buildToc } from '@/lib/sop-data';
+import { getSop, splitDocument } from '@/lib/sop-data';
 import { updateSopMeta, deleteSop, downloadSop } from '../actions';
 
 export const dynamic = 'force-dynamic';
@@ -14,8 +14,6 @@ function fmtDate(iso: string): string {
     day: 'numeric',
   });
 }
-
-const TOC_INDENT: Record<number, string> = { 1: 'pl-3', 2: 'pl-6', 3: 'pl-9' };
 
 export default async function SopDetailPage({
   params,
@@ -33,7 +31,7 @@ export default async function SopDetailPage({
   const doc = await getSop(id);
   if (!doc) notFound();
 
-  const { html, toc } = buildToc(doc.body_html);
+  const { intro, sections, toc } = splitDocument(doc.body_html);
   const hasToc = toc.length >= 3;
 
   return (
@@ -65,83 +63,128 @@ export default async function SopDetailPage({
         </div>
       )}
 
+      {/* --- Hero header --------------------------------------------------- */}
+      <header className="overflow-hidden rounded-card bg-bark shadow-sh-2">
+        <div className="h-2 bg-orange" />
+        <div className="px-6 py-8 sm:px-10 sm:py-10">
+          {doc.category && (
+            <p className="font-headline text-xs font-extrabold uppercase tracking-ribbon text-lime">
+              {doc.category}
+            </p>
+          )}
+          <h1 className="mt-2 font-display text-4xl leading-tight tracking-wide text-cream sm:text-5xl">
+            {doc.title}
+          </h1>
+          <p className="mt-3 text-sm text-cream/60">
+            Updated {fmtDate(doc.updated_at)}
+            {doc.source_filename && <> · from {doc.source_filename}</>}
+          </p>
+        </div>
+      </header>
+
       <div
         className={
           hasToc
-            ? 'lg:grid lg:grid-cols-[220px_minmax(0,1fr)] lg:gap-10'
-            : 'mx-auto max-w-4xl'
+            ? 'mt-8 lg:grid lg:grid-cols-[220px_minmax(0,1fr)] lg:gap-10'
+            : 'mx-auto mt-8 max-w-4xl'
         }
       >
         {/* --- Table of contents (desktop sidebar) ------------------------- */}
         {hasToc && (
           <aside className="hidden lg:block">
             <nav className="sticky top-8">
-              <p className="bt-eyebrow mb-3">On this page</p>
-              <ul className="border-l-2 border-paper-edge">
-                {toc.map((item) => (
+              <p className="bt-eyebrow mb-3">Sections</p>
+              <ol className="space-y-1 border-l-2 border-paper-edge">
+                {toc.map((item, i) => (
                   <li key={item.id}>
                     <a
                       href={`#${item.id}`}
-                      className={`-ml-0.5 block border-l-2 border-transparent py-1 ${
-                        TOC_INDENT[item.level] ?? 'pl-3'
-                      } text-sm text-fg-2 transition-colors hover:border-orange hover:text-orange`}
+                      className="-ml-0.5 flex gap-2 border-l-2 border-transparent py-1 pl-3 text-sm text-fg-2 transition-colors hover:border-orange hover:text-orange"
                     >
-                      {item.text}
+                      <span className="font-headline font-extrabold text-fg-3">
+                        {String(i + 1).padStart(2, '0')}
+                      </span>
+                      <span>{item.text}</span>
                     </a>
                   </li>
                 ))}
-              </ul>
+              </ol>
             </nav>
           </aside>
         )}
 
         {/* --- Main column -------------------------------------------------- */}
         <div>
-          {/* Collapsible TOC on mobile */}
+          {/* Collapsible section list on mobile */}
           {hasToc && (
             <details className="mb-6 rounded-card border-2 border-paper-edge bg-paper px-4 py-3 lg:hidden">
               <summary className="inline-flex cursor-pointer items-center gap-2 font-headline text-xs font-extrabold uppercase tracking-ribbon text-fg-2">
                 <List className="h-4 w-4" />
-                On this page
+                Jump to a section
               </summary>
-              <ul className="mt-3 border-l-2 border-paper-edge">
-                {toc.map((item) => (
+              <ol className="mt-3 space-y-1">
+                {toc.map((item, i) => (
                   <li key={item.id}>
                     <a
                       href={`#${item.id}`}
-                      className={`block py-1 ${
-                        TOC_INDENT[item.level] ?? 'pl-3'
-                      } text-sm text-fg-2 hover:text-orange`}
+                      className="flex gap-2 py-1 text-sm text-fg-2 hover:text-orange"
                     >
-                      {item.text}
+                      <span className="font-headline font-extrabold text-fg-3">
+                        {String(i + 1).padStart(2, '0')}
+                      </span>
+                      <span>{item.text}</span>
                     </a>
                   </li>
                 ))}
-              </ul>
+              </ol>
             </details>
           )}
 
-          {/* The document, on its own paper sheet */}
-          <article className="rounded-card border-2 border-paper-edge bg-white px-6 py-10 shadow-sh-2 sm:px-12 sm:py-14">
-            <div className="mx-auto max-w-[68ch]">
-              <header className="mb-8 border-b-2 border-paper-edge pb-6">
-                {doc.category && <p className="bt-eyebrow">{doc.category}</p>}
-                <h1 className="mt-2 font-display text-3xl leading-tight tracking-wide text-ink sm:text-4xl">
-                  {doc.title}
-                </h1>
-                <p className="mt-3 text-sm text-fg-3">
-                  Updated {fmtDate(doc.updated_at)}
-                  {doc.source_filename && <> · from {doc.source_filename}</>}
-                </p>
-              </header>
-
-              {/* mammoth emits a safe subset of HTML (no scripts/styles). */}
+          {/* Intro / lead-in (content before the first section heading) */}
+          {intro && (
+            <div className="bt-card-orange mb-6">
               <div
-                className="sop-prose"
-                dangerouslySetInnerHTML={{ __html: html }}
+                className="sop-prose sop-prose-lead"
+                dangerouslySetInnerHTML={{ __html: intro }}
               />
             </div>
-          </article>
+          )}
+
+          {/* One card per section */}
+          {sections.length > 0 ? (
+            <div className="space-y-6">
+              {sections.map((s, i) => (
+                <section
+                  key={s.id}
+                  id={s.id}
+                  className="bt-card scroll-mt-24"
+                >
+                  <div className="mb-4 flex items-center gap-4 border-b-2 border-paper-edge/70 pb-4">
+                    <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-orange font-headline text-lg font-black text-cream shadow-sh-1">
+                      {String(i + 1).padStart(2, '0')}
+                    </span>
+                    <h2 className="font-headline text-xl font-black uppercase leading-tight tracking-wide text-bark-deep sm:text-2xl">
+                      {s.title}
+                    </h2>
+                  </div>
+                  <div
+                    className="sop-prose"
+                    dangerouslySetInnerHTML={{ __html: s.html }}
+                  />
+                </section>
+              ))}
+            </div>
+          ) : (
+            // No detectable sections — render the whole body as one card.
+            !intro && (
+              <div className="bt-card">
+                <div
+                  className="sop-prose"
+                  dangerouslySetInnerHTML={{ __html: doc.body_html }}
+                />
+              </div>
+            )
+          )}
 
           {/* --- Manage (edit / delete) ------------------------------------ */}
           <details className="mt-10 border-t-2 border-paper-edge pt-6">
