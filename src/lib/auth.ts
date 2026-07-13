@@ -101,6 +101,16 @@ export function canUsePhcScheduling(role: Role): boolean {
 }
 
 /**
+ * Can this role use the office SOP / documentation library (/sops)? This is
+ * an office/dispatch tool, so admin + office (user) + the sales manager —
+ * the same set that can use the Pace hub and PHC scheduling. Mirrors
+ * sop_can_access() in migration 056_sop_library.sql.
+ */
+export function canUseSops(role: Role): boolean {
+  return role === 'admin' || role === 'user' || role === 'sales_manager';
+}
+
+/**
  * Can this role see the Tree Removal Cost Analysis? Leadership review tool —
  * limited to admins and the sales manager because it surfaces pricing and
  * per-salesperson comparisons.

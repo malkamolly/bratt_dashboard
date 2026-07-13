@@ -216,6 +216,26 @@ body {
     background: linear-gradient(180deg, #FFFFFF 0%, #FBF5C8 100%);
   }
 
+  /* Reading view for uploaded SOP documents (the HTML mammoth extracts from
+     Word). Keeps the office docs legible without pulling in a typography
+     plugin. */
+  .sop-prose {
+    @apply max-w-3xl text-ink leading-relaxed;
+  }
+  .sop-prose h1 { @apply mt-8 mb-3 font-headline text-2xl font-black uppercase text-bark-deep; }
+  .sop-prose h2 { @apply mt-7 mb-2 font-headline text-xl font-black uppercase text-bark-deep; }
+  .sop-prose h3 { @apply mt-6 mb-2 font-headline text-lg font-extrabold uppercase text-bark-deep; }
+  .sop-prose p { @apply my-3; }
+  .sop-prose ul { @apply my-3 list-disc pl-6; }
+  .sop-prose ol { @apply my-3 list-decimal pl-6; }
+  .sop-prose li { @apply my-1; }
+  .sop-prose a { @apply text-orange underline; }
+  .sop-prose strong { @apply font-bold; }
+  .sop-prose table { @apply my-4 w-full border-collapse text-sm; }
+  .sop-prose th,
+  .sop-prose td { @apply border border-paper-edge px-3 py-1.5 text-left align-top; }
+  .sop-prose img { @apply my-4 max-w-full rounded-2; }
+
   /* Pill buttons */
   .bt-btn {
     @apply inline-flex items-center gap-2 rounded-full font-headline font-extrabold uppercase tracking-ribbon
