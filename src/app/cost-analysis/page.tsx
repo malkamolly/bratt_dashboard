@@ -143,16 +143,18 @@ export default async function CostAnalysisPage() {
       <Card title="Cost per inch — trunk size isn't the whole story" className="mt-8 border-orange">
         <p className="mb-4 max-w-3xl text-sm text-fg-2">
           This is <strong>cost per inch of trunk</strong> (price &divide; DBH),
-          split by height and canopy width. If trunk size were all that mattered,
-          every cell would be the same. Instead it <strong>roughly doubles</strong>{' '}
-          from short &amp; narrow to tall &amp; wide &mdash; a tall, wide-canopy
-          tree costs about {a.costPerInch.max > 0 && a.costPerInch.min > 0
+          broken out by height and canopy width in 10-ft levels. If trunk size
+          were all that mattered, every cell would read the same. Instead the
+          per-inch price <strong>climbs steadily</strong> as trees get taller and
+          wider &mdash; a tall, wide-canopy tree runs about{' '}
+          {a.costPerInch.max > 0 && a.costPerInch.min > 0
             ? `${(a.costPerInch.max / a.costPerInch.min).toFixed(1)}×`
             : 'much'}{' '}
           as much per inch as a short, compact one of the same diameter. Overall
-          median is <strong>${a.costPerInch.overallPerInch}/inch</strong>. The
-          takeaway: a pricing guide should factor <strong>height and canopy</strong>,
-          not just trunk size.
+          median is <strong>${a.costPerInch.overallPerInch}/inch</strong>. Read
+          down a column (taller) or across a row (wider) to see the step-up.
+          Cells with fewer than 5 trees are left blank. The takeaway: pricing
+          should factor <strong>height and canopy</strong>, not just trunk size.
         </p>
         <CostPerInchHeatmap grid={a.costPerInch} />
       </Card>

@@ -457,14 +457,36 @@ export function buildCostAnalysis(): CostAnalysis {
   );
 
   // --- Cost per inch (price / DBH) by height × crown ---
-  const cpiHeightRows = ['Short (≤30′)', 'Medium (31–50′)', 'Tall (>50′)'];
-  const cpiCrownCols = ['Narrow (≤15′)', 'Medium (16–30′)', 'Wide (>30′)'];
-  const hCls = (h: number) => (h <= 30 ? 0 : h <= 50 ? 1 : 2);
-  const cCls = (c: number) => (c <= 15 ? 0 : c <= 30 ? 1 : 2);
-  const cpiCells: CpiCell[][] = cpiHeightRows.map((_, hi) =>
-    cpiCrownCols.map((_, ci) => {
+  // Finer 10-ft levels (per leadership) so the per-inch step-up shows at more
+  // thresholds. Sparse corners (short+wide, tall+narrow) blank out at <5 trees.
+  const cpiHeightBands = [
+    { label: '≤20′', lo: 0, hi: 20 },
+    { label: '21–30′', lo: 21, hi: 30 },
+    { label: '31–40′', lo: 31, hi: 40 },
+    { label: '41–50′', lo: 41, hi: 50 },
+    { label: '51–60′', lo: 51, hi: 60 },
+    { label: '61′+', lo: 61, hi: Infinity },
+  ];
+  const cpiCrownBands = [
+    { label: '≤10′', lo: 0, hi: 10 },
+    { label: '11–20′', lo: 11, hi: 20 },
+    { label: '21–30′', lo: 21, hi: 30 },
+    { label: '31–40′', lo: 31, hi: 40 },
+    { label: '41–50′', lo: 41, hi: 50 },
+    { label: '51′+', lo: 51, hi: Infinity },
+  ];
+  const cpiHeightRows = cpiHeightBands.map((b) => b.label);
+  const cpiCrownCols = cpiCrownBands.map((b) => b.label);
+  const cpiCells: CpiCell[][] = cpiHeightBands.map((hb) =>
+    cpiCrownBands.map((cb) => {
       const vals = comparable
-        .filter((r) => hCls(r.height) === hi && cCls(r.crown) === ci)
+        .filter(
+          (r) =>
+            r.height >= hb.lo &&
+            r.height <= hb.hi &&
+            r.crown >= cb.lo &&
+            r.crown <= cb.hi,
+        )
         .map((r) => r.price / r.dbh);
       if (vals.length < 5) return null;
       return { perInch: round(median(vals))!, count: vals.length };
