@@ -161,18 +161,63 @@ export type SizeBand = {
   floor: number;
 };
 
+// Bands stay 6" wide up to 18", then switch to 5" intervals above 18" (per
+// leadership), running all the way to 70"+ to see the shape at the top end —
+// even though the biggest bands hold very few trees.
 export const SIZE_BANDS: SizeBand[] = [
   { label: '1–6"', lo: 0, hi: 6, floor: MIN_REAL_PRICE },
   { label: '7–12"', lo: 7, hi: 12, floor: 280 },
   { label: '13–18"', lo: 13, hi: 18, floor: 400 },
-  { label: '19–24"', lo: 19, hi: 24, floor: 900 },
-  { label: '25–30"', lo: 25, hi: 30, floor: 1300 },
-  { label: '31–36"', lo: 31, hi: 36, floor: 2000 },
-  { label: '37–42"', lo: 37, hi: 42, floor: 3500 },
-  { label: '43–48"', lo: 43, hi: 48, floor: 3500 },
-  { label: '49–54"', lo: 49, hi: 54, floor: 3500 },
-  { label: '55"+', lo: 55, hi: Infinity, floor: 3500 },
+  { label: '19–23"', lo: 19, hi: 23, floor: 900 },
+  { label: '24–28"', lo: 24, hi: 28, floor: 1200 },
+  { label: '29–33"', lo: 29, hi: 33, floor: 1500 },
+  { label: '34–38"', lo: 34, hi: 38, floor: 2000 },
+  { label: '39–43"', lo: 39, hi: 43, floor: 2800 },
+  { label: '44–48"', lo: 44, hi: 48, floor: 3500 },
+  { label: '49–53"', lo: 49, hi: 53, floor: 3500 },
+  { label: '54–58"', lo: 54, hi: 58, floor: 3500 },
+  { label: '59–63"', lo: 59, hi: 63, floor: 3500 },
+  { label: '64–68"', lo: 64, hi: 68, floor: 3500 },
+  { label: '69"+', lo: 69, hi: Infinity, floor: 3500 },
 ];
+
+// ---------------------------------------------------------------------------
+// Suggested per-inch pricing model
+// ---------------------------------------------------------------------------
+// Derived from the clean set's median cost-per-inch: a base $/inch of DBH, plus
+// flat per-inch surcharges when a tree exceeds the "tall" and "wide" thresholds
+// already used in the charts. Additive & simple on purpose; it's slightly
+// conservative for trees that are BOTH tall and wide (those run ~$122/in vs the
+// model's ~$105/in).
+export const PRICING_MODEL = {
+  basePerInch: 75,
+  tallSurcharge: 10, // +$/inch when height exceeds tallThreshold
+  wideSurcharge: 20, // +$/inch when crown exceeds wideThreshold
+  tallThreshold: 50, // feet
+  wideThreshold: 30, // feet (crown spread)
+};
+
+export type ModelResult = {
+  ratePerInch: number;
+  price: number;
+  tall: boolean;
+  wide: boolean;
+};
+
+/** Apply the suggested model. height/crown null → that surcharge doesn't apply. */
+export function modelPrice(
+  dbh: number,
+  height: number | null,
+  crown: number | null,
+): ModelResult {
+  const tall = height != null && height > PRICING_MODEL.tallThreshold;
+  const wide = crown != null && crown > PRICING_MODEL.wideThreshold;
+  const ratePerInch =
+    PRICING_MODEL.basePerInch +
+    (tall ? PRICING_MODEL.tallSurcharge : 0) +
+    (wide ? PRICING_MODEL.wideSurcharge : 0);
+  return { ratePerInch, price: Math.round(dbh * ratePerInch), tall, wide };
+}
 
 /**
  * The band a tree belongs to, assigned by lower bound so there are no gaps:

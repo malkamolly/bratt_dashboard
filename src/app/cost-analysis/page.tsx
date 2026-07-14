@@ -1,7 +1,8 @@
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { getAllowedUser, canSeeCostAnalysis } from '@/lib/auth';
-import { buildCostAnalysis, SIZE_BANDS, type CostPerInchGrid } from '@/lib/cost-analysis';
+import { buildCostAnalysis, SIZE_BANDS, PRICING_MODEL, type CostPerInchGrid } from '@/lib/cost-analysis';
+import { PriceCalculator } from './PriceCalculator';
 import { fmtUsd } from '@/lib/format';
 import { PriceVsSizeScatter } from './Charts';
 import {
@@ -155,6 +156,57 @@ export default async function CostAnalysisPage() {
           not just trunk size.
         </p>
         <CostPerInchHeatmap grid={a.costPerInch} />
+      </Card>
+
+      {/* ---------- Suggested per-inch pricing model ---------- */}
+      <Card title="Suggested pricing model — per inch, with modifiers" className="mt-8">
+        <p className="mb-4 max-w-3xl text-sm text-fg-2">
+          A first draft rate card, built from the medians above. Price a removal
+          at a <strong>base rate per inch of DBH</strong>, then add a surcharge
+          per inch when the tree crosses the &ldquo;tall&rdquo; or
+          &ldquo;wide&rdquo; thresholds. It&apos;s deliberately simple and runs a
+          touch conservative on trees that are both tall and wide.
+        </p>
+        <div className="grid gap-6 lg:grid-cols-2">
+          <div>
+            <table className="w-full max-w-md text-sm">
+              <tbody>
+                <tr className="border-b border-bark/10">
+                  <td className="py-2 font-bold text-ink">Base rate</td>
+                  <td className="py-2 text-right font-bold text-orange">{fmtUsd(PRICING_MODEL.basePerInch)}/inch</td>
+                </tr>
+                <tr className="border-b border-bark/10">
+                  <td className="py-2 text-fg-2">Tall tree — over {PRICING_MODEL.tallThreshold}′</td>
+                  <td className="py-2 text-right text-ink">+{fmtUsd(PRICING_MODEL.tallSurcharge)}/inch</td>
+                </tr>
+                <tr className="border-b border-bark/10">
+                  <td className="py-2 text-fg-2">Wide canopy — over {PRICING_MODEL.wideThreshold}′</td>
+                  <td className="py-2 text-right text-ink">+{fmtUsd(PRICING_MODEL.wideSurcharge)}/inch</td>
+                </tr>
+              </tbody>
+            </table>
+            <div className="mt-4 text-xs font-extrabold uppercase tracking-wide text-fg-2">
+              Resulting rate per inch
+            </div>
+            <div className="mt-2 grid grid-cols-2 gap-2 text-sm">
+              <div className="rounded-md border-2 border-bark/15 px-3 py-2">Standard <span className="float-right font-bold text-ink">{fmtUsd(PRICING_MODEL.basePerInch)}</span></div>
+              <div className="rounded-md border-2 border-bark/15 px-3 py-2">Tall <span className="float-right font-bold text-ink">{fmtUsd(PRICING_MODEL.basePerInch + PRICING_MODEL.tallSurcharge)}</span></div>
+              <div className="rounded-md border-2 border-bark/15 px-3 py-2">Wide <span className="float-right font-bold text-ink">{fmtUsd(PRICING_MODEL.basePerInch + PRICING_MODEL.wideSurcharge)}</span></div>
+              <div className="rounded-md border-2 border-orange bg-orange/10 px-3 py-2">Tall &amp; wide <span className="float-right font-bold text-ink">{fmtUsd(PRICING_MODEL.basePerInch + PRICING_MODEL.tallSurcharge + PRICING_MODEL.wideSurcharge)}</span></div>
+            </div>
+          </div>
+          <div>
+            <div className="mb-2 text-xs font-extrabold uppercase tracking-wide text-fg-2">
+              Try it — price any tree
+            </div>
+            <PriceCalculator />
+            <p className="mt-2 text-xs text-fg-3">
+              Plug in a tree&apos;s numbers to get the modeled price. For the
+              07/13 job Black was on, enter its DBH, height, and crown here and
+              compare to the actual bid.
+            </p>
+          </div>
+        </div>
       </Card>
 
       {/* ---------- Seller consistency (the case for a guide) ---------- */}
