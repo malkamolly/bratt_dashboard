@@ -1,7 +1,8 @@
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { getAllowedUser, canSeeCostAnalysis } from '@/lib/auth';
-import { buildCostAnalysis, SIZE_BANDS, type CostPerInchGrid } from '@/lib/cost-analysis';
+import { buildCostAnalysis, SIZE_BANDS, PRICING_MODEL, modelPrice, type CostPerInchGrid } from '@/lib/cost-analysis';
+import { PriceCalculator } from './PriceCalculator';
 import { fmtUsd } from '@/lib/format';
 import { PriceVsSizeScatter } from './Charts';
 import {
@@ -157,6 +158,67 @@ export default async function CostAnalysisPage() {
           should factor <strong>height and canopy</strong>, not just trunk size.
         </p>
         <CostPerInchHeatmap grid={a.costPerInch} />
+      </Card>
+
+      {/* ---------- Draft pricing model (sandbox) ---------- */}
+      <Card title="Draft pricing model — a sandbox to play with" className="mt-8">
+        <div className="mb-4 rounded-md bg-status-warn/40 px-4 py-2 text-xs font-extrabold uppercase tracking-wide text-ink">
+          Draft only — pricing isn&apos;t finalized. A starting point to react to, not a rate sheet.
+        </div>
+        <p className="mb-4 max-w-3xl text-sm text-fg-2">
+          One simple way to turn the cost-per-inch pattern into a price: a{' '}
+          <strong>base rate per inch of DBH</strong>, plus a per-inch surcharge
+          when a tree crosses the &ldquo;tall&rdquo; or &ldquo;wide&rdquo;
+          thresholds. Numbers come from the medians above. Change your mind on
+          any of them and the whole thing shifts &mdash; that&apos;s the point of
+          a sandbox.
+        </p>
+        <div className="grid gap-6 lg:grid-cols-2">
+          <div>
+            <table className="w-full max-w-md text-sm">
+              <tbody>
+                <tr className="border-b border-bark/10">
+                  <td className="py-2 font-bold text-ink">Base rate</td>
+                  <td className="py-2 text-right font-bold text-orange">{fmtUsd(PRICING_MODEL.basePerInch)}/inch</td>
+                </tr>
+                <tr className="border-b border-bark/10">
+                  <td className="py-2 text-fg-2">Tall tree — over {PRICING_MODEL.tallThreshold}′</td>
+                  <td className="py-2 text-right text-ink">+{fmtUsd(PRICING_MODEL.tallSurcharge)}/inch</td>
+                </tr>
+                <tr className="border-b border-bark/10">
+                  <td className="py-2 text-fg-2">Wide canopy — over {PRICING_MODEL.wideThreshold}′</td>
+                  <td className="py-2 text-right text-ink">+{fmtUsd(PRICING_MODEL.wideSurcharge)}/inch</td>
+                </tr>
+              </tbody>
+            </table>
+            <div className="mt-4 text-xs font-extrabold uppercase tracking-wide text-fg-2">
+              Example modeled prices (standard → tall &amp; wide)
+            </div>
+            <div className="mt-2 space-y-1 text-sm">
+              {[20, 40, 55, 70].map((d) => (
+                <div key={d} className="flex justify-between border-b border-bark/10 py-1">
+                  <span className="text-fg-2">{d}″ DBH</span>
+                  <span className="text-ink">
+                    {fmtUsd(modelPrice(d, 0, 0).price)}{' '}
+                    <span className="text-fg-3">→</span>{' '}
+                    <span className="font-bold">{fmtUsd(modelPrice(d, 99, 99).price)}</span>
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+          <div>
+            <div className="mb-2 text-xs font-extrabold uppercase tracking-wide text-fg-2">
+              Try it — price any tree (up to 70″+)
+            </div>
+            <PriceCalculator />
+            <p className="mt-2 text-xs text-fg-3">
+              Enter DBH, height, and crown to get the modeled price and see which
+              surcharges kick in. For the 07/13 job Black was on, plug in its
+              numbers here and compare to the actual bid.
+            </p>
+          </div>
+        </div>
       </Card>
 
       {/* ---------- Seller consistency (the case for a guide) ---------- */}
