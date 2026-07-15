@@ -9,7 +9,8 @@
 
 import { NextResponse, type NextRequest } from 'next/server';
 import { randomUUID } from 'crypto';
-import { getAllowedUser, isOwner } from '@/lib/auth';
+import { getAllowedUser } from '@/lib/auth';
+import { isTagsUser } from '@/lib/tags-config';
 import { authorizeUrl } from '@/lib/slack';
 
 export async function GET(req: NextRequest) {
@@ -17,7 +18,7 @@ export async function GET(req: NextRequest) {
   if (!user) {
     return NextResponse.redirect(new URL('/login', req.url));
   }
-  if (!isOwner(user.email)) {
+  if (!isTagsUser(user.email)) {
     return NextResponse.redirect(new URL('/access-denied', req.url));
   }
 

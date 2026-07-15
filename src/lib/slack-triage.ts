@@ -33,16 +33,11 @@ import {
   type SlackMessage,
   type SlackSearchMatch,
 } from './slack';
+import { tagsConfigFor, type TagsUserConfig, type UserGroup } from './tags-config';
 
-// Usergroups (Slack "subteams") the user wants surfaced in their own sections.
-// `id` is the subteam id (starts with S); `handle` is the searchable @-handle
-// used to find messages that tag the group. To add or change groups, edit this
-// list — no schema or scope change needed.
-export const USERGROUPS: { id: string; name: string; handle: string }[] = [
-  { id: 'S0ANWS348F3', name: 'PHC', handle: 'phc' },
-  { id: 'S0907G4TUNB', name: 'Scheduling', handle: 'scheduling' },
-  { id: 'S090Q4DNC3E', name: 'Office', handle: 'officeteam' },
-];
+// A user with no config gets no mute rules and no groups (access is gated
+// upstream, so this is just a safe fallback).
+const EMPTY_CONFIG: TagsUserConfig = { mutedChannels: [], mutedMessages: [], userGroups: [] };
 
 // 'followup' isn't produced by the auto-sorter — it's a bucket the user moves
 // things into by hand (a personal to-do / follow-up list). Same for 'handled'
@@ -267,34 +262,23 @@ export function looksLikeBotCc(text: string | undefined): boolean {
 // channel, road-closure permits). Anything posted in one of these drops
 // straight to the muted "FYI" pile. Edit this list to add/remove channels;
 // match is case-insensitive and ignores a leading "#".
-// Written however reads naturally — matching ignores case and every kind of
-// separator (spaces, hyphens, underscores), so "road closure" matches a
-// channel named "#road_closure-permits-etc".
-const MUTED_CHANNELS = [
-  'road closure',
-  'cancel',
-];
+// Rule 1, extended per user: some channels/broadcasts are noise no matter who
+// posts them. The lists come from the person's config (see tags-config.ts).
 
-// Collapse a channel name to just its letters/numbers for tolerant matching.
+// Collapse a channel name to just its letters/numbers for tolerant matching,
+// so "road closure" matches "#road_closure-permits-etc" (case- and
+// separator-insensitive).
 const normChannel = (name: string) => name.replace(/[^a-z0-9]/gi, '').toLowerCase();
 
-export function isMutedChannel(channelName: string | undefined): boolean {
+export function isMutedChannel(channelName: string | undefined, muted: string[]): boolean {
   if (!channelName) return false;
   const norm = normChannel(channelName);
-  return MUTED_CHANNELS.some((c) => norm.includes(normChannel(c)));
+  return muted.some((c) => norm.includes(normChannel(c)));
 }
 
-// Rule 1, also extended by content: some recurring broadcasts are noise no
-// matter who posts them or where — e.g. the daily schedule post that opens
-// "Good day, @… This is our schedule for …". Matching these by their opening
-// text sends them straight to FYI. Add patterns here as new ones show up.
-const MUTED_MESSAGE_PATTERNS = [
-  /good day[\s\S]{0,400}this is our schedule for/i,
-];
-
-export function isMutedMessage(text: string | undefined): boolean {
+export function isMutedMessage(text: string | undefined, patterns: RegExp[]): boolean {
   if (!text) return false;
-  return MUTED_MESSAGE_PATTERNS.some((re) => re.test(text));
+  return patterns.some((re) => re.test(text));
 }
 
 const tsNum = (ts: string) => parseFloat(ts) || 0;
@@ -498,6 +482,7 @@ export async function buildBoard(
 ): Promise<TriageBoard> {
   const week = weekBounds(offsetWeeks);
   const empty = () => emptyBoard(week);
+  const config = tagsConfigFor(ownerEmail) ?? EMPTY_CONFIG;
 
   const conn = await getConnection(ownerEmail);
   if (!conn) return { ...empty(), error: 'not_connected' };
@@ -534,7 +519,7 @@ export async function buildBoard(
   for (let i = 0; i < capped.length; i += BATCH_SIZE) {
     const batch = capped.slice(i, i + BATCH_SIZE);
     const cards = await Promise.all(
-      batch.map((match) => cardFor(match, conn.slackUserId, conn.token, resolveUser)),
+      batch.map((match) => cardFor(match, conn.slackUserId, conn.token, resolveUser, config)),
     );
     for (const card of cards) {
       if (card) board[card.bucket].push(card);
@@ -546,7 +531,7 @@ export async function buildBoard(
   // subteam id. Runs the group searches in parallel.
   const groupIds = new Set<string>();
   board.groups = await Promise.all(
-    USERGROUPS.map(async (g) => {
+    config.userGroups.map(async (g: UserGroup) => {
       let matches: SlackSearchMatch[] = [];
       try {
         matches = await searchMessages(conn.token, g.handle, {
@@ -629,6 +614,7 @@ async function cardFor(
   currentUserId: string,
   token: string,
   resolveUser: ReturnType<typeof makeUserResolver>,
+  config: TagsUserConfig,
 ): Promise<TriageCard | null> {
   const channelId = match.channel?.id;
   if (!channelId) return null;
@@ -649,8 +635,8 @@ async function cardFor(
   // a snappy refresh and a rate-limited crawl.
   const cheapFyi =
     isBot ||
-    isMutedChannel(match.channel?.name) ||
-    isMutedMessage(text) ||
+    isMutedChannel(match.channel?.name, config.mutedChannels) ||
+    isMutedMessage(text, config.mutedMessages) ||
     looksLikeBotCc(text);
 
   let bucket: Bucket;

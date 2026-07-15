@@ -14,6 +14,7 @@
 
 import { NextResponse, type NextRequest } from 'next/server';
 import { createServerClient, type CookieOptions } from '@supabase/ssr';
+import { isTagsUser } from '@/lib/tags-config';
 
 const PUBLIC_PATHS = [
   '/login',
@@ -77,16 +78,27 @@ export async function middleware(req: NextRequest) {
     return NextResponse.redirect(url);
   }
 
-  // Private, EMAIL-gated (not role-gated) areas — only the single owner may
-  // enter, even other admins. Keep this address in sync with OWNER_EMAIL in
-  // lib/auth.ts and the RLS policies:
-  //   /projects  → migration 047 (personal project board)
-  //   /tags      → migration 059 (Slack tag triage; /api/slack/* is its OAuth)
-  const OWNER_ONLY_PREFIXES = ['/projects', '/tags', '/api/slack'];
-  if (
-    OWNER_ONLY_PREFIXES.some((p) => path === p || path.startsWith(p + '/'))
-  ) {
+  // The private "My Projects" hub is EMAIL-gated to the single owner (even other
+  // admins can't enter). Keep this in sync with OWNER_EMAIL in lib/auth.ts and
+  // the RLS policy in migration 047.
+  if (path === '/projects' || path.startsWith('/projects/')) {
     if ((user.email ?? '').toLowerCase() !== 'molly@bratttree.com') {
+      const url = req.nextUrl.clone();
+      url.pathname = '/access-denied';
+      return NextResponse.redirect(url);
+    }
+    return res;
+  }
+
+  // The Slack Tags board (and its OAuth routes) is gated to the per-person
+  // allowlist in tags-config.ts. Each user sees only their own data (RLS,
+  // migrations 059–061).
+  if (
+    path === '/tags' ||
+    path.startsWith('/tags/') ||
+    path.startsWith('/api/slack')
+  ) {
+    if (!isTagsUser(user.email)) {
       const url = req.nextUrl.clone();
       url.pathname = '/access-denied';
       return NextResponse.redirect(url);

@@ -2,6 +2,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { allowedHubsFor, canSeeCostAnalysis, canUsePhcScheduling, getAllowedUser, isOwner, type Hub } from '@/lib/auth';
+import { isTagsUser } from '@/lib/tags-config';
 import { getCurrentEmployeeSlug } from '@/lib/crew-data';
 
 export const dynamic = 'force-dynamic';
@@ -187,8 +188,8 @@ export default async function LandingPage() {
           </Link>
         )}
 
-        {/* Slack Tags — private per-user tag triage; owner-only in v1. */}
-        {isOwner(user.email) && (
+        {/* Slack Tags — private per-user tag triage; shown to allowlisted users. */}
+        {isTagsUser(user.email) && (
           <Link
             href="/tags"
             className="bt-card group transition-colors hover:!border-orange"

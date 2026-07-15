@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { requireOwner } from '@/lib/auth';
+import { requireTagsUser } from '@/lib/auth';
 import { getConnection } from '@/lib/slack';
 import { getDisplayBoard } from './actions';
 import { TriageBoard } from './TriageBoard';
@@ -21,7 +21,7 @@ export default async function TagsPage({
 }: {
   searchParams: Promise<{ connected?: string; error?: string }>;
 }) {
-  const user = await requireOwner();
+  const user = await requireTagsUser();
   const params = await searchParams;
 
   const connection = await getConnection(user.email);

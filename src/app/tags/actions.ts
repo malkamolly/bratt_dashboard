@@ -2,7 +2,8 @@
 
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
-import { getAllowedUser, isOwner } from '@/lib/auth';
+import { getAllowedUser } from '@/lib/auth';
+import { isTagsUser } from '@/lib/tags-config';
 import { serverClient } from '@/lib/supabase';
 import { deleteConnection, getConnection, postReply, SlackApiError } from '@/lib/slack';
 import {
@@ -18,10 +19,10 @@ import {
 // Every action re-checks ownership server-side. Middleware already blocks the
 // route, but a server action can be invoked directly, so we never trust the
 // route guard alone. Mirrors the pattern in /projects/actions.ts.
-async function requireOwnerAction() {
+async function requireTagsUserAction() {
   const u = await getAllowedUser();
   if (!u) redirect('/login');
-  if (!isOwner(u.email)) redirect('/access-denied');
+  if (!isTagsUser(u.email)) redirect('/access-denied');
   return u;
 }
 
@@ -92,7 +93,7 @@ export async function getDisplayBoard(
  * the background refresh, and when switching weeks.
  */
 export async function refreshBoard(offsetWeeks = 0): Promise<TriageBoard> {
-  const u = await requireOwnerAction();
+  const u = await requireTagsUserAction();
   const weekly = await buildBoard(u.email, offsetWeeks);
 
   if (!weekly.error) {
@@ -128,7 +129,7 @@ export async function setMessageAction(
   offsetWeeks = 0,
   card?: TriageCard,
 ): Promise<TriageBoard> {
-  const u = await requireOwnerAction();
+  const u = await requireTagsUserAction();
   const supabase = await serverClient();
   await supabase.from('slack_message_actions').upsert(
     {
@@ -147,7 +148,7 @@ export async function clearMessageAction(
   messageKey: string,
   offsetWeeks = 0,
 ): Promise<TriageBoard> {
-  const u = await requireOwnerAction();
+  const u = await requireTagsUserAction();
   const supabase = await serverClient();
   await supabase
     .from('slack_message_actions')
@@ -163,7 +164,7 @@ export async function sendReply(
   threadTs: string,
   text: string,
 ): Promise<{ ok: true } | { ok: false; error: string }> {
-  const u = await requireOwnerAction();
+  const u = await requireTagsUserAction();
   const trimmed = text.trim();
   if (!trimmed) return { ok: false, error: 'empty' };
 
@@ -188,7 +189,7 @@ export async function sendReply(
 
 /** Forget the stored Slack token + cached board + overrides. */
 export async function disconnectSlack(): Promise<void> {
-  const u = await requireOwnerAction();
+  const u = await requireTagsUserAction();
   await deleteConnection(u.email);
   const supabase = await serverClient();
   await supabase.from('slack_triage_cache').delete().eq('owner_email', u.email);

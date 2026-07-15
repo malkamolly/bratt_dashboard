@@ -7,6 +7,7 @@
 
 import { redirect } from 'next/navigation';
 import { serverClient } from './supabase';
+import { isTagsUser } from './tags-config';
 
 export type Role =
   | 'admin'
@@ -175,5 +176,17 @@ export async function requireOwner(): Promise<AllowedUser> {
   const u = await getAllowedUser();
   if (!u) redirect('/login');
   if (!isOwner(u.email)) redirect('/access-denied');
+  return u;
+}
+
+/**
+ * Guards the Slack Tags board. Unlike My Projects (owner-only), this is open to
+ * anyone on the per-person Slack Tags allowlist (see tags-config.ts). Each user
+ * still sees only their own data (enforced by RLS). Redirects others away.
+ */
+export async function requireTagsUser(): Promise<AllowedUser> {
+  const u = await getAllowedUser();
+  if (!u) redirect('/login');
+  if (!isTagsUser(u.email)) redirect('/access-denied');
   return u;
 }
