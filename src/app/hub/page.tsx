@@ -73,14 +73,15 @@ export default async function HubHomePage() {
         {showCalculator && (
           <Link href="/hub/calculator" className="bt-card group transition-colors hover:!border-orange">
             <h2 className="font-headline text-3xl font-black uppercase text-bark-deep">
-              PHC Calculator
+              Price Calculators
             </h2>
             <p className="mt-3 text-sm text-fg-2">
-              Build a customer quote from the PHC price book &mdash; pick a
-              treatment, enter the DBH, and the total adds up as you go.
+              Build a customer quote &mdash; PHC treatments by DBH or stump
+              herbicide by stump size. Add a line per item and the total adds up
+              as you go.
             </p>
             <p className="mt-6 font-headline text-xs font-extrabold uppercase tracking-ribbon text-orange">
-              Open calculator &rarr;
+              Open calculators &rarr;
             </p>
           </Link>
         )}
