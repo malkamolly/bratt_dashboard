@@ -43,11 +43,11 @@ export const TAGS_USERS: Record<string, TagsUserConfig> = {
     userGroups: [PHC, SCHEDULING, OFFICE],
   },
 
-  // Same FYI rules as Molly; PHC + Office groups.
+  // Same FYI rules as Molly; PHC + Office + Scheduling groups.
   'mariella@bratttree.com': {
     mutedChannels: ['road closure', 'cancel'],
     mutedMessages: [DAILY_SCHEDULE],
-    userGroups: [PHC, OFFICE],
+    userGroups: [PHC, OFFICE, SCHEDULING],
   },
 
   'juancarlos@bratttree.com': {
