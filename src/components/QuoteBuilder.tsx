@@ -79,35 +79,49 @@ export function QuoteBuilder() {
 
   return (
     <div className="space-y-4">
-      <ul className="space-y-4">
+      <ul className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {lines.map((line, idx) => {
           const c = computed[idx];
           const service = c.service;
           return (
-            <li key={line.key} className="bt-card !p-4 sm:!p-5">
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-[1fr_90px_70px_auto] sm:items-end">
-                {/* Service picker */}
-                <label className="flex flex-col gap-1">
-                  <span className="bt-eyebrow">Service</span>
-                  <select
-                    value={line.serviceId}
-                    onChange={(e) => update(line.key, { serviceId: e.target.value })}
-                    className="w-full rounded-2 border-2 border-paper-edge bg-white px-3 py-2 font-headline text-base focus:border-orange focus:outline-none"
-                  >
-                    <option value="">— pick a treatment —</option>
-                    {SERVICE_CATEGORIES.map((cat) => (
-                      <optgroup key={cat} label={cat}>
-                        {SERVICES.filter((s) => s.category === cat).map((s) => (
-                          <option key={s.id} value={s.id}>
-                            {s.name}
-                          </option>
-                        ))}
-                      </optgroup>
-                    ))}
-                  </select>
-                </label>
+            <li key={line.key} className="bt-card flex flex-col gap-3 !p-4">
+              {/* Header: line label + remove */}
+              <div className="flex items-start justify-between">
+                <span className="bt-eyebrow">Line {idx + 1}</span>
+                <button
+                  type="button"
+                  onClick={() => remove(line.key)}
+                  title="Remove this line"
+                  aria-label="Remove this line"
+                  className="-mr-1 -mt-1 inline-flex h-7 w-7 items-center justify-center rounded-full border-2 border-paper-edge text-fg-3 transition-colors hover:border-orange-press hover:bg-orange-press hover:text-white"
+                >
+                  ×
+                </button>
+              </div>
 
-                {/* DBH */}
+              {/* Service picker */}
+              <label className="flex flex-col gap-1">
+                <span className="bt-eyebrow">Service</span>
+                <select
+                  value={line.serviceId}
+                  onChange={(e) => update(line.key, { serviceId: e.target.value })}
+                  className="w-full rounded-2 border-2 border-paper-edge bg-white px-3 py-2 font-headline text-sm focus:border-orange focus:outline-none"
+                >
+                  <option value="">— pick a treatment —</option>
+                  {SERVICE_CATEGORIES.map((cat) => (
+                    <optgroup key={cat} label={cat}>
+                      {SERVICES.filter((s) => s.category === cat).map((s) => (
+                        <option key={s.id} value={s.id}>
+                          {s.name}
+                        </option>
+                      ))}
+                    </optgroup>
+                  ))}
+                </select>
+              </label>
+
+              {/* DBH + quantity side by side */}
+              <div className="grid grid-cols-2 gap-3">
                 <label className="flex flex-col gap-1">
                   <span className="bt-eyebrow">DBH (in)</span>
                   <input
@@ -119,8 +133,6 @@ export function QuoteBuilder() {
                     className="w-full rounded-2 border-2 border-paper-edge bg-white px-3 py-2 text-right font-headline text-base focus:border-orange focus:outline-none"
                   />
                 </label>
-
-                {/* Quantity */}
                 <label className="flex flex-col gap-1">
                   <span className="bt-eyebrow"># Trees</span>
                   <input
@@ -132,62 +144,62 @@ export function QuoteBuilder() {
                     className="w-full rounded-2 border-2 border-paper-edge bg-white px-3 py-2 text-right font-headline text-base focus:border-orange focus:outline-none"
                   />
                 </label>
-
-                {/* Line total + remove */}
-                <div className="flex items-center justify-between gap-3 sm:flex-col sm:items-end sm:justify-end">
-                  <span className="font-headline text-xl font-black text-ink">
-                    {c.total != null ? fmtUsd(c.total) : '—'}
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => remove(line.key)}
-                    title="Remove this line"
-                    aria-label="Remove this line"
-                    className="inline-flex h-8 w-8 items-center justify-center rounded-full border-2 border-paper-edge text-fg-3 transition-colors hover:border-orange-press hover:bg-orange-press hover:text-white"
-                  >
-                    ×
-                  </button>
-                </div>
               </div>
 
-              {/* Per-line detail line: pricing summary, method, frequency, warnings */}
-              {service && (
-                <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 border-t border-paper-edge/60 pt-3 text-xs text-fg-2">
-                  {c.unit != null && (
-                    <span>
-                      <strong className="text-ink">{fmtUsd(c.unit)}</strong> each
-                      {c.qty > 1 && <> &times; {c.qty}</>}
-                    </span>
-                  )}
-                  <ServiceMeta service={service} />
-                </div>
-              )}
+              {/* Per-line detail: pricing summary, method, frequency */}
+              {service && <ServiceMeta service={service} />}
 
               {c.note && (
-                <p className="mt-3 rounded-2 border-2 border-orange-press bg-orange/10 px-3 py-2 text-sm font-bold text-orange-press">
+                <p className="rounded-2 border-2 border-orange-press bg-orange/10 px-3 py-2 text-sm font-bold text-orange-press">
                   {c.note}
                 </p>
               )}
               {service?.heightLimit && c.unit != null && (
-                <p className="mt-2 text-xs text-fg-3">
+                <p className="text-xs text-fg-3">
                   Note: this chart price does <strong>not</strong> apply to trees over 25 ft
                   tall — consult PHC Manager (Connor) for those.
                 </p>
               )}
+
+              {/* Line total */}
+              <div className="mt-auto flex items-end justify-between border-t border-paper-edge/60 pt-3">
+                <span className="text-xs text-fg-2">
+                  {c.unit != null ? (
+                    <>
+                      <strong className="text-ink">{fmtUsd(c.unit)}</strong> each
+                      {c.qty > 1 && <> &times; {c.qty}</>}
+                    </>
+                  ) : (
+                    '—'
+                  )}
+                </span>
+                <span className="font-headline text-xl font-black text-ink">
+                  {c.total != null ? fmtUsd(c.total) : '—'}
+                </span>
+              </div>
             </li>
           );
         })}
+
+        {/* Add-another tile, sized to match a card */}
+        <li>
+          <button
+            type="button"
+            onClick={add}
+            className="flex h-full min-h-[160px] w-full flex-col items-center justify-center gap-1 rounded-card border-2 border-dashed border-paper-edge text-fg-3 transition-colors hover:border-orange hover:text-orange-press"
+          >
+            <span className="text-2xl leading-none">+</span>
+            <span className="font-headline text-xs font-extrabold uppercase tracking-ribbon">
+              Add tree / service
+            </span>
+          </button>
+        </li>
       </ul>
 
       <div className="flex flex-col-reverse gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex gap-3">
-          <button type="button" onClick={add} className="bt-btn bt-btn-ghost">
-            + Add another tree / service
-          </button>
-          <button type="button" onClick={reset} className="bt-btn bt-btn-ghost">
-            Clear all
-          </button>
-        </div>
+        <button type="button" onClick={reset} className="bt-btn bt-btn-ghost">
+          Clear all
+        </button>
 
         <div className="rounded-card bg-bark px-6 py-4 text-cream sm:min-w-[280px]">
           <p className="font-headline text-[11px] font-extrabold uppercase tracking-ribbon text-lime">
@@ -213,15 +225,9 @@ function ServiceMeta({ service }: { service: Service }) {
   if (service.frequency) bits.push(service.frequency);
   if (service.sprays) bits.push(service.sprays);
   return (
-    <>
-      <span className="text-fg-3">·</span>
-      <span className="text-fg-3">{pricingSummary(service)}</span>
-      {bits.length > 0 && (
-        <>
-          <span className="text-fg-3">·</span>
-          <span className="text-fg-3">{bits.join(' · ')}</span>
-        </>
-      )}
-    </>
+    <div className="space-y-0.5 text-xs text-fg-3">
+      <div>{pricingSummary(service)}</div>
+      {bits.length > 0 && <div>{bits.join(' · ')}</div>}
+    </div>
   );
 }
