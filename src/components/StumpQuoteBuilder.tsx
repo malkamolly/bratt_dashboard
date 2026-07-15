@@ -73,86 +73,92 @@ export function StumpQuoteBuilder() {
 
   return (
     <div className="space-y-4">
-      <ul className="space-y-4">
+      <ul className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
         {lines.map((line, idx) => {
           const c = computed[idx];
           return (
-            <li key={line.key} className="bt-card !p-4 sm:!p-5">
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-[1fr_110px_90px_auto] sm:items-end">
-                {/* Stump diameter */}
-                <label className="flex flex-col gap-1">
-                  <span className="bt-eyebrow">Stump diameter (in)</span>
-                  <input
-                    type="text"
-                    inputMode="decimal"
-                    value={line.dia}
-                    onChange={(e) => update(line.key, { dia: e.target.value })}
-                    placeholder="0"
-                    className="w-full rounded-2 border-2 border-paper-edge bg-white px-3 py-2 text-right font-headline text-base focus:border-orange focus:outline-none"
-                  />
-                </label>
-
-                {/* Band label (read-only helper) */}
-                <div className="flex flex-col gap-1">
-                  <span className="bt-eyebrow">Range</span>
-                  <span className="px-1 py-2 font-headline text-sm text-fg-2">
-                    {c.label ?? '—'}
-                  </span>
-                </div>
-
-                {/* Quantity */}
-                <label className="flex flex-col gap-1">
-                  <span className="bt-eyebrow"># Stumps</span>
-                  <input
-                    type="text"
-                    inputMode="numeric"
-                    value={line.qty}
-                    onChange={(e) => update(line.key, { qty: e.target.value })}
-                    placeholder="1"
-                    className="w-full rounded-2 border-2 border-paper-edge bg-white px-3 py-2 text-right font-headline text-base focus:border-orange focus:outline-none"
-                  />
-                </label>
-
-                {/* Line total + remove */}
-                <div className="flex items-center justify-between gap-3 sm:flex-col sm:items-end sm:justify-end">
-                  <span className="font-headline text-xl font-black text-ink">
-                    {c.total != null ? fmtUsd(c.total) : '—'}
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => remove(line.key)}
-                    title="Remove this line"
-                    aria-label="Remove this line"
-                    className="inline-flex h-8 w-8 items-center justify-center rounded-full border-2 border-paper-edge text-fg-3 transition-colors hover:border-orange-press hover:bg-orange-press hover:text-white"
-                  >
-                    ×
-                  </button>
-                </div>
+            <li key={line.key} className="bt-card flex flex-col gap-3 !p-4">
+              {/* Header: line label + remove */}
+              <div className="flex items-start justify-between">
+                <span className="bt-eyebrow">Stump {idx + 1}</span>
+                <button
+                  type="button"
+                  onClick={() => remove(line.key)}
+                  title="Remove this stump"
+                  aria-label="Remove this stump"
+                  className="-mr-1 -mt-1 inline-flex h-7 w-7 items-center justify-center rounded-full border-2 border-paper-edge text-fg-3 transition-colors hover:border-orange-press hover:bg-orange-press hover:text-white"
+                >
+                  ×
+                </button>
               </div>
 
-              {/* Per-line detail: per-stump price × quantity. */}
-              {c.unit != null && (
-                <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 border-t border-paper-edge/60 pt-3 text-xs text-fg-2">
-                  <span>
-                    <strong className="text-ink">{fmtUsd(c.unit)}</strong> per stump
-                    {c.qty > 1 && <> &times; {c.qty}</>}
-                  </span>
-                </div>
-              )}
+              {/* Diameter */}
+              <label className="flex flex-col gap-1">
+                <span className="bt-eyebrow">Diameter (in)</span>
+                <input
+                  type="text"
+                  inputMode="decimal"
+                  value={line.dia}
+                  onChange={(e) => update(line.key, { dia: e.target.value })}
+                  placeholder="0"
+                  className="w-full rounded-2 border-2 border-paper-edge bg-white px-3 py-2 text-right font-headline text-base focus:border-orange focus:outline-none"
+                />
+                <span className="text-xs text-fg-3">
+                  {c.label ? `Range ${c.label}` : 'Enter a diameter'}
+                </span>
+              </label>
+
+              {/* Quantity */}
+              <label className="flex flex-col gap-1">
+                <span className="bt-eyebrow"># Stumps</span>
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  value={line.qty}
+                  onChange={(e) => update(line.key, { qty: e.target.value })}
+                  placeholder="1"
+                  className="w-full rounded-2 border-2 border-paper-edge bg-white px-3 py-2 text-right font-headline text-base focus:border-orange focus:outline-none"
+                />
+              </label>
+
+              {/* Line total */}
+              <div className="mt-auto flex items-end justify-between border-t border-paper-edge/60 pt-3">
+                <span className="text-xs text-fg-2">
+                  {c.unit != null ? (
+                    <>
+                      <strong className="text-ink">{fmtUsd(c.unit)}</strong> / stump
+                    </>
+                  ) : (
+                    '—'
+                  )}
+                </span>
+                <span className="font-headline text-xl font-black text-ink">
+                  {c.total != null ? fmtUsd(c.total) : '—'}
+                </span>
+              </div>
             </li>
           );
         })}
+
+        {/* Add-another tile, sized to match a card */}
+        <li>
+          <button
+            type="button"
+            onClick={add}
+            className="flex h-full min-h-[160px] w-full flex-col items-center justify-center gap-1 rounded-card border-2 border-dashed border-paper-edge text-fg-3 transition-colors hover:border-orange hover:text-orange-press"
+          >
+            <span className="text-2xl leading-none">+</span>
+            <span className="font-headline text-xs font-extrabold uppercase tracking-ribbon">
+              Add stump
+            </span>
+          </button>
+        </li>
       </ul>
 
       <div className="flex flex-col-reverse gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex gap-3">
-          <button type="button" onClick={add} className="bt-btn bt-btn-ghost">
-            + Add another stump
-          </button>
-          <button type="button" onClick={reset} className="bt-btn bt-btn-ghost">
-            Clear all
-          </button>
-        </div>
+        <button type="button" onClick={reset} className="bt-btn bt-btn-ghost">
+          Clear all
+        </button>
 
         <div className="rounded-card bg-bark px-6 py-4 text-cream sm:min-w-[280px]">
           <p className="font-headline text-[11px] font-extrabold uppercase tracking-ribbon text-lime">

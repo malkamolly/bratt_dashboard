@@ -14,7 +14,7 @@ export async function HubSubNav({ active }: { active: string }) {
   const user = await getAllowedUser();
   const sections = [...BASE_SECTIONS];
   if (user && canUseCalculator(user.role)) {
-    sections.push({ href: '/hub/calculator', label: 'Calculator' });
+    sections.push({ href: '/hub/calculator', label: 'Calculators' });
   }
   if (user && canUseSiteMarkup(user.role)) {
     sections.push({ href: '/hub/site-plan', label: 'Site Markup' });
