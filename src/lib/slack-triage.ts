@@ -534,73 +534,77 @@ async function cardFor(
   const channelId = match.channel?.id;
   if (!channelId) return null;
 
+  const text = match.text ?? '';
+  // A message with a bot_id and no user is bot-authored (cheap to know).
+  const isBot = !!match.bot_id && !match.user;
+
   // The thread root: prefer the match's own thread_ts, then the one baked into
   // the permalink, then the message ts itself (for a genuine top-level message).
   const threadRoot =
     match.thread_ts || threadRootFromPermalink(match.permalink) || match.ts;
 
-  // Pull the thread so Rule 2 can see what happened after the user's reply.
-  // A single unreadable thread (deleted, no access) shouldn't sink the board.
-  let thread: SlackMessage[];
-  try {
-    thread = await fetchThread(token, channelId, threadRoot);
-  } catch {
-    // Fall back to treating the match as a standalone message.
-    thread = [{ ts: match.ts, text: match.text, user: match.user, bot_id: match.bot_id }];
-  }
+  // PERF: decide the cheap "this is noise → FYI" cases with NO API calls, and
+  // skip the expensive thread/channel/user lookups for them. Broadcasts (the
+  // daily schedule + road-closure posts), bot cc's, and usergroup blasts are
+  // the bulk of the volume, so short-circuiting them is the difference between
+  // a snappy refresh and a rate-limited crawl.
+  const cheapFyi =
+    isBot ||
+    isMutedChannel(match.channel?.name) ||
+    isMutedMessage(text) ||
+    looksLikeBotCc(text);
 
-  // In this workspace people often reply as a NEW channel message rather than
-  // threading it, so the thread looks empty even though the user answered. If
-  // the thread shows no reply from the user, also pull what was posted in the
-  // channel after the tag and fold it in — that's where the reply lives.
-  const userInThread = thread.some((m) => m.user === currentUserId);
-  if (!userInThread) {
+  let bucket: Bucket;
+  let thread: SlackMessage[] | null = null;
+  if (cheapFyi) {
+    bucket = 'fyi';
+  } else {
+    // Pull the thread so Rule 2 can see what happened after the user's reply.
+    // A single unreadable thread (deleted, no access) shouldn't sink the board.
     try {
-      const after = await fetchChannelAfter(token, channelId, match.ts);
-      const seen = new Set(thread.map((m) => m.ts));
-      for (const m of after) if (!seen.has(m.ts)) thread.push(m);
+      thread = await fetchThread(token, channelId, threadRoot);
     } catch {
-      // No channel history access — fall back to the thread alone.
+      thread = [{ ts: match.ts, text, user: match.user, bot_id: match.bot_id }];
     }
+
+    // In this workspace people often reply as a NEW channel message rather than
+    // threading it, so the thread looks empty even though the user answered. If
+    // the thread shows no reply from the user, also fold in what was posted in
+    // the channel after the tag — that's where the reply lives.
+    if (!thread.some((m) => m.user === currentUserId)) {
+      try {
+        const after = await fetchChannelAfter(token, channelId, match.ts);
+        const seen = new Set(thread.map((m) => m.ts));
+        for (const m of after) if (!seen.has(m.ts)) thread.push(m);
+      } catch {
+        // No channel history access — fall back to the thread alone.
+      }
+    }
+
+    bucket = bucketMention({ thread, currentUserId, authorIsBot: false, matchText: text });
   }
 
-  // Is the author a bot? A message with a bot_id and no user is a bot; else
-  // resolve the user and check is_bot.
-  let authorIsBot = !!match.bot_id && !match.user;
-  const author = match.user ? await resolveUser(match.user) : null;
-  if (author?.is_bot) authorIsBot = true;
-
-  let bucket = bucketMention({
-    thread,
-    currentUserId,
-    authorIsBot,
-    matchText: match.text ?? '',
-  });
-  // Rule 1 extended: muted channels and muted broadcast messages are always FYI.
-  if (isMutedChannel(match.channel?.name) || isMutedMessage(match.text)) bucket = 'fyi';
-
-  const name = shortName(
-    authorIsBot
-      ? displayName(author, match.username ?? 'Bot')
-      : displayName(author, match.username),
-  );
+  // Author name: prefer the username Slack already handed us in the search hit,
+  // so we avoid a users.info call per card. Only look it up when it's missing.
+  const author = !match.username && match.user ? await resolveUser(match.user) : null;
+  const name = shortName(displayName(author, match.username ?? (isBot ? 'Bot' : undefined)));
 
   const card: TriageCard = {
     id: `${channelId}:${match.ts}`,
     bucket,
     authorName: name,
     authorInitials: initials(name),
-    isBot: authorIsBot,
+    isBot,
     channelName: channelLabel(match),
     channelId,
     threadTs: threadRoot,
-    text: await humanizeSlackText(match.text ?? '', resolveUser),
+    text: await humanizeSlackText(text, resolveUser),
     permalink: match.permalink ?? null,
     timestampMs: Math.round(tsNum(match.ts) * 1000),
   };
 
   // For "waiting" cards, attach the user's own last line as context.
-  if (bucket === 'waiting') {
+  if (bucket === 'waiting' && thread) {
     const mine = thread
       .filter((m) => m.user === currentUserId && m.text)
       .sort((a, b) => tsNum(b.ts) - tsNum(a.ts))[0];
