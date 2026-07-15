@@ -9,7 +9,7 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { requireHubAccess } from '@/lib/auth';
 import { getKnot, KNOTS } from '@/lib/knots';
-import { KnotFigure } from '@/components/crew/knots/KnotFigure';
+import { KnotFigure, KnotLegend } from '@/components/crew/knots/KnotFigure';
 
 export const dynamic = 'force-dynamic';
 
@@ -83,6 +83,7 @@ export default async function KnotDetailPage({
         <h2 className="mt-1 font-display text-4xl uppercase tracking-wider text-ink">
           Step by step
         </h2>
+        <KnotLegend className="mt-4" />
         <ol className="mt-6 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
           {knot.steps.map((step, i) => (
             <li key={step.frame} className="bt-card flex flex-col gap-3">
