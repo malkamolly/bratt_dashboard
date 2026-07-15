@@ -23,8 +23,8 @@ import type { Bucket, TriageBoard as Board, TriageCard } from '@/lib/slack-triag
 // Refresh cadence. On mount we refresh if the cache is older than this; while
 // the tab stays open we quietly refresh on this interval too. Slack search is
 // rate-limited, so we keep this relaxed rather than chatty.
-const STALE_MS = 2 * 60 * 1000; // 2 minutes
-const BACKGROUND_MS = 5 * 60 * 1000; // 5 minutes
+const STALE_MS = 3 * 60 * 1000; // 3 minutes
+const BACKGROUND_MS = 10 * 60 * 1000; // 10 minutes — gentle on Slack's search rate limit
 
 type Tab = string; // 'all', a bucket key, or `group:<name>`
 

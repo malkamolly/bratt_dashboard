@@ -92,20 +92,41 @@ export async function getDisplayBoard(
  * assembled with overrides + Follow-up. Called on load, the refresh button,
  * the background refresh, and when switching weeks.
  */
+// Count the messages a freshly-fetched week holds (Follow-up is separate, from
+// snapshots, so it's excluded here).
+function weekItemCount(b: TriageBoard): number {
+  return (
+    (b.needs_reply?.length ?? 0) +
+    (b.waiting?.length ?? 0) +
+    (b.handled?.length ?? 0) +
+    (b.fyi?.length ?? 0) +
+    (b.groups ?? []).reduce((n, g) => n + g.cards.length, 0)
+  );
+}
+
 export async function refreshBoard(offsetWeeks = 0): Promise<TriageBoard> {
   const u = await requireTagsUserAction();
-  const weekly = await buildBoard(u.email, offsetWeeks);
+  let weekly = await buildBoard(u.email, offsetWeeks);
 
   if (!weekly.error) {
-    const supabase = await serverClient();
-    await supabase.from('slack_triage_cache').upsert(
-      {
-        owner_email: u.email,
-        board: weekly as unknown as Record<string, unknown>,
-        fetched_at: new Date(weekly.fetchedAt).toISOString(),
-      },
-      { onConflict: 'owner_email' },
-    );
+    const existing = await readCachedBoard(u.email);
+    const sameWeek = existing && existing.weekStartMs === weekly.weekStartMs;
+    // A totally empty fetch for a week we previously had content for is almost
+    // always a throttled/failed Slack search, not a genuinely empty week — keep
+    // the good cache instead of overwriting it with nothing.
+    if (weekItemCount(weekly) === 0 && sameWeek && weekItemCount(existing) > 0) {
+      weekly = existing;
+    } else {
+      const supabase = await serverClient();
+      await supabase.from('slack_triage_cache').upsert(
+        {
+          owner_email: u.email,
+          board: weekly as unknown as Record<string, unknown>,
+          fetched_at: new Date(weekly.fetchedAt).toISOString(),
+        },
+        { onConflict: 'owner_email' },
+      );
+    }
   }
   const [handledIds, followupCards] = await Promise.all([
     readHandledIds(u.email),

@@ -190,22 +190,55 @@ export class SlackApiError extends Error {
   }
 }
 
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
 async function slackApi<T = unknown>(
   token: string,
   method: string,
   params: Record<string, string>,
 ): Promise<T> {
-  const res = await fetch(`${SLACK_API}/${method}`, {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${token}`,
-      'Content-Type': 'application/x-www-form-urlencoded',
-    },
-    body: new URLSearchParams(params),
-  });
-  const data = await res.json();
-  if (!data.ok) throw new SlackApiError(data.error ?? 'unknown_error');
-  return data as T;
+  // Slack's search API is aggressively rate-limited; under load it answers with
+  // HTTP 429 (or ok:false "ratelimited"). Retry a couple of times with a short,
+  // capped wait so a throttle doesn't turn into an empty board. The cap keeps
+  // us well under the serverless function timeout rather than honoring a long
+  // Retry-After.
+  for (let attempt = 0; ; attempt++) {
+    const res = await fetch(`${SLACK_API}/${method}`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      body: new URLSearchParams(params),
+    });
+
+    if (res.status === 429 && attempt < 2) {
+      const retryAfter = parseInt(res.headers.get('retry-after') || '2', 10);
+      await sleep(Math.min(retryAfter, 4) * 1000);
+      continue;
+    }
+
+    // A 429 with no JSON body would make res.json() throw; guard against it.
+    let data: { ok?: boolean; error?: string };
+    try {
+      data = await res.json();
+    } catch {
+      if (attempt < 2) {
+        await sleep(2000);
+        continue;
+      }
+      throw new SlackApiError('ratelimited');
+    }
+
+    if (!data.ok) {
+      if (data.error === 'ratelimited' && attempt < 2) {
+        await sleep(2000);
+        continue;
+      }
+      throw new SlackApiError(data.error ?? 'unknown_error');
+    }
+    return data as T;
+  }
 }
 
 /**
