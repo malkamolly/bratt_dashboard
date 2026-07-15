@@ -38,19 +38,9 @@ type Section = {
   cards: TriageCard[];
 };
 
-// Build the ordered list of sections for the current board. Usergroup sections
-// (@phc, @scheduling, @officeteam) slot in after Waiting; their number and
-// names come from the board, so they're dynamic.
-function buildSections(board: Board | null): Section[] {
-  const groupSections: Section[] = (board?.groups ?? []).map((g) => ({
-    key: `group:${g.name}`,
-    title: g.name,
-    tabLabel: g.name,
-    blurb: `Messages tagging @${g.name.toLowerCase()}.`,
-    tone: 'accent',
-    cards: g.cards,
-  }));
-
+// The personal buckets — the main board. Usergroups are NOT here; they live in
+// their own chip row (see buildGroupSections) so they don't clutter this flow.
+function buildPersonalSections(board: Board | null): Section[] {
   return [
     {
       key: 'needs_reply',
@@ -68,7 +58,6 @@ function buildSections(board: Board | null): Section[] {
       tone: 'neutral',
       cards: board?.waiting ?? [],
     },
-    ...groupSections,
     {
       key: 'followup',
       title: 'Follow-up list',
@@ -96,6 +85,19 @@ function buildSections(board: Board | null): Section[] {
       cards: board?.fyi ?? [],
     },
   ];
+}
+
+// The usergroup sections (@phc, @scheduling, @officeteam). Dynamic — their
+// number and names come from the board.
+function buildGroupSections(board: Board | null): Section[] {
+  return (board?.groups ?? []).map((g) => ({
+    key: `group:${g.name}`,
+    title: g.name,
+    tabLabel: g.name,
+    blurb: `Messages tagging @${g.name.toLowerCase()}.`,
+    tone: 'accent',
+    cards: g.cards,
+  }));
 }
 
 export function TriageBoard({ initialBoard }: { initialBoard: Board | null }) {
@@ -165,11 +167,17 @@ export function TriageBoard({ initialBoard }: { initialBoard: Board | null }) {
   }, []);
 
   const needsReauth = board?.error === 'reauth';
-  const sections = buildSections(board);
-  const visibleSections = sections.filter((s) => tab === 'all' || s.key === tab);
+  const personalSections = buildPersonalSections(board);
+  const groupSections = buildGroupSections(board);
+  // "All" shows the personal buckets only; a bucket tab shows that bucket; a
+  // group chip shows that one group.
+  const visibleSections =
+    tab === 'all'
+      ? personalSections
+      : [...personalSections, ...groupSections].filter((s) => s.key === tab);
   const tabs = [
     { key: 'all', label: 'All', count: undefined as number | undefined },
-    ...sections.map((s) => ({ key: s.key, label: s.tabLabel, count: s.cards.length })),
+    ...personalSections.map((s) => ({ key: s.key, label: s.tabLabel, count: s.cards.length })),
   ];
 
   return (
@@ -215,6 +223,34 @@ export function TriageBoard({ initialBoard }: { initialBoard: Board | null }) {
         {board?.truncatedAt ? ` · capped at ${board.truncatedAt} this week` : ''}
         {' · Follow-up carries over every week'}
       </p>
+
+      {/* Usergroups — their own row, between the week toggle and the tabs ----- */}
+      {groupSections.length > 0 && (
+        <div className="mt-4 flex flex-wrap items-center gap-2 rounded-2 border-2 border-paper-edge bg-white/60 px-3 py-2">
+          <span className="text-[10px] font-extrabold uppercase tracking-ribbon text-fg-3">
+            Groups
+          </span>
+          {groupSections.map((g) => {
+            const active = tab === g.key;
+            return (
+              <button
+                key={g.key}
+                type="button"
+                // Click an active group again to return to the main board.
+                onClick={() => setTab(active ? 'all' : g.key)}
+                className={`rounded-full px-3 py-1 text-xs font-extrabold uppercase tracking-ribbon transition-colors ${
+                  active
+                    ? 'bg-green-dark text-white'
+                    : 'bg-white text-fg-2 ring-1 ring-inset ring-lime hover:text-green-dark'
+                }`}
+              >
+                {g.tabLabel}
+                <span className="ml-1.5 opacity-70">{g.cards.length}</span>
+              </button>
+            );
+          })}
+        </div>
+      )}
 
       {/* Filter tabs — jump between sections --------------------------------- */}
       <div className="sticky top-0 z-10 mt-3 flex flex-wrap gap-2 border-b-2 border-paper-edge bg-cream/95 py-3 backdrop-blur">
