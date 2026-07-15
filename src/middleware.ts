@@ -77,10 +77,15 @@ export async function middleware(req: NextRequest) {
     return NextResponse.redirect(url);
   }
 
-  // The private "My Projects" hub is gated by EMAIL, not role — only the
-  // single owner may enter, even other admins. Keep this address in sync with
-  // OWNER_EMAIL in lib/auth.ts and the RLS policy in migration 047.
-  if (path === '/projects' || path.startsWith('/projects/')) {
+  // Private, EMAIL-gated (not role-gated) areas — only the single owner may
+  // enter, even other admins. Keep this address in sync with OWNER_EMAIL in
+  // lib/auth.ts and the RLS policies:
+  //   /projects  → migration 047 (personal project board)
+  //   /tags      → migration 059 (Slack tag triage; /api/slack/* is its OAuth)
+  const OWNER_ONLY_PREFIXES = ['/projects', '/tags', '/api/slack'];
+  if (
+    OWNER_ONLY_PREFIXES.some((p) => path === p || path.startsWith(p + '/'))
+  ) {
     if ((user.email ?? '').toLowerCase() !== 'molly@bratttree.com') {
       const url = req.nextUrl.clone();
       url.pathname = '/access-denied';

@@ -186,6 +186,26 @@ export default async function LandingPage() {
             </p>
           </Link>
         )}
+
+        {/* Slack Tags — private per-user tag triage; owner-only in v1. */}
+        {isOwner(user.email) && (
+          <Link
+            href="/tags"
+            className="bt-card group transition-colors hover:!border-orange"
+          >
+            <p className="bt-eyebrow">Private</p>
+            <h2 className="mt-2 font-headline text-3xl font-black uppercase text-bark-deep">
+              Slack Tags
+            </h2>
+            <p className="mt-3 text-sm text-fg-2">
+              Every Slack message you&apos;re tagged in, sorted by what actually
+              needs a reply. Only you can see this.
+            </p>
+            <p className="mt-6 font-headline text-xs font-extrabold uppercase tracking-ribbon text-orange">
+              Open &rarr;
+            </p>
+          </Link>
+        )}
       </section>
     </main>
   );
