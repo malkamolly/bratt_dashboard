@@ -202,9 +202,6 @@ export function TriageBoard({ initialBoard }: { initialBoard: Board | null }) {
               {w.label}
             </button>
           ))}
-          {board?.weekLabel && (
-            <span className="text-xs font-bold text-fg-3">{board.weekLabel}</span>
-          )}
         </div>
         <button
           type="button"
@@ -217,11 +214,14 @@ export function TriageBoard({ initialBoard }: { initialBoard: Board | null }) {
         </button>
       </div>
       <p className="mt-1 text-xs text-fg-3">
+        {board?.weekLabel && (
+          <span className="font-bold text-fg-2">Showing {board.weekLabel}</span>
+        )}
         {mounted && board?.fetchedAt
-          ? `Updated ${formatDistanceToNow(board.fetchedAt, { addSuffix: true })}`
-          : 'Loading…'}
+          ? ` · updated ${formatDistanceToNow(board.fetchedAt, { addSuffix: true })}`
+          : ' · loading…'}
         {board?.truncatedAt ? ` · capped at ${board.truncatedAt} this week` : ''}
-        {' · Follow-up carries over every week'}
+        {' · follow-up carries over every week'}
       </p>
 
       {/* Usergroups — their own row, between the week toggle and the tabs ----- */}
