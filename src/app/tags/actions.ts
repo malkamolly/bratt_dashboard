@@ -6,12 +6,13 @@ import { getAllowedUser, isOwner } from '@/lib/auth';
 import { serverClient } from '@/lib/supabase';
 import { deleteConnection, getConnection, postReply, SlackApiError } from '@/lib/slack';
 import {
-  applyOverrides,
   buildBoard,
+  composeBoard,
   emptyBoard,
+  weekBounds,
   type MessageAction,
-  type OverrideMap,
   type TriageBoard,
+  type TriageCard,
 } from '@/lib/slack-triage';
 
 // Every action re-checks ownership server-side. Middleware already blocks the
@@ -25,10 +26,10 @@ async function requireOwnerAction() {
 }
 
 // ---------------------------------------------------------------------------
-// Reading the board (cache + overrides)
+// Reading the board (cached weekly buckets + persistent overrides)
 // ---------------------------------------------------------------------------
 
-/** The raw, auto-sorted board as last fetched from Slack (no overrides). */
+/** The raw, auto-sorted weekly board as last fetched, or null if none cached. */
 async function readCachedBoard(ownerEmail: string): Promise<TriageBoard | null> {
   const supabase = await serverClient();
   const { data } = await supabase
@@ -39,78 +40,113 @@ async function readCachedBoard(ownerEmail: string): Promise<TriageBoard | null> 
   return (data?.board as TriageBoard) ?? null;
 }
 
-/** The user's manual Handled / Follow-up overrides, keyed by message id. */
-async function readOverrides(ownerEmail: string): Promise<OverrideMap> {
+/** The set of message ids the user marked Handled. */
+async function readHandledIds(ownerEmail: string): Promise<Set<string>> {
   const supabase = await serverClient();
   const { data } = await supabase
     .from('slack_message_actions')
-    .select('message_key, action')
-    .eq('owner_email', ownerEmail);
-  const map: OverrideMap = {};
-  for (const row of data ?? []) map[row.message_key] = row.action as MessageAction;
-  return map;
+    .select('message_key')
+    .eq('owner_email', ownerEmail)
+    .eq('action', 'handled');
+  return new Set((data ?? []).map((r) => r.message_key));
+}
+
+/** The persistent Follow-up list, rebuilt from saved card snapshots. */
+async function readFollowupCards(ownerEmail: string): Promise<TriageCard[]> {
+  const supabase = await serverClient();
+  const { data } = await supabase
+    .from('slack_message_actions')
+    .select('card')
+    .eq('owner_email', ownerEmail)
+    .eq('action', 'followup');
+  return (data ?? [])
+    .map((r) => r.card as TriageCard | null)
+    .filter((c): c is TriageCard => !!c && !!c.id);
 }
 
 /**
- * The board as it should be shown: last cached auto-sort, re-arranged by the
- * user's overrides. Cheap (no Slack call) — used on page load and after every
- * button press so the UI updates instantly.
+ * The board the user sees for a given week: the cached weekly buckets (only if
+ * the cache is actually for that week) re-assembled with Handled overrides and
+ * the persistent Follow-up list. Cheap (no Slack call) — used on page load and
+ * after every button press.
  */
-export async function getDisplayBoard(ownerEmail: string): Promise<TriageBoard> {
-  const [raw, overrides] = await Promise.all([
+export async function getDisplayBoard(
+  ownerEmail: string,
+  offsetWeeks = 0,
+): Promise<TriageBoard> {
+  const week = weekBounds(offsetWeeks);
+  const [cached, handledIds, followupCards] = await Promise.all([
     readCachedBoard(ownerEmail),
-    readOverrides(ownerEmail),
+    readHandledIds(ownerEmail),
+    readFollowupCards(ownerEmail),
   ]);
-  return applyOverrides(raw ?? emptyBoard(), overrides);
+  // Use the cache only if it's for the week being shown; otherwise start empty
+  // and let the client refresh it live.
+  const weekly = cached && cached.weekStartMs === week.startMs ? cached : emptyBoard(week);
+  return composeBoard(weekly, handledIds, followupCards);
 }
 
 /**
- * Hit Slack, rebuild the auto board, cache it, then return it with overrides
- * applied. Called on the manual refresh button and the background refresh.
+ * Hit Slack, rebuild the selected week's auto board, cache it, then return it
+ * assembled with overrides + Follow-up. Called on load, the refresh button,
+ * the background refresh, and when switching weeks.
  */
-export async function refreshBoard(): Promise<TriageBoard> {
+export async function refreshBoard(offsetWeeks = 0): Promise<TriageBoard> {
   const u = await requireOwnerAction();
-  const board = await buildBoard(u.email);
+  const weekly = await buildBoard(u.email, offsetWeeks);
 
-  // Only overwrite the cache with a genuinely fetched board. If the fetch
-  // failed (e.g. token revoked) we still return the error board, but we don't
-  // clobber the last-good cache with an empty one.
-  if (!board.error) {
+  if (!weekly.error) {
     const supabase = await serverClient();
     await supabase.from('slack_triage_cache').upsert(
       {
         owner_email: u.email,
-        board: board as unknown as Record<string, unknown>,
-        fetched_at: new Date(board.fetchedAt).toISOString(),
+        board: weekly as unknown as Record<string, unknown>,
+        fetched_at: new Date(weekly.fetchedAt).toISOString(),
       },
       { onConflict: 'owner_email' },
     );
-    const overrides = await readOverrides(u.email);
-    return applyOverrides(board, overrides);
   }
-  return board;
+  const [handledIds, followupCards] = await Promise.all([
+    readHandledIds(u.email),
+    readFollowupCards(u.email),
+  ]);
+  return composeBoard(weekly, handledIds, followupCards);
 }
 
 // ---------------------------------------------------------------------------
 // Manual actions on a card
 // ---------------------------------------------------------------------------
 
-/** Move a card to Handled / Follow-up (persisted). Returns the updated board. */
+/**
+ * Move a card to Handled or Follow-up (persisted). Follow-up saves a snapshot
+ * of the card so it survives week rollovers; Handled doesn't need one. Returns
+ * the updated board for the currently-viewed week.
+ */
 export async function setMessageAction(
   messageKey: string,
   action: MessageAction,
+  offsetWeeks = 0,
+  card?: TriageCard,
 ): Promise<TriageBoard> {
   const u = await requireOwnerAction();
   const supabase = await serverClient();
   await supabase.from('slack_message_actions').upsert(
-    { owner_email: u.email, message_key: messageKey, action },
+    {
+      owner_email: u.email,
+      message_key: messageKey,
+      action,
+      card: action === 'followup' && card ? card : null,
+    },
     { onConflict: 'owner_email,message_key' },
   );
-  return getDisplayBoard(u.email);
+  return getDisplayBoard(u.email, offsetWeeks);
 }
 
 /** Clear an override so the card returns to its auto-sorted bucket. */
-export async function clearMessageAction(messageKey: string): Promise<TriageBoard> {
+export async function clearMessageAction(
+  messageKey: string,
+  offsetWeeks = 0,
+): Promise<TriageBoard> {
   const u = await requireOwnerAction();
   const supabase = await serverClient();
   await supabase
@@ -118,7 +154,7 @@ export async function clearMessageAction(messageKey: string): Promise<TriageBoar
     .delete()
     .eq('owner_email', u.email)
     .eq('message_key', messageKey);
-  return getDisplayBoard(u.email);
+  return getDisplayBoard(u.email, offsetWeeks);
 }
 
 /** Post a reply into a thread as the user. Returns ok/error for the UI. */

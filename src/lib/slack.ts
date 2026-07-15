@@ -217,17 +217,23 @@ async function slackApi<T = unknown>(
 export async function searchMentions(
   token: string,
   slackUserId: string,
-  count = 100,
+  opts: { after?: string; before?: string; count?: number } = {},
 ): Promise<SlackSearchMatch[]> {
+  const { after, before, count = 100 } = opts;
+  // Bound the search to a date window when given (Slack's after:/before: take
+  // YYYY-MM-DD). The caller trims to the exact week afterward.
+  const query = [
+    `<@${slackUserId}>`,
+    after ? `after:${after}` : '',
+    before ? `before:${before}` : '',
+  ]
+    .filter(Boolean)
+    .join(' ');
+
   const data = await slackApi<{ messages?: { matches?: SlackSearchMatch[] } }>(
     token,
     'search.messages',
-    {
-      query: `<@${slackUserId}>`,
-      sort: 'timestamp',
-      sort_dir: 'desc',
-      count: String(count),
-    },
+    { query, sort: 'timestamp', sort_dir: 'desc', count: String(count) },
   );
   return data.messages?.matches ?? [];
 }

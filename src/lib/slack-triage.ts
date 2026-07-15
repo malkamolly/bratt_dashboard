@@ -67,12 +67,97 @@ export type TriageBoard = {
   handled: TriageCard[];
   fyi: TriageCard[];
   fetchedAt: number; // epoch ms
+  // Which week this board covers. 0 = this week, -1 = last week. weekLabel is
+  // a human string like "Jul 12 – Jul 18"; weekStartMs pins the Sunday so the
+  // page can tell whether a cached board is still the current week.
+  weekOffset: number;
+  weekLabel: string;
+  weekStartMs: number;
   // Set when we capped how many mentions we processed, so the UI can say so
   // rather than silently implying it covered everything.
   truncatedAt?: number;
   // Set when the whole fetch failed (e.g. the token was revoked in Slack).
   error?: string;
 };
+
+// ---------------------------------------------------------------------------
+// Week windows (Sunday–Saturday, in the business's timezone)
+// ---------------------------------------------------------------------------
+// The board shows one week at a time, resetting each Sunday, with a toggle for
+// this week vs last week. Everything is computed in Central time (the business
+// runs on Central) so "this week" matches what the user sees on a wall calendar
+// regardless of the server's timezone.
+
+const TZ = 'America/Chicago';
+
+export type WeekWindow = {
+  offset: number; // 0 = this week, -1 = last week
+  startMs: number; // Sunday 00:00 Central
+  endMs: number; // next Sunday 00:00 Central (exclusive)
+  label: string; // e.g. "Jul 12 – Jul 18"
+  after: string; // YYYY-MM-DD, padded a day, for Slack's after: search modifier
+  before: string; // YYYY-MM-DD, padded a day, for before:
+};
+
+function centralYMDW(d: Date) {
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone: TZ,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    weekday: 'short',
+  }).formatToParts(d);
+  const g = (t: string) => parts.find((p) => p.type === t)!.value;
+  const wd = { Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6 }[g('weekday')]!;
+  return { y: +g('year'), m: +g('month'), d: +g('day'), wd };
+}
+
+// Convert a Central wall-clock midnight (y-m-d) to an epoch, accounting for the
+// Central UTC offset in effect that day (handles CST/CDT without hardcoding).
+function centralMidnightToEpoch(y: number, m: number, d: number): number {
+  const guess = Date.UTC(y, m - 1, d, 0, 0, 0);
+  const asC = new Date(new Date(guess).toLocaleString('en-US', { timeZone: TZ }));
+  const asU = new Date(new Date(guess).toLocaleString('en-US', { timeZone: 'UTC' }));
+  return guess + (asU.getTime() - asC.getTime());
+}
+
+const ymdCentral = (ms: number) =>
+  new Intl.DateTimeFormat('en-CA', {
+    timeZone: TZ,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(ms);
+
+const dayLabel = (ms: number) =>
+  new Intl.DateTimeFormat('en-US', { timeZone: TZ, month: 'short', day: 'numeric' }).format(ms);
+
+export function weekBounds(offset = 0): WeekWindow {
+  const { y, m, d, wd } = centralYMDW(new Date());
+  // Do calendar math in UTC (no DST) to find the Sunday's date, then convert
+  // each date's Central midnight to a precise epoch.
+  const today = new Date(Date.UTC(y, m - 1, d));
+  const sunday = new Date(today.getTime() - wd * 86400000 + offset * 7 * 86400000);
+  const next = new Date(sunday.getTime() + 7 * 86400000);
+  const startMs = centralMidnightToEpoch(
+    sunday.getUTCFullYear(),
+    sunday.getUTCMonth() + 1,
+    sunday.getUTCDate(),
+  );
+  const endMs = centralMidnightToEpoch(
+    next.getUTCFullYear(),
+    next.getUTCMonth() + 1,
+    next.getUTCDate(),
+  );
+  return {
+    offset,
+    startMs,
+    endMs,
+    label: `${dayLabel(startMs)} – ${dayLabel(endMs - 1000)}`,
+    after: ymdCentral(startMs - 86400000),
+    before: ymdCentral(endMs + 86400000),
+  };
+}
 
 // ---------------------------------------------------------------------------
 // Heuristics (pure — easy to unit-test and tune)
@@ -183,6 +268,19 @@ export function isMutedChannel(channelName: string | undefined): boolean {
   return MUTED_CHANNELS.some((c) => norm.includes(normChannel(c)));
 }
 
+// Rule 1, also extended by content: some recurring broadcasts are noise no
+// matter who posts them or where — e.g. the daily schedule post that opens
+// "Good day, @… This is our schedule for …". Matching these by their opening
+// text sends them straight to FYI. Add patterns here as new ones show up.
+const MUTED_MESSAGE_PATTERNS = [
+  /good day[\s\S]{0,400}this is our schedule for/i,
+];
+
+export function isMutedMessage(text: string | undefined): boolean {
+  if (!text) return false;
+  return MUTED_MESSAGE_PATTERNS.some((re) => re.test(text));
+}
+
 const tsNum = (ts: string) => parseFloat(ts) || 0;
 
 /**
@@ -224,7 +322,7 @@ export function bucketMention(args: {
 // Cap how many mentions we process per refresh. Slack search is rate-limited
 // and a very busy account could return hundreds; the top slice (newest first)
 // is what matters, and we flag when we've capped rather than pretend we saw all.
-const MAX_MATCHES = 60;
+const MAX_MATCHES = 100; // per week; a single week rarely exceeds this
 const BATCH_SIZE = 5; // gentle concurrency so we don't trip rate limits
 
 function initials(name: string): string {
@@ -296,7 +394,7 @@ export async function humanizeSlackText(
   return out;
 }
 
-export function emptyBoard(): TriageBoard {
+export function emptyBoard(week: WeekWindow = weekBounds(0)): TriageBoard {
   return {
     needs_reply: [],
     waiting: [],
@@ -304,31 +402,51 @@ export function emptyBoard(): TriageBoard {
     handled: [],
     fyi: [],
     fetchedAt: Date.now(),
+    weekOffset: week.offset,
+    weekLabel: week.label,
+    weekStartMs: week.startMs,
   };
 }
 
 const BUCKET_KEYS = ['needs_reply', 'waiting', 'followup', 'handled', 'fyi'] as const;
+// Buckets that come from the week's search. Follow-up is NOT here — it's a
+// persistent, week-independent list assembled from saved snapshots.
+const WEEK_BUCKET_KEYS = ['needs_reply', 'waiting', 'handled', 'fyi'] as const;
 
 /**
- * Re-sorts a freshly-built board by the user's manual overrides: a message
- * marked "handled" or "followup" is pulled out of whatever the auto-sorter
- * chose and placed in that bucket instead. Pure and cheap (no API calls), so
- * the Handled / Follow-up buttons feel instant and survive a page reload.
+ * Assembles the board the user sees from three inputs:
+ *   - `week`: the auto-sorted buckets for the selected week (from Slack search)
+ *   - `handledIds`: messages the user manually marked Handled (persisted)
+ *   - `followupCards`: the persistent Follow-up list (saved snapshots, ANY week)
+ *
+ * Follow-up lives outside the weekly buckets so it never resets when the week
+ * rolls over. A weekly card that's also on the Follow-up list is shown only in
+ * Follow-up (not duplicated). Pure and cheap — no API calls — so buttons feel
+ * instant and survive reloads.
  */
-export function applyOverrides(board: TriageBoard, overrides: OverrideMap): TriageBoard {
+export function composeBoard(
+  week: TriageBoard,
+  handledIds: Set<string>,
+  followupCards: TriageCard[],
+): TriageBoard {
   const out = emptyBoard();
-  out.fetchedAt = board.fetchedAt;
-  out.truncatedAt = board.truncatedAt;
-  out.error = board.error;
+  out.fetchedAt = week.fetchedAt;
+  out.truncatedAt = week.truncatedAt;
+  out.error = week.error;
+  out.weekOffset = week.weekOffset;
+  out.weekLabel = week.weekLabel;
+  out.weekStartMs = week.weekStartMs;
 
-  // `board[k] ?? []` guards against an older cached board that predates a
-  // bucket (e.g. 'followup'), so a stale cache can't crash the first render.
-  const all = BUCKET_KEYS.flatMap((k) => board[k] ?? []);
+  const followupIds = new Set(followupCards.map((c) => c.id));
+  // `week[k] ?? []` guards against an older cached board missing a bucket.
+  const all = WEEK_BUCKET_KEYS.flatMap((k) => week[k] ?? []);
   for (const card of all) {
-    const override = overrides[card.id];
-    const bucket: Bucket = override ?? card.bucket;
+    if (followupIds.has(card.id)) continue; // shown only in the Follow-up list
+    const bucket: Bucket = handledIds.has(card.id) ? 'handled' : card.bucket;
     out[bucket].push({ ...card, bucket });
   }
+  out.followup = followupCards.map((c) => ({ ...c, bucket: 'followup' as const }));
+
   for (const k of BUCKET_KEYS) {
     out[k].sort((a, b) => b.timestampMs - a.timestampMs);
   }
@@ -341,8 +459,12 @@ export function applyOverrides(board: TriageBoard, overrides: OverrideMap): Tria
  * bad thread is skipped, not fatal); a total-auth failure comes back as an
  * `error` board so the UI can prompt a reconnect.
  */
-export async function buildBoard(ownerEmail: string): Promise<TriageBoard> {
-  const empty = emptyBoard;
+export async function buildBoard(
+  ownerEmail: string,
+  offsetWeeks = 0,
+): Promise<TriageBoard> {
+  const week = weekBounds(offsetWeeks);
+  const empty = () => emptyBoard(week);
 
   const conn = await getConnection(ownerEmail);
   if (!conn) return { ...empty(), error: 'not_connected' };
@@ -351,7 +473,10 @@ export async function buildBoard(ownerEmail: string): Promise<TriageBoard> {
 
   let matches: SlackSearchMatch[];
   try {
-    matches = await searchMentions(conn.token, conn.slackUserId);
+    matches = await searchMentions(conn.token, conn.slackUserId, {
+      after: week.after,
+      before: week.before,
+    });
   } catch (e) {
     if (e instanceof SlackApiError) {
       // Token no longer valid → tell the UI to prompt a reconnect.
@@ -362,6 +487,12 @@ export async function buildBoard(ownerEmail: string): Promise<TriageBoard> {
     }
     return { ...empty(), error: 'fetch_failed' };
   }
+
+  // Slack's after:/before: are day-granular, so trim precisely to the week.
+  matches = matches.filter((m) => {
+    const ms = tsNum(m.ts) * 1000;
+    return ms >= week.startMs && ms < week.endMs;
+  });
 
   const board = empty();
   if (matches.length > MAX_MATCHES) board.truncatedAt = MAX_MATCHES;
@@ -445,8 +576,8 @@ async function cardFor(
     authorIsBot,
     matchText: match.text ?? '',
   });
-  // Rule 1 extended: messages from a muted channel are always FYI.
-  if (isMutedChannel(match.channel?.name)) bucket = 'fyi';
+  // Rule 1 extended: muted channels and muted broadcast messages are always FYI.
+  if (isMutedChannel(match.channel?.name) || isMutedMessage(match.text)) bucket = 'fyi';
 
   const name = shortName(
     authorIsBot

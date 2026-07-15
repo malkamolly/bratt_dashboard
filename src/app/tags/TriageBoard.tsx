@@ -83,16 +83,22 @@ const TABS: { key: Tab; label: string }[] = [
 export function TriageBoard({ initialBoard }: { initialBoard: Board | null }) {
   const [board, setBoard] = useState<Board | null>(initialBoard);
   const [tab, setTab] = useState<Tab>('all');
+  const [weekOffset, setWeekOffset] = useState(0);
   const [pending, startTransition] = useTransition();
   const [mounted, setMounted] = useState(false);
   const inFlight = useRef(false);
+  // Keep the current week available to callbacks/intervals without re-creating
+  // them each render.
+  const offsetRef = useRef(0);
+  offsetRef.current = weekOffset;
 
-  const doRefresh = useCallback(() => {
+  const doRefresh = useCallback((offset?: number) => {
+    const off = offset ?? offsetRef.current;
     if (inFlight.current) return;
     inFlight.current = true;
     startTransition(async () => {
       try {
-        setBoard(await refreshBoard());
+        setBoard(await refreshBoard(off));
       } finally {
         inFlight.current = false;
       }
@@ -104,22 +110,34 @@ export function TriageBoard({ initialBoard }: { initialBoard: Board | null }) {
   useEffect(() => {
     setMounted(true);
     const stale = !board || Date.now() - board.fetchedAt > STALE_MS;
-    if (stale) doRefresh();
+    if (stale) doRefresh(0);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
-    const id = setInterval(doRefresh, BACKGROUND_MS);
+    const id = setInterval(() => doRefresh(), BACKGROUND_MS);
     return () => clearInterval(id);
   }, [doRefresh]);
 
+  function switchWeek(offset: number) {
+    if (offset === offsetRef.current) return;
+    setWeekOffset(offset);
+    offsetRef.current = offset;
+    doRefresh(offset);
+  }
+
   // --- Card actions -------------------------------------------------------
-  const onAction = useCallback((id: string, action: 'handled' | 'followup') => {
-    startTransition(async () => setBoard(await setMessageAction(id, action)));
-  }, []);
+  const onAction = useCallback(
+    (id: string, action: 'handled' | 'followup', card: TriageCard) => {
+      startTransition(async () =>
+        setBoard(await setMessageAction(id, action, offsetRef.current, card)),
+      );
+    },
+    [],
+  );
 
   const onUndo = useCallback((id: string) => {
-    startTransition(async () => setBoard(await clearMessageAction(id)));
+    startTransition(async () => setBoard(await clearMessageAction(id, offsetRef.current)));
   }, []);
 
   // After a reply posts, move the card to "Waiting" right away (Slack search
@@ -134,19 +152,33 @@ export function TriageBoard({ initialBoard }: { initialBoard: Board | null }) {
 
   return (
     <div className="mt-8">
-      {/* Toolbar: freshness + manual refresh --------------------------------- */}
+      {/* Toolbar: week toggle + manual refresh ------------------------------- */}
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <p className="text-xs text-fg-3">
-          {mounted && board?.fetchedAt
-            ? `Updated ${formatDistanceToNow(board.fetchedAt, { addSuffix: true })}`
-            : 'Loading…'}
-          {board?.truncatedAt
-            ? ` · showing your ${board.truncatedAt} most recent tags`
-            : ''}
-        </p>
+        <div className="flex items-center gap-2">
+          {[
+            { off: 0, label: 'This week' },
+            { off: -1, label: 'Last week' },
+          ].map((w) => (
+            <button
+              key={w.off}
+              type="button"
+              onClick={() => switchWeek(w.off)}
+              className={`rounded-full px-3 py-1 text-xs font-extrabold uppercase tracking-ribbon transition-colors ${
+                weekOffset === w.off
+                  ? 'bg-orange text-white'
+                  : 'bg-white text-fg-2 ring-1 ring-inset ring-paper-edge hover:text-orange'
+              }`}
+            >
+              {w.label}
+            </button>
+          ))}
+          {board?.weekLabel && (
+            <span className="text-xs font-bold text-fg-3">{board.weekLabel}</span>
+          )}
+        </div>
         <button
           type="button"
-          onClick={doRefresh}
+          onClick={() => doRefresh()}
           disabled={pending}
           className="inline-flex items-center gap-2 text-xs font-extrabold uppercase tracking-ribbon text-orange hover:text-orange-press disabled:opacity-50"
         >
@@ -154,6 +186,13 @@ export function TriageBoard({ initialBoard }: { initialBoard: Board | null }) {
           {pending ? 'Working' : 'Refresh'}
         </button>
       </div>
+      <p className="mt-1 text-xs text-fg-3">
+        {mounted && board?.fetchedAt
+          ? `Updated ${formatDistanceToNow(board.fetchedAt, { addSuffix: true })}`
+          : 'Loading…'}
+        {board?.truncatedAt ? ` · capped at ${board.truncatedAt} this week` : ''}
+        {' · Follow-up carries over every week'}
+      </p>
 
       {/* Filter tabs — jump between sections --------------------------------- */}
       <div className="sticky top-0 z-10 mt-3 flex flex-wrap gap-2 border-b-2 border-paper-edge bg-cream/95 py-3 backdrop-blur">
@@ -267,7 +306,7 @@ function BucketSection({
   cards: TriageCard[];
   mounted: boolean;
   filtered: boolean;
-  onAction: (id: string, action: 'handled' | 'followup') => void;
+  onAction: (id: string, action: 'handled' | 'followup', card: TriageCard) => void;
   onUndo: (id: string) => void;
   onReplied: (id: string, text: string) => void;
 }) {
@@ -341,7 +380,7 @@ function CardList({
   cards: TriageCard[];
   section: Section;
   mounted: boolean;
-  onAction: (id: string, action: 'handled' | 'followup') => void;
+  onAction: (id: string, action: 'handled' | 'followup', card: TriageCard) => void;
   onUndo: (id: string) => void;
   onReplied: (id: string, text: string) => void;
 }) {
@@ -377,7 +416,7 @@ function Card({
 }: {
   card: TriageCard;
   mounted: boolean;
-  onAction: (id: string, action: 'handled' | 'followup') => void;
+  onAction: (id: string, action: 'handled' | 'followup', card: TriageCard) => void;
   onUndo: (id: string) => void;
   onReplied: (id: string, text: string) => void;
 }) {
@@ -468,14 +507,14 @@ function Card({
               <>
                 <button
                   type="button"
-                  onClick={() => onAction(card.id, 'handled')}
+                  onClick={() => onAction(card.id, 'handled', card)}
                   className="inline-flex items-center gap-1 text-fg-3 hover:text-green-dark"
                 >
                   <Check className="h-3.5 w-3.5" /> Handled
                 </button>
                 <button
                   type="button"
-                  onClick={() => onAction(card.id, 'followup')}
+                  onClick={() => onAction(card.id, 'followup', card)}
                   className="inline-flex items-center gap-1 text-fg-3 hover:text-orange"
                 >
                   <Flag className="h-3.5 w-3.5" /> Follow up
