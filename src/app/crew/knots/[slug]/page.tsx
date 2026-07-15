@@ -10,7 +10,7 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { requireHubAccess } from '@/lib/auth';
 import { getKnot, KNOTS } from '@/lib/knots';
-import { KnotVideoModal } from '@/components/crew/knots/KnotVideoModal';
+import { KnotAnimationModal } from '@/components/crew/knots/KnotAnimationModal';
 
 export const dynamic = 'force-dynamic';
 
@@ -60,16 +60,12 @@ export default async function KnotDetailPage({
             Watch it tied, step by step
           </h2>
           <p className="mt-1 max-w-xl text-sm text-fg-2">
-            The clearest way to learn a knot is to watch it tied and follow along
-            with a real rope. Opens right here on the page — no leaving the
-            dashboard. Full video is also at the bottom.
+            Step through the animation right here on the page and follow along
+            with a real rope — no leaving the dashboard. Prefer a video? There&apos;s
+            one at the bottom.
           </p>
         </div>
-        <KnotVideoModal
-          videoId={knot.videoId}
-          title={knot.name}
-          credit={knot.videoCredit}
-        />
+        <KnotAnimationModal url={knot.animationUrl} title={knot.name} />
       </section>
 
       {/* ---------- Used for / Watch out ---------- */}

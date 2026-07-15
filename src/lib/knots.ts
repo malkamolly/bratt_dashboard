@@ -61,8 +61,8 @@ export const KNOTS: Knot[] = [
     ],
     difficulty: 'Core',
     animationUrl: 'https://www.animatedknots.com/girth-hitch-knot',
-    videoId: 'pZyEDAZF6Vo',
-    videoCredit: 'Animated Knots by Grog',
+    videoId: 'xuEhH44QV14',
+    videoCredit: 'Russell Tree Experts',
     steps: [
       'Pass a bight (a fold) of the sling up behind the branch so it pokes out above.',
       'Bring the rest of the sling — the hanging loop — up and pass it through that bight.',
