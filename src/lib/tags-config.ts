@@ -29,24 +29,38 @@ export type TagsUserConfig = {
   userGroups: UserGroup[];
 };
 
+// Shared building blocks, so "same rules as X" is expressed by reuse rather
+// than copy-paste that can drift.
+const DAILY_SCHEDULE = /good day[\s\S]{0,400}this is our schedule for/i;
+const PHC = { id: 'S0ANWS348F3', name: 'PHC', handle: 'phc' };
+const SCHEDULING = { id: 'S0907G4TUNB', name: 'Scheduling', handle: 'scheduling' };
+const OFFICE = { id: 'S090Q4DNC3E', name: 'Office', handle: 'officeteam' };
+
 export const TAGS_USERS: Record<string, TagsUserConfig> = {
   'molly@bratttree.com': {
     mutedChannels: ['road closure', 'cancel'],
-    mutedMessages: [
-      // The daily schedule broadcast: "Good day, @… This is our schedule for …"
-      /good day[\s\S]{0,400}this is our schedule for/i,
-    ],
-    userGroups: [
-      { id: 'S0ANWS348F3', name: 'PHC', handle: 'phc' },
-      { id: 'S0907G4TUNB', name: 'Scheduling', handle: 'scheduling' },
-      { id: 'S090Q4DNC3E', name: 'Office', handle: 'officeteam' },
-    ],
+    mutedMessages: [DAILY_SCHEDULE],
+    userGroups: [PHC, SCHEDULING, OFFICE],
+  },
+
+  // Same FYI rules as Molly; PHC + Office groups.
+  'mariella@bratttree.com': {
+    mutedChannels: ['road closure', 'cancel'],
+    mutedMessages: [DAILY_SCHEDULE],
+    userGroups: [PHC, OFFICE],
   },
 
   'juancarlos@bratttree.com': {
     mutedChannels: ['road closure'],
     mutedMessages: [],
-    userGroups: [{ id: 'S0907G4TUNB', name: 'Scheduling', handle: 'scheduling' }],
+    userGroups: [SCHEDULING],
+  },
+
+  // Same setup as Juan Carlos.
+  'luis@bratttree.com': {
+    mutedChannels: ['road closure'],
+    mutedMessages: [],
+    userGroups: [SCHEDULING],
   },
 
   // --- Add the next employee here, e.g.: -------------------------------------

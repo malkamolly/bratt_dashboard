@@ -645,11 +645,14 @@ async function cardFor(
     bucket = 'fyi';
   } else {
     // Pull the thread so Rule 2 can see what happened after the user's reply.
-    // A single unreadable thread (deleted, no access) shouldn't sink the board.
+    // Track whether we actually managed to read the context — if a fetch fails
+    // (e.g. rate-limited), we must NOT confidently conclude "no reply".
+    let contextIncomplete = false;
     try {
       thread = await fetchThread(token, channelId, threadRoot);
     } catch {
       thread = [{ ts: match.ts, text, user: match.user, bot_id: match.bot_id }];
+      contextIncomplete = true;
     }
 
     // In this workspace people often reply as a NEW channel message rather than
@@ -662,11 +665,16 @@ async function cardFor(
         const seen = new Set(thread.map((m) => m.ts));
         for (const m of after) if (!seen.has(m.ts)) thread.push(m);
       } catch {
-        // No channel history access — fall back to the thread alone.
+        contextIncomplete = true;
       }
     }
 
     bucket = bucketMention({ thread, currentUserId, authorIsBot: false, matchText: text });
+
+    // If we couldn't fully read the context, don't cry "Needs a reply" — a fetch
+    // hiccup must never create a false alarm. Downgrade to Waiting instead; a
+    // later refresh (which retries) will reclassify it correctly.
+    if (contextIncomplete && bucket === 'needs_reply') bucket = 'waiting';
   }
 
   // Author name: prefer the username Slack already handed us in the search hit,
