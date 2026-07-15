@@ -2,30 +2,19 @@
 // Knot library data — /crew/knots
 // ============================================================================
 // Reference content for the field-crew Knot Library. Each knot is defined here
-// as plain data (name, what it's for, how to tie it, what to watch for). The
-// step-by-step DIAGRAMS are drawn in code by the <KnotFigure> component
-// (src/components/crew/knots/KnotFigure.tsx) — each step's `frame` index maps
-// to a hand-drawn SVG there.
+// as plain data (name, what it's for, how to tie it, what to watch for).
+//
+// Knots are genuinely hard to learn from static pictures — the thing that
+// teaches a knot is watching it tied in motion. So each knot links out to its
+// animated, step-by-step tutorial on AnimatedKnots.com (linking is fine; it's
+// copying their images that isn't). The written steps below are a quick
+// on-the-truck reference to go with the animation.
 //
 // Why data-in-code (not a .txt deck like training modules): a knot reference
 // is something crews look up on their phone in the field, not a classroom
-// slideshow. Keeping it as typed data lets the library page and the eventual
-// training module both read from one source of truth.
-//
-// All artwork is original (drawn by us). We deliberately do NOT copy photos or
-// animations from AnimatedKnots.com or any other source — those are
-// copyrighted.
+// slideshow. Keeping it as typed data lets the library page and the training
+// module both read from one source of truth.
 // ============================================================================
-
-export type KnotStep = {
-  /** One-line instruction for this step. */
-  caption: string;
-  /**
-   * Index of the SVG frame to draw for this step. Frames live in KnotFigure,
-   * keyed by (knot slug, frame). Steps and frames are 1:1 and in order.
-   */
-  frame: number;
-};
 
 export type Knot = {
   slug: string;
@@ -40,8 +29,10 @@ export type Knot = {
   usedFor: string[];
   /** Safety / failure notes — the "don't get hurt" column. */
   watchOut: string[];
-  /** Ordered how-to steps. */
-  steps: KnotStep[];
+  /** Ordered how-to steps — a quick text reference to go with the animation. */
+  steps: string[];
+  /** Link to the animated, step-by-step tutorial on AnimatedKnots.com. */
+  animationUrl: string;
   /** Rough tying difficulty, for the card badge. */
   difficulty: 'Core' | 'Everyday' | 'Advanced';
 };
@@ -65,10 +56,11 @@ export const KNOTS: Knot[] = [
       'It grips by squeezing the anchor. On a slick or tapering branch it can slide — back it up or move to a fork if the load matters.',
     ],
     difficulty: 'Core',
+    animationUrl: 'https://www.animatedknots.com/girth-hitch-knot',
     steps: [
-      { caption: 'Pass a bight (a fold) of the sling up behind the branch so it pokes out above.', frame: 1 },
-      { caption: 'Bring the rest of the sling — the hanging loop — up and pass it through that bight.', frame: 2 },
-      { caption: 'Pull the hanging loop down and dress the wraps flat. It cinches into a tidy collar around the branch.', frame: 3 },
+      'Pass a bight (a fold) of the sling up behind the branch so it pokes out above.',
+      'Bring the rest of the sling — the hanging loop — up and pass it through that bight.',
+      'Pull the hanging loop down and dress the wraps flat. It cinches into a tidy collar around the branch.',
     ],
   },
   {
@@ -89,10 +81,11 @@ export const KNOTS: Knot[] = [
       'Not a life-support knot on its own.',
     ],
     difficulty: 'Core',
+    animationUrl: 'https://www.animatedknots.com/clove-hitch-knot-rope-end',
     steps: [
-      { caption: 'Take one turn around the spar, crossing the working end over the standing part.', frame: 1 },
-      { caption: 'Take a second turn above the first, then tuck the working end under that last crossing turn.', frame: 2 },
-      { caption: 'Pull both ends tight. The two turns pinch the crossing flat against the spar.', frame: 3 },
+      'Take one turn around the spar, crossing the working end over the standing part.',
+      'Take a second turn above the first, then tuck the working end under that last crossing turn.',
+      'Pull both ends tight. The two turns pinch the crossing flat against the spar.',
     ],
   },
   {
@@ -112,10 +105,11 @@ export const KNOTS: Knot[] = [
       'Add a half hitch further along the log to keep a hoisted piece from swinging.',
     ],
     difficulty: 'Everyday',
+    animationUrl: 'https://www.animatedknots.com/timber-hitch-knot',
     steps: [
-      { caption: 'Pass the working end around the log and back across the standing part.', frame: 1 },
-      { caption: 'Twist the working end around its own bight three or more times, tucking with the lay.', frame: 2 },
-      { caption: 'Slide the twists snug against the log and load the standing part. Tension locks it.', frame: 3 },
+      'Pass the working end around the log and back across the standing part.',
+      'Twist the working end around its own bight three or more times, tucking with the lay.',
+      'Slide the twists snug against the log and load the standing part. Tension locks it.',
     ],
   },
   {
@@ -136,11 +130,12 @@ export const KNOTS: Knot[] = [
       'Set the noose above a fork or nub when you can, so it can’t slide off the end of the limb.',
     ],
     difficulty: 'Advanced',
+    animationUrl: 'https://www.animatedknots.com/running-bowline-knot',
     steps: [
-      { caption: 'Pass the working end around the limb, then lay it across the standing part.', frame: 1 },
-      { caption: 'Make a small overhand loop in the standing part and bring the working end up through it.', frame: 2 },
-      { caption: 'Take the working end around behind the standing part and back down through the same loop — that is the bowline.', frame: 3 },
-      { caption: 'Tighten the bowline, then pull the standing part: the fixed loop runs down and chokes the limb.', frame: 4 },
+      'Pass the working end around the limb, then lay it across the standing part.',
+      'Make a small overhand loop in the standing part and bring the working end up through it.',
+      'Take the working end around behind the standing part and back down through the same loop — that is the bowline.',
+      'Tighten the bowline, then pull the standing part: the fixed loop runs down and chokes the limb.',
     ],
   },
 ];

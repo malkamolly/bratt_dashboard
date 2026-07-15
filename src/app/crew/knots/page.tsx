@@ -2,15 +2,15 @@
 // Knot Library index — /crew/knots
 // ============================================================================
 // A browsable reference of the knots the field crew actually uses. Each card
-// links to a step-by-step page. Meant to be looked up on a phone in the field,
-// so it stays a lightweight reference (no test here — the graded "Knot Tying"
-// training module lives under /crew/modules).
+// links to a page with the animated tutorial, what it's for, safety notes, and
+// the tying steps. Meant to be looked up on a phone in the field, so it stays
+// a lightweight reference (no test here — the graded "Knot Tying" training
+// module lives under /crew/modules).
 // ============================================================================
 
 import Link from 'next/link';
 import { requireHubAccess } from '@/lib/auth';
 import { KNOTS } from '@/lib/knots';
-import { KnotFigure } from '@/components/crew/knots/KnotFigure';
 
 export const dynamic = 'force-dynamic';
 
@@ -36,9 +36,10 @@ export default async function KnotLibraryPage() {
         Knot library
       </h1>
       <p className="mt-3 max-w-2xl text-fg-2">
-        The knots we use for rigging, hauling, and anchoring — step by step. Pull
-        one up on your phone at the truck. When you&apos;re ready to get signed
-        off, take the{' '}
+        The knots we use for rigging, hauling, and anchoring. Each one links to
+        an animated, tie-along tutorial plus a quick reference. Pull one up on
+        your phone at the truck. When you&apos;re ready to get signed off, take
+        the{' '}
         <Link
           href="/crew/modules/knot_tying"
           className="font-headline font-extrabold uppercase tracking-ribbon text-xs text-orange hover:underline"
@@ -55,15 +56,7 @@ export default async function KnotLibraryPage() {
               href={`/crew/knots/${k.slug}`}
               className="bt-card flex h-full flex-col gap-3 transition-colors hover:!border-orange"
             >
-              <div className="overflow-hidden rounded-2 border border-paper-edge">
-                {/* Thumbnail = the finished knot (its last step). */}
-                <KnotFigure
-                  slug={k.slug}
-                  frame={k.steps[k.steps.length - 1].frame}
-                  className="block w-full"
-                />
-              </div>
-              <div className="flex items-center justify-between gap-2">
+              <div className="flex items-start justify-between gap-2">
                 <h2 className="font-headline text-2xl font-black uppercase text-bark-deep">
                   {k.name}
                 </h2>
@@ -82,7 +75,7 @@ export default async function KnotLibraryPage() {
               )}
               <p className="text-sm text-fg-2">{k.tagline}</p>
               <p className="mt-auto font-headline text-xs font-extrabold uppercase tracking-ribbon text-orange">
-                How to tie it →
+                Animation + steps →
               </p>
             </Link>
           </li>
