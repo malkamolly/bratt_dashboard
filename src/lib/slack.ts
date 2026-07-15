@@ -271,6 +271,26 @@ export async function postReply(
 }
 
 /**
+ * Pulls channel messages posted at/after `oldestTs`. Used to catch the common
+ * case where someone replies as a NEW channel message instead of threading
+ * their reply — the thread would look empty, but the reply is right there in
+ * the channel timeline. Bounded by `limit` to keep it cheap.
+ */
+export async function fetchChannelAfter(
+  token: string,
+  channelId: string,
+  oldestTs: string,
+  limit = 40,
+): Promise<SlackMessage[]> {
+  const data = await slackApi<{ messages?: SlackMessage[] }>(
+    token,
+    'conversations.history',
+    { channel: channelId, oldest: oldestTs, inclusive: 'false', limit: String(limit) },
+  );
+  return data.messages ?? [];
+}
+
+/**
  * Resolves a member ID to a user record (name + is_bot), memoized within a
  * single board build so we never look the same person up twice.
  */

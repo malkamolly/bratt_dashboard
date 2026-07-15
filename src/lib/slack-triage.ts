@@ -22,6 +22,7 @@
 // ============================================================================
 
 import {
+  fetchChannelAfter,
   fetchThread,
   getConnection,
   makeUserResolver,
@@ -395,6 +396,21 @@ async function cardFor(
   } catch {
     // Fall back to treating the match as a standalone message.
     thread = [{ ts: match.ts, text: match.text, user: match.user, bot_id: match.bot_id }];
+  }
+
+  // In this workspace people often reply as a NEW channel message rather than
+  // threading it, so the thread looks empty even though the user answered. If
+  // the thread shows no reply from the user, also pull what was posted in the
+  // channel after the tag and fold it in — that's where the reply lives.
+  const userInThread = thread.some((m) => m.user === currentUserId);
+  if (!userInThread) {
+    try {
+      const after = await fetchChannelAfter(token, channelId, match.ts);
+      const seen = new Set(thread.map((m) => m.ts));
+      for (const m of after) if (!seen.has(m.ts)) thread.push(m);
+    } catch {
+      // No channel history access — fall back to the thread alone.
+    }
   }
 
   // Is the author a bot? A message with a bot_id and no user is a bot; else
