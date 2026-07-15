@@ -272,6 +272,7 @@ export function looksLikeBotCc(text: string | undefined): boolean {
 // channel named "#road_closure-permits-etc".
 const MUTED_CHANNELS = [
   'road closure',
+  'cancel',
 ];
 
 // Collapse a channel name to just its letters/numbers for tolerant matching.
