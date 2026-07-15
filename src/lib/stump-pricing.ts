@@ -58,5 +58,5 @@ export function stumpBandLabel(diameter: number): string | null {
     if (diameter <= band.maxDia) return `${band.minDia}–${band.maxDia}"`;
   }
   const last = STUMP_BANDS[STUMP_BANDS.length - 1];
-  return `over ${last.maxDia}"`;
+  return `${last.maxDia + 1}"+`;
 }

@@ -161,7 +161,7 @@ export function StumpQuoteBuilder() {
           <p className="mt-1 font-display text-4xl tracking-wider">{fmtUsd(grandTotal)}</p>
           {hasMultiple && (
             <p className="mt-1 text-xs text-cream/80">
-              Multiple stumps in a 2 ft area may be priced differently — see note below.
+              Stumps within a 2 ft area may be priced differently — see the 2 ft rule above.
             </p>
           )}
         </div>

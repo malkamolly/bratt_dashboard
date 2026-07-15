@@ -97,20 +97,20 @@ function StumpHerbicideCalculator() {
         the total adds up as you go.
       </p>
 
+      <section className="mt-6 rounded-card border-2 border-orange-press bg-orange/10 p-5 text-sm text-orange-press">
+        <h2 className="font-headline text-xs font-extrabold uppercase tracking-ribbon">
+          The 2 ft rule — read before quoting multiples
+        </h2>
+        <p className="mt-3">
+          When multiple stumps are grouped within a <strong>2 ft area</strong>,
+          someone from the <strong>Review team</strong> needs to help determine
+          the best pricing — the straight per-stump total below may not apply.
+        </p>
+      </section>
+
       <div className="mt-6">
         <StumpQuoteBuilder />
       </div>
-
-      <section className="mt-10 rounded-card border-2 border-orange-press bg-orange/10 p-5 text-sm text-orange-press">
-        <h2 className="font-headline text-xs font-extrabold uppercase tracking-ribbon">
-          Before you quote multiples
-        </h2>
-        <p className="mt-3">
-          Multiple stumps grouped within a <strong>2 ft area</strong> need
-          someone from the <strong>Review team</strong> to help determine the
-          best pricing — the per-stump total above may not apply.
-        </p>
-      </section>
     </div>
   );
 }
