@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import { requireOwner } from '@/lib/auth';
 import { getConnection } from '@/lib/slack';
-import { readCachedBoard } from './actions';
+import { getDisplayBoard } from './actions';
 import { TriageBoard } from './TriageBoard';
 
 export const dynamic = 'force-dynamic';
@@ -25,7 +25,7 @@ export default async function TagsPage({
   const params = await searchParams;
 
   const connection = await getConnection(user.email);
-  const board = connection ? await readCachedBoard(user.email) : null;
+  const board = connection ? await getDisplayBoard(user.email) : null;
 
   return (
     <main className="bt-page">

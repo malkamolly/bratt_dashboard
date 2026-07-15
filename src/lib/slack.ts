@@ -30,6 +30,7 @@ export const SLACK_USER_SCOPES = [
   'im:history', // …DMs
   'mpim:history', // …group DMs
   'users:read', // resolve names + detect bot authors
+  'chat:write', // post replies back into a thread (as the user)
 ].join(',');
 
 const SLACK_API = 'https://slack.com/api';
@@ -248,6 +249,25 @@ export async function fetchThread(
     { channel: channelId, ts, limit: '200' },
   );
   return data.messages ?? [];
+}
+
+/**
+ * Posts a reply into a thread, AS the connected user. `threadTs` is the thread
+ * root so the message lands in the right conversation rather than as a new
+ * top-level post. Requires the chat:write scope (added in v2 — users who
+ * connected before it must reconnect to grant it).
+ */
+export async function postReply(
+  token: string,
+  channelId: string,
+  threadTs: string,
+  text: string,
+): Promise<void> {
+  await slackApi(token, 'chat.postMessage', {
+    channel: channelId,
+    thread_ts: threadTs,
+    text,
+  });
 }
 
 /**

@@ -2,8 +2,22 @@
 
 import { useCallback, useEffect, useRef, useState, useTransition } from 'react';
 import { formatDistanceToNow } from 'date-fns';
-import { RefreshCw, ExternalLink, Slack } from 'lucide-react';
-import { refreshBoard, disconnectSlack } from './actions';
+import {
+  RefreshCw,
+  ExternalLink,
+  Slack,
+  Check,
+  Flag,
+  CornerUpLeft,
+  Undo2,
+} from 'lucide-react';
+import {
+  refreshBoard,
+  disconnectSlack,
+  setMessageAction,
+  clearMessageAction,
+  sendReply,
+} from './actions';
 import type { Bucket, TriageBoard as Board, TriageCard } from '@/lib/slack-triage';
 
 // Refresh cadence. On mount we refresh if the cache is older than this; while
@@ -12,12 +26,14 @@ import type { Bucket, TriageBoard as Board, TriageCard } from '@/lib/slack-triag
 const STALE_MS = 2 * 60 * 1000; // 2 minutes
 const BACKGROUND_MS = 5 * 60 * 1000; // 5 minutes
 
+type Tab = Bucket | 'all';
+
 type Section = {
   key: Bucket;
   title: string;
   blurb: string;
-  tone: 'danger' | 'neutral' | 'quiet';
-  collapsedByDefault?: boolean;
+  tone: 'danger' | 'neutral' | 'accent' | 'quiet';
+  collapsedInAll?: boolean; // collapse behind a disclosure in the "All" view
 };
 
 const SECTIONS: Section[] = [
@@ -34,23 +50,39 @@ const SECTIONS: Section[] = [
     tone: 'neutral',
   },
   {
+    key: 'followup',
+    title: 'Follow-up list',
+    blurb: 'Things you flagged to come back to.',
+    tone: 'accent',
+  },
+  {
     key: 'handled',
     title: 'Handled',
-    blurb: 'Answered and closed out. Here for peace of mind.',
+    blurb: 'Answered or cleared. Here for peace of mind.',
     tone: 'quiet',
-    collapsedByDefault: true,
+    collapsedInAll: true,
   },
   {
     key: 'fyi',
     title: 'FYI / bot cc’s',
     blurb: 'Automated tags and broadcasts. Rarely need you.',
     tone: 'quiet',
-    collapsedByDefault: true,
+    collapsedInAll: true,
   },
+];
+
+const TABS: { key: Tab; label: string }[] = [
+  { key: 'all', label: 'All' },
+  { key: 'needs_reply', label: 'Needs reply' },
+  { key: 'waiting', label: 'Waiting' },
+  { key: 'followup', label: 'Follow-up' },
+  { key: 'handled', label: 'Handled' },
+  { key: 'fyi', label: 'FYI' },
 ];
 
 export function TriageBoard({ initialBoard }: { initialBoard: Board | null }) {
   const [board, setBoard] = useState<Board | null>(initialBoard);
+  const [tab, setTab] = useState<Tab>('all');
   const [pending, startTransition] = useTransition();
   const [mounted, setMounted] = useState(false);
   const inFlight = useRef(false);
@@ -60,8 +92,7 @@ export function TriageBoard({ initialBoard }: { initialBoard: Board | null }) {
     inFlight.current = true;
     startTransition(async () => {
       try {
-        const fresh = await refreshBoard();
-        setBoard(fresh);
+        setBoard(await refreshBoard());
       } finally {
         inFlight.current = false;
       }
@@ -77,18 +108,34 @@ export function TriageBoard({ initialBoard }: { initialBoard: Board | null }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Quiet background refresh while the tab is open.
   useEffect(() => {
     const id = setInterval(doRefresh, BACKGROUND_MS);
     return () => clearInterval(id);
   }, [doRefresh]);
 
+  // --- Card actions -------------------------------------------------------
+  const onAction = useCallback((id: string, action: 'handled' | 'followup') => {
+    startTransition(async () => setBoard(await setMessageAction(id, action)));
+  }, []);
+
+  const onUndo = useCallback((id: string) => {
+    startTransition(async () => setBoard(await clearMessageAction(id)));
+  }, []);
+
+  // After a reply posts, move the card to "Waiting" right away (Slack search
+  // can lag a minute); the next real refresh reconciles.
+  const onReplied = useCallback((id: string, text: string) => {
+    setBoard((prev) => (prev ? moveToWaiting(prev, id, text) : prev));
+  }, []);
+
   const needsReauth = board?.error === 'reauth';
+  const count = (k: Bucket) => board?.[k].length ?? 0;
+  const visibleSections = SECTIONS.filter((s) => tab === 'all' || s.key === tab);
 
   return (
     <div className="mt-8">
       {/* Toolbar: freshness + manual refresh --------------------------------- */}
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b-2 border-paper-edge pb-3">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <p className="text-xs text-fg-3">
           {mounted && board?.fetchedAt
             ? `Updated ${formatDistanceToNow(board.fetchedAt, { addSuffix: true })}`
@@ -104,17 +151,40 @@ export function TriageBoard({ initialBoard }: { initialBoard: Board | null }) {
           className="inline-flex items-center gap-2 text-xs font-extrabold uppercase tracking-ribbon text-orange hover:text-orange-press disabled:opacity-50"
         >
           <RefreshCw className={`h-3.5 w-3.5 ${pending ? 'animate-spin' : ''}`} />
-          {pending ? 'Refreshing' : 'Refresh'}
+          {pending ? 'Working' : 'Refresh'}
         </button>
+      </div>
+
+      {/* Filter tabs — jump between sections --------------------------------- */}
+      <div className="sticky top-0 z-10 mt-3 flex flex-wrap gap-2 border-b-2 border-paper-edge bg-cream/95 py-3 backdrop-blur">
+        {TABS.map((t) => {
+          const n = t.key === 'all' ? undefined : count(t.key as Bucket);
+          const active = tab === t.key;
+          return (
+            <button
+              key={t.key}
+              type="button"
+              onClick={() => setTab(t.key)}
+              className={`rounded-full px-3 py-1 text-xs font-extrabold uppercase tracking-ribbon transition-colors ${
+                active
+                  ? 'bg-bark text-cream'
+                  : 'bg-white text-fg-2 ring-1 ring-inset ring-paper-edge hover:text-orange'
+              }`}
+            >
+              {t.label}
+              {n !== undefined && <span className="ml-1.5 opacity-70">{n}</span>}
+            </button>
+          );
+        })}
       </div>
 
       {needsReauth && (
         <p className="mt-6 rounded-2 border-2 border-orange bg-orange/5 px-4 py-3 text-sm text-fg-1">
-          Your Slack connection expired.{' '}
+          Your Slack connection needs refreshing.{' '}
           <a href="/api/slack/connect" className="font-bold text-orange underline">
             Reconnect
           </a>{' '}
-          to keep seeing your tags.
+          to keep seeing your tags (and to enable replies).
         </p>
       )}
       {board?.error && !needsReauth && (
@@ -124,14 +194,18 @@ export function TriageBoard({ initialBoard }: { initialBoard: Board | null }) {
         </p>
       )}
 
-      {/* The three buckets --------------------------------------------------- */}
+      {/* Sections ------------------------------------------------------------ */}
       <div className="mt-6 space-y-8">
-        {SECTIONS.map((section) => (
+        {visibleSections.map((section) => (
           <BucketSection
             key={section.key}
             section={section}
             cards={board?.[section.key] ?? []}
             mounted={mounted}
+            filtered={tab !== 'all'}
+            onAction={onAction}
+            onUndo={onUndo}
+            onReplied={onReplied}
           />
         ))}
       </div>
@@ -143,12 +217,9 @@ export function TriageBoard({ initialBoard }: { initialBoard: Board | null }) {
         </summary>
         <div className="mt-3 flex items-center gap-3 text-sm text-fg-2">
           <Slack className="h-4 w-4 text-fg-3" />
-          <span>Connected and read-only.</span>
+          <span>Connected.</span>
           <form action={disconnectSlack}>
-            <button
-              type="submit"
-              className="bt-btn bt-btn-ghost text-xs text-red-600"
-            >
+            <button type="submit" className="bt-btn bt-btn-ghost text-xs text-red-600">
               Disconnect
             </button>
           </form>
@@ -159,6 +230,27 @@ export function TriageBoard({ initialBoard }: { initialBoard: Board | null }) {
 }
 
 // ---------------------------------------------------------------------------
+// Move a card into "Waiting" locally (used right after a reply posts).
+// ---------------------------------------------------------------------------
+function moveToWaiting(board: Board, id: string, myLine: string): Board {
+  const keys: Bucket[] = ['needs_reply', 'waiting', 'followup', 'handled', 'fyi'];
+  let moved: TriageCard | undefined;
+  const next = { ...board };
+  for (const k of keys) {
+    const found = board[k].find((c) => c.id === id);
+    if (found) moved = found;
+    next[k] = board[k].filter((c) => c.id !== id);
+  }
+  if (moved) {
+    next.waiting = [
+      { ...moved, bucket: 'waiting', userLastLine: myLine },
+      ...next.waiting,
+    ];
+  }
+  return next;
+}
+
+// ---------------------------------------------------------------------------
 // One bucket + its cards
 // ---------------------------------------------------------------------------
 
@@ -166,13 +258,19 @@ function BucketSection({
   section,
   cards,
   mounted,
+  filtered,
+  onAction,
+  onUndo,
+  onReplied,
 }: {
   section: Section;
   cards: TriageCard[];
   mounted: boolean;
+  filtered: boolean;
+  onAction: (id: string, action: 'handled' | 'followup') => void;
+  onUndo: (id: string) => void;
+  onReplied: (id: string, text: string) => void;
 }) {
-  const count = cards.length;
-
   const header = (
     <div className="flex items-baseline gap-3">
       <h2
@@ -182,14 +280,26 @@ function BucketSection({
       >
         {section.title}
       </h2>
-      <span className="text-sm font-bold text-fg-3">{count}</span>
+      <span className="text-sm font-bold text-fg-3">{cards.length}</span>
     </div>
   );
 
-  // Quiet buckets collapse behind a disclosure so they don't shout.
-  if (section.collapsedByDefault) {
+  const list = (
+    <CardList
+      cards={cards}
+      section={section}
+      mounted={mounted}
+      onAction={onAction}
+      onUndo={onUndo}
+      onReplied={onReplied}
+    />
+  );
+
+  // In the "All" view, the quiet buckets collapse so they don't shout. When
+  // the user has filtered to a single tab, always show it fully expanded.
+  if (section.collapsedInAll && !filtered) {
     return (
-      <details className="group" open={false}>
+      <details className="group">
         <summary className="cursor-pointer list-none">
           <div className="flex items-center justify-between">
             {header}
@@ -198,7 +308,7 @@ function BucketSection({
           </div>
           <p className="mt-1 text-xs text-fg-3">{section.blurb}</p>
         </summary>
-        <CardList cards={cards} tone={section.tone} mounted={mounted} />
+        {list}
       </details>
     );
   }
@@ -208,46 +318,99 @@ function BucketSection({
       className={
         section.tone === 'danger'
           ? 'rounded-card border-[3px] border-orange bg-orange/5 p-5'
-          : ''
+          : section.tone === 'accent'
+            ? 'rounded-card border-[3px] border-lime p-5'
+            : ''
       }
     >
       {header}
       <p className="mt-1 text-xs text-fg-3">{section.blurb}</p>
-      <CardList cards={cards} tone={section.tone} mounted={mounted} />
+      {list}
     </section>
   );
 }
 
 function CardList({
   cards,
-  tone,
+  section,
   mounted,
+  onAction,
+  onUndo,
+  onReplied,
 }: {
   cards: TriageCard[];
-  tone: Section['tone'];
+  section: Section;
   mounted: boolean;
+  onAction: (id: string, action: 'handled' | 'followup') => void;
+  onUndo: (id: string) => void;
+  onReplied: (id: string, text: string) => void;
 }) {
   if (cards.length === 0) {
     return (
       <p className="mt-3 text-sm text-fg-3">
-        {tone === 'danger' ? 'Nothing needs you right now. ✿' : 'Nothing here.'}
+        {section.tone === 'danger' ? 'Nothing needs you right now. ✿' : 'Nothing here.'}
       </p>
     );
   }
   return (
     <ul className="mt-3 space-y-3">
       {cards.map((card) => (
-        <Card key={card.id} card={card} mounted={mounted} />
+        <Card
+          key={card.id}
+          card={card}
+          mounted={mounted}
+          onAction={onAction}
+          onUndo={onUndo}
+          onReplied={onReplied}
+        />
       ))}
     </ul>
   );
 }
 
-function Card({ card, mounted }: { card: TriageCard; mounted: boolean }) {
+function Card({
+  card,
+  mounted,
+  onAction,
+  onUndo,
+  onReplied,
+}: {
+  card: TriageCard;
+  mounted: boolean;
+  onAction: (id: string, action: 'handled' | 'followup') => void;
+  onUndo: (id: string) => void;
+  onReplied: (id: string, text: string) => void;
+}) {
+  const [replyOpen, setReplyOpen] = useState(false);
+  const [text, setText] = useState('');
+  const [sending, setSending] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const inHandled = card.bucket === 'handled';
+  const inFollowup = card.bucket === 'followup';
+
+  async function submitReply() {
+    if (!text.trim() || sending) return;
+    setSending(true);
+    setError(null);
+    const res = await sendReply(card.channelId, card.threadTs, text);
+    setSending(false);
+    if (res.ok) {
+      onReplied(card.id, text.trim());
+      setReplyOpen(false);
+      setText('');
+    } else {
+      setError(
+        res.error === 'reauth'
+          ? 'Reconnect Slack to enable replies (bottom of the page).'
+          : 'Couldn’t send. Try again.',
+      );
+    }
+  }
+
   return (
     <li className="rounded-2 border-2 border-paper-edge bg-white p-4">
       <div className="flex items-start gap-3">
-        {/* Initials avatar */}
         <div
           className={`flex h-9 w-9 flex-none items-center justify-center rounded-full text-xs font-black ${
             card.isBot ? 'bg-paper-edge text-fg-3' : 'bg-bark text-cream'
@@ -269,9 +432,7 @@ function Card({ card, mounted }: { card: TriageCard; mounted: boolean }) {
             <span className="text-fg-3">{card.channelName}</span>
             <span className="text-fg-3">·</span>
             <span className="text-fg-3">
-              {mounted
-                ? formatDistanceToNow(card.timestampMs, { addSuffix: true })
-                : ''}
+              {mounted ? formatDistanceToNow(card.timestampMs, { addSuffix: true }) : ''}
             </span>
           </div>
 
@@ -279,22 +440,93 @@ function Card({ card, mounted }: { card: TriageCard; mounted: boolean }) {
             {card.text}
           </p>
 
-          {/* Waiting cards: remind the user of their own last line. */}
           {card.userLastLine && (
             <p className="mt-2 border-l-2 border-paper-edge pl-3 text-xs italic text-fg-3">
               You said: “{card.userLastLine}”
             </p>
           )}
 
-          {card.permalink && (
-            <a
-              href={card.permalink}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="mt-2 inline-flex items-center gap-1 text-xs font-bold uppercase tracking-wide text-orange hover:text-orange-press"
+          {/* Action row ---------------------------------------------------- */}
+          <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2 text-xs font-bold uppercase tracking-wide">
+            <button
+              type="button"
+              onClick={() => setReplyOpen((v) => !v)}
+              className="inline-flex items-center gap-1 text-orange hover:text-orange-press"
             >
-              Open in Slack <ExternalLink className="h-3 w-3" />
-            </a>
+              <CornerUpLeft className="h-3.5 w-3.5" /> Reply
+            </button>
+
+            {inHandled || inFollowup ? (
+              <button
+                type="button"
+                onClick={() => onUndo(card.id)}
+                className="inline-flex items-center gap-1 text-fg-3 hover:text-ink"
+              >
+                <Undo2 className="h-3.5 w-3.5" /> Move back
+              </button>
+            ) : (
+              <>
+                <button
+                  type="button"
+                  onClick={() => onAction(card.id, 'handled')}
+                  className="inline-flex items-center gap-1 text-fg-3 hover:text-green-dark"
+                >
+                  <Check className="h-3.5 w-3.5" /> Handled
+                </button>
+                <button
+                  type="button"
+                  onClick={() => onAction(card.id, 'followup')}
+                  className="inline-flex items-center gap-1 text-fg-3 hover:text-orange"
+                >
+                  <Flag className="h-3.5 w-3.5" /> Follow up
+                </button>
+              </>
+            )}
+
+            {card.permalink && (
+              <a
+                href={card.permalink}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1 text-fg-3 hover:text-orange"
+              >
+                Open in Slack <ExternalLink className="h-3 w-3" />
+              </a>
+            )}
+          </div>
+
+          {/* Reply box ----------------------------------------------------- */}
+          {replyOpen && (
+            <div className="mt-3">
+              <textarea
+                value={text}
+                onChange={(e) => setText(e.target.value)}
+                rows={3}
+                placeholder="Write a reply — it posts to this thread as you."
+                className="w-full rounded-2 border-2 border-paper-edge p-2 text-sm text-ink focus:border-orange focus:outline-none"
+              />
+              {error && <p className="mt-1 text-xs text-red-600">{error}</p>}
+              <div className="mt-2 flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={submitReply}
+                  disabled={sending || !text.trim()}
+                  className="bt-btn bt-btn-primary text-xs disabled:opacity-50"
+                >
+                  {sending ? 'Sending…' : 'Send reply'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setReplyOpen(false);
+                    setError(null);
+                  }}
+                  className="text-xs font-bold uppercase tracking-wide text-fg-3 hover:text-ink"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
           )}
         </div>
       </div>
