@@ -167,15 +167,20 @@ export function looksLikeBotCc(text: string | undefined): boolean {
 // channel, road-closure permits). Anything posted in one of these drops
 // straight to the muted "FYI" pile. Edit this list to add/remove channels;
 // match is case-insensitive and ignores a leading "#".
+// Written however reads naturally — matching ignores case and every kind of
+// separator (spaces, hyphens, underscores), so "road closure" matches a
+// channel named "#road_closure-permits-etc".
 const MUTED_CHANNELS = [
-  'road-closure-permits',
-  'road-closure',
+  'road closure',
 ];
+
+// Collapse a channel name to just its letters/numbers for tolerant matching.
+const normChannel = (name: string) => name.replace(/[^a-z0-9]/gi, '').toLowerCase();
 
 export function isMutedChannel(channelName: string | undefined): boolean {
   if (!channelName) return false;
-  const norm = channelName.replace(/^#/, '').trim().toLowerCase();
-  return MUTED_CHANNELS.some((c) => norm === c || norm.includes(c));
+  const norm = normChannel(channelName);
+  return MUTED_CHANNELS.some((c) => norm.includes(normChannel(c)));
 }
 
 const tsNum = (ts: string) => parseFloat(ts) || 0;
@@ -379,6 +384,16 @@ export async function buildBoard(ownerEmail: string): Promise<TriageBoard> {
   return board;
 }
 
+// Slack search tells us a matched message's ts, but if that message is a REPLY
+// inside a thread, its ts is NOT the thread root — and conversations.replies
+// needs the root. Search doesn't reliably include thread_ts on the match, but
+// the permalink always carries it (…?thread_ts=123.456&…), so we read it there.
+function threadRootFromPermalink(permalink: string | null | undefined): string | undefined {
+  if (!permalink) return undefined;
+  const m = permalink.match(/[?&]thread_ts=([0-9.]+)/);
+  return m ? m[1] : undefined;
+}
+
 async function cardFor(
   match: SlackSearchMatch,
   currentUserId: string,
@@ -388,11 +403,16 @@ async function cardFor(
   const channelId = match.channel?.id;
   if (!channelId) return null;
 
+  // The thread root: prefer the match's own thread_ts, then the one baked into
+  // the permalink, then the message ts itself (for a genuine top-level message).
+  const threadRoot =
+    match.thread_ts || threadRootFromPermalink(match.permalink) || match.ts;
+
   // Pull the thread so Rule 2 can see what happened after the user's reply.
   // A single unreadable thread (deleted, no access) shouldn't sink the board.
   let thread: SlackMessage[];
   try {
-    thread = await fetchThread(token, channelId, match.thread_ts || match.ts);
+    thread = await fetchThread(token, channelId, threadRoot);
   } catch {
     // Fall back to treating the match as a standalone message.
     thread = [{ ts: match.ts, text: match.text, user: match.user, bot_id: match.bot_id }];
@@ -442,7 +462,7 @@ async function cardFor(
     isBot: authorIsBot,
     channelName: channelLabel(match),
     channelId,
-    threadTs: match.thread_ts || match.ts,
+    threadTs: threadRoot,
     text: await humanizeSlackText(match.text ?? '', resolveUser),
     permalink: match.permalink ?? null,
     timestampMs: Math.round(tsNum(match.ts) * 1000),
