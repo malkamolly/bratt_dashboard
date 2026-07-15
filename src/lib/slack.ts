@@ -214,19 +214,15 @@ async function slackApi<T = unknown>(
  * `to:me` did not surface the right results in testing, but the member-ID
  * mention search did.
  */
-export async function searchMentions(
+export async function searchMessages(
   token: string,
-  slackUserId: string,
+  term: string,
   opts: { after?: string; before?: string; count?: number } = {},
 ): Promise<SlackSearchMatch[]> {
   const { after, before, count = 100 } = opts;
   // Bound the search to a date window when given (Slack's after:/before: take
   // YYYY-MM-DD). The caller trims to the exact week afterward.
-  const query = [
-    `<@${slackUserId}>`,
-    after ? `after:${after}` : '',
-    before ? `before:${before}` : '',
-  ]
+  const query = [term, after ? `after:${after}` : '', before ? `before:${before}` : '']
     .filter(Boolean)
     .join(' ');
 
@@ -236,6 +232,15 @@ export async function searchMentions(
     { query, sort: 'timestamp', sort_dir: 'desc', count: String(count) },
   );
   return data.messages?.matches ?? [];
+}
+
+/** Convenience: search for messages that mention the given user. */
+export function searchMentions(
+  token: string,
+  slackUserId: string,
+  opts: { after?: string; before?: string; count?: number } = {},
+): Promise<SlackSearchMatch[]> {
+  return searchMessages(token, `<@${slackUserId}>`, opts);
 }
 
 /**

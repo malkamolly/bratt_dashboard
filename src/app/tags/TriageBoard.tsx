@@ -26,59 +26,77 @@ import type { Bucket, TriageBoard as Board, TriageCard } from '@/lib/slack-triag
 const STALE_MS = 2 * 60 * 1000; // 2 minutes
 const BACKGROUND_MS = 5 * 60 * 1000; // 5 minutes
 
-type Tab = Bucket | 'all';
+type Tab = string; // 'all', a bucket key, or `group:<name>`
 
 type Section = {
-  key: Bucket;
+  key: string;
   title: string;
+  tabLabel: string;
   blurb: string;
   tone: 'danger' | 'neutral' | 'accent' | 'quiet';
   collapsedInAll?: boolean; // collapse behind a disclosure in the "All" view
+  cards: TriageCard[];
 };
 
-const SECTIONS: Section[] = [
-  {
-    key: 'needs_reply',
-    title: 'Needs a reply',
-    blurb: 'A person asked you something and you haven’t answered yet.',
-    tone: 'danger',
-  },
-  {
-    key: 'waiting',
-    title: 'Waiting on someone else',
-    blurb: 'You replied — the ball is in their court now.',
-    tone: 'neutral',
-  },
-  {
-    key: 'followup',
-    title: 'Follow-up list',
-    blurb: 'Things you flagged to come back to.',
+// Build the ordered list of sections for the current board. Usergroup sections
+// (@phc, @scheduling, @officeteam) slot in after Waiting; their number and
+// names come from the board, so they're dynamic.
+function buildSections(board: Board | null): Section[] {
+  const groupSections: Section[] = (board?.groups ?? []).map((g) => ({
+    key: `group:${g.name}`,
+    title: g.name,
+    tabLabel: g.name,
+    blurb: `Messages tagging @${g.name.toLowerCase()}.`,
     tone: 'accent',
-  },
-  {
-    key: 'handled',
-    title: 'Handled',
-    blurb: 'Answered or cleared. Here for peace of mind.',
-    tone: 'quiet',
-    collapsedInAll: true,
-  },
-  {
-    key: 'fyi',
-    title: 'FYI / bot cc’s',
-    blurb: 'Automated tags and broadcasts. Rarely need you.',
-    tone: 'quiet',
-    collapsedInAll: true,
-  },
-];
+    cards: g.cards,
+  }));
 
-const TABS: { key: Tab; label: string }[] = [
-  { key: 'all', label: 'All' },
-  { key: 'needs_reply', label: 'Needs reply' },
-  { key: 'waiting', label: 'Waiting' },
-  { key: 'followup', label: 'Follow-up' },
-  { key: 'handled', label: 'Handled' },
-  { key: 'fyi', label: 'FYI' },
-];
+  return [
+    {
+      key: 'needs_reply',
+      title: 'Needs a reply',
+      tabLabel: 'Needs reply',
+      blurb: 'A person asked you something and you haven’t answered yet.',
+      tone: 'danger',
+      cards: board?.needs_reply ?? [],
+    },
+    {
+      key: 'waiting',
+      title: 'Waiting on someone else',
+      tabLabel: 'Waiting',
+      blurb: 'You replied — the ball is in their court now.',
+      tone: 'neutral',
+      cards: board?.waiting ?? [],
+    },
+    ...groupSections,
+    {
+      key: 'followup',
+      title: 'Follow-up list',
+      tabLabel: 'Follow-up',
+      blurb: 'Things you flagged to come back to.',
+      tone: 'accent',
+      cards: board?.followup ?? [],
+    },
+    {
+      key: 'handled',
+      title: 'Handled',
+      tabLabel: 'Handled',
+      blurb: 'Answered or cleared. Here for peace of mind.',
+      tone: 'quiet',
+      collapsedInAll: true,
+      cards: board?.handled ?? [],
+    },
+    {
+      key: 'fyi',
+      title: 'FYI / bot cc’s',
+      tabLabel: 'FYI',
+      blurb: 'Automated tags and broadcasts. Rarely need you.',
+      tone: 'quiet',
+      collapsedInAll: true,
+      cards: board?.fyi ?? [],
+    },
+  ];
+}
 
 export function TriageBoard({ initialBoard }: { initialBoard: Board | null }) {
   const [board, setBoard] = useState<Board | null>(initialBoard);
@@ -147,8 +165,12 @@ export function TriageBoard({ initialBoard }: { initialBoard: Board | null }) {
   }, []);
 
   const needsReauth = board?.error === 'reauth';
-  const count = (k: Bucket) => board?.[k].length ?? 0;
-  const visibleSections = SECTIONS.filter((s) => tab === 'all' || s.key === tab);
+  const sections = buildSections(board);
+  const visibleSections = sections.filter((s) => tab === 'all' || s.key === tab);
+  const tabs = [
+    { key: 'all', label: 'All', count: undefined as number | undefined },
+    ...sections.map((s) => ({ key: s.key, label: s.tabLabel, count: s.cards.length })),
+  ];
 
   return (
     <div className="mt-8">
@@ -196,8 +218,7 @@ export function TriageBoard({ initialBoard }: { initialBoard: Board | null }) {
 
       {/* Filter tabs — jump between sections --------------------------------- */}
       <div className="sticky top-0 z-10 mt-3 flex flex-wrap gap-2 border-b-2 border-paper-edge bg-cream/95 py-3 backdrop-blur">
-        {TABS.map((t) => {
-          const n = t.key === 'all' ? undefined : count(t.key as Bucket);
+        {tabs.map((t) => {
           const active = tab === t.key;
           return (
             <button
@@ -211,7 +232,7 @@ export function TriageBoard({ initialBoard }: { initialBoard: Board | null }) {
               }`}
             >
               {t.label}
-              {n !== undefined && <span className="ml-1.5 opacity-70">{n}</span>}
+              {t.count !== undefined && <span className="ml-1.5 opacity-70">{t.count}</span>}
             </button>
           );
         })}
@@ -239,7 +260,7 @@ export function TriageBoard({ initialBoard }: { initialBoard: Board | null }) {
           <BucketSection
             key={section.key}
             section={section}
-            cards={board?.[section.key] ?? []}
+            cards={section.cards}
             mounted={mounted}
             filtered={tab !== 'all'}
             onAction={onAction}

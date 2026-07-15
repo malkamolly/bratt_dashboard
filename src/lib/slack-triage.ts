@@ -28,10 +28,21 @@ import {
   makeUserResolver,
   displayName,
   searchMentions,
+  searchMessages,
   SlackApiError,
   type SlackMessage,
   type SlackSearchMatch,
 } from './slack';
+
+// Usergroups (Slack "subteams") the user wants surfaced in their own sections.
+// `id` is the subteam id (starts with S); `handle` is the searchable @-handle
+// used to find messages that tag the group. To add or change groups, edit this
+// list — no schema or scope change needed.
+export const USERGROUPS: { id: string; name: string; handle: string }[] = [
+  { id: 'S0ANWS348F3', name: 'PHC', handle: 'phc' },
+  { id: 'S0907G4TUNB', name: 'Scheduling', handle: 'scheduling' },
+  { id: 'S090Q4DNC3E', name: 'Office', handle: 'officeteam' },
+];
 
 // 'followup' isn't produced by the auto-sorter — it's a bucket the user moves
 // things into by hand (a personal to-do / follow-up list). Same for 'handled'
@@ -60,12 +71,16 @@ export type TriageCard = {
   userLastLine?: string;
 };
 
+export type GroupSection = { name: string; cards: TriageCard[] };
+
 export type TriageBoard = {
   needs_reply: TriageCard[];
   waiting: TriageCard[];
   followup: TriageCard[];
   handled: TriageCard[];
   fyi: TriageCard[];
+  // Per-usergroup sections (@phc, @scheduling, @officeteam), each a flat list.
+  groups: GroupSection[];
   fetchedAt: number; // epoch ms
   // Which week this board covers. 0 = this week, -1 = last week. weekLabel is
   // a human string like "Jul 12 – Jul 18"; weekStartMs pins the Sunday so the
@@ -401,6 +416,7 @@ export function emptyBoard(week: WeekWindow = weekBounds(0)): TriageBoard {
     followup: [],
     handled: [],
     fyi: [],
+    groups: [],
     fetchedAt: Date.now(),
     weekOffset: week.offset,
     weekLabel: week.label,
@@ -446,6 +462,22 @@ export function composeBoard(
     out[bucket].push({ ...card, bucket });
   }
   out.followup = followupCards.map((c) => ({ ...c, bucket: 'followup' as const }));
+
+  // Group sections honor the same overrides: a group message marked Handled
+  // moves to Handled, one marked Follow-up shows only in the Follow-up list.
+  out.groups = (week.groups ?? []).map((g) => {
+    const kept: TriageCard[] = [];
+    for (const card of g.cards) {
+      if (followupIds.has(card.id)) continue;
+      if (handledIds.has(card.id)) {
+        out.handled.push({ ...card, bucket: 'handled' });
+        continue;
+      }
+      kept.push({ ...card });
+    }
+    kept.sort((a, b) => b.timestampMs - a.timestampMs);
+    return { name: g.name, cards: kept };
+  });
 
   for (const k of BUCKET_KEYS) {
     out[k].sort((a, b) => b.timestampMs - a.timestampMs);
@@ -508,11 +540,77 @@ export async function buildBoard(
     }
   }
 
+  // Usergroup sections. Each is a cheap flat list (no per-message thread fetch),
+  // found by searching the group's handle and keeping only true mentions of its
+  // subteam id. Runs the group searches in parallel.
+  const groupIds = new Set<string>();
+  board.groups = await Promise.all(
+    USERGROUPS.map(async (g) => {
+      let matches: SlackSearchMatch[] = [];
+      try {
+        matches = await searchMessages(conn.token, g.handle, {
+          after: week.after,
+          before: week.before,
+        });
+      } catch {
+        // A failed group search shouldn't sink the board.
+      }
+      matches = matches
+        .filter((m) => {
+          const ms = tsNum(m.ts) * 1000;
+          return ms >= week.startMs && ms < week.endMs;
+        })
+        // Keep only messages that actually tag this usergroup (the search term
+        // also matches the plain word, e.g. "PHC treatment").
+        .filter((m) => (m.text ?? '').includes(g.id))
+        .slice(0, MAX_MATCHES);
+      const cards = (
+        await Promise.all(matches.map((m) => groupCardFor(m, resolveUser)))
+      ).filter((c): c is TriageCard => !!c);
+      for (const c of cards) groupIds.add(c.id);
+      return { name: g.name, cards };
+    }),
+  );
+
+  // A message that tags both the user and a group belongs in the group section,
+  // not the main buckets — drop the duplicate from the buckets.
+  for (const key of WEEK_BUCKET_KEYS) {
+    board[key] = board[key].filter((c) => !groupIds.has(c.id));
+  }
+
   // Newest first inside each bucket.
   for (const key of BUCKET_KEYS) {
     board[key].sort((a, b) => b.timestampMs - a.timestampMs);
   }
   return board;
+}
+
+// Builds a card for a group-section message WITHOUT fetching thread context —
+// group sections are flat lists, so we skip the expensive per-message calls.
+async function groupCardFor(
+  match: SlackSearchMatch,
+  resolveUser: ReturnType<typeof makeUserResolver>,
+): Promise<TriageCard | null> {
+  const channelId = match.channel?.id;
+  if (!channelId) return null;
+  const text = match.text ?? '';
+  const isBot = !!match.bot_id && !match.user;
+  const threadRoot = match.thread_ts || threadRootFromPermalink(match.permalink) || match.ts;
+  const author = !match.username && match.user ? await resolveUser(match.user) : null;
+  const name = shortName(displayName(author, match.username ?? (isBot ? 'Bot' : undefined)));
+  return {
+    id: `${channelId}:${match.ts}`,
+    bucket: 'fyi', // placeholder; group cards render from the groups[] list
+    authorName: name,
+    authorInitials: initials(name),
+    isBot,
+    channelName: channelLabel(match),
+    channelId,
+    threadTs: threadRoot,
+    text: await humanizeSlackText(text, resolveUser),
+    permalink: match.permalink ?? null,
+    timestampMs: Math.round(tsNum(match.ts) * 1000),
+  };
 }
 
 // Slack search tells us a matched message's ts, but if that message is a REPLY
