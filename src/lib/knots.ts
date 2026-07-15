@@ -33,6 +33,10 @@ export type Knot = {
   steps: string[];
   /** Link to the animated, step-by-step tutorial on AnimatedKnots.com. */
   animationUrl: string;
+  /** YouTube video ID for the embedded/pop-up tutorial. */
+  videoId: string;
+  /** Who made the video — shown as a credit under the embed. */
+  videoCredit: string;
   /** Rough tying difficulty, for the card badge. */
   difficulty: 'Core' | 'Everyday' | 'Advanced';
 };
@@ -57,6 +61,8 @@ export const KNOTS: Knot[] = [
     ],
     difficulty: 'Core',
     animationUrl: 'https://www.animatedknots.com/girth-hitch-knot',
+    videoId: 'pZyEDAZF6Vo',
+    videoCredit: 'Animated Knots by Grog',
     steps: [
       'Pass a bight (a fold) of the sling up behind the branch so it pokes out above.',
       'Bring the rest of the sling — the hanging loop — up and pass it through that bight.',
@@ -82,6 +88,8 @@ export const KNOTS: Knot[] = [
     ],
     difficulty: 'Core',
     animationUrl: 'https://www.animatedknots.com/clove-hitch-knot-rope-end',
+    videoId: 'pwdZTHu5rTI',
+    videoCredit: 'Animated Knots by Grog',
     steps: [
       'Take one turn around the spar, crossing the working end over the standing part.',
       'Take a second turn above the first, then tuck the working end under that last crossing turn.',
@@ -106,6 +114,8 @@ export const KNOTS: Knot[] = [
     ],
     difficulty: 'Everyday',
     animationUrl: 'https://www.animatedknots.com/timber-hitch-knot',
+    videoId: 'WsCU86SDfb4',
+    videoCredit: 'Animated Knots by Grog',
     steps: [
       'Pass the working end around the log and back across the standing part.',
       'Twist the working end around its own bight three or more times, tucking with the lay.',
@@ -131,6 +141,8 @@ export const KNOTS: Knot[] = [
     ],
     difficulty: 'Advanced',
     animationUrl: 'https://www.animatedknots.com/running-bowline-knot',
+    videoId: 'GejlCNssToA',
+    videoCredit: 'Russell Tree Experts',
     steps: [
       'Pass the working end around the limb, then lay it across the standing part.',
       'Make a small overhand loop in the standing part and bring the working end up through it.',

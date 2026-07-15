@@ -10,6 +10,7 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { requireHubAccess } from '@/lib/auth';
 import { getKnot, KNOTS } from '@/lib/knots';
+import { KnotVideoModal } from '@/components/crew/knots/KnotVideoModal';
 
 export const dynamic = 'force-dynamic';
 
@@ -51,7 +52,7 @@ export default async function KnotDetailPage({
         <p className="mt-3 max-w-2xl text-fg-2">{knot.summary}</p>
       </header>
 
-      {/* ---------- Watch the animation (the real way to learn it) ---------- */}
+      {/* ---------- Watch it tied (the real way to learn it) ---------- */}
       <section className="mt-8 bt-card-orange flex flex-wrap items-center justify-between gap-4">
         <div>
           <p className="bt-eyebrow">Learn it</p>
@@ -59,18 +60,16 @@ export default async function KnotDetailPage({
             Watch it tied, step by step
           </h2>
           <p className="mt-1 max-w-xl text-sm text-fg-2">
-            The clearest way to learn a knot is to watch the animation and tie
-            along with a real rope. Opens AnimatedKnots.com in a new tab.
+            The clearest way to learn a knot is to watch it tied and follow along
+            with a real rope. Opens right here on the page — no leaving the
+            dashboard. Full video is also at the bottom.
           </p>
         </div>
-        <a
-          href={knot.animationUrl}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="bt-btn bt-btn-primary shrink-0"
-        >
-          Watch the animation ↗
-        </a>
+        <KnotVideoModal
+          videoId={knot.videoId}
+          title={knot.name}
+          credit={knot.videoCredit}
+        />
       </section>
 
       {/* ---------- Used for / Watch out ---------- */}
@@ -131,6 +130,37 @@ export default async function KnotDetailPage({
         <Link href="/crew/modules/knot_tying" className="bt-btn bt-btn-dark">
           Take the module →
         </Link>
+      </section>
+
+      {/* ---------- Video tutorial (inline) ---------- */}
+      <section className="mt-10">
+        <p className="bt-eyebrow">Video tutorial</p>
+        <h2 className="mt-1 font-display text-3xl uppercase tracking-wider text-ink">
+          Watch it tied
+        </h2>
+        <div className="mt-5 overflow-hidden rounded-card border-[3px] border-bark-deep bg-black">
+          <div className="aspect-video w-full">
+            <iframe
+              className="h-full w-full"
+              src={`https://www.youtube-nocookie.com/embed/${knot.videoId}?rel=0&modestbranding=1`}
+              title={`${knot.name} tutorial video`}
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+              allowFullScreen
+            />
+          </div>
+        </div>
+        <p className="mt-2 text-xs text-fg-3">
+          Video: {knot.videoCredit} (YouTube). Prefer the classic step-by-step
+          animation?{' '}
+          <a
+            href={knot.animationUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="font-headline font-extrabold uppercase tracking-ribbon text-orange hover:underline"
+          >
+            Open it on AnimatedKnots ↗
+          </a>
+        </p>
       </section>
 
       {/* ---------- Other knots ---------- */}
