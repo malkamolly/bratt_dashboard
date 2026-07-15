@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation';
 import { requireHubAccess, canUseCalculator } from '@/lib/auth';
 import { HubSubNav } from '@/components/HubSubNav';
 import { QuoteBuilder } from '@/components/QuoteBuilder';
+import { StumpQuoteBuilder } from '@/components/StumpQuoteBuilder';
 import { CalculatorTabs } from '@/components/CalculatorTabs';
 
 export const dynamic = 'force-dynamic';
@@ -89,15 +90,27 @@ function PhcCalculator() {
 
 function StumpHerbicideCalculator() {
   return (
-    <section className="rounded-card border-2 border-dashed border-paper-edge bg-white/60 p-8 text-center">
-      <h2 className="font-display text-3xl uppercase tracking-wider text-ink">
-        Stump Herbicide
-      </h2>
-      <p className="mx-auto mt-3 max-w-md text-sm text-fg-2">
-        This calculator is coming soon — we&apos;re waiting on the pricing
-        parameters before it goes live. The tab is ready so it can drop straight
-        in once those numbers land.
+    <div>
+      <p className="max-w-2xl text-fg-2">
+        Enter each stump&apos;s diameter (in inches) and how many stumps of that
+        size the customer has. Pricing is per stump; add a line for each size and
+        the total adds up as you go.
       </p>
-    </section>
+
+      <div className="mt-6">
+        <StumpQuoteBuilder />
+      </div>
+
+      <section className="mt-10 rounded-card border-2 border-orange-press bg-orange/10 p-5 text-sm text-orange-press">
+        <h2 className="font-headline text-xs font-extrabold uppercase tracking-ribbon">
+          Before you quote multiples
+        </h2>
+        <p className="mt-3">
+          Multiple stumps grouped within a <strong>2 ft area</strong> need
+          someone from the <strong>Review team</strong> to help determine the
+          best pricing — the per-stump total above may not apply.
+        </p>
+      </section>
+    </div>
   );
 }
