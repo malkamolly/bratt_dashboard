@@ -43,6 +43,12 @@ export const TAGS_USERS: Record<string, TagsUserConfig> = {
     ],
   },
 
+  'juancarlos@bratttree.com': {
+    mutedChannels: ['road closure'],
+    mutedMessages: [],
+    userGroups: [{ id: 'S0907G4TUNB', name: 'Scheduling', handle: 'scheduling' }],
+  },
+
   // --- Add the next employee here, e.g.: -------------------------------------
   // 'sean@bratttree.com': {
   //   mutedChannels: ['their-noisy-channel'],
