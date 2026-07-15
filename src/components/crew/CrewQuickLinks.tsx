@@ -19,6 +19,7 @@ const LINKS: Array<{ href: string; label: string }> = [
   { href: '/crew/skills', label: 'Skill catalog' },
   { href: '/crew/trainings', label: 'Trainings' },
   { href: '/crew/modules', label: 'Modules' },
+  { href: '/crew/knots', label: 'Knots' },
   { href: '/crew/cdl', label: 'CDL' },
   { href: '/crew/plans', label: 'Plans' },
   { href: '/crew/reports', label: 'Reports' },
