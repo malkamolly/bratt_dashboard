@@ -230,6 +230,58 @@ export const KNOTS: Knot[] = [
       'Snug it — pulling the tail collapses the knot.',
     ],
   },
+  {
+    slug: 'quick-hitch',
+    name: 'Quick Hitch',
+    tagline: 'A fast, easily-released way to attach a rope to a carabiner or ring.',
+    summary:
+      'The quick hitch is a fast way to attach a rope to a carabiner or ring and take it off again just as fast. It goes on and comes off quickly, which makes it handy for temporary attachments — but like any quick-release knot, it is not for a load you cannot afford to have let go.',
+    usedFor: [
+      'Quickly attaching a rope to a carabiner or ring',
+      'Temporary attachments you want to be able to release fast',
+    ],
+    watchOut: [
+      'Quick-release by design — do not use it where an accidental release would be dangerous.',
+      'Check with your foreman before trusting it on anything load-bearing.',
+    ],
+    difficulty: 'Everyday',
+    animationUrl: 'https://www.animatedknots.com/quick-hitch-knot',
+    videoId: 'ERtvChO9nLA',
+    videoCredit: 'Animated Knots by Grog',
+    draft: true,
+    steps: [
+      'Pass a bight of rope through the carabiner or ring.',
+      'Pass a second bight through the first and snug it.',
+      'To release, slip the bight back out.',
+    ],
+  },
+  {
+    slug: 'blakes-hitch',
+    name: "Blake's Hitch",
+    tagline: 'The classic arborist climbing friction hitch — grips when weighted, slides when tended.',
+    summary:
+      "Blake's hitch is a friction hitch tied with the end of the climbing line around the standing part. It grips when you put your weight on it and slides freely when you tend it — which is what lets an arborist ascend and descend on a moving-rope system. It is the classic tie-in hitch for tree climbing. This is life-support gear: set it, dress it, and back it up exactly the way your trainer shows you.",
+    usedFor: [
+      'The climbing friction hitch on a moving-rope (MRS) tie-in system',
+      'Ascending and descending the climbing line',
+    ],
+    watchOut: [
+      'LIFE-SUPPORT KNOT. Only tie in and climb on it under trainer supervision until you are signed off.',
+      'Always finish with a stopper knot in the tail so the hitch cannot run off the end of the line.',
+      'Use the correct wraps below and turns above for your rope, and dress it fully before you weight it.',
+      'Inspect the climbing line and hitch cord for wear before every climb.',
+    ],
+    difficulty: 'Advanced',
+    animationUrl: 'https://www.animatedknots.com/blakes-hitch-knot',
+    videoId: 'NDjCFjw8tFg',
+    videoCredit: '',
+    draft: true,
+    steps: [
+      'Pass the tail down past the standing part and make the required wraps below.',
+      'Bring the tail up, take the turns above, then feed the tail back down through the wraps.',
+      'Dress it neat, weight-test it low to the ground, and tie a stopper knot in the tail.',
+    ],
+  },
 ];
 
 export function getKnot(slug: string): Knot | undefined {
