@@ -168,12 +168,15 @@ export default async function CostAnalysisPage() {
         </div>
         <p className="mb-4 max-w-3xl text-sm text-fg-2">
           A rate matrix: each of the <strong>12 DBH size categories</strong> has
-          its own <strong>base $/inch</strong>, then a per-inch adjustment for{' '}
-          <strong>height</strong> and for <strong>canopy</strong> at each level
-          (+/- from a &ldquo;typical&rdquo; tree, which is the 0 columns). Price
-          = DBH × (base + height adjust + canopy adjust). The 12 base rates are
-          real medians; the ladders are scaled off each base and are a starting
-          point to tune, not gospel.
+          its own <strong>base $/inch</strong> (the real median for that size),
+          then a per-inch adjustment for <strong>height</strong> and{' '}
+          <strong>canopy</strong>. Key fix: the adjustment is measured{' '}
+          <strong>against what&apos;s normal for that size</strong> &mdash; a big
+          tree that&apos;s tall &amp; wide (normal for a big tree) sits at its
+          base, and only trees unusually tall/wide <em>for their size</em> move
+          off it. The blank (&ldquo;&mdash;&rdquo;) cell in each row is that
+          size&apos;s typical tree. The final rate is also capped to the range
+          the data actually supports, so nothing runs away.
         </p>
 
         {/* Try it first — the calculator */}
@@ -238,9 +241,11 @@ export default async function CostAnalysisPage() {
           </table>
         </div>
         <p className="mt-2 text-xs text-fg-3">
-          The &ldquo;0&rdquo; columns (31–40′ height, 21–30′ canopy) are the
-          typical tree — no adjustment. Shorter/narrower subtract; taller/wider
-          add. Tell me any numbers to change and I&apos;ll set them.
+          Each row&apos;s blank (&ldquo;&mdash;&rdquo;) cell is that size&apos;s
+          typical tree (no adjustment) — it sits in a different column per size
+          because bigger trees are typically taller and wider. Shorter/narrower
+          than typical subtracts; taller/wider adds. Tell me any numbers to
+          change and I&apos;ll set them.
         </p>
       </Card>
 

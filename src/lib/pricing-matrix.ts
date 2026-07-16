@@ -19,14 +19,18 @@ export type PricingCategory = {
   lo: number;
   hi: number | null;
   base: number;
-  height: number[]; // per height tier, $/inch adjustment (+/-)
-  canopy: number[]; // per canopy tier, $/inch adjustment (+/-)
+  /** Tier index that is "typical" for this size (0 adjustment). */
+  refHeight: number;
+  refCanopy: number;
+  height: number[]; // per height tier, $/inch adjustment (+/- from typical)
+  canopy: number[]; // per canopy tier, $/inch adjustment (+/- from typical)
 };
 export type PricingMatrix = {
   heightTiers: Tier[];
   canopyTiers: Tier[];
-  heightRefIndex: number;
-  canopyRefIndex: number;
+  /** Rate is clamped to [minFactor, maxFactor] × base — a data-range guardrail. */
+  minFactor: number;
+  maxFactor: number;
   categories: PricingCategory[];
 };
 
@@ -54,6 +58,8 @@ export type MatrixResult = {
   canopyMod: number;
   ratePerInch: number;
   price: number;
+  /** True when the base+adjustments were clamped to the data-range guardrail. */
+  capped: boolean;
 };
 
 /**
@@ -84,7 +90,10 @@ export function modelPriceMatrix(
     canopyTierLabel = PRICING_MATRIX.canopyTiers[t].label;
   }
 
-  const ratePerInch = category.base + heightMod + canopyMod;
+  const raw = category.base + heightMod + canopyMod;
+  const lo = PRICING_MATRIX.minFactor * category.base;
+  const hi = PRICING_MATRIX.maxFactor * category.base;
+  const ratePerInch = Math.max(lo, Math.min(hi, raw));
   return {
     category,
     base: category.base,
@@ -94,5 +103,6 @@ export function modelPriceMatrix(
     canopyMod,
     ratePerInch,
     price: Math.round(dbh * ratePerInch),
+    capped: ratePerInch !== raw,
   };
 }
