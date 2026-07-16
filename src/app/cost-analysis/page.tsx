@@ -196,6 +196,13 @@ export default async function CostAnalysisPage() {
         <div className="text-xs font-extrabold uppercase tracking-wide text-fg-2">
           The full rate matrix ($/inch)
         </div>
+        <p className="mt-1 mb-2 max-w-3xl rounded-md bg-lime/20 px-3 py-2 text-xs text-fg-2">
+          <strong>How to read this:</strong> a blank &ldquo;&mdash;&rdquo; is the{' '}
+          <strong>typical tree for that size</strong> (no adjustment) &mdash;{' '}
+          <em>not</em> missing data. Every cell is filled. Values are the per-inch
+          add/subtract vs. that typical tree; they&apos;re calculated from each
+          size&apos;s base rate, not pulled per-cell from jobs.
+        </p>
         <div className="mt-2 overflow-x-auto">
           <table className="text-xs">
             <thead>
