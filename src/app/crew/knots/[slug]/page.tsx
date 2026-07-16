@@ -10,7 +10,6 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { requireHubAccess } from '@/lib/auth';
 import { getKnot, KNOTS } from '@/lib/knots';
-import { KnotAnimationModal } from '@/components/crew/knots/KnotAnimationModal';
 
 export const dynamic = 'force-dynamic';
 
@@ -52,24 +51,8 @@ export default async function KnotDetailPage({
         <p className="mt-3 max-w-2xl text-fg-2">{knot.summary}</p>
       </header>
 
-      {/* ---------- Watch it tied (the real way to learn it) ---------- */}
-      <section className="mt-8 bt-card-orange flex flex-wrap items-center justify-between gap-4">
-        <div>
-          <p className="bt-eyebrow">Learn it</p>
-          <h2 className="mt-1 font-headline text-lg font-black uppercase text-bark-deep">
-            Watch it tied, step by step
-          </h2>
-          <p className="mt-1 max-w-xl text-sm text-fg-2">
-            Step through the animation right here on the page and follow along
-            with a real rope — no leaving the dashboard. Prefer a video? There&apos;s
-            one at the bottom.
-          </p>
-        </div>
-        <KnotAnimationModal url={knot.animationUrl} title={knot.name} />
-      </section>
-
       {/* ---------- Used for / Watch out ---------- */}
-      <section className="mt-6 grid grid-cols-1 gap-5 md:grid-cols-2">
+      <section className="mt-8 grid grid-cols-1 gap-5 md:grid-cols-2">
         <div className="bt-card">
           <p className="bt-eyebrow">Used for</p>
           <ul className="mt-3 space-y-2 text-sm text-fg-2">
@@ -146,16 +129,7 @@ export default async function KnotDetailPage({
           </div>
         </div>
         <p className="mt-2 text-xs text-fg-3">
-          Video: {knot.videoCredit} (YouTube). Prefer the classic step-by-step
-          animation?{' '}
-          <a
-            href={knot.animationUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="font-headline font-extrabold uppercase tracking-ribbon text-orange hover:underline"
-          >
-            Open it on AnimatedKnots ↗
-          </a>
+          {knot.videoCredit ? `Video: ${knot.videoCredit} (YouTube)` : 'Video (YouTube)'}
         </p>
       </section>
 

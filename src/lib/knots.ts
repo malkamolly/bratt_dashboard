@@ -45,7 +45,6 @@ export const KNOTS: Knot[] = [
   {
     slug: 'girth-hitch',
     name: 'Girth Hitch',
-    alsoCalled: ['Cow hitch', "Lark's foot", 'Lanyard hitch'],
     tagline: 'Fast way to attach a sling or loop to a branch or anchor.',
     summary:
       'The girth hitch attaches a closed loop (a sling, a runner, or a spliced eye) to a branch, spar, or ring. You fold the loop into a bight, pass it around the anchor, then feed the rest of the loop through that bight and cinch it down. It is the quickest way to "choke" a sling onto something round.',
@@ -70,62 +69,32 @@ export const KNOTS: Knot[] = [
     ],
   },
   {
-    slug: 'clove-hitch',
-    name: 'Clove Hitch',
-    alsoCalled: ['Double hitch'],
-    tagline: 'Quick, adjustable hitch for tying a rope onto a spar or post.',
-    summary:
-      'The clove hitch is two wrapping turns where the rope crosses over itself, locking the line to a round object. It is fast to tie and easy to adjust, which makes it a go-to for starting a lashing or temporarily securing a line to a branch. It is not fully secure on its own under a heavy or shifting load, so it is usually backed up.',
-    usedFor: [
-      'Starting point for tying a rigging line onto a spar',
-      'Temporarily securing a line to a rail, post, or branch',
-      'The first hitch of a lashing',
-    ],
-    watchOut: [
-      'It can work loose under a load that pulses or rotates — always back it up with a half hitch or two on rigging.',
-      'On a tapering branch it can roll off the small end. Set it where the diameter is steady.',
-      'Not a life-support knot on its own.',
-    ],
-    difficulty: 'Core',
-    animationUrl: 'https://www.animatedknots.com/clove-hitch-knot-rope-end',
-    videoId: 'pwdZTHu5rTI',
-    videoCredit: 'Animated Knots by Grog',
-    steps: [
-      'Take one turn around the spar, crossing the working end over the standing part.',
-      'Take a second turn above the first, then tuck the working end under that last crossing turn.',
-      'Pull both ends tight. The two turns pinch the crossing flat against the spar.',
-    ],
-  },
-  {
     slug: 'timber-hitch',
     name: 'Timber Hitch',
-    tagline: 'Grips a log or limb to drag or hoist it — and unties easily after.',
+    tagline: 'A fallback attachment that grips under tension and unties easily once slack.',
     summary:
-      'The timber hitch wraps the rope around a log and then twists the working end back around itself several times. Under tension it grips hard; once the load comes off, it falls apart in your hand. That combination — holds under load, releases instantly after — is why it is the classic knot for dragging brush and hoisting limbs.',
+      'The timber hitch wraps the rope around a limb or log, then twists the working end back around itself several times. Under tension it grips hard; the moment the load comes off, it falls apart in your hand. At Bratt Tree the cow hitch is the first choice for attaching to a limb — reach for the timber hitch only when a sling is too short to tie a cow hitch.',
     usedFor: [
-      'Attaching a line to drag a log or brush pile',
-      'The anchor end of a rigging line around a limb (often paired with a half hitch near the cut for control)',
-      'Any pull where you want an easy release afterward',
+      'Only when a sling is not long enough to tie a cow hitch — the cow hitch is the first choice',
+      'Attaching a rigging line directly around a limb or log',
     ],
     watchOut: [
       'It only holds while there is tension on it. Keep the line loaded until the piece is where you want it.',
-      'Use at least three tucks/twists (more on slick bark) so it can bite.',
-      'Add a half hitch further along the log to keep a hoisted piece from swinging.',
+      'Use at least five twists (more on slick bark) so it can bite.',
     ],
     difficulty: 'Everyday',
     animationUrl: 'https://www.animatedknots.com/timber-hitch-knot',
-    videoId: 'WsCU86SDfb4',
-    videoCredit: 'Animated Knots by Grog',
+    videoId: 'm7HwD2YHvC0',
+    videoCredit: '',
     steps: [
-      'Pass the working end around the log and back across the standing part.',
-      'Twist the working end around its own bight three or more times, tucking with the lay.',
-      'Slide the twists snug against the log and load the standing part. Tension locks it.',
+      'Pass the working end around the limb and back across the standing part.',
+      'Twist the working end around its own bight five or more times, tucking with the lay.',
+      'Slide the twists snug against the limb and load the standing part. Tension locks it.',
     ],
   },
   {
     slug: 'running-bowline',
     name: 'Running Bowline',
-    alsoCalled: ['Slip bowline'],
     tagline: 'The arborist rigging standard — a self-tightening loop you can set from the ground.',
     summary:
       'A running bowline is a bowline tied around its own standing part, so the fixed loop becomes a noose that slides closed around a limb. You can toss it over a branch, pull, and it cinches itself tight — no climbing out to dress it. Because it is built on a bowline, it stays strong and unties cleanly even after taking a heavy rigging load.',
