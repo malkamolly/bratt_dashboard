@@ -31,7 +31,6 @@ export type ArboristInfo = {
   certified: boolean;
   isa_number: string | null;
   manager: boolean;
-  phone?: string | null;
 };
 
 type Props = {
@@ -197,17 +196,6 @@ export async function SalespersonDetail({
                 </span>
               )}
             </div>
-          )}
-          {arborist?.phone && (
-            <p className="mt-3 flex justify-center sm:justify-start">
-              <a
-                href={`tel:${arborist.phone.replace(/[^0-9+]/g, '')}`}
-                className="inline-flex items-center gap-1.5 font-headline text-sm font-bold text-fg-2 hover:text-orange"
-              >
-                <PhoneIcon />
-                {arborist.phone}
-              </a>
-            </p>
           )}
           <p className="mt-2 text-fg-2">
             {monthLabel(year, month)}
@@ -648,23 +636,6 @@ function AddonsBreakdownSection({
         </section>
       )}
     </>
-  );
-}
-
-function PhoneIcon() {
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth={2}
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden="true"
-      className="h-4 w-4 shrink-0"
-    >
-      <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.13.96.36 1.9.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.9.34 1.85.57 2.81.7A2 2 0 0 1 22 16.92z" />
-    </svg>
   );
 }
 

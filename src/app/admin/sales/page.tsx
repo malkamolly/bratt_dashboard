@@ -52,7 +52,7 @@ export default async function SalesAdminPage({
       supabase
         .from('salespeople')
         .select(
-          'id, name, display_order, is_active, photo_url, last_initial, title, certified, isa_number, is_manager, on_roster, phone',
+          'id, name, display_order, is_active, photo_url, last_initial, title, certified, isa_number, is_manager, on_roster',
         )
         .order('display_order'),
       supabase
@@ -359,7 +359,7 @@ function RosterSection({ salespeople }: { salespeople: Salesperson[] }) {
     <SectionCard
       eyebrow="4 — Roster"
       title="Salespeople"
-      description="Add a salesperson here and they automatically appear on the Arborist Hub Team Roster too. First name is what sales attribution matches on; Last Initial, Title, Certified, ISA # and Phone are what show on the roster card. Phone is optional and shows as a tap-to-call number on the roster. Flipping 'Active' off hides them from new entries while keeping their history. 'Other' and 'Add-Ons' are attribution buckets, not people, so they stay off the roster."
+      description="Add a salesperson here and they automatically appear on the Arborist Hub Team Roster too. First name is what sales attribution matches on; Last Initial, Title, Certified and ISA # are what show on the roster card. Flipping 'Active' off hides them from new entries while keeping their history. 'Other' and 'Add-Ons' are attribution buckets, not people, so they stay off the roster."
     >
       <div className="space-y-3">
         {salespeople.map((sp) => {
@@ -407,15 +407,6 @@ function RosterSection({ salespeople }: { salespeople: Salesperson[] }) {
                     defaultValue={sp.isa_number ?? ''}
                     placeholder="optional"
                     className="w-32"
-                  />
-                </Field>
-                <Field label="Phone">
-                  <TextInput
-                    name="phone"
-                    type="tel"
-                    defaultValue={sp.phone ?? ''}
-                    placeholder="e.g. 612-555-0142"
-                    className="w-36"
                   />
                 </Field>
                 <Field label="Order">
@@ -477,14 +468,6 @@ function RosterSection({ salespeople }: { salespeople: Salesperson[] }) {
           </Field>
           <Field label="ISA #">
             <TextInput name="isa_number" placeholder="optional" className="w-32" />
-          </Field>
-          <Field label="Phone">
-            <TextInput
-              name="phone"
-              type="tel"
-              placeholder="e.g. 612-555-0142"
-              className="w-36"
-            />
           </Field>
           <Field label="Order">
             <input

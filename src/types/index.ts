@@ -15,7 +15,6 @@ export type Salesperson = {
   isa_number?: string | null;
   is_manager?: boolean | null;
   on_roster?: boolean | null;
-  phone?: string | null;
 };
 
 export type CrewKind = 'production' | 'phc' | 'stump' | 'unassigned' | 'clam';
