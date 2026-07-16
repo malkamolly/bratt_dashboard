@@ -311,15 +311,24 @@ export function TriageBoard({ initialBoard }: { initialBoard: Board | null }) {
         <summary className="cursor-pointer text-xs font-semibold uppercase tracking-wide text-fg-3 hover:text-orange">
           Slack connection
         </summary>
-        <div className="mt-3 flex items-center gap-3 text-sm text-fg-2">
+        <div className="mt-3 flex flex-wrap items-center gap-3 text-sm text-fg-2">
           <Slack className="h-4 w-4 text-fg-3" />
           <span>Connected.</span>
+          {/* Reconnect re-runs the Slack approval to pick up new permissions
+              WITHOUT losing your follow-up list. Use this (not Disconnect) when
+              a new scope is added. */}
+          <a href="/api/slack/connect" className="bt-btn bt-btn-ghost text-xs">
+            Reconnect
+          </a>
           <form action={disconnectSlack}>
             <button type="submit" className="bt-btn bt-btn-ghost text-xs text-red-600">
               Disconnect
             </button>
           </form>
         </div>
+        <p className="mt-2 text-xs text-fg-3">
+          Reconnect keeps your follow-ups; Disconnect forgets your Slack token.
+        </p>
       </details>
     </div>
   );

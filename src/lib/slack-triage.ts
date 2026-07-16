@@ -40,6 +40,8 @@ import { tagsConfigFor, type TagsUserConfig, type UserGroup } from './tags-confi
 // upstream, so this is just a safe fallback).
 const EMPTY_CONFIG: TagsUserConfig = { mutedChannels: [], mutedMessages: [], userGroups: [] };
 
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
 // 'followup' isn't produced by the auto-sorter — it's a bucket the user moves
 // things into by hand (a personal to-do / follow-up list). Same for 'handled'
 // being set manually via the "Handled" button.
@@ -514,10 +516,29 @@ export async function buildBoard(
   }
 
   // Slack's after:/before: are day-granular, so trim precisely to the week.
-  matches = matches.filter((m) => {
+  const inWeek = (m: SlackSearchMatch) => {
     const ms = tsNum(m.ts) * 1000;
     return ms >= week.startMs && ms < week.endMs;
-  });
+  };
+  matches = matches.filter(inWeek);
+
+  // A connected user having zero tags this week is unusual — a throttled or
+  // freshly-authorized search can transiently return nothing. Before trusting
+  // the empty result, wait a moment and try once more.
+  if (matches.length === 0) {
+    try {
+      await sleep(1500);
+      const retry = (
+        await searchMentions(conn.token, conn.slackUserId, {
+          after: week.after,
+          before: week.before,
+        })
+      ).filter(inWeek);
+      if (retry.length > 0) matches = retry;
+    } catch {
+      // keep the empty result
+    }
+  }
 
   const board = empty();
   if (matches.length > MAX_MATCHES) board.truncatedAt = MAX_MATCHES;

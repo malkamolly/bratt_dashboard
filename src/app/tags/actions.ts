@@ -117,14 +117,8 @@ export async function refreshBoard(offsetWeeks = 0): Promise<TriageBoard> {
   let weekly = await buildBoard(u.email, offsetWeeks);
 
   if (!weekly.error) {
-    const existing = await readCachedBoard(u.email);
-    const sameWeek = existing && existing.weekStartMs === weekly.weekStartMs;
-    // A totally empty fetch for a week we previously had content for is almost
-    // always a throttled/failed Slack search, not a genuinely empty week — keep
-    // the good cache instead of overwriting it with nothing.
-    if (weekItemCount(weekly) === 0 && sameWeek && weekItemCount(existing) > 0) {
-      weekly = existing;
-    } else {
+    if (weekItemCount(weekly) > 0) {
+      // Only ever persist a board that actually has content.
       const supabase = await serverClient();
       await supabase.from('slack_triage_cache').upsert(
         {
@@ -134,6 +128,14 @@ export async function refreshBoard(offsetWeeks = 0): Promise<TriageBoard> {
         },
         { onConflict: 'owner_email' },
       );
+    } else {
+      // An empty fetch is almost always a throttled/transient search, not a
+      // genuinely empty week. Never cache it; if we have a good cached board
+      // for this week, show that instead of nothing.
+      const existing = await readCachedBoard(u.email);
+      if (existing && existing.weekStartMs === weekly.weekStartMs && weekItemCount(existing) > 0) {
+        weekly = existing;
+      }
     }
   }
   const [handledIds, followupCards] = await Promise.all([
@@ -242,12 +244,15 @@ export async function sendReply(
   }
 }
 
-/** Forget the stored Slack token + cached board + overrides. */
+/**
+ * Forget the stored Slack token + cached board. We deliberately KEEP the user's
+ * Handled/Follow-up list (slack_message_actions) — reconnecting shouldn't wipe
+ * their curated follow-ups. (Granting a new scope is a reconnect, not a reset.)
+ */
 export async function disconnectSlack(): Promise<void> {
   const u = await requireTagsUserAction();
   await deleteConnection(u.email);
   const supabase = await serverClient();
   await supabase.from('slack_triage_cache').delete().eq('owner_email', u.email);
-  await supabase.from('slack_message_actions').delete().eq('owner_email', u.email);
   revalidatePath('/tags');
 }
