@@ -1,12 +1,12 @@
 'use client';
 
 // ============================================================================
-// Suggested-price calculator. Enter a tree's DBH / height / crown and see the
-// modeled removal price from PRICING_MODEL. Pure client-side; no data leaves.
+// Draft-price calculator. Enter DBH / height / crown; prices off the per-DBH-
+// category pricing matrix. Pure client-side; nothing leaves the page.
 // ============================================================================
 
 import { useState } from 'react';
-import { PRICING_MODEL, modelPrice } from '@/lib/cost-analysis';
+import { modelPriceMatrix } from '@/lib/pricing-matrix';
 import { fmtUsd } from '@/lib/format';
 
 function Field({
@@ -38,6 +38,14 @@ function Field({
   );
 }
 
+function Chip({ on, children }: { on: boolean; children: React.ReactNode }) {
+  return (
+    <span className={`rounded-full border-2 px-3 py-1 ${on ? 'border-orange bg-orange/10 text-ink' : 'border-bark/15 text-fg-3'}`}>
+      {children}
+    </span>
+  );
+}
+
 export function PriceCalculator() {
   const [dbh, setDbh] = useState('20');
   const [height, setHeight] = useState('40');
@@ -47,7 +55,7 @@ export function PriceCalculator() {
   const h = height.trim() === '' ? null : parseFloat(height);
   const c = crown.trim() === '' ? null : parseFloat(crown);
   const valid = Number.isFinite(d) && d > 0;
-  const res = valid ? modelPrice(d, Number.isFinite(h as number) ? h : null, Number.isFinite(c as number) ? c : null) : null;
+  const res = valid ? modelPriceMatrix(d, h, c) : null;
 
   return (
     <div className="rounded-card border-2 border-bark/15 bg-white/70 p-5">
@@ -67,29 +75,20 @@ export function PriceCalculator() {
               <div className="font-display text-4xl text-orange">{fmtUsd(res.price)}</div>
             </div>
             <div className="text-sm text-fg-2">
-              {d}&quot; × {fmtUsd(res.ratePerInch)}/inch
+              {d}&quot; × {fmtUsd(res.ratePerInch)}/inch &nbsp;·&nbsp; size {res.category.label}
             </div>
           </div>
           <div className="mt-3 flex flex-wrap gap-2 text-xs">
-            <span className="rounded-full border-2 border-bark/20 px-3 py-1 text-ink">
-              Base {fmtUsd(PRICING_MODEL.basePerInch)}/in
-            </span>
-            <span className={`rounded-full border-2 px-3 py-1 ${res.tall ? 'border-orange bg-orange/10 text-ink' : 'border-bark/15 text-fg-3'}`}>
-              {res.tall ? '+' : ''}
-              {fmtUsd(PRICING_MODEL.tallSurcharge)}/in tall {res.tall ? '(applied)' : `(>${PRICING_MODEL.tallThreshold}′ — no)`}
-            </span>
-            <span className={`rounded-full border-2 px-3 py-1 ${res.wide ? 'border-orange bg-orange/10 text-ink' : 'border-bark/15 text-fg-3'}`}>
-              {res.wide ? '+' : ''}
-              {fmtUsd(PRICING_MODEL.wideSurcharge)}/in wide {res.wide ? '(applied)' : `(>${PRICING_MODEL.wideThreshold}′ — no)`}
-            </span>
+            <Chip on={false}>Base {fmtUsd(res.base)}/in</Chip>
+            <Chip on={res.heightMod !== 0}>
+              Height {res.heightTierLabel ?? '—'}: {res.heightMod >= 0 ? '+' : ''}
+              {fmtUsd(res.heightMod)}/in
+            </Chip>
+            <Chip on={res.canopyMod !== 0}>
+              Canopy {res.canopyTierLabel ?? '—'}: {res.canopyMod >= 0 ? '+' : ''}
+              {fmtUsd(res.canopyMod)}/in
+            </Chip>
           </div>
-          {res.tall && res.wide && (
-            <p className="mt-3 text-xs italic text-fg-3">
-              Heads up: trees that are both tall and wide have historically run
-              closer to $122/inch, so this modeled price is on the conservative
-              side for a tree like this.
-            </p>
-          )}
         </div>
       ) : (
         <p className="mt-4 text-sm text-fg-3">Enter a DBH to see a suggested price.</p>
