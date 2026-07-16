@@ -17,7 +17,7 @@
 // RLS (see migration 059). The token never leaves the server.
 // ============================================================================
 
-import { serverClient } from './supabase';
+import { serverClient, adminClient } from './supabase';
 import { encrypt, decrypt } from './crypto';
 
 // User-token scopes, minimal for a read-only v1. If you change this list you
@@ -185,6 +185,39 @@ export async function getConnection(
 export async function deleteConnection(ownerEmail: string): Promise<void> {
   const supabase = await serverClient();
   await supabase.from('slack_connections').delete().eq('owner_email', ownerEmail);
+}
+
+/**
+ * Like getConnection, but via the service-role client so it works with no user
+ * session (e.g. the scheduled daily report). SERVER ONLY, admin-gated callers
+ * only — this bypasses RLS to read another user's token.
+ */
+export async function getConnectionAdmin(
+  ownerEmail: string,
+): Promise<SlackConnection | null> {
+  const supabase = adminClient();
+  const { data } = await supabase
+    .from('slack_connections')
+    .select('owner_email, slack_user_id, access_token_encrypted, scopes')
+    .eq('owner_email', ownerEmail)
+    .maybeSingle();
+  if (!data) return null;
+  return {
+    ownerEmail: data.owner_email,
+    slackUserId: data.slack_user_id,
+    token: decrypt(data.access_token_encrypted),
+    scopes: data.scopes ?? '',
+  };
+}
+
+/** Post a message to the token owner's own Slack (a self-DM). Used to deliver
+ *  the daily report to the recipient's Slack. */
+export async function sendSelfDm(
+  token: string,
+  slackUserId: string,
+  text: string,
+): Promise<void> {
+  await slackApi(token, 'chat.postMessage', { channel: slackUserId, text });
 }
 
 // ---------------------------------------------------------------------------

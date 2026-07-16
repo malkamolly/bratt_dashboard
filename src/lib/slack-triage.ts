@@ -30,6 +30,7 @@ import {
   searchMentions,
   searchMessages,
   SlackApiError,
+  type SlackConnection,
   type SlackMessage,
   type SlackSearchMatch,
 } from './slack';
@@ -482,12 +483,15 @@ export function composeBoard(
 export async function buildBoard(
   ownerEmail: string,
   offsetWeeks = 0,
+  providedConn?: SlackConnection,
 ): Promise<TriageBoard> {
   const week = weekBounds(offsetWeeks);
   const empty = () => emptyBoard(week);
   const config = tagsConfigFor(ownerEmail) ?? EMPTY_CONFIG;
 
-  const conn = await getConnection(ownerEmail);
+  // The daily report builds a board off-session, so it passes the connection in
+  // (fetched with the admin client). Normal in-session use fetches it here.
+  const conn = providedConn ?? (await getConnection(ownerEmail));
   if (!conn) return { ...empty(), error: 'not_connected' };
 
   const resolveUser = makeUserResolver(conn.token);

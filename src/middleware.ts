@@ -29,6 +29,9 @@ function isPublic(pathname: string) {
   if (pathname.startsWith('/brand')) return true;
   if (pathname.startsWith('/fonts')) return true;
   if (pathname === '/favicon.ico') return true;
+  // The daily-report cron runs with no user session; it authenticates itself
+  // with CRON_SECRET inside the route, so it must skip the session gate here.
+  if (pathname.startsWith('/api/tags/daily-report')) return true;
   return PUBLIC_PATHS.some((p) => pathname === p || pathname.startsWith(p + '/'));
 }
 
