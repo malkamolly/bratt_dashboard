@@ -31,7 +31,14 @@ export const SLACK_USER_SCOPES = [
   'mpim:history', // …group DMs
   'users:read', // resolve names + detect bot authors
   'chat:write', // post replies back into a thread (as the user)
+  'reactions:write', // mark a message Handled with our reaction
 ].join(',');
+
+// The reaction dropped on a message when it's marked Handled. Deliberately an
+// obscure, on-brand mark (a Bratt-orange diamond) so a reaction from this tool
+// is unmistakable and won't be confused with the ubiquitous ✅. Swap this for a
+// custom workspace emoji name (e.g. 'bratt-handled') for a truly unique mark.
+export const HANDLED_REACTION = 'large_orange_diamond';
 
 const SLACK_API = 'https://slack.com/api';
 
@@ -45,6 +52,7 @@ export type SlackSearchMatch = {
   user?: string; // author's member ID (absent for some bot messages)
   username?: string;
   bot_id?: string; // present when the author is a bot / app
+  reply_count?: number; // thread replies, when the search result includes it
   permalink?: string;
   thread_ts?: string;
   channel?: { id: string; name?: string; is_private?: boolean; is_im?: boolean };
@@ -312,6 +320,28 @@ export async function postReply(
     thread_ts: threadTs,
     text,
   });
+}
+
+/**
+ * Add / remove a reaction on a message (as the user). Best-effort: callers
+ * treat failures (already reacted, message gone, etc.) as non-fatal.
+ */
+export async function addReaction(
+  token: string,
+  channelId: string,
+  ts: string,
+  name: string,
+): Promise<void> {
+  await slackApi(token, 'reactions.add', { channel: channelId, timestamp: ts, name });
+}
+
+export async function removeReaction(
+  token: string,
+  channelId: string,
+  ts: string,
+  name: string,
+): Promise<void> {
+  await slackApi(token, 'reactions.remove', { channel: channelId, timestamp: ts, name });
 }
 
 /**

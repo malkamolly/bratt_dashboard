@@ -536,6 +536,21 @@ function Card({
             {card.text}
           </p>
 
+          {/* Group cards: at-a-glance reply status for monitoring. */}
+          {card.replyCount !== undefined && (
+            <p
+              className={`mt-2 text-xs font-bold ${
+                card.replyCount > 0 ? 'text-green-dark' : 'text-orange-press'
+              }`}
+            >
+              {card.replyCount > 0
+                ? `Answered · ${card.replyCount} ${
+                    card.replyCount === 1 ? 'reply' : 'replies'
+                  }${card.lastReplyBy ? ` · last: ${card.lastReplyBy}` : ''}`
+                : 'No reply yet'}
+            </p>
+          )}
+
           {card.userLastLine && (
             <p className="mt-2 border-l-2 border-paper-edge pl-3 text-xs italic text-fg-3">
               You said: “{card.userLastLine}”

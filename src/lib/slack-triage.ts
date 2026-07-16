@@ -64,6 +64,9 @@ export type TriageCard = {
   timestampMs: number; // for relative-time rendering in the browser
   // For "waiting" cards: the user's own last line, so they remember the state.
   userLastLine?: string;
+  // For group cards (monitoring): how many thread replies, and who replied last.
+  replyCount?: number;
+  lastReplyBy?: string;
 };
 
 export type GroupSection = { name: string; cards: TriageCard[] };
@@ -526,37 +529,66 @@ export async function buildBoard(
     }
   }
 
-  // Usergroup sections. Each is a cheap flat list (no per-message thread fetch),
-  // found by searching the group's handle and keeping only true mentions of its
-  // subteam id. Runs the group searches in parallel.
+  // Usergroup sections. These are for monitoring, so we (1) drop the same noise
+  // that goes to FYI (bots, muted channels, muted broadcasts) — but NOT the
+  // usergroup-cc shape, since tagging the group + people is the whole point —
+  // and (2) fetch each remaining message's thread so we can show whether anyone
+  // has responded. Bounded per group and built with the shared batched
+  // concurrency so this stays gentle on Slack's rate limit.
+  const GROUP_CAP = 20;
+  const groupPlan: { name: string; matches: SlackSearchMatch[] }[] = [];
+  for (const g of config.userGroups) {
+    let matches: SlackSearchMatch[] = [];
+    try {
+      matches = await searchMessages(conn.token, g.handle, {
+        after: week.after,
+        before: week.before,
+      });
+    } catch {
+      // A failed group search shouldn't sink the board.
+    }
+    matches = matches
+      .filter((m) => {
+        const ms = tsNum(m.ts) * 1000;
+        return ms >= week.startMs && ms < week.endMs;
+      })
+      // Keep only real mentions of this usergroup (the search term also matches
+      // the plain word, e.g. "PHC treatment").
+      .filter((m) => (m.text ?? '').includes(g.id))
+      // Drop the noise the user has muted — no FYI messages in group sections.
+      .filter(
+        (m) =>
+          !(!!m.bot_id && !m.user) &&
+          !isMutedChannel(m.channel?.name, config.mutedChannels) &&
+          !isMutedMessage(m.text ?? '', config.mutedMessages),
+      )
+      .slice(0, GROUP_CAP);
+    groupPlan.push({ name: g.name, matches });
+  }
+
+  // Build all group cards together with bounded concurrency (reply-status fetch
+  // included), then re-split them back into their sections.
+  const flat = groupPlan.flatMap((p) => p.matches.map((m) => ({ m, group: p.name })));
+  const byGroup = new Map<string, TriageCard[]>();
   const groupIds = new Set<string>();
-  board.groups = await Promise.all(
-    config.userGroups.map(async (g: UserGroup) => {
-      let matches: SlackSearchMatch[] = [];
-      try {
-        matches = await searchMessages(conn.token, g.handle, {
-          after: week.after,
-          before: week.before,
-        });
-      } catch {
-        // A failed group search shouldn't sink the board.
-      }
-      matches = matches
-        .filter((m) => {
-          const ms = tsNum(m.ts) * 1000;
-          return ms >= week.startMs && ms < week.endMs;
-        })
-        // Keep only messages that actually tag this usergroup (the search term
-        // also matches the plain word, e.g. "PHC treatment").
-        .filter((m) => (m.text ?? '').includes(g.id))
-        .slice(0, MAX_MATCHES);
-      const cards = (
-        await Promise.all(matches.map((m) => groupCardFor(m, resolveUser)))
-      ).filter((c): c is TriageCard => !!c);
-      for (const c of cards) groupIds.add(c.id);
-      return { name: g.name, cards };
-    }),
-  );
+  for (let i = 0; i < flat.length; i += BATCH_SIZE) {
+    const batch = flat.slice(i, i + BATCH_SIZE);
+    const built = await Promise.all(
+      batch.map(({ m, group }) =>
+        groupCardFor(m, resolveUser, conn.token, conn.slackUserId).then((c) => ({ c, group })),
+      ),
+    );
+    for (const { c, group } of built) {
+      if (!c) continue;
+      groupIds.add(c.id);
+      if (!byGroup.has(group)) byGroup.set(group, []);
+      byGroup.get(group)!.push(c);
+    }
+  }
+  board.groups = groupPlan.map((p) => ({
+    name: p.name,
+    cards: (byGroup.get(p.name) ?? []).sort((a, b) => b.timestampMs - a.timestampMs),
+  }));
 
   // A message that tags both the user and a group belongs in the group section,
   // not the main buckets — drop the duplicate from the buckets.
@@ -571,11 +603,15 @@ export async function buildBoard(
   return board;
 }
 
-// Builds a card for a group-section message WITHOUT fetching thread context —
-// group sections are flat lists, so we skip the expensive per-message calls.
+// Builds a card for a group-section message. Group sections are used to
+// monitor whether the group's tags get answered, so we fetch the thread and
+// report the reply count + who replied last (the search result's own
+// reply_count is used first when present, to save a call).
 async function groupCardFor(
   match: SlackSearchMatch,
   resolveUser: ReturnType<typeof makeUserResolver>,
+  token: string,
+  currentUserId: string,
 ): Promise<TriageCard | null> {
   const channelId = match.channel?.id;
   if (!channelId) return null;
@@ -584,6 +620,24 @@ async function groupCardFor(
   const threadRoot = match.thread_ts || threadRootFromPermalink(match.permalink) || match.ts;
   const author = !match.username && match.user ? await resolveUser(match.user) : null;
   const name = shortName(displayName(author, match.username ?? (isBot ? 'Bot' : undefined)));
+
+  // Reply status: replies from anyone (not the parent message itself). Prefer
+  // the search's reply_count; otherwise read the thread.
+  let replyCount: number | undefined;
+  let lastReplyBy: string | undefined;
+  try {
+    const thread = await fetchThread(token, channelId, threadRoot);
+    const replies = thread.filter((m) => m.ts !== threadRoot);
+    replyCount = replies.length;
+    const last = replies[replies.length - 1];
+    if (last?.user) {
+      const u = last.user === currentUserId ? null : await resolveUser(last.user);
+      lastReplyBy = last.user === currentUserId ? 'You' : shortName(displayName(u, undefined));
+    }
+  } catch {
+    replyCount = typeof match.reply_count === 'number' ? match.reply_count : undefined;
+  }
+
   return {
     id: `${channelId}:${match.ts}`,
     bucket: 'fyi', // placeholder; group cards render from the groups[] list
@@ -596,6 +650,8 @@ async function groupCardFor(
     text: await humanizeSlackText(text, resolveUser),
     permalink: match.permalink ?? null,
     timestampMs: Math.round(tsNum(match.ts) * 1000),
+    replyCount,
+    lastReplyBy,
   };
 }
 

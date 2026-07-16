@@ -5,7 +5,15 @@ import { redirect } from 'next/navigation';
 import { getAllowedUser } from '@/lib/auth';
 import { isTagsUser } from '@/lib/tags-config';
 import { serverClient } from '@/lib/supabase';
-import { deleteConnection, getConnection, postReply, SlackApiError } from '@/lib/slack';
+import {
+  addReaction,
+  deleteConnection,
+  getConnection,
+  HANDLED_REACTION,
+  postReply,
+  removeReaction,
+  SlackApiError,
+} from '@/lib/slack';
 import {
   buildBoard,
   composeBoard,
@@ -161,6 +169,9 @@ export async function setMessageAction(
     },
     { onConflict: 'owner_email,message_key' },
   );
+  // Mark the message in Slack with our reaction when it's Handled; clear it
+  // otherwise (e.g. re-flagged as Follow-up). Best-effort — never block on it.
+  await setHandledReaction(u.email, messageKey, action === 'handled');
   return getDisplayBoard(u.email, offsetWeeks);
 }
 
@@ -176,7 +187,30 @@ export async function clearMessageAction(
     .delete()
     .eq('owner_email', u.email)
     .eq('message_key', messageKey);
+  await setHandledReaction(u.email, messageKey, false);
   return getDisplayBoard(u.email, offsetWeeks);
+}
+
+// Add or remove the Handled reaction on the underlying Slack message. The
+// message key is "<channelId>:<ts>". Swallows all errors (already-reacted,
+// no-permission, message gone) so the board action always succeeds.
+async function setHandledReaction(
+  ownerEmail: string,
+  messageKey: string,
+  on: boolean,
+): Promise<void> {
+  const sep = messageKey.indexOf(':');
+  if (sep < 0) return;
+  const channelId = messageKey.slice(0, sep);
+  const ts = messageKey.slice(sep + 1);
+  try {
+    const conn = await getConnection(ownerEmail);
+    if (!conn) return;
+    if (on) await addReaction(conn.token, channelId, ts, HANDLED_REACTION);
+    else await removeReaction(conn.token, channelId, ts, HANDLED_REACTION);
+  } catch {
+    // best-effort
+  }
 }
 
 /** Post a reply into a thread as the user. Returns ok/error for the UI. */
