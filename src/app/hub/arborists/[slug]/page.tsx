@@ -81,6 +81,7 @@ export default async function ArboristDetailPage({
         certified: a.certified,
         isa_number: a.isa_number ?? null,
         manager: !!a.manager,
+        phone: a.phone,
       }}
       footer={
         <PhcAssignedRenewals salespersonId={a.id} salespersonName={a.name} />

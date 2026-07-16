@@ -168,6 +168,7 @@ export async function addSalesperson(formData: FormData): Promise<void> {
   const title = String(formData.get('title') ?? '').trim() || 'Sales Arborist';
   const isaNumber = String(formData.get('isa_number') ?? '').trim() || null;
   const certified = formData.get('certified') === 'on';
+  const phone = String(formData.get('phone') ?? '').trim() || null;
 
   const supabase = await serverClient();
   const { error } = await supabase.from('salespeople').insert({
@@ -178,6 +179,7 @@ export async function addSalesperson(formData: FormData): Promise<void> {
     title,
     isa_number: isaNumber,
     certified,
+    phone,
     on_roster: true,
   });
   if (error) redirect(`/admin/sales?error=${encodeURIComponent(error.message)}`);
@@ -249,6 +251,7 @@ export async function updateSalesperson(formData: FormData): Promise<void> {
   const title = String(formData.get('title') ?? '').trim() || 'Sales Arborist';
   const isaNumber = String(formData.get('isa_number') ?? '').trim() || null;
   const certified = formData.get('certified') === 'on';
+  const phone = String(formData.get('phone') ?? '').trim() || null;
 
   const supabase = await serverClient();
   const { error } = await supabase
@@ -261,6 +264,7 @@ export async function updateSalesperson(formData: FormData): Promise<void> {
       title,
       isa_number: isaNumber,
       certified,
+      phone,
     })
     .eq('id', id);
   if (error) redirect(`/admin/sales?error=${encodeURIComponent(error.message)}`);

@@ -23,6 +23,7 @@ export type RosterMember = {
   isa_number: string | null;
   manager: boolean;
   photo: string | null;
+  phone: string | null;
   salesperson_name: string; // raw first name, used to match sales data
 };
 
@@ -35,13 +36,14 @@ type Row = {
   isa_number: string | null;
   is_manager: boolean | null;
   photo_url: string | null;
+  phone: string | null;
   on_roster: boolean | null;
   is_active: boolean | null;
   display_order: number | null;
 };
 
 const COLS =
-  'id, name, last_initial, title, certified, isa_number, is_manager, photo_url, on_roster, is_active, display_order';
+  'id, name, last_initial, title, certified, isa_number, is_manager, photo_url, phone, on_roster, is_active, display_order';
 
 /** Build the URL slug the same way the old markdown filenames were named. */
 export function rosterSlug(name: string, lastInitial: string | null): string {
@@ -63,6 +65,7 @@ function toMember(r: Row): RosterMember {
     isa_number: r.isa_number ?? null,
     manager: !!r.is_manager,
     photo: r.photo_url ?? null,
+    phone: r.phone ?? null,
     salesperson_name: r.name,
   };
 }
