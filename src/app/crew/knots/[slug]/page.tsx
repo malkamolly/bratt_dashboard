@@ -48,6 +48,11 @@ export default async function KnotDetailPage({
             a.k.a. {knot.alsoCalled.join(' · ')}
           </p>
         )}
+        {knot.draft && (
+          <p className="mt-3 inline-block rounded-full bg-orange/15 px-3 py-1 font-headline text-[10px] font-extrabold uppercase tracking-ribbon text-orange-press">
+            Draft · pending head-trainer review
+          </p>
+        )}
         <p className="mt-3 max-w-2xl text-fg-2">{knot.summary}</p>
       </header>
 
@@ -117,20 +122,28 @@ export default async function KnotDetailPage({
         <h2 className="mt-1 font-display text-3xl uppercase tracking-wider text-ink">
           Watch it tied
         </h2>
-        <div className="mt-5 overflow-hidden rounded-card border-[3px] border-bark-deep bg-black">
-          <div className="aspect-video w-full">
-            <iframe
-              className="h-full w-full"
-              src={`https://www.youtube-nocookie.com/embed/${knot.videoId}?rel=0&modestbranding=1`}
-              title={`${knot.name} tutorial video`}
-              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-              allowFullScreen
-            />
+        {knot.videoId ? (
+          <div className="mt-5 overflow-hidden rounded-card border-[3px] border-bark-deep bg-black">
+            <div className="aspect-video w-full">
+              <iframe
+                className="h-full w-full"
+                src={`https://www.youtube-nocookie.com/embed/${knot.videoId}?rel=0&modestbranding=1`}
+                title={`${knot.name} tutorial video`}
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                allowFullScreen
+              />
+            </div>
           </div>
-        </div>
-        <p className="mt-2 text-xs text-fg-3">
-          {knot.videoCredit ? `Video: ${knot.videoCredit} (YouTube)` : 'Video (YouTube)'}
-        </p>
+        ) : (
+          <div className="mt-5 rounded-card border-2 border-dashed border-paper-edge bg-paper p-8 text-center">
+            <p className="text-sm text-fg-2">Video coming soon.</p>
+          </div>
+        )}
+        {knot.videoId && (
+          <p className="mt-2 text-xs text-fg-3">
+            {knot.videoCredit ? `Video: ${knot.videoCredit} (YouTube)` : 'Video (YouTube)'}
+          </p>
+        )}
       </section>
 
       {/* ---------- Other knots ---------- */}

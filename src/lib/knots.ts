@@ -39,6 +39,11 @@ export type Knot = {
   videoCredit: string;
   /** Rough tying difficulty, for the card badge. */
   difficulty: 'Core' | 'Everyday' | 'Advanced';
+  /**
+   * First-pass content not yet verified by the head trainer. Shows a
+   * "Draft — pending trainer review" badge so crew don't treat it as final.
+   */
+  draft?: boolean;
 };
 
 export const KNOTS: Knot[] = [
@@ -117,6 +122,112 @@ export const KNOTS: Knot[] = [
       'Make a small overhand loop in the standing part and bring the working end up through it.',
       'Take the working end around behind the standing part and back down through the same loop — that is the bowline.',
       'Tighten the bowline, then pull the standing part: the fixed loop runs down and chokes the limb.',
+    ],
+  },
+
+  // --------------------------------------------------------------------------
+  // DRAFTS — first pass, pending head-trainer review. Content and video picks
+  // still need to be verified against how we tie and use these at Bratt Tree.
+  // --------------------------------------------------------------------------
+  {
+    slug: 'cow-hitch',
+    name: 'Cow Hitch',
+    tagline: 'The first-choice attachment for a rope or sling around a limb.',
+    summary:
+      'A cow hitch attaches a line to a limb or ring by passing a bight around it and bringing the ends back through so it grips itself. At Bratt Tree it is the first choice for attaching around a limb — the timber hitch is only a fallback for when a sling is too short to tie one.',
+    usedFor: [
+      'The first-choice attachment of a rope or sling around a limb',
+      'Anywhere you might otherwise reach for a timber hitch, when the sling reaches',
+    ],
+    watchOut: [
+      'Dress it flat and snug so both legs share the load evenly.',
+      'Like a girth hitch it grips by squeezing — mind slick or tapering limbs.',
+    ],
+    difficulty: 'Core',
+    animationUrl: 'https://www.animatedknots.com/cow-hitch-knot-end-method',
+    videoId: 'pZyEDAZF6Vo',
+    videoCredit: 'Animated Knots by Grog',
+    draft: true,
+    steps: [
+      'Pass a bight of the line around the limb.',
+      'Bring both ends (or the loop) through the bight.',
+      'Dress it flat and pull snug so it grips the limb.',
+    ],
+  },
+  {
+    slug: 'figure-8',
+    name: 'Figure 8',
+    tagline: 'A bulky stopper knot that keeps a line from running through a block or device.',
+    summary:
+      'The figure 8 is the basic stopper knot — an 8-shaped overhand that is bulky, easy to inspect at a glance, and easy to untie after loading. Its follow-through variant also makes a strong fixed loop for tying in. (Trainer to confirm which version we want featured.)',
+    usedFor: [
+      'A stopper in the end of a line so it cannot pull through a block or device',
+      'The follow-through variant ties a strong, inspectable fixed loop',
+    ],
+    watchOut: [
+      'A plain figure 8 is a stopper, not an attachment — do not rig a load to it.',
+      'Leave a decent tail past the knot.',
+    ],
+    difficulty: 'Core',
+    animationUrl: 'https://www.animatedknots.com/figure-8-knot',
+    videoId: 'EtzeIQjcKEs',
+    videoCredit: 'Animated Knots by Grog',
+    draft: true,
+    steps: [
+      'Make a bight and cross the working end over the standing part.',
+      'Bring the end around behind the standing part and down through the loop.',
+      'Dress and snug it into the 8 shape.',
+    ],
+  },
+  {
+    slug: 'double-fishermans',
+    name: "Double Fisherman's",
+    tagline: 'Joins two rope ends into one — the standard knot for making a loop of cord.',
+    summary:
+      "The double fisherman's ties two rope ends together with two strangle knots that jam against each other. It is the standard way to join a cord into a closed loop (for example, a prusik loop). It holds extremely well and is hard to untie after heavy loading — which is fine for a permanent loop.",
+    usedFor: [
+      'Joining two ends of cord into a closed loop',
+      'Permanently joining two ropes of similar diameter',
+    ],
+    watchOut: [
+      'Very hard to untie after loading — use it where a permanent join is wanted.',
+      'Leave adequate tails and dress both knots snug against each other.',
+      'Any life-support use (e.g. a climbing prusik loop) must be inspected and trainer-approved.',
+    ],
+    difficulty: 'Advanced',
+    animationUrl: 'https://www.animatedknots.com/double-fishermans-bend-knot',
+    videoId: '-kiHK_2DRzw',
+    videoCredit: 'Animated Knots by Grog',
+    draft: true,
+    steps: [
+      'Lay the two rope ends alongside each other, pointing opposite ways.',
+      'Wrap one end twice around the other and back through the two coils; snug it.',
+      'Repeat with the other end, then pull the two knots together.',
+    ],
+  },
+  {
+    slug: 'slip-knot',
+    name: 'Slip Knot',
+    tagline: 'Holds under tension but pulls free with a tug on the tail — a quick-release knot.',
+    summary:
+      'A slip knot forms a loop that stays put while loaded but collapses instantly when you pull the free tail. It is a quick-release knot for temporary ties you want to be able to drop fast. It is not a secure knot for any load you cannot afford to have release.',
+    usedFor: [
+      'A temporary, quick-release tie',
+      'A starting point for other knots and lashings',
+    ],
+    watchOut: [
+      'Releases with a pull on the tail — never use it where accidental release is dangerous.',
+      'Not for rigging or any life-support use.',
+    ],
+    difficulty: 'Core',
+    animationUrl: 'https://www.animatedknots.com/slip-knot',
+    videoId: '',
+    videoCredit: '',
+    draft: true,
+    steps: [
+      'Make a loop in the rope.',
+      'Push a bight of the standing part through the loop.',
+      'Snug it — pulling the tail collapses the knot.',
     ],
   },
 ];

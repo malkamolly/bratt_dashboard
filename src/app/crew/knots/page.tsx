@@ -73,9 +73,14 @@ export default async function KnotLibraryPage() {
                   a.k.a. {k.alsoCalled.join(' · ')}
                 </p>
               )}
+              {k.draft && (
+                <p className="font-headline text-[10px] font-extrabold uppercase tracking-ribbon text-orange-press">
+                  Draft · pending trainer review
+                </p>
+              )}
               <p className="text-sm text-fg-2">{k.tagline}</p>
               <p className="mt-auto font-headline text-xs font-extrabold uppercase tracking-ribbon text-orange">
-                Animation + steps →
+                How to tie it →
               </p>
             </Link>
           </li>
