@@ -2,10 +2,13 @@
 // GET /api/tags/daily-report — end-of-day summary of Juan Carlos's board,
 // delivered as a Slack DM to the owner.
 // ============================================================================
-// Scheduled by Vercel Cron (see vercel.json) on weekday evenings. This crosses
-// the normal per-user privacy boundary on purpose — it's a manager report,
-// discussed in JC's PIP — so it uses the service-role client to read JC's
-// stored token off-session, builds his board, and DMs the owner a summary.
+// Delivered at 6pm Central every day. Vercel Cron runs in UTC and can't follow
+// daylight saving, so vercel.json fires this at BOTH 23:00 and 00:00 UTC daily
+// (6pm Central falls on one or the other depending on CST/CDT); the run that
+// isn't 6pm Central right now is skipped below. This crosses the normal
+// per-user privacy boundary on purpose — it's a manager report, discussed in
+// JC's PIP — so it uses the service-role client to read JC's stored token
+// off-session, builds his board, and DMs the owner a summary.
 //
 // Auth: the cron sends `Authorization: Bearer $CRON_SECRET`. A signed-in owner
 // may also hit the URL directly to test. Everyone else is rejected. The path is
@@ -40,6 +43,12 @@ export async function GET(req: NextRequest) {
     }
   }
 
+  // Only the scheduled run that lands on 6pm Central actually sends (see the
+  // header note about the two UTC cron times). A manual owner run always sends.
+  if (isCron && centralHour() !== 18) {
+    return NextResponse.json({ ok: true, skipped: 'not-6pm-central' });
+  }
+
   // --- deliver ------------------------------------------------------------
   const recipient = await getConnectionAdmin(RECIPIENT_EMAIL);
   if (!recipient) {
@@ -56,6 +65,17 @@ export async function GET(req: NextRequest) {
 }
 
 // ---------------------------------------------------------------------------
+
+// Current hour (0–23) in Central time, so DST is handled automatically.
+function centralHour(): number {
+  const s = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'America/Chicago',
+    hour: 'numeric',
+    hour12: false,
+    hourCycle: 'h23',
+  }).format(new Date());
+  return parseInt(s, 10);
+}
 
 async function readOverridesAdmin(email: string): Promise<{
   handledIds: Set<string>;
