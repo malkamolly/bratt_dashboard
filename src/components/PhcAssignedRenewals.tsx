@@ -49,6 +49,21 @@ export async function PhcAssignedRenewals({
               <div className="min-w-0">
                 <p className="font-headline text-sm font-bold text-ink">{p.customer}</p>
                 <p className="text-xs text-fg-3">{p.address}</p>
+                {(p.locationPhone || p.customerPhone) && (
+                  <p className="mt-1 text-xs font-bold text-bark-deep">
+                    ☎{' '}
+                    {p.locationPhone && <>{p.locationPhone}</>}
+                    {p.locationPhone &&
+                      p.customerPhone &&
+                      p.customerPhone !== p.locationPhone && (
+                        <span className="font-normal text-fg-3">
+                          {' '}
+                          · cust {p.customerPhone}
+                        </span>
+                      )}
+                    {!p.locationPhone && p.customerPhone && <>{p.customerPhone}</>}
+                  </p>
+                )}
               </div>
               <CopyButton text={buildHandoffText(p)} label="Copy" />
             </div>
