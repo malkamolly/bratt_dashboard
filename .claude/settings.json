@@ -1,0 +1,12 @@
+{
+  "permissions": {
+    "allow": [
+      "mcp__Adobe_for_creativity__media_summarize",
+      "mcp__Adobe_for_creativity__video_metadata",
+      "mcp__Adobe_for_creativity__video_render_frame",
+      "mcp__Adobe_for_creativity__asset_add_file",
+      "mcp__Adobe_for_creativity__asset_add_file_check_status",
+      "mcp__Adobe_for_creativity__*"
+    ]
+  }
+}
