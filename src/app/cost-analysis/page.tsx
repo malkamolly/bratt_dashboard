@@ -182,7 +182,7 @@ export default async function CostAnalysisPage() {
         {/* Try it first — the calculator */}
         <div className="mb-6">
           <div className="mb-2 text-xs font-extrabold uppercase tracking-wide text-fg-2">
-            Try it — price any tree (up to 70″+)
+            Try it — price any tree (up to 100″)
           </div>
           <PriceCalculator />
           <p className="mt-2 text-xs text-fg-3">
@@ -192,67 +192,52 @@ export default async function CostAnalysisPage() {
           </p>
         </div>
 
-        {/* The full matrix */}
+        {/* The rate card */}
         <div className="text-xs font-extrabold uppercase tracking-wide text-fg-2">
-          The full rate matrix ($/inch)
+          The rate card ($/inch)
         </div>
         <p className="mt-1 mb-2 max-w-3xl rounded-md bg-lime/20 px-3 py-2 text-xs text-fg-2">
-          <strong>How to read this:</strong> a blank &ldquo;&mdash;&rdquo; is the{' '}
-          <strong>typical tree for that size</strong> (no adjustment) &mdash;{' '}
-          <em>not</em> missing data. Every cell is filled. Values are the per-inch
-          add/subtract vs. that typical tree; they&apos;re calculated from each
-          size&apos;s base rate, not pulled per-cell from jobs.
+          <strong>How to read this:</strong> price = DBH × the base $/inch for
+          that size, then adjusted for height and spread. The model now runs at{' '}
+          <strong>1&Prime; DBH steps</strong> (100 sizes) with 10-ft height and
+          spread bands — use the calculator above for any exact tree. This table
+          samples every 5&Prime; for a quick read.
         </p>
         <div className="mt-2 overflow-x-auto">
           <table className="text-xs">
             <thead>
-              <tr className="text-fg-2">
-                <th className="sticky left-0 bg-cream px-2 py-1 text-left">DBH size</th>
-                <th className="px-2 py-1 text-right">Base</th>
-                <th className="px-2 py-1 text-center" colSpan={PRICING_MATRIX.heightTiers.length}>
-                  Height adjust ($/in)
-                </th>
-                <th className="px-2 py-1 text-center" colSpan={PRICING_MATRIX.canopyTiers.length}>
-                  Canopy adjust ($/in)
-                </th>
-              </tr>
               <tr className="border-b-2 border-bark/20 text-fg-3">
-                <th className="sticky left-0 bg-cream px-2 py-1"></th>
-                <th className="px-2 py-1"></th>
-                {PRICING_MATRIX.heightTiers.map((t) => (
-                  <th key={`h-${t.label}`} className="px-2 py-1 text-right font-bold">{t.label}</th>
-                ))}
-                {PRICING_MATRIX.canopyTiers.map((t) => (
-                  <th key={`c-${t.label}`} className="px-2 py-1 text-right font-bold">{t.label}</th>
-                ))}
+                <th className="px-2 py-1 text-left font-bold">DBH size</th>
+                <th className="px-2 py-1 text-right font-bold">Base $/in</th>
+                <th className="px-2 py-1 text-right font-bold">Typical height</th>
+                <th className="px-2 py-1 text-right font-bold">Typical spread</th>
               </tr>
             </thead>
             <tbody>
-              {PRICING_MATRIX.categories.map((cat) => (
-                <tr key={cat.label} className="border-b border-bark/10">
-                  <td className="sticky left-0 bg-cream px-2 py-1.5 font-bold text-ink">{cat.label}</td>
-                  <td className="px-2 py-1.5 text-right font-bold text-orange">{fmtUsd(cat.base)}</td>
-                  {cat.height.map((m, i) => (
-                    <td key={`h-${i}`} className={`px-2 py-1.5 text-right ${m === 0 ? 'text-fg-3' : 'text-ink'}`}>
-                      {m > 0 ? '+' : ''}{m === 0 ? '—' : fmtUsd(m)}
+              {PRICING_MATRIX.categories
+                .filter((_, i) => (i + 1) % 5 === 0)
+                .map((cat) => (
+                  <tr key={cat.label} className="border-b border-bark/10">
+                    <td className="px-2 py-1.5 font-bold text-ink">{cat.label}</td>
+                    <td className="px-2 py-1.5 text-right font-bold text-orange">{fmtUsd(cat.base)}</td>
+                    <td className="px-2 py-1.5 text-right text-fg-2">
+                      {PRICING_MATRIX.heightTiers[cat.refHeight]?.label ?? '—'}
                     </td>
-                  ))}
-                  {cat.canopy.map((m, i) => (
-                    <td key={`c-${i}`} className={`px-2 py-1.5 text-right ${m === 0 ? 'text-fg-3' : 'text-ink'}`}>
-                      {m > 0 ? '+' : ''}{m === 0 ? '—' : fmtUsd(m)}
+                    <td className="px-2 py-1.5 text-right text-fg-2">
+                      {PRICING_MATRIX.canopyTiers[cat.refCanopy]?.label ?? '—'}
                     </td>
-                  ))}
-                </tr>
-              ))}
+                  </tr>
+                ))}
             </tbody>
           </table>
         </div>
-        <p className="mt-2 text-xs text-fg-3">
-          Each row&apos;s blank (&ldquo;&mdash;&rdquo;) cell is that size&apos;s
-          typical tree (no adjustment) — it sits in a different column per size
-          because bigger trees are typically taller and wider. Shorter/narrower
-          than typical subtracts; taller/wider adds. Tell me any numbers to
-          change and I&apos;ll set them.
+        <p className="mt-2 max-w-3xl text-xs text-fg-3">
+          <strong>Height &amp; spread:</strong> each 10-ft band above that
+          size&apos;s typical adds about 8% of its base rate; each band below
+          subtracts the same. The final rate is capped between{' '}
+          {PRICING_MATRIX.minFactor}× and {PRICING_MATRIX.maxFactor}× the base so
+          one unusual tree can&apos;t swing it too far. Tell me any base rate to
+          change and I&apos;ll set it.
         </p>
       </Card>
 
