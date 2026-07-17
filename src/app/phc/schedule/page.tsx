@@ -8,7 +8,7 @@ import { updateStatus } from '../actions';
 
 export const dynamic = 'force-dynamic';
 
-type Search = Promise<{ filter?: string; page?: string; saved?: string; error?: string }>;
+type Search = Promise<{ filter?: string; page?: string; saved?: string; error?: string; q?: string }>;
 
 const PAGE_SIZE = 50;
 
@@ -82,7 +82,21 @@ export default async function PhcSchedulePage({ searchParams }: { searchParams: 
   }
 
   const activeFilter = ALL_FILTERS.find((f) => f.key === sp.filter) ?? VIEW_FILTERS[0];
-  const filtered = view.properties.filter(activeFilter.test);
+
+  // Free-text search across customer name, address, phones, and IDs. Applied
+  // on top of the active filter (AND) so search narrows the current view.
+  const q = (sp.q ?? '').trim();
+  const qLower = q.toLowerCase();
+  const matchesSearch = (p: PropertyGroup) => {
+    if (!qLower) return true;
+    const hay = [p.customer, p.address, p.locationPhone, p.customerPhone, p.customerId, p.locationId]
+      .filter(Boolean)
+      .join(' ')
+      .toLowerCase();
+    return hay.includes(qLower);
+  };
+
+  const filtered = view.properties.filter(activeFilter.test).filter(matchesSearch);
   const filteredCopyText = filtered.map(buildHandoffText).join('\n\n————————————\n\n');
 
   const page = Math.max(1, Number(sp.page) || 1);
@@ -90,7 +104,11 @@ export default async function PhcSchedulePage({ searchParams }: { searchParams: 
   const clamped = Math.min(page, totalPages);
   const slice = filtered.slice((clamped - 1) * PAGE_SIZE, clamped * PAGE_SIZE);
   const qs = (obj: Record<string, string | number>) =>
-    new URLSearchParams({ filter: activeFilter.key, ...obj } as Record<string, string>).toString();
+    new URLSearchParams({
+      filter: activeFilter.key,
+      ...(q ? { q } : {}),
+      ...obj,
+    } as Record<string, string>).toString();
 
   return (
     <main className="bt-page">
@@ -125,6 +143,30 @@ export default async function PhcSchedulePage({ searchParams }: { searchParams: 
         </div>
       )}
 
+      {/* Search — plain GET form so it works without client JS and keeps the
+          current filter. Submitting resets to page 1. */}
+      <form method="get" action="/phc/schedule" className="mt-5 flex flex-wrap items-center gap-2">
+        <input type="hidden" name="filter" value={activeFilter.key} />
+        <input
+          type="search"
+          name="q"
+          defaultValue={q}
+          placeholder="Search customer, address, phone, or ID…"
+          className="min-w-0 flex-1 rounded-2 border-2 border-paper-edge bg-white px-3 py-2 font-sans text-sm normal-case focus:border-orange focus:outline-none sm:max-w-md"
+        />
+        <button type="submit" className="bt-btn bt-btn-ghost text-sm">
+          Search
+        </button>
+        {q && (
+          <Link
+            href={`/phc/schedule?filter=${activeFilter.key}&page=1`}
+            className="bt-btn bt-btn-ghost text-sm"
+          >
+            Clear
+          </Link>
+        )}
+      </form>
+
       {/* Filters — two columns: "view" on the left, outreach/sales on the right */}
       <div className="mt-5 grid grid-cols-1 gap-4 sm:grid-cols-2">
         {[
@@ -142,7 +184,11 @@ export default async function PhcSchedulePage({ searchParams }: { searchParams: 
                 return (
                   <Link
                     key={f.key}
-                    href={`/phc/schedule?filter=${f.key}&page=1`}
+                    href={`/phc/schedule?${new URLSearchParams({
+                      filter: f.key,
+                      page: '1',
+                      ...(q ? { q } : {}),
+                    }).toString()}`}
                     className={`rounded-full px-3 py-1 font-headline text-xs font-extrabold uppercase tracking-ribbon transition-colors ${
                       active
                         ? 'bg-bark-deep text-white'
@@ -161,6 +207,7 @@ export default async function PhcSchedulePage({ searchParams }: { searchParams: 
       <div className="mt-4 flex flex-wrap items-center justify-between gap-2">
         <p className="text-sm text-fg-3">
           Showing {slice.length} of {filtered.length} properties
+          {q && ` matching “${q}”`}
           {totalPages > 1 && ` · page ${clamped} of ${totalPages}`}
         </p>
         {filtered.length > 0 && (
@@ -170,6 +217,16 @@ export default async function PhcSchedulePage({ searchParams }: { searchParams: 
           />
         )}
       </div>
+
+      {filtered.length === 0 && (
+        <p className="mt-8 rounded-2 border-2 border-paper-edge bg-white/60 px-4 py-6 text-center text-sm text-fg-2">
+          {q ? (
+            <>No properties match &ldquo;{q}&rdquo; in this view. Try a different search or clear it.</>
+          ) : (
+            <>No properties in this view.</>
+          )}
+        </p>
+      )}
 
       <div className="mt-4 space-y-4">
         {slice.map((p) => (
