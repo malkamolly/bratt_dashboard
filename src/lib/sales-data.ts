@@ -11,6 +11,8 @@ import {
   monthRange,
   workingDaysInMonth,
   workingDaysBeenThrough,
+  businessToday,
+  effectiveBusinessDate,
   type IsoDate,
 } from './dates';
 import type { Salesperson, CrewMember } from '@/types';
@@ -74,8 +76,14 @@ export async function loadSalesMonth(
   month?: number,
 ): Promise<SalesMonthData> {
   const now = new Date();
-  const y = year ?? now.getFullYear();
-  const m = month ?? now.getMonth() + 1;
+  // Resolve "today" in Central time. `today` picks the current month; `asOf`
+  // is the day pace math counts through — it holds on the prior working day
+  // until 2 PM Central so the projection doesn't dip every morning before the
+  // day's numbers are entered.
+  const today = businessToday(now);
+  const asOf = effectiveBusinessDate(now);
+  const y = year ?? today.getFullYear();
+  const m = month ?? today.getMonth() + 1;
   const supabase = await serverClient();
   const { start, end } = monthRange(y, m);
 
@@ -127,7 +135,7 @@ export async function loadSalesMonth(
   const settings = settingsRes.data;
   const computedDays = workingDaysInMonth(y, m, holidays);
   const budgetedDays = settings?.budgeted_days_override ?? computedDays;
-  const budgetedDaysBeenThrough = workingDaysBeenThrough(y, m, now, holidays);
+  const budgetedDaysBeenThrough = workingDaysBeenThrough(y, m, asOf, holidays);
 
   return {
     ctx: {
@@ -135,7 +143,7 @@ export async function loadSalesMonth(
       month: m,
       budgetedDays,
       budgetedDaysBeenThrough,
-      asOf: now,
+      asOf,
     },
     salespeople: (salespeopleRes.data ?? []) as Salesperson[],
     entries: (entriesRes.data ?? []).map((e) => ({

@@ -8,7 +8,12 @@ import {
   type PaceStatus,
 } from '@/lib/calculations';
 import { fmtUsd, fmtPct, monthLabel } from '@/lib/format';
-import { workingWeeksInMonth, toIsoDate, type IsoDate } from '@/lib/dates';
+import {
+  workingWeeksInMonth,
+  toIsoDate,
+  businessToday,
+  type IsoDate,
+} from '@/lib/dates';
 import { MonthPicker } from '@/components/MonthPicker';
 import { CopyAsImageButton } from '@/components/CopyAsImageButton';
 
@@ -61,9 +66,9 @@ export default async function SalesDashboardPage({
   if (!user) redirect('/login');
 
   const sp = await searchParams;
-  const now = new Date();
-  const year = parseIntInRange(sp.year, 2000, 2100) ?? now.getFullYear();
-  const month = parseIntInRange(sp.month, 1, 12) ?? now.getMonth() + 1;
+  const today = businessToday(new Date());
+  const year = parseIntInRange(sp.year, 2000, 2100) ?? today.getFullYear();
+  const month = parseIntInRange(sp.month, 1, 12) ?? today.getMonth() + 1;
 
   const [data, ytd] = await Promise.all([
     loadSalesMonth(year, month),
@@ -72,7 +77,7 @@ export default async function SalesDashboardPage({
   const nameById = new Map(data.salespeople.map((s) => [s.id, s.name]));
   const isHistorical = data.historicals.length > 0;
   const isCurrentMonth =
-    year === now.getFullYear() && month === now.getMonth() + 1;
+    year === today.getFullYear() && month === today.getMonth() + 1;
 
   if (isHistorical) {
     return (

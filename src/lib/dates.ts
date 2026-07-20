@@ -24,6 +24,71 @@ export function isWeekend(d: Date): boolean {
   return wd === 0 || wd === 6;
 }
 
+// ----------------------------------------------------------------------------
+// Business "today" — timezone-aware
+// ----------------------------------------------------------------------------
+// The company runs on Central time, but the server (Vercel) runs on UTC, so
+// `new Date()` and its getters answer in UTC. Everything that decides "what day
+// is it right now" for pace math must resolve the wall-clock day/hour in
+// Central instead, or the day would tick over at the wrong local time.
+
+/** The timezone the business operates in. */
+export const BUSINESS_TZ = 'America/Chicago';
+
+/** Wall-clock year/month/day/hour for `now` in the business timezone. */
+function centralParts(now: Date): {
+  y: number;
+  m: number;
+  day: number;
+  hour: number;
+} {
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone: BUSINESS_TZ,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    hour12: false,
+  }).formatToParts(now);
+  const get = (t: string) => Number(parts.find((p) => p.type === t)?.value);
+  let hour = get('hour');
+  if (hour === 24) hour = 0; // some runtimes emit '24' for midnight
+  return { y: get('year'), m: get('month'), day: get('day'), hour };
+}
+
+/**
+ * The real calendar day in the business timezone, as a LOCAL Date at midnight
+ * (matching the local-Date convention the rest of this file uses). Use this to
+ * pick the "current month" so the dashboard rolls over at Central midnight, not
+ * at the server's UTC midnight.
+ */
+export function businessToday(now: Date): Date {
+  const { y, m, day } = centralParts(now);
+  return new Date(y, m - 1, day);
+}
+
+/**
+ * The day pace math should treat as "today" when counting elapsed working days.
+ *
+ * The team enters the prior day's sales the next morning, so a brand-new
+ * working day shouldn't count as "elapsed" until the afternoon — otherwise the
+ * projection dips every morning before that day's numbers are in. Before
+ * `cutoffHour` (in Central time) we roll back to the previous calendar day, so
+ * the counter only advances once the morning's data entry is done.
+ *
+ * Returns a LOCAL Date at midnight of the effective calendar day.
+ */
+export function effectiveBusinessDate(now: Date, cutoffHour = 14): Date {
+  const { y, m, day, hour } = centralParts(now);
+  // Anchor the Central calendar day in UTC purely for safe day arithmetic
+  // (no DST edge cases), roll back if before the cutoff, then hand back a
+  // local Date built from the resulting Y/M/D.
+  let ms = Date.UTC(y, m - 1, day);
+  if (hour < cutoffHour) ms -= 86_400_000;
+  const d = new Date(ms);
+  return new Date(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate());
+}
+
 /**
  * Count working days in a given month.
  * Working day = Mon-Fri and not in `holidays` (a set of ISO date strings).
