@@ -1,12 +1,18 @@
 import Link from 'next/link';
 import { requireHubAccess } from '@/lib/auth';
 import { fmtUsd, fmtPct } from '@/lib/format';
-import { loadDashboard, type TargetSummary } from '@/lib/off-season-data';
+import {
+  loadDashboard,
+  WORK_TYPES,
+  WORK_TYPE_LABELS,
+  type TrackSummary,
+  type Totals,
+} from '@/lib/off-season-data';
 import { OffSeasonChart } from './OffSeasonChart';
+import { OffSeasonTotals } from './OffSeasonTotals';
 
 export const dynamic = 'force-dynamic';
 
-// "2026-08-01" -> "Aug 1, 2026"
 function niceDate(iso: string): string {
   const d = new Date(`${iso}T00:00:00`);
   return d.toLocaleDateString('en-US', {
@@ -14,6 +20,12 @@ function niceDate(iso: string): string {
     day: 'numeric',
     year: 'numeric',
   });
+}
+
+// Short y-axis label for the totals chart, e.g. "Disc · Nov–Dec".
+function barName(t: TrackSummary): string {
+  const short = t.workType === 'discounted' ? 'Disc' : 'Dorm';
+  return `${short} · ${t.windowLabel}`;
 }
 
 export default async function OffSeasonPage({
@@ -45,10 +57,10 @@ export default async function OffSeasonPage({
             Off-Season Work
           </h1>
           <p className="mt-4 max-w-2xl text-fg-2">
-            How our off-season push is booking up against goal &mdash; the
-            discounted fall work and the dormant-season work that has to happen
-            cold. Winter work is better for the yard, and this is where we track
-            the pace.
+            Our off-season push, four tracks in all: the discounted work and the
+            dormant-season work, each split into the Nov&ndash;Dec and
+            Jan&ndash;March windows. Winter work is better for the yard &mdash;
+            this is where we track how it&rsquo;s booking up.
           </p>
         </div>
         <div className="flex flex-shrink-0 gap-2">
@@ -71,8 +83,6 @@ export default async function OffSeasonPage({
         </p>
       ) : (
         <>
-          {/* Season switcher — the current season is shown by default; you can
-              flip to any past season for comparison. */}
           {data.seasons.length > 1 && (
             <nav className="mt-8 flex flex-wrap items-center gap-2">
               <span className="bt-eyebrow mr-1">Season</span>
@@ -96,22 +106,94 @@ export default async function OffSeasonPage({
             </nav>
           )}
 
-          <section className="mt-8 grid grid-cols-1 gap-6 lg:grid-cols-2">
-            {data.targets.map((t) => (
-              <TargetCard key={t.workType} t={t} />
-            ))}
+          {/* ---- TOP: season totals across all four tracks ---- */}
+          <section className="mt-8 rounded-card bg-bark p-6 text-cream sm:p-8">
+            <div className="flex flex-col gap-6 lg:flex-row lg:items-center">
+              <div className="lg:w-64 lg:flex-shrink-0">
+                <p className="font-headline text-xs font-extrabold uppercase tracking-ribbon text-lime">
+                  On the books &mdash; all tracks
+                </p>
+                <p className="mt-2 font-headline text-5xl font-black leading-none">
+                  {fmtUsd(data.grand.booked)}
+                </p>
+                <p className="mt-2 text-sm text-cream/70">
+                  {fmtPct(data.grand.pctToGoal)} of {fmtUsd(data.grand.goal)}{' '}
+                  combined goal
+                </p>
+                <p className="mt-1 text-sm text-cream/70">
+                  {fmtUsd(data.grand.discount)} in discounts given
+                </p>
+
+                <div className="mt-5 grid grid-cols-2 gap-2">
+                  <MiniTotal label="Discounted" t={data.byType.discounted} accent="text-apricot" />
+                  <MiniTotal label="Dormant" t={data.byType.dormant} accent="text-green" />
+                  <MiniTotal label="Nov–Dec" t={data.byWindow.nov_dec} accent="text-cream/80" />
+                  <MiniTotal label="Jan–March" t={data.byWindow.jan_march} accent="text-cream/80" />
+                </div>
+              </div>
+
+              <div className="min-w-0 flex-1 rounded-2 bg-cream/5 p-3">
+                <OffSeasonTotals
+                  bars={data.tracks.map((t) => ({
+                    name: barName(t),
+                    workType: t.workType,
+                    booked: t.booked,
+                    goal: t.goalAmount,
+                  }))}
+                />
+                <p className="mt-1 text-center text-[11px] text-cream/50">
+                  Filled bar = booked; the rest of each bar is what&rsquo;s left
+                  to goal. Orange = discounted, green = dormant.
+                </p>
+              </div>
+            </div>
           </section>
+
+          {/* ---- DETAIL: one card per track, grouped by work type ---- */}
+          {WORK_TYPES.map((wt) => (
+            <section key={wt} className="mt-10">
+              <h2 className="font-headline text-2xl font-black uppercase text-bark-deep">
+                {WORK_TYPE_LABELS[wt]}
+              </h2>
+              <div className="mt-4 grid grid-cols-1 gap-6 lg:grid-cols-2">
+                {data.tracks
+                  .filter((t) => t.workType === wt)
+                  .map((t) => (
+                    <TrackCard key={`${t.workType}-${t.osWindow}`} t={t} />
+                  ))}
+              </div>
+            </section>
+          ))}
         </>
       )}
     </main>
   );
 }
 
-function TargetCard({ t }: { t: TargetSummary }) {
+function MiniTotal({
+  label,
+  t,
+  accent,
+}: {
+  label: string;
+  t: Totals;
+  accent: string;
+}) {
+  return (
+    <div className="rounded-2 border border-cream/15 px-3 py-2">
+      <p className={`font-headline text-[10px] font-extrabold uppercase tracking-ribbon ${accent}`}>
+        {label}
+      </p>
+      <p className="mt-0.5 font-headline text-lg font-black leading-tight">
+        {fmtUsd(t.booked)}
+      </p>
+    </div>
+  );
+}
+
+function TrackCard({ t }: { t: TrackSummary }) {
   const pctClamped = Math.max(0, Math.min(1, t.pctToGoal));
 
-  // Pace status: neutral before the window opens; otherwise ahead / on pace /
-  // behind based on booked-vs-even-pace. "On pace" = within 2% of goal.
   const tolerance = 0.02 * t.goalAmount;
   let chipClass = 'bt-status-neutral';
   let chipText = 'Not started yet';
@@ -121,10 +203,10 @@ function TargetCard({ t }: { t: TargetSummary }) {
       chipText = 'On pace';
     } else if (t.pace > 0) {
       chipClass = 'bt-status-ahead';
-      chipText = `${fmtUsd(t.pace)} ahead of pace`;
+      chipText = `${fmtUsd(t.pace)} ahead`;
     } else {
       chipClass = 'bt-status-behind';
-      chipText = `${fmtUsd(Math.abs(t.pace))} behind pace`;
+      chipText = `${fmtUsd(Math.abs(t.pace))} behind`;
     }
   }
 
@@ -132,25 +214,17 @@ function TargetCard({ t }: { t: TargetSummary }) {
     <article className="bt-card">
       <div className="flex items-start justify-between gap-3">
         <div>
-          <h2 className="font-headline text-2xl font-black uppercase text-bark-deep">
-            {t.label}
-          </h2>
-          <p className="mt-1 text-sm text-fg-2">{t.blurb}</p>
+          <p className="bt-eyebrow">{t.windowLabel}</p>
+          <h3 className="mt-1 font-headline text-xl font-black uppercase text-bark-deep">
+            {fmtUsd(t.booked)}
+            <span className="ml-2 text-sm font-bold text-fg-2">
+              of {fmtUsd(t.goalAmount)}
+            </span>
+          </h3>
         </div>
         <span className={chipClass}>{chipText}</span>
       </div>
 
-      {/* Booked vs goal */}
-      <div className="mt-5 flex items-baseline gap-2">
-        <span className="font-headline text-4xl font-black text-ink">
-          {fmtUsd(t.booked)}
-        </span>
-        <span className="text-sm text-fg-2">
-          booked of {fmtUsd(t.goalAmount)} goal
-        </span>
-      </div>
-
-      {/* Progress bar */}
       <div className="mt-3">
         <div className="h-3 w-full overflow-hidden rounded-full bg-paper-edge/60">
           <div
@@ -166,7 +240,6 @@ function TargetCard({ t }: { t: TargetSummary }) {
         </div>
       </div>
 
-      {/* Discount cost */}
       <div className="mt-4 flex items-center justify-between rounded-2 border-2 border-paper-edge bg-paper/40 px-4 py-2.5">
         <span className="font-headline text-xs font-extrabold uppercase tracking-ribbon text-fg-2">
           Discounts given

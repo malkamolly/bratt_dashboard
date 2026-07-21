@@ -4,32 +4,36 @@
 // Off-Season tracker server actions
 // ============================================================================
 // Two actions:
-//   * saveOffSeasonDay      — upsert one day's numbers (both work types) for
+//   * saveOffSeasonDay      — upsert one day's numbers (all four tracks) for
 //                             the current season, from the daily entry form.
-//   * saveOffSeasonSettings — admin: edit each work type's goal + booking
-//                             window, and pick which season is "current".
+//   * saveOffSeasonSettings — admin: edit each track's goal + booking window,
+//                             and pick which season is "current".
 //
 // RLS (migration 062) already enforces "must be admin/office/sales-manager",
-// but we re-check here so we can show a friendly error instead of a raw
-// database failure.
+// but we re-check here so we can show a friendly error.
 // ============================================================================
 
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { serverClient } from '@/lib/supabase';
 import { getAllowedUser, canUseOffSeason } from '@/lib/auth';
-import { WORK_TYPES, type WorkType } from '@/lib/off-season-data';
+import {
+  TRACKS,
+  WORK_TYPES,
+  OS_WINDOWS,
+  trackKey,
+  type WorkType,
+  type OsWindow,
+} from '@/lib/off-season-data';
 
 export type SaveResult = { ok: false; error: string } | undefined;
 
 function isValidIsoDate(s: string): boolean {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(s)) return false;
-  const d = new Date(`${s}T00:00:00`);
-  return !Number.isNaN(d.getTime());
+  return !Number.isNaN(new Date(`${s}T00:00:00`).getTime());
 }
 
-// Returns a number (rounded to cents), or null when the field is blank, or
-// the string 'bad' when it can't be parsed.
+// number (rounded to cents), null when blank, or 'bad' when unparseable.
 function parseAmount(raw: FormDataEntryValue | null): number | null | 'bad' {
   if (raw == null) return null;
   const s = String(raw).trim();
@@ -40,7 +44,7 @@ function parseAmount(raw: FormDataEntryValue | null): number | null | 'bad' {
 }
 
 // ----------------------------------------------------------------------------
-// Daily entry: save both work types for one date in the current season.
+// Daily entry: save all four tracks for one date in the current season.
 // ----------------------------------------------------------------------------
 export async function saveOffSeasonDay(
   _prev: SaveResult,
@@ -63,23 +67,26 @@ export async function saveOffSeasonDay(
   const rows: {
     season_id: string;
     work_type: WorkType;
+    os_window: OsWindow;
     entry_date: string;
     scheduled_revenue: number;
     discount_given: number;
     created_by: string;
   }[] = [];
 
-  for (const wt of WORK_TYPES) {
-    const scheduled = parseAmount(formData.get(`scheduled__${wt}`));
-    const discount = parseAmount(formData.get(`discount__${wt}`));
+  for (const { workType, osWindow } of TRACKS) {
+    const key = trackKey(workType, osWindow);
+    const scheduled = parseAmount(formData.get(`scheduled__${key}`));
+    const discount = parseAmount(formData.get(`discount__${key}`));
     if (scheduled === 'bad' || discount === 'bad') {
-      return { ok: false, error: `Please check the numbers for ${wt}.` };
+      return { ok: false, error: 'Please check the numbers you entered.' };
     }
-    // Skip a work type entirely if both fields are blank for this day.
+    // Skip a track entirely if both fields are blank for this day.
     if (scheduled == null && discount == null) continue;
     rows.push({
       season_id: seasonId,
-      work_type: wt,
+      work_type: workType,
+      os_window: osWindow,
       entry_date: date,
       scheduled_revenue: scheduled ?? 0,
       discount_given: discount ?? 0,
@@ -94,7 +101,7 @@ export async function saveOffSeasonDay(
   const supabase = await serverClient();
   const { error } = await supabase
     .from('off_season_entries')
-    .upsert(rows, { onConflict: 'season_id,work_type,entry_date' });
+    .upsert(rows, { onConflict: 'season_id,work_type,os_window,entry_date' });
   if (error) return { ok: false, error: error.message };
 
   revalidatePath('/off-season');
@@ -103,7 +110,7 @@ export async function saveOffSeasonDay(
 }
 
 // ----------------------------------------------------------------------------
-// Delete one day's entry (both work types) — the "×" on the entry form.
+// Delete one day's entries (all tracks) — the "Clear this day" button.
 // ----------------------------------------------------------------------------
 export async function deleteOffSeasonDay(formData: FormData): Promise<void> {
   const user = await getAllowedUser();
@@ -129,7 +136,7 @@ export async function deleteOffSeasonDay(formData: FormData): Promise<void> {
 }
 
 // ----------------------------------------------------------------------------
-// Settings: goals + windows per work type, and which season is current.
+// Settings: goals + windows per track, and which season is current.
 // ----------------------------------------------------------------------------
 export async function saveOffSeasonSettings(
   _prev: SaveResult,
@@ -143,11 +150,11 @@ export async function saveOffSeasonSettings(
 
   const supabase = await serverClient();
 
-  // Target rows to upsert. Fields are named goal__<sid>__<wt>,
-  // start__<sid>__<wt>, end__<sid>__<wt>. We drive off the goal fields.
+  // Fields: goal__<sid>__<workType>__<osWindow> (+ start__ / end__).
   const targets: {
     season_id: string;
     work_type: WorkType;
+    os_window: OsWindow;
     goal_amount: number;
     window_start: string;
     window_end: string;
@@ -155,19 +162,17 @@ export async function saveOffSeasonSettings(
 
   for (const key of formData.keys()) {
     if (!key.startsWith('goal__')) continue;
-    const rest = key.slice('goal__'.length);
-    const sep = rest.lastIndexOf('__');
-    if (sep < 0) continue;
-    const seasonId = rest.slice(0, sep);
-    const wt = rest.slice(sep + 2) as WorkType;
-    if (!WORK_TYPES.includes(wt)) continue;
+    const parts = key.slice('goal__'.length).split('__');
+    if (parts.length !== 3) continue;
+    const [seasonId, wt, win] = parts as [string, WorkType, OsWindow];
+    if (!WORK_TYPES.includes(wt) || !OS_WINDOWS.includes(win)) continue;
 
     const goal = parseAmount(formData.get(key));
     if (goal === 'bad') {
       return { ok: false, error: 'Please check the goal amounts.' };
     }
-    const start = String(formData.get(`start__${seasonId}__${wt}`) ?? '');
-    const end = String(formData.get(`end__${seasonId}__${wt}`) ?? '');
+    const start = String(formData.get(`start__${seasonId}__${wt}__${win}`) ?? '');
+    const end = String(formData.get(`end__${seasonId}__${wt}__${win}`) ?? '');
     if (!isValidIsoDate(start) || !isValidIsoDate(end)) {
       return { ok: false, error: 'Please pick valid window start/end dates.' };
     }
@@ -177,6 +182,7 @@ export async function saveOffSeasonSettings(
     targets.push({
       season_id: seasonId,
       work_type: wt,
+      os_window: win,
       goal_amount: goal ?? 0,
       window_start: start,
       window_end: end,
@@ -186,12 +192,11 @@ export async function saveOffSeasonSettings(
   if (targets.length > 0) {
     const { error } = await supabase
       .from('off_season_targets')
-      .upsert(targets, { onConflict: 'season_id,work_type' });
+      .upsert(targets, { onConflict: 'season_id,work_type,os_window' });
     if (error) return { ok: false, error: error.message };
   }
 
-  // Which season is current? Flip in two steps so we never momentarily have
-  // two current seasons (a partial unique index forbids that).
+  // Flip the current season in two steps so we never momentarily have two.
   const currentSeasonId = String(formData.get('current_season_id') ?? '');
   if (currentSeasonId) {
     const clearRes = await supabase

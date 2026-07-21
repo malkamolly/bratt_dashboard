@@ -3,9 +3,10 @@ import { requireHubAccess } from '@/lib/auth';
 import {
   loadEntrySeason,
   todayIso,
-  WORK_TYPES,
+  TRACKS,
+  trackKey,
   WORK_TYPE_LABELS,
-  WORK_TYPE_BLURB,
+  WINDOW_LABELS,
 } from '@/lib/off-season-data';
 import { EntryForm } from './EntryForm';
 
@@ -26,13 +27,15 @@ export default async function OffSeasonEntryPage({
 
   const entry = await loadEntrySeason(date);
 
-  // Rows for the form: one per work type, with any existing values pre-filled.
-  const rows = WORK_TYPES.map((wt) => {
-    const v = entry?.values[wt];
+  // One input group per track, with any existing values pre-filled.
+  const rows = TRACKS.map(({ workType, osWindow }) => {
+    const key = trackKey(workType, osWindow);
+    const v = entry?.values[key];
     return {
-      workType: wt,
-      label: WORK_TYPE_LABELS[wt],
-      blurb: WORK_TYPE_BLURB[wt],
+      key,
+      workType,
+      typeLabel: WORK_TYPE_LABELS[workType],
+      windowLabel: WINDOW_LABELS[osWindow],
       scheduled: v?.scheduled != null ? String(v.scheduled) : '',
       discount: v?.discount != null ? String(v.discount) : '',
     };
@@ -57,10 +60,10 @@ export default async function OffSeasonEntryPage({
         Enter the day
       </h1>
       <p className="mt-4 text-fg-2">
-        For each type, enter the <strong>running total booked so far</strong>{' '}
+        For each track, enter the <strong>running total booked so far</strong>{' '}
         and the <strong>total discount given</strong> &mdash; the same
-        cumulative numbers the old spreadsheet tracked. The dashboard does the
-        rest of the math.
+        cumulative numbers the old spreadsheet tracked. Leave a track blank to
+        skip it. The dashboard does the rest of the math.
       </p>
 
       {!entry ? (

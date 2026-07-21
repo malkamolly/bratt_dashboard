@@ -10,15 +10,16 @@ import {
 } from '../actions';
 
 type Row = {
+  key: string; // `${workType}__${osWindow}`
   workType: string;
-  label: string;
-  blurb: string;
+  typeLabel: string;
+  windowLabel: string;
   scheduled: string;
   discount: string;
 };
 
 type Props = {
-  date: string; // YYYY-MM-DD
+  date: string;
   seasonId: string;
   rows: Row[];
   hasExisting: boolean;
@@ -45,20 +46,19 @@ export function EntryForm({ date, seasonId, rows, hasExisting }: Props) {
     undefined,
   );
 
-  // Editable copy of every field, keyed "scheduled__<wt>" / "discount__<wt>".
   const [fields, setFields] = useState<Record<string, string>>(() => {
     const m: Record<string, string> = {};
     for (const r of rows) {
-      m[`scheduled__${r.workType}`] = r.scheduled;
-      m[`discount__${r.workType}`] = r.discount;
+      m[`scheduled__${r.key}`] = r.scheduled;
+      m[`discount__${r.key}`] = r.discount;
     }
     return m;
   });
 
   const dirty = useMemo(() => {
     for (const r of rows) {
-      if (fields[`scheduled__${r.workType}`] !== r.scheduled) return true;
-      if (fields[`discount__${r.workType}`] !== r.discount) return true;
+      if (fields[`scheduled__${r.key}`] !== r.scheduled) return true;
+      if (fields[`discount__${r.key}`] !== r.discount) return true;
     }
     return false;
   }, [fields, rows]);
@@ -77,6 +77,15 @@ export function EntryForm({ date, seasonId, rows, hasExisting }: Props) {
   function set(name: string, value: string) {
     setFields((m) => ({ ...m, [name]: value }));
   }
+
+  // Group the four tracks by work type (two fieldsets, two windows each).
+  const groups = Array.from(new Set(rows.map((r) => r.workType))).map(
+    (wt) => ({
+      workType: wt,
+      typeLabel: rows.find((r) => r.workType === wt)!.typeLabel,
+      rows: rows.filter((r) => r.workType === wt),
+    }),
+  );
 
   return (
     <form action={formAction} className="space-y-6">
@@ -116,44 +125,45 @@ export function EntryForm({ date, seasonId, rows, hasExisting }: Props) {
       )}
 
       <div className="space-y-5">
-        {rows.map((r) => (
-          <fieldset
-            key={r.workType}
-            className="bt-card !p-5"
-          >
+        {groups.map((g) => (
+          <fieldset key={g.workType} className="bt-card !p-5">
             <legend className="px-1 font-headline text-lg font-black uppercase text-bark-deep">
-              {r.label}
+              {g.typeLabel}
             </legend>
-            <p className="mb-4 text-sm text-fg-2">{r.blurb}</p>
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              <label className="flex flex-col gap-1">
-                <span className="bt-eyebrow">Booked so far ($)</span>
-                <input
-                  type="text"
-                  inputMode="decimal"
-                  name={`scheduled__${r.workType}`}
-                  value={fields[`scheduled__${r.workType}`] ?? ''}
-                  onChange={(e) =>
-                    set(`scheduled__${r.workType}`, e.target.value)
-                  }
-                  placeholder="0"
-                  className="rounded-2 border-2 border-paper-edge bg-white px-3 py-2 text-right font-headline text-base focus:border-orange focus:outline-none"
-                />
-              </label>
-              <label className="flex flex-col gap-1">
-                <span className="bt-eyebrow">Discount given ($)</span>
-                <input
-                  type="text"
-                  inputMode="decimal"
-                  name={`discount__${r.workType}`}
-                  value={fields[`discount__${r.workType}`] ?? ''}
-                  onChange={(e) =>
-                    set(`discount__${r.workType}`, e.target.value)
-                  }
-                  placeholder="0"
-                  className="rounded-2 border-2 border-paper-edge bg-white px-3 py-2 text-right font-headline text-base focus:border-orange focus:outline-none"
-                />
-              </label>
+            <div className="mt-2 space-y-4">
+              {g.rows.map((r) => (
+                <div key={r.key}>
+                  <p className="font-headline text-xs font-extrabold uppercase tracking-ribbon text-wood">
+                    {r.windowLabel}
+                  </p>
+                  <div className="mt-2 grid grid-cols-1 gap-3 sm:grid-cols-2">
+                    <label className="flex flex-col gap-1">
+                      <span className="bt-eyebrow">Booked so far ($)</span>
+                      <input
+                        type="text"
+                        inputMode="decimal"
+                        name={`scheduled__${r.key}`}
+                        value={fields[`scheduled__${r.key}`] ?? ''}
+                        onChange={(e) => set(`scheduled__${r.key}`, e.target.value)}
+                        placeholder="0"
+                        className="rounded-2 border-2 border-paper-edge bg-white px-3 py-2 text-right font-headline text-base focus:border-orange focus:outline-none"
+                      />
+                    </label>
+                    <label className="flex flex-col gap-1">
+                      <span className="bt-eyebrow">Discount given ($)</span>
+                      <input
+                        type="text"
+                        inputMode="decimal"
+                        name={`discount__${r.key}`}
+                        value={fields[`discount__${r.key}`] ?? ''}
+                        onChange={(e) => set(`discount__${r.key}`, e.target.value)}
+                        placeholder="0"
+                        className="rounded-2 border-2 border-paper-edge bg-white px-3 py-2 text-right font-headline text-base focus:border-orange focus:outline-none"
+                      />
+                    </label>
+                  </div>
+                </div>
+              ))}
             </div>
           </fieldset>
         ))}

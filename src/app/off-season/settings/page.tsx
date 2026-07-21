@@ -1,6 +1,10 @@
 import Link from 'next/link';
 import { requireHubAccess } from '@/lib/auth';
-import { loadSettings, WORK_TYPE_LABELS } from '@/lib/off-season-data';
+import {
+  loadSettings,
+  WORK_TYPE_LABELS,
+  WINDOW_LABELS,
+} from '@/lib/off-season-data';
 import { SettingsForm } from './SettingsForm';
 
 export const dynamic = 'force-dynamic';
@@ -22,7 +26,9 @@ export default async function OffSeasonSettingsPage({
     isCurrent: s.isCurrent,
     targets: s.targets.map((t) => ({
       workType: t.workType,
+      osWindow: t.osWindow,
       typeLabel: WORK_TYPE_LABELS[t.workType],
+      windowLabel: WINDOW_LABELS[t.osWindow],
       goalAmount: t.goalAmount,
       windowStart: t.windowStart,
       windowEnd: t.windowEnd,
