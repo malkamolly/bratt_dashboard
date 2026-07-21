@@ -3,8 +3,10 @@ import { requireHubAccess } from '@/lib/auth';
 import { fmtUsd, fmtPct } from '@/lib/format';
 import {
   loadDashboard,
+  OS_WINDOWS,
   WORK_TYPES,
   WORK_TYPE_LABELS,
+  WINDOW_LABELS,
   type TrackSummary,
   type Totals,
 } from '@/lib/off-season-data';
@@ -20,12 +22,6 @@ function niceDate(iso: string): string {
     day: 'numeric',
     year: 'numeric',
   });
-}
-
-// Short y-axis label for the totals chart, e.g. "Disc · Nov–Dec".
-function barName(t: TrackSummary): string {
-  const short = t.workType === 'discounted' ? 'Disc' : 'Dorm';
-  return `${short} · ${t.windowLabel}`;
 }
 
 export default async function OffSeasonPage({
@@ -134,16 +130,22 @@ export default async function OffSeasonPage({
 
               <div className="min-w-0 flex-1 rounded-2 bg-cream/5 p-3">
                 <OffSeasonTotals
-                  bars={data.tracks.map((t) => ({
-                    name: barName(t),
-                    workType: t.workType,
-                    booked: t.booked,
-                    goal: t.goalAmount,
+                  bars={OS_WINDOWS.map((win) => ({
+                    name: WINDOW_LABELS[win],
+                    discounted:
+                      data.tracks.find(
+                        (t) => t.osWindow === win && t.workType === 'discounted',
+                      )?.booked ?? 0,
+                    dormant:
+                      data.tracks.find(
+                        (t) => t.osWindow === win && t.workType === 'dormant',
+                      )?.booked ?? 0,
+                    goal: data.byWindow[win].goal,
                   }))}
                 />
                 <p className="mt-1 text-center text-[11px] text-cream/50">
-                  Filled bar = booked; the rest of each bar is what&rsquo;s left
-                  to goal. Orange = discounted, green = dormant.
+                  Each bar is a window&rsquo;s booking toward goal &mdash; orange
+                  = discounted, green = dormant, faint = left to goal.
                 </p>
               </div>
             </div>
