@@ -2,9 +2,10 @@
 
 // ============================================================================
 // Season totals visual (client): one horizontal bar per window (Nov–Dec,
-// Jan–March). Each bar stacks the booked revenue by work type — orange
-// discounted + green dormant — with the rest of the bar showing what's left
-// to that window's combined goal.
+// Jan–March). Each bar stacks booked revenue by work type — orange discounted
+// + green dormant — with a faint track showing what's left to that window's
+// combined goal. Colors are tuned for the DARK panel it sits on, so all axis
+// text and gridlines are cream, not ink.
 // ============================================================================
 
 import {
@@ -18,8 +19,11 @@ import {
 } from 'recharts';
 
 const ORANGE = '#EB4C1B';
-const GREEN = '#448629';
-const TRACK_FILL = '#E8DCC0'; // paper-edge — the "remaining to goal" portion
+const GREEN = '#72BB32'; // brighter green reads better on dark than green-dark
+const TRACK_FILL = 'rgba(255,248,236,0.12)'; // faint cream = "left to goal"
+const CREAM = '#FFF8EC';
+const CREAM_DIM = 'rgba(255,248,236,0.65)';
+const GRID = 'rgba(255,248,236,0.14)';
 
 export type TotalsBar = {
   name: string;
@@ -52,29 +56,36 @@ export function OffSeasonTotals({ bars }: { bars: TotalsBar[] }) {
       <BarChart
         layout="vertical"
         data={data}
-        margin={{ top: 4, right: 16, bottom: 4, left: 8 }}
-        barCategoryGap={22}
+        margin={{ top: 4, right: 20, bottom: 4, left: 8 }}
+        barCategoryGap={24}
       >
-        <CartesianGrid stroke="#E7DFCE" horizontal={false} />
+        <CartesianGrid stroke={GRID} horizontal={false} />
         <XAxis
           type="number"
           tickFormatter={usdShort}
-          tick={{ fontSize: 11, fill: '#26190E' }}
+          tick={{ fontSize: 11, fill: CREAM_DIM }}
+          tickLine={false}
+          axisLine={{ stroke: GRID }}
         />
         <YAxis
           type="category"
           dataKey="name"
           width={84}
-          tick={{ fontSize: 13, fill: '#26190E', fontWeight: 800 }}
+          tick={{ fontSize: 13, fill: CREAM, fontWeight: 800 }}
+          tickLine={false}
+          axisLine={false}
         />
         <Tooltip
-          cursor={{ fill: 'rgba(38,25,14,0.04)' }}
+          cursor={{ fill: 'rgba(255,248,236,0.06)' }}
           formatter={(v: number, key: string) => [usdFull(v), LABELS[key] ?? key]}
           contentStyle={{
             borderRadius: 12,
-            border: '2px solid #E7DFCE',
+            border: 'none',
+            background: '#3D2B14',
+            color: CREAM,
             fontSize: 12,
           }}
+          labelStyle={{ color: CREAM }}
         />
         <Bar dataKey="discounted" stackId="a" fill={ORANGE} radius={[4, 0, 0, 4]} />
         <Bar dataKey="dormant" stackId="a" fill={GREEN} />
