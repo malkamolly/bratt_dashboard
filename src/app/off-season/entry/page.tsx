@@ -7,6 +7,7 @@ import {
   trackKey,
   WORK_TYPE_LABELS,
   WINDOW_LABELS,
+  WORK_TYPE_HAS_DISCOUNT,
 } from '@/lib/off-season-data';
 import { EntryForm } from './EntryForm';
 
@@ -36,6 +37,7 @@ export default async function OffSeasonEntryPage({
       workType,
       typeLabel: WORK_TYPE_LABELS[workType],
       windowLabel: WINDOW_LABELS[osWindow],
+      hasDiscount: WORK_TYPE_HAS_DISCOUNT[workType],
       scheduled: v?.scheduled != null ? String(v.scheduled) : '',
       discount: v?.discount != null ? String(v.discount) : '',
     };

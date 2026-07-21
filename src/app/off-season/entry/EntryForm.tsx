@@ -14,6 +14,7 @@ type Row = {
   workType: string;
   typeLabel: string;
   windowLabel: string;
+  hasDiscount: boolean;
   scheduled: string;
   discount: string;
 };
@@ -136,7 +137,11 @@ export function EntryForm({ date, seasonId, rows, hasExisting }: Props) {
                   <p className="font-headline text-xs font-extrabold uppercase tracking-ribbon text-wood">
                     {r.windowLabel}
                   </p>
-                  <div className="mt-2 grid grid-cols-1 gap-3 sm:grid-cols-2">
+                  <div
+                    className={`mt-2 grid grid-cols-1 gap-3 ${
+                      r.hasDiscount ? 'sm:grid-cols-2' : ''
+                    }`}
+                  >
                     <label className="flex flex-col gap-1">
                       <span className="bt-eyebrow">Booked so far ($)</span>
                       <input
@@ -149,18 +154,20 @@ export function EntryForm({ date, seasonId, rows, hasExisting }: Props) {
                         className="rounded-2 border-2 border-paper-edge bg-white px-3 py-2 text-right font-headline text-base focus:border-orange focus:outline-none"
                       />
                     </label>
-                    <label className="flex flex-col gap-1">
-                      <span className="bt-eyebrow">Discount given ($)</span>
-                      <input
-                        type="text"
-                        inputMode="decimal"
-                        name={`discount__${r.key}`}
-                        value={fields[`discount__${r.key}`] ?? ''}
-                        onChange={(e) => set(`discount__${r.key}`, e.target.value)}
-                        placeholder="0"
-                        className="rounded-2 border-2 border-paper-edge bg-white px-3 py-2 text-right font-headline text-base focus:border-orange focus:outline-none"
-                      />
-                    </label>
+                    {r.hasDiscount && (
+                      <label className="flex flex-col gap-1">
+                        <span className="bt-eyebrow">Discount given ($)</span>
+                        <input
+                          type="text"
+                          inputMode="decimal"
+                          name={`discount__${r.key}`}
+                          value={fields[`discount__${r.key}`] ?? ''}
+                          onChange={(e) => set(`discount__${r.key}`, e.target.value)}
+                          placeholder="0"
+                          className="rounded-2 border-2 border-paper-edge bg-white px-3 py-2 text-right font-headline text-base focus:border-orange focus:outline-none"
+                        />
+                      </label>
+                    )}
                   </div>
                 </div>
               ))}

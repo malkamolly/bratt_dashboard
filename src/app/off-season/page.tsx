@@ -7,6 +7,7 @@ import {
   WORK_TYPES,
   WORK_TYPE_LABELS,
   WINDOW_LABELS,
+  WORK_TYPE_HAS_DISCOUNT,
   type TrackSummary,
   type Totals,
 } from '@/lib/off-season-data';
@@ -242,17 +243,19 @@ function TrackCard({ t }: { t: TrackSummary }) {
         </div>
       </div>
 
-      <div className="mt-4 flex items-center justify-between rounded-2 border-2 border-paper-edge bg-paper/40 px-4 py-2.5">
-        <span className="font-headline text-xs font-extrabold uppercase tracking-ribbon text-fg-2">
-          Discounts given
-        </span>
-        <span className="font-headline text-base font-black text-ink">
-          {fmtUsd(t.discountGiven)}
-          <span className="ml-2 text-xs font-bold text-fg-2">
-            {fmtPct(t.discountPct)} of booked
+      {WORK_TYPE_HAS_DISCOUNT[t.workType] && (
+        <div className="mt-4 flex items-center justify-between rounded-2 border-2 border-paper-edge bg-paper/40 px-4 py-2.5">
+          <span className="font-headline text-xs font-extrabold uppercase tracking-ribbon text-fg-2">
+            Discounts given
           </span>
-        </span>
-      </div>
+          <span className="font-headline text-base font-black text-ink">
+            {fmtUsd(t.discountGiven)}
+            <span className="ml-2 text-xs font-bold text-fg-2">
+              {fmtPct(t.discountPct)} of booked
+            </span>
+          </span>
+        </div>
+      )}
 
       <div className="mt-5">
         <OffSeasonChart series={t.series} />

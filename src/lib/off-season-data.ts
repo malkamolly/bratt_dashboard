@@ -45,6 +45,13 @@ export const WINDOW_LABELS: Record<OsWindow, string> = {
   jan_march: 'Jan–March',
 };
 
+// Dormant work is mandatory (oaks must be done cold), so it's never discounted
+// — only the discounted push tracks discount dollars.
+export const WORK_TYPE_HAS_DISCOUNT: Record<WorkType, boolean> = {
+  discounted: true,
+  dormant: false,
+};
+
 // The four tracks, in display order (grouped by work type).
 export const TRACKS: { workType: WorkType; osWindow: OsWindow }[] =
   WORK_TYPES.flatMap((workType) =>
