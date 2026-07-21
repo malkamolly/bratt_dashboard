@@ -123,6 +123,10 @@ export async function middleware(req: NextRequest) {
     { prefix: '/sales', hub: 'pace' },
     { prefix: '/production', hub: 'pace' },
     { prefix: '/admin', hub: 'pace' },
+    // The Office Hub landing and the Off-Season tracker are office/dispatch
+    // tools — same audience as Pace (admin, office, sales manager).
+    { prefix: '/office', hub: 'pace' },
+    { prefix: '/off-season', hub: 'pace' },
     { prefix: '/hub', hub: 'hub' },
     { prefix: '/crew', hub: 'crew' },
   ];

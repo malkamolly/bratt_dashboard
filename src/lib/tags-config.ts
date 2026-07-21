@@ -63,6 +63,20 @@ export const TAGS_USERS: Record<string, TagsUserConfig> = {
     userGroups: [SCHEDULING],
   },
 
+  // Office team — surface @officeteam tags.
+  'gaby@bratttree.com': {
+    mutedChannels: [],
+    mutedMessages: [],
+    userGroups: [OFFICE],
+  },
+
+  // Same setup as Gaby.
+  'karen@bratttree.com': {
+    mutedChannels: [],
+    mutedMessages: [],
+    userGroups: [OFFICE],
+  },
+
   // --- Add the next employee here, e.g.: -------------------------------------
   // 'sean@bratttree.com': {
   //   mutedChannels: ['their-noisy-channel'],

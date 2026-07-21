@@ -1,7 +1,7 @@
 import Image from 'next/image';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
-import { allowedHubsFor, canSeeCostAnalysis, canUsePhcScheduling, getAllowedUser, isOwner, type Hub } from '@/lib/auth';
+import { allowedHubsFor, canSeeCostAnalysis, getAllowedUser, isOwner, type Hub } from '@/lib/auth';
 import { isTagsUser } from '@/lib/tags-config';
 import { getCurrentEmployeeSlug } from '@/lib/crew-data';
 
@@ -16,16 +16,9 @@ type HubCard = {
   available: boolean;
 };
 
+// Pace now lives inside the Office Hub (rendered separately below), so it's no
+// longer a top-level card here.
 const HUB_CARDS: HubCard[] = [
-  {
-    hub: 'pace',
-    href: '/pace',
-    eyebrow: 'Hub 1',
-    title: 'Pace Dashboard',
-    description:
-      'Daily sales and production pace. Goals, MTD totals, per-day burn rate, and weekly recaps.',
-    available: true,
-  },
   {
     hub: 'hub',
     href: '/hub',
@@ -94,6 +87,28 @@ export default async function LandingPage() {
       </section>
 
       <section className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
+        {/* Office Hub — nests Pace, Off-Season Work, PHC Scheduling, and Slack
+            Tags. Shown to office roles (pace access) or anyone on the Slack
+            Tags allowlist. */}
+        {(myHubs.includes('pace') || isTagsUser(user.email)) && (
+          <Link
+            href="/office"
+            className="bt-card group transition-colors hover:!border-orange"
+          >
+            <p className="bt-eyebrow">Hub 1</p>
+            <h2 className="mt-2 font-headline text-3xl font-black uppercase text-bark-deep">
+              Office Hub
+            </h2>
+            <p className="mt-3 text-sm text-fg-2">
+              Pace dashboards, off-season work tracking, PHC scheduling, and
+              your Slack tags &mdash; the whole office toolkit.
+            </p>
+            <p className="mt-6 font-headline text-xs font-extrabold uppercase tracking-ribbon text-orange">
+              Open &rarr;
+            </p>
+          </Link>
+        )}
+
         {visibleCards.map((card) =>
           card.available ? (
             <Link
@@ -128,27 +143,6 @@ export default async function LandingPage() {
           ),
         )}
 
-        {/* PHC Scheduling — office/dispatch renewal scheduling tool. */}
-        {canUsePhcScheduling(user.role) && (
-          <Link
-            href="/phc"
-            className="bt-card group transition-colors hover:!border-orange"
-          >
-            <p className="bt-eyebrow">Plant Health Care</p>
-            <h2 className="mt-2 font-headline text-3xl font-black uppercase text-bark-deep">
-              PHC Scheduling
-            </h2>
-            <p className="mt-3 text-sm text-fg-2">
-              Turn the season&apos;s renewals export into an organized call list
-              &mdash; bundled by property, flagged for missing info, ordered by
-              treatment timing.
-            </p>
-            <p className="mt-6 font-headline text-xs font-extrabold uppercase tracking-ribbon text-orange">
-              Open &rarr;
-            </p>
-          </Link>
-        )}
-
         {/* Cost Analysis — leadership review tool (admins + sales manager). */}
         {canSeeCostAnalysis(user.role) && (
           <Link
@@ -181,26 +175,6 @@ export default async function LandingPage() {
             </h2>
             <p className="mt-3 text-sm text-fg-2">
               Your personal project checklist. Only you can see this.
-            </p>
-            <p className="mt-6 font-headline text-xs font-extrabold uppercase tracking-ribbon text-orange">
-              Open &rarr;
-            </p>
-          </Link>
-        )}
-
-        {/* Slack Tags — private per-user tag triage; shown to allowlisted users. */}
-        {isTagsUser(user.email) && (
-          <Link
-            href="/tags"
-            className="bt-card group transition-colors hover:!border-orange"
-          >
-            <p className="bt-eyebrow">Private</p>
-            <h2 className="mt-2 font-headline text-3xl font-black uppercase text-bark-deep">
-              Slack Tags
-            </h2>
-            <p className="mt-3 text-sm text-fg-2">
-              Every Slack message you&apos;re tagged in, sorted by what actually
-              needs a reply. Only you can see this.
             </p>
             <p className="mt-6 font-headline text-xs font-extrabold uppercase tracking-ribbon text-orange">
               Open &rarr;

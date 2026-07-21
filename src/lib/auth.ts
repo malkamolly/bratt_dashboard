@@ -112,6 +112,16 @@ export function canUseSops(role: Role): boolean {
 }
 
 /**
+ * Can this role use the Off-Season Work pace tracker (/off-season)? Office/
+ * dispatch tool, so admin + office (user) + the sales manager — the same set
+ * that uses the Pace hub and PHC scheduling. Mirrors off_season_can_access()
+ * in migration 062_off_season_pace.sql.
+ */
+export function canUseOffSeason(role: Role): boolean {
+  return role === 'admin' || role === 'user' || role === 'sales_manager';
+}
+
+/**
  * Can this role see the Tree Removal Cost Analysis? Leadership review tool —
  * limited to admins and the sales manager because it surfaces pricing and
  * per-salesperson comparisons.
