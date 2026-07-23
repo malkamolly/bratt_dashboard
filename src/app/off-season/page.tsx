@@ -9,7 +9,7 @@ import {
 } from '@/lib/off-season-data';
 import { OffSeasonChart } from './OffSeasonChart';
 import { OffSeasonTotals } from './OffSeasonTotals';
-import { CopyReport } from './CopyReport';
+import { CopyButton } from '@/components/CopyButton';
 
 export const dynamic = 'force-dynamic';
 
@@ -66,8 +66,8 @@ export default async function OffSeasonPage({
             Nov&ndash;Dec and Jan&ndash;March.
           </p>
         </div>
-        <div className="flex flex-shrink-0 flex-wrap gap-2">
-          {data && <CopyReport text={buildReport(data)} />}
+        <div className="flex flex-shrink-0 flex-wrap items-center gap-2">
+          {data && <CopyButton text={buildReport(data)} label="Copy" />}
           <Link href="/off-season/entry" className="bt-btn bt-btn-primary">
             Enter today
           </Link>

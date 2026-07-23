@@ -13,6 +13,26 @@ import { EntryForm } from './EntryForm';
 
 export const dynamic = 'force-dynamic';
 
+// ServiceTitan reports the numbers come from. Grouped so it's obvious which
+// report feeds which field on the form below.
+const REPORT_GROUPS: { heading: string; reports: { label: string; url: string }[] }[] = [
+  {
+    heading: 'Scheduled work',
+    reports: [
+      { label: 'Discounted — Nov/Dec', url: 'https://go.servicetitan.com/#/new/reports/205251409' },
+      { label: 'Discounted — Jan/March', url: 'https://go.servicetitan.com/#/new/reports/205244081' },
+      { label: 'Dormant — Nov/Dec', url: 'https://go.servicetitan.com/#/new/reports/205436316' },
+      { label: 'Dormant — Jan/March', url: 'https://go.servicetitan.com/#/new/reports/180568124' },
+    ],
+  },
+  {
+    heading: 'Discounts',
+    reports: [
+      { label: 'Off-Season Discounts', url: 'https://go.servicetitan.com/#/new/reports/204773557' },
+    ],
+  },
+];
+
 function isValidIsoDate(s: string): boolean {
   return /^\d{4}-\d{2}-\d{2}$/.test(s) && !Number.isNaN(new Date(`${s}T00:00:00`).getTime());
 }
@@ -67,6 +87,36 @@ export default async function OffSeasonEntryPage({
         discounted work. Leave a track blank to skip it. The dashboard sums the
         tracks into each window&rsquo;s combined total.
       </p>
+
+      {/* Where the numbers come from — the ServiceTitan reports. */}
+      <section className="mt-6 rounded-2 border-2 border-paper-edge bg-paper/40 p-5">
+        <p className="font-headline text-xs font-extrabold uppercase tracking-ribbon text-fg-2">
+          Pull the numbers &mdash; ServiceTitan reports
+        </p>
+        <div className="mt-3 grid grid-cols-1 gap-4 sm:grid-cols-2">
+          {REPORT_GROUPS.map((g) => (
+            <div key={g.heading}>
+              <p className="font-headline text-[11px] font-extrabold uppercase tracking-ribbon text-wood">
+                {g.heading}
+              </p>
+              <ul className="mt-1.5 space-y-1">
+                {g.reports.map((r) => (
+                  <li key={r.url}>
+                    <a
+                      href={r.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="font-semibold text-orange underline decoration-orange/40 underline-offset-2 hover:decoration-orange"
+                    >
+                      {r.label} &nearr;
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ))}
+        </div>
+      </section>
 
       {!entry ? (
         <p className="mt-8 rounded-2 border-2 border-paper-edge bg-paper/40 px-4 py-6 text-fg-2">
