@@ -50,10 +50,9 @@ export default async function OffSeasonPage({
             Off-Season Work
           </h1>
           <p className="mt-4 max-w-2xl text-fg-2">
-            Discounted and dormant work counted together, tracked toward a
-            combined goal in each window &mdash; Nov&ndash;Dec and
-            Jan&ndash;March. Sold work drives the milestones; scheduled rides
-            alongside.
+            Scheduled off-season work &mdash; discounted and dormant counted
+            together &mdash; tracked toward a combined goal in each window,
+            Nov&ndash;Dec and Jan&ndash;March.
           </p>
         </div>
         <div className="flex flex-shrink-0 gap-2">
@@ -104,18 +103,17 @@ export default async function OffSeasonPage({
             <div className="flex flex-col gap-6 lg:flex-row lg:items-center">
               <div className="lg:w-64 lg:flex-shrink-0">
                 <p className="font-headline text-xs font-extrabold uppercase tracking-ribbon text-lime">
-                  Sold &mdash; both windows
+                  Scheduled &mdash; both windows
                 </p>
                 <p className="mt-2 font-headline text-5xl font-black leading-none">
-                  {fmtUsd(data.grand.sold)}
+                  {fmtUsd(data.grand.scheduled)}
                 </p>
                 <p className="mt-2 text-sm text-cream/70">
                   {fmtPct(data.grand.pctToGoal)} of {fmtUsd(data.grand.goal)}{' '}
                   combined goal
                 </p>
                 <p className="mt-1 text-sm text-cream/70">
-                  {fmtUsd(data.grand.scheduled)} scheduled &middot;{' '}
-                  {fmtUsd(data.grand.discount)} in discounts
+                  {fmtUsd(data.grand.discount)} in discounts given
                 </p>
               </div>
 
@@ -124,15 +122,16 @@ export default async function OffSeasonPage({
                   bars={data.windows.map((w) => ({
                     name: w.windowLabel,
                     discounted:
-                      w.breakdown.find((b) => b.workType === 'discounted')?.sold ?? 0,
+                      w.breakdown.find((b) => b.workType === 'discounted')?.scheduled ?? 0,
                     dormant:
-                      w.breakdown.find((b) => b.workType === 'dormant')?.sold ?? 0,
+                      w.breakdown.find((b) => b.workType === 'dormant')?.scheduled ?? 0,
                     goal: w.goalAmount,
                   }))}
                 />
                 <p className="mt-1 text-center text-[11px] text-cream/50">
-                  Combined <strong>sold</strong> per window toward goal &mdash;
-                  orange = discounted, green = dormant, faint = left to goal.
+                  Combined <strong>scheduled</strong> per window toward goal
+                  &mdash; orange = discounted, green = dormant, faint = left to
+                  goal.
                 </p>
               </div>
             </div>
@@ -167,7 +166,7 @@ function WindowCard({ w }: { w: WindowSummary }) {
     }
   }
 
-  const reachedGoal = w.goalAmount > 0 && w.sold >= w.goalAmount;
+  const reachedGoal = w.goalAmount > 0 && w.scheduled >= w.goalAmount;
   const milestoneCaption = reachedGoal
     ? 'Goal reached'
     : w.currentMilestone > 0
@@ -180,9 +179,9 @@ function WindowCard({ w }: { w: WindowSummary }) {
         <div>
           <p className="bt-eyebrow">{WINDOW_LABELS[w.osWindow]}</p>
           <h2 className="mt-1 font-headline text-3xl font-black uppercase text-bark-deep">
-            {fmtUsd(w.sold)}
+            {fmtUsd(w.scheduled)}
             <span className="ml-2 text-base font-bold text-fg-2">
-              sold of {fmtUsd(w.goalAmount)}
+              scheduled of {fmtUsd(w.goalAmount)}
             </span>
           </h2>
         </div>
@@ -191,7 +190,7 @@ function WindowCard({ w }: { w: WindowSummary }) {
 
       <div className="mt-4">
         <MilestoneBar
-          sold={w.sold}
+          value={w.scheduled}
           goal={w.goalAmount}
           step={w.milestoneStep}
         />
@@ -204,8 +203,7 @@ function WindowCard({ w }: { w: WindowSummary }) {
           </span>
         </div>
         <p className="mt-1 text-xs text-fg-3">
-          {niceDate(w.windowStart)} &ndash; {niceDate(w.windowEnd)} &middot;{' '}
-          {fmtUsd(w.scheduled)} scheduled ({fmtPct(w.scheduledPctOfSold)} of sold)
+          {niceDate(w.windowStart)} &ndash; {niceDate(w.windowEnd)}
         </p>
       </div>
 
@@ -226,15 +224,15 @@ function WindowCard({ w }: { w: WindowSummary }) {
 // A milestone ladder: an orange progress fill toward goal, with a tick at each
 // $-rung. Reached rungs are dark; upcoming ones faint.
 function MilestoneBar({
-  sold,
+  value,
   goal,
   step,
 }: {
-  sold: number;
+  value: number;
   goal: number;
   step: number;
 }) {
-  const pct = goal > 0 ? Math.max(0, Math.min(1, sold / goal)) : 0;
+  const pct = goal > 0 ? Math.max(0, Math.min(1, value / goal)) : 0;
   const rungs: number[] = [];
   if (goal > 0 && step > 0) {
     for (let m = step; m < goal - 1; m += step) rungs.push(m);
@@ -250,7 +248,7 @@ function MilestoneBar({
       />
       {rungs.map((m) => {
         const left = (m / goal) * 100;
-        const reached = sold >= m;
+        const reached = value >= m;
         return (
           <span
             key={m}
@@ -273,9 +271,8 @@ function BreakdownTile({ b }: { b: TrackBreakdown }) {
         {b.typeLabel}
       </p>
       <p className="mt-0.5 font-headline text-lg font-black leading-tight text-ink">
-        {fmtUsd(b.sold)}
+        {fmtUsd(b.scheduled)}
       </p>
-      <p className="text-xs text-fg-2">{fmtUsd(b.scheduled)} scheduled</p>
       {b.hasDiscount && (
         <p className="text-xs text-fg-2">{fmtUsd(b.discount)} discounts</p>
       )}

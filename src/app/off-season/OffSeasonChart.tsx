@@ -3,10 +3,9 @@
 // ============================================================================
 // Off-Season pace chart (client — recharts must run client-side).
 // ============================================================================
-// One chart per track: sold revenue (orange area, the primary metric) against
-// the even-pace goal ramp (dashed bark line), with scheduled revenue (teal
-// line) riding underneath so you can see how much of what's sold is on the
-// calendar. Sold above the dashed line = ahead of pace.
+// One chart per window: combined scheduled revenue (orange area) against the
+// even-pace goal ramp (dashed bark line). Scheduled above the dashed line =
+// ahead of pace for today's date.
 // ============================================================================
 
 import {
@@ -18,12 +17,10 @@ import {
   YAxis,
   CartesianGrid,
   Tooltip,
-  Legend,
 } from 'recharts';
 import type { SeriesPoint } from '@/lib/off-season-data';
 
 const ORANGE = '#EB4C1B';
-const TEAL = '#0096AA';
 const BARK = '#26190E';
 
 const usdShort = (n: number) => {
@@ -40,7 +37,6 @@ const shortDate = (iso: string) => {
 };
 
 const SERIES_LABELS: Record<string, string> = {
-  sold: 'Sold',
   scheduled: 'Scheduled',
   ramp: 'Goal pace',
 };
@@ -49,8 +45,8 @@ export function OffSeasonChart({ series }: { series: SeriesPoint[] }) {
   if (series.length === 0) {
     return (
       <div className="flex h-[260px] items-center justify-center rounded-2 border-2 border-dashed border-paper-edge bg-paper/40 px-6 text-center text-sm text-fg-3">
-        No daily numbers entered yet. Once you start logging days, sold and
-        scheduled pace show up here.
+        No daily numbers entered yet. Once you start logging days, the scheduled
+        pace shows up here.
       </div>
     );
   }
@@ -62,7 +58,7 @@ export function OffSeasonChart({ series }: { series: SeriesPoint[] }) {
         margin={{ top: 10, right: 12, bottom: 4, left: 4 }}
       >
         <defs>
-          <linearGradient id="soldFill" x1="0" y1="0" x2="0" y2="1">
+          <linearGradient id="schedFill" x1="0" y1="0" x2="0" y2="1">
             <stop offset="0%" stopColor={ORANGE} stopOpacity={0.35} />
             <stop offset="100%" stopColor={ORANGE} stopOpacity={0.04} />
           </linearGradient>
@@ -91,25 +87,12 @@ export function OffSeasonChart({ series }: { series: SeriesPoint[] }) {
             fontSize: 12,
           }}
         />
-        <Legend
-          verticalAlign="top"
-          height={24}
-          formatter={(name: string) => SERIES_LABELS[name] ?? name}
-          wrapperStyle={{ fontSize: 11 }}
-        />
         <Area
           type="monotone"
-          dataKey="sold"
+          dataKey="scheduled"
           stroke={ORANGE}
           strokeWidth={2.5}
-          fill="url(#soldFill)"
-        />
-        <Line
-          type="monotone"
-          dataKey="scheduled"
-          stroke={TEAL}
-          strokeWidth={2}
-          dot={false}
+          fill="url(#schedFill)"
         />
         <Line
           type="monotone"
