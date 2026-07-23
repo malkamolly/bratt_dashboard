@@ -19,7 +19,6 @@ import { serverClient } from '@/lib/supabase';
 import { getAllowedUser, canUseOffSeason } from '@/lib/auth';
 import {
   TRACKS,
-  WORK_TYPES,
   OS_WINDOWS,
   trackKey,
   type WorkType,
@@ -153,12 +152,12 @@ export async function saveOffSeasonSettings(
 
   const supabase = await serverClient();
 
-  // Fields: goal__<sid>__<workType>__<osWindow> (+ start__ / end__).
+  // Fields: goal__<sid>__<osWindow> (+ step__ / start__ / end__).
   const targets: {
     season_id: string;
-    work_type: WorkType;
     os_window: OsWindow;
     goal_amount: number;
+    milestone_step: number;
     window_start: string;
     window_end: string;
   }[] = [];
@@ -166,16 +165,17 @@ export async function saveOffSeasonSettings(
   for (const key of formData.keys()) {
     if (!key.startsWith('goal__')) continue;
     const parts = key.slice('goal__'.length).split('__');
-    if (parts.length !== 3) continue;
-    const [seasonId, wt, win] = parts as [string, WorkType, OsWindow];
-    if (!WORK_TYPES.includes(wt) || !OS_WINDOWS.includes(win)) continue;
+    if (parts.length !== 2) continue;
+    const [seasonId, win] = parts as [string, OsWindow];
+    if (!OS_WINDOWS.includes(win)) continue;
 
     const goal = parseAmount(formData.get(key));
-    if (goal === 'bad') {
-      return { ok: false, error: 'Please check the goal amounts.' };
+    const step = parseAmount(formData.get(`step__${seasonId}__${win}`));
+    if (goal === 'bad' || step === 'bad') {
+      return { ok: false, error: 'Please check the goal and milestone amounts.' };
     }
-    const start = String(formData.get(`start__${seasonId}__${wt}__${win}`) ?? '');
-    const end = String(formData.get(`end__${seasonId}__${wt}__${win}`) ?? '');
+    const start = String(formData.get(`start__${seasonId}__${win}`) ?? '');
+    const end = String(formData.get(`end__${seasonId}__${win}`) ?? '');
     if (!isValidIsoDate(start) || !isValidIsoDate(end)) {
       return { ok: false, error: 'Please pick valid window start/end dates.' };
     }
@@ -184,9 +184,9 @@ export async function saveOffSeasonSettings(
     }
     targets.push({
       season_id: seasonId,
-      work_type: wt,
       os_window: win,
       goal_amount: goal ?? 0,
+      milestone_step: step && step > 0 ? step : 100_000,
       window_start: start,
       window_end: end,
     });
@@ -195,7 +195,7 @@ export async function saveOffSeasonSettings(
   if (targets.length > 0) {
     const { error } = await supabase
       .from('off_season_targets')
-      .upsert(targets, { onConflict: 'season_id,work_type,os_window' });
+      .upsert(targets, { onConflict: 'season_id,os_window' });
     if (error) return { ok: false, error: error.message };
   }
 

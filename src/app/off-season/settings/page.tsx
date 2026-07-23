@@ -1,10 +1,6 @@
 import Link from 'next/link';
 import { requireHubAccess } from '@/lib/auth';
-import {
-  loadSettings,
-  WORK_TYPE_LABELS,
-  WINDOW_LABELS,
-} from '@/lib/off-season-data';
+import { loadSettings, WINDOW_LABELS } from '@/lib/off-season-data';
 import { SettingsForm } from './SettingsForm';
 
 export const dynamic = 'force-dynamic';
@@ -18,18 +14,15 @@ export default async function OffSeasonSettingsPage({
   const params = await searchParams;
   const settings = await loadSettings();
 
-  // Reshape into plain, client-safe data (attach a display label to each
-  // target so the client component doesn't import the server-only data module).
   const seasons = settings.map((s) => ({
     id: s.id,
     label: s.label,
     isCurrent: s.isCurrent,
-    targets: s.targets.map((t) => ({
-      workType: t.workType,
+    windows: s.targets.map((t) => ({
       osWindow: t.osWindow,
-      typeLabel: WORK_TYPE_LABELS[t.workType],
       windowLabel: WINDOW_LABELS[t.osWindow],
       goalAmount: t.goalAmount,
+      milestoneStep: t.milestoneStep,
       windowStart: t.windowStart,
       windowEnd: t.windowEnd,
     })),
@@ -52,17 +45,16 @@ export default async function OffSeasonSettingsPage({
         Goals &amp; Seasons
       </h1>
       <p className="mt-4 text-fg-2">
-        Set the dollar goal and the booking window for each work type. The
-        dashboard measures pace by spreading the goal evenly across its window,
-        so the &ldquo;ahead / behind&rdquo; call is only as good as these dates.
-        Pick which season the dashboard shows by default with{' '}
-        <strong>Current</strong>.
+        One combined goal per window &mdash; discounted and dormant work counted
+        together. Set the top goal, the milestone step (the size of each rung,
+        e.g. $100k), and the booking window. Pick which season the dashboard
+        shows by default with <strong>Current</strong>.
       </p>
 
       {settings.length === 0 ? (
         <p className="mt-8 rounded-2 border-2 border-paper-edge bg-paper/40 px-4 py-6 text-fg-2">
           No seasons exist yet. (The database seed creates them &mdash; if you
-          see this, the migration may not have run.)
+          see this, the migrations may not have run.)
         </p>
       ) : (
         <div className="mt-8">

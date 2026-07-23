@@ -3,13 +3,9 @@ import { requireHubAccess } from '@/lib/auth';
 import { fmtUsd, fmtPct } from '@/lib/format';
 import {
   loadDashboard,
-  OS_WINDOWS,
-  WORK_TYPES,
-  WORK_TYPE_LABELS,
   WINDOW_LABELS,
-  WORK_TYPE_HAS_DISCOUNT,
-  type TrackSummary,
-  type Totals,
+  type WindowSummary,
+  type TrackBreakdown,
 } from '@/lib/off-season-data';
 import { OffSeasonChart } from './OffSeasonChart';
 import { OffSeasonTotals } from './OffSeasonTotals';
@@ -54,10 +50,10 @@ export default async function OffSeasonPage({
             Off-Season Work
           </h1>
           <p className="mt-4 max-w-2xl text-fg-2">
-            Our off-season push, four tracks in all: the discounted work and the
-            dormant-season work, each split into the Nov&ndash;Dec and
-            Jan&ndash;March windows. Winter work is better for the yard &mdash;
-            this is where we track how it&rsquo;s booking up.
+            Discounted and dormant work counted together, tracked toward a
+            combined goal in each window &mdash; Nov&ndash;Dec and
+            Jan&ndash;March. Sold work drives the milestones; scheduled rides
+            alongside.
           </p>
         </div>
         <div className="flex flex-shrink-0 gap-2">
@@ -103,12 +99,12 @@ export default async function OffSeasonPage({
             </nav>
           )}
 
-          {/* ---- TOP: season totals across all four tracks ---- */}
+          {/* ---- TOP: combined sold across both windows ---- */}
           <section className="mt-8 rounded-card bg-bark p-6 text-cream sm:p-8">
             <div className="flex flex-col gap-6 lg:flex-row lg:items-center">
               <div className="lg:w-64 lg:flex-shrink-0">
                 <p className="font-headline text-xs font-extrabold uppercase tracking-ribbon text-lime">
-                  Sold &mdash; all tracks
+                  Sold &mdash; both windows
                 </p>
                 <p className="mt-2 font-headline text-5xl font-black leading-none">
                   {fmtUsd(data.grand.sold)}
@@ -121,160 +117,168 @@ export default async function OffSeasonPage({
                   {fmtUsd(data.grand.scheduled)} scheduled &middot;{' '}
                   {fmtUsd(data.grand.discount)} in discounts
                 </p>
-
-                <div className="mt-5 grid grid-cols-2 gap-2">
-                  <MiniTotal label="Discounted" t={data.byType.discounted} accent="text-apricot" />
-                  <MiniTotal label="Dormant" t={data.byType.dormant} accent="text-green" />
-                  <MiniTotal label="Nov–Dec" t={data.byWindow.nov_dec} accent="text-cream/80" />
-                  <MiniTotal label="Jan–March" t={data.byWindow.jan_march} accent="text-cream/80" />
-                </div>
               </div>
 
               <div className="min-w-0 flex-1 rounded-2 bg-cream/5 p-3">
                 <OffSeasonTotals
-                  bars={OS_WINDOWS.map((win) => ({
-                    name: WINDOW_LABELS[win],
+                  bars={data.windows.map((w) => ({
+                    name: w.windowLabel,
                     discounted:
-                      data.tracks.find(
-                        (t) => t.osWindow === win && t.workType === 'discounted',
-                      )?.sold ?? 0,
+                      w.breakdown.find((b) => b.workType === 'discounted')?.sold ?? 0,
                     dormant:
-                      data.tracks.find(
-                        (t) => t.osWindow === win && t.workType === 'dormant',
-                      )?.sold ?? 0,
-                    goal: data.byWindow[win].goal,
+                      w.breakdown.find((b) => b.workType === 'dormant')?.sold ?? 0,
+                    goal: w.goalAmount,
                   }))}
                 />
                 <p className="mt-1 text-center text-[11px] text-cream/50">
-                  Each bar is a window&rsquo;s <strong>sold</strong> work toward
-                  goal &mdash; orange = discounted, green = dormant, faint = left
-                  to goal.
+                  Combined <strong>sold</strong> per window toward goal &mdash;
+                  orange = discounted, green = dormant, faint = left to goal.
                 </p>
               </div>
             </div>
           </section>
 
-          {/* ---- DETAIL: one card per track, grouped by work type ---- */}
-          {WORK_TYPES.map((wt) => (
-            <section key={wt} className="mt-10">
-              <h2 className="font-headline text-2xl font-black uppercase text-bark-deep">
-                {WORK_TYPE_LABELS[wt]}
-              </h2>
-              <div className="mt-4 grid grid-cols-1 gap-6 lg:grid-cols-2">
-                {data.tracks
-                  .filter((t) => t.workType === wt)
-                  .map((t) => (
-                    <TrackCard key={`${t.workType}-${t.osWindow}`} t={t} />
-                  ))}
-              </div>
-            </section>
-          ))}
+          {/* ---- Per-window detail with milestone ladders ---- */}
+          <section className="mt-10 grid grid-cols-1 gap-6 lg:grid-cols-2">
+            {data.windows.map((w) => (
+              <WindowCard key={w.osWindow} w={w} />
+            ))}
+          </section>
         </>
       )}
     </main>
   );
 }
 
-function MiniTotal({
-  label,
-  t,
-  accent,
-}: {
-  label: string;
-  t: Totals;
-  accent: string;
-}) {
-  return (
-    <div className="rounded-2 border border-cream/15 px-3 py-2">
-      <p className={`font-headline text-[10px] font-extrabold uppercase tracking-ribbon ${accent}`}>
-        {label}
-      </p>
-      <p className="mt-0.5 font-headline text-lg font-black leading-tight">
-        {fmtUsd(t.sold)}
-      </p>
-    </div>
-  );
-}
-
-function TrackCard({ t }: { t: TrackSummary }) {
-  const pctClamped = Math.max(0, Math.min(1, t.pctToGoal));
-
-  const tolerance = 0.02 * t.goalAmount;
+function WindowCard({ w }: { w: WindowSummary }) {
+  const tolerance = 0.02 * w.goalAmount;
   let chipClass = 'bt-status-neutral';
   let chipText = 'Not started yet';
-  if (t.hasStarted) {
-    if (Math.abs(t.pace) <= tolerance) {
+  if (w.hasStarted) {
+    if (Math.abs(w.pace) <= tolerance) {
       chipClass = 'bt-status-onpace';
       chipText = 'On pace';
-    } else if (t.pace > 0) {
+    } else if (w.pace > 0) {
       chipClass = 'bt-status-ahead';
-      chipText = `${fmtUsd(t.pace)} ahead`;
+      chipText = `${fmtUsd(w.pace)} ahead`;
     } else {
       chipClass = 'bt-status-behind';
-      chipText = `${fmtUsd(Math.abs(t.pace))} behind`;
+      chipText = `${fmtUsd(Math.abs(w.pace))} behind`;
     }
   }
+
+  const reachedGoal = w.goalAmount > 0 && w.sold >= w.goalAmount;
+  const milestoneCaption = reachedGoal
+    ? 'Goal reached'
+    : w.currentMilestone > 0
+      ? `Passed ${fmtUsd(w.currentMilestone)} — next ${fmtUsd(w.nextMilestone)}`
+      : `Working toward the first ${fmtUsd(w.nextMilestone)}`;
 
   return (
     <article className="bt-card">
       <div className="flex items-start justify-between gap-3">
         <div>
-          <p className="bt-eyebrow">{t.windowLabel}</p>
-          <h3 className="mt-1 font-headline text-xl font-black uppercase text-bark-deep">
-            {fmtUsd(t.sold)}
-            <span className="ml-2 text-sm font-bold text-fg-2">
-              sold of {fmtUsd(t.goalAmount)}
+          <p className="bt-eyebrow">{WINDOW_LABELS[w.osWindow]}</p>
+          <h2 className="mt-1 font-headline text-3xl font-black uppercase text-bark-deep">
+            {fmtUsd(w.sold)}
+            <span className="ml-2 text-base font-bold text-fg-2">
+              sold of {fmtUsd(w.goalAmount)}
             </span>
-          </h3>
+          </h2>
         </div>
         <span className={chipClass}>{chipText}</span>
       </div>
 
-      <div className="mt-3">
-        <div className="h-3 w-full overflow-hidden rounded-full bg-paper-edge/60">
-          <div
-            className="h-full rounded-full bg-orange transition-all"
-            style={{ width: `${pctClamped * 100}%` }}
-          />
-        </div>
-        <div className="mt-1.5 flex justify-between font-headline text-xs font-extrabold uppercase tracking-ribbon text-fg-2">
-          <span>{fmtPct(t.pctToGoal)} to goal</span>
-          <span>
-            {niceDate(t.windowStart)} &ndash; {niceDate(t.windowEnd)}
+      <div className="mt-4">
+        <MilestoneBar
+          sold={w.sold}
+          goal={w.goalAmount}
+          step={w.milestoneStep}
+        />
+        <div className="mt-2 flex items-baseline justify-between gap-2">
+          <span className="font-headline text-sm font-extrabold uppercase tracking-ribbon text-orange">
+            {milestoneCaption}
           </span>
-        </div>
-      </div>
-
-      {/* Scheduled — how much of the sold work has landed on the calendar. */}
-      <div className="mt-4 flex items-center justify-between rounded-2 border-2 border-paper-edge bg-paper/40 px-4 py-2.5">
-        <span className="font-headline text-xs font-extrabold uppercase tracking-ribbon text-fg-2">
-          Scheduled
-        </span>
-        <span className="font-headline text-base font-black text-ink">
-          {fmtUsd(t.scheduled)}
-          <span className="ml-2 text-xs font-bold text-fg-2">
-            {fmtPct(t.scheduledPctOfSold)} of sold
-          </span>
-        </span>
-      </div>
-
-      {WORK_TYPE_HAS_DISCOUNT[t.workType] && (
-        <div className="mt-4 flex items-center justify-between rounded-2 border-2 border-paper-edge bg-paper/40 px-4 py-2.5">
           <span className="font-headline text-xs font-extrabold uppercase tracking-ribbon text-fg-2">
-            Discounts given
-          </span>
-          <span className="font-headline text-base font-black text-ink">
-            {fmtUsd(t.discountGiven)}
-            <span className="ml-2 text-xs font-bold text-fg-2">
-              {fmtPct(t.discountPct)} of booked
-            </span>
+            {fmtPct(w.pctToGoal)} to goal
           </span>
         </div>
-      )}
+        <p className="mt-1 text-xs text-fg-3">
+          {niceDate(w.windowStart)} &ndash; {niceDate(w.windowEnd)} &middot;{' '}
+          {fmtUsd(w.scheduled)} scheduled ({fmtPct(w.scheduledPctOfSold)} of sold)
+        </p>
+      </div>
+
+      {/* Breakdown: how the combined number splits across the two work types. */}
+      <div className="mt-4 grid grid-cols-2 gap-3">
+        {w.breakdown.map((b) => (
+          <BreakdownTile key={b.workType} b={b} />
+        ))}
+      </div>
 
       <div className="mt-5">
-        <OffSeasonChart series={t.series} />
+        <OffSeasonChart series={w.series} />
       </div>
     </article>
+  );
+}
+
+// A milestone ladder: an orange progress fill toward goal, with a tick at each
+// $-rung. Reached rungs are dark; upcoming ones faint.
+function MilestoneBar({
+  sold,
+  goal,
+  step,
+}: {
+  sold: number;
+  goal: number;
+  step: number;
+}) {
+  const pct = goal > 0 ? Math.max(0, Math.min(1, sold / goal)) : 0;
+  const rungs: number[] = [];
+  if (goal > 0 && step > 0) {
+    for (let m = step; m < goal - 1; m += step) rungs.push(m);
+    // Guard against pathological configs producing a huge number of ticks.
+    if (rungs.length > 40) rungs.length = 0;
+  }
+
+  return (
+    <div className="relative h-4 w-full overflow-hidden rounded-full bg-paper-edge/60">
+      <div
+        className="h-full rounded-full bg-orange transition-all"
+        style={{ width: `${pct * 100}%` }}
+      />
+      {rungs.map((m) => {
+        const left = (m / goal) * 100;
+        const reached = sold >= m;
+        return (
+          <span
+            key={m}
+            className={`absolute top-0 h-full w-px ${
+              reached ? 'bg-white/50' : 'bg-bark/25'
+            }`}
+            style={{ left: `${left}%` }}
+            aria-hidden="true"
+          />
+        );
+      })}
+    </div>
+  );
+}
+
+function BreakdownTile({ b }: { b: TrackBreakdown }) {
+  return (
+    <div className="rounded-2 border-2 border-paper-edge bg-paper/40 px-3 py-2.5">
+      <p className="font-headline text-[10px] font-extrabold uppercase tracking-ribbon text-wood">
+        {b.typeLabel}
+      </p>
+      <p className="mt-0.5 font-headline text-lg font-black leading-tight text-ink">
+        {fmtUsd(b.sold)}
+      </p>
+      <p className="text-xs text-fg-2">{fmtUsd(b.scheduled)} scheduled</p>
+      {b.hasDiscount && (
+        <p className="text-xs text-fg-2">{fmtUsd(b.discount)} discounts</p>
+      )}
+    </div>
   );
 }
