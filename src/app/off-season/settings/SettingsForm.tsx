@@ -9,8 +9,6 @@ type WindowInput = {
   windowLabel: string;
   goalAmount: number;
   milestoneStep: number;
-  windowStart: string;
-  windowEnd: string;
 };
 
 type SeasonInput = {
@@ -108,24 +106,6 @@ export function SettingsForm({
                         defaultValue={w.milestoneStep ? String(w.milestoneStep) : '100000'}
                         placeholder="100000"
                         className="rounded-2 border-2 border-paper-edge bg-white px-3 py-2 text-right font-headline text-base focus:border-orange focus:outline-none"
-                      />
-                    </label>
-                    <label className="flex flex-col gap-1">
-                      <span className="bt-eyebrow">Window start</span>
-                      <input
-                        type="date"
-                        name={`start__${base}`}
-                        defaultValue={w.windowStart}
-                        className="rounded-2 border-2 border-paper-edge bg-white px-3 py-2 font-headline text-sm focus:border-orange focus:outline-none"
-                      />
-                    </label>
-                    <label className="flex flex-col gap-1">
-                      <span className="bt-eyebrow">Window end</span>
-                      <input
-                        type="date"
-                        name={`end__${base}`}
-                        defaultValue={w.windowEnd}
-                        className="rounded-2 border-2 border-paper-edge bg-white px-3 py-2 font-headline text-sm focus:border-orange focus:outline-none"
                       />
                     </label>
                   </div>

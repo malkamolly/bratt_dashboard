@@ -23,8 +23,6 @@ export default async function OffSeasonSettingsPage({
       windowLabel: WINDOW_LABELS[t.osWindow],
       goalAmount: t.goalAmount,
       milestoneStep: t.milestoneStep,
-      windowStart: t.windowStart,
-      windowEnd: t.windowEnd,
     })),
   }));
 
@@ -46,9 +44,9 @@ export default async function OffSeasonSettingsPage({
       </h1>
       <p className="mt-4 text-fg-2">
         One combined goal per window &mdash; discounted and dormant work counted
-        together. Set the top goal, the milestone step (the size of each rung,
-        e.g. $100k), and the booking window. Pick which season the dashboard
-        shows by default with <strong>Current</strong>.
+        together. Set the top goal and the milestone step (the size of each rung,
+        e.g. $100k). Pick which season the dashboard shows by default with{' '}
+        <strong>Current</strong>.
       </p>
 
       {settings.length === 0 ? (

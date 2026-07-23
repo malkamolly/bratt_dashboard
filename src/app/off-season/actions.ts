@@ -149,14 +149,12 @@ export async function saveOffSeasonSettings(
 
   const supabase = await serverClient();
 
-  // Fields: goal__<sid>__<osWindow> (+ step__ / start__ / end__).
+  // Fields: goal__<sid>__<osWindow> (+ step__).
   const targets: {
     season_id: string;
     os_window: OsWindow;
     goal_amount: number;
     milestone_step: number;
-    window_start: string;
-    window_end: string;
   }[] = [];
 
   for (const key of formData.keys()) {
@@ -171,21 +169,11 @@ export async function saveOffSeasonSettings(
     if (goal === 'bad' || step === 'bad') {
       return { ok: false, error: 'Please check the goal and milestone amounts.' };
     }
-    const start = String(formData.get(`start__${seasonId}__${win}`) ?? '');
-    const end = String(formData.get(`end__${seasonId}__${win}`) ?? '');
-    if (!isValidIsoDate(start) || !isValidIsoDate(end)) {
-      return { ok: false, error: 'Please pick valid window start/end dates.' };
-    }
-    if (end < start) {
-      return { ok: false, error: 'A window end can’t be before its start.' };
-    }
     targets.push({
       season_id: seasonId,
       os_window: win,
       goal_amount: goal ?? 0,
       milestone_step: step && step > 0 ? step : 100_000,
-      window_start: start,
-      window_end: end,
     });
   }
 

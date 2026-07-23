@@ -10,9 +10,8 @@
 
 import {
   ResponsiveContainer,
-  ComposedChart,
+  AreaChart,
   Area,
-  Line,
   XAxis,
   YAxis,
   CartesianGrid,
@@ -36,11 +35,6 @@ const shortDate = (iso: string) => {
   return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 };
 
-const SERIES_LABELS: Record<string, string> = {
-  scheduled: 'Scheduled',
-  ramp: 'Goal pace',
-};
-
 export function OffSeasonChart({ series }: { series: SeriesPoint[] }) {
   if (series.length === 0) {
     return (
@@ -53,7 +47,7 @@ export function OffSeasonChart({ series }: { series: SeriesPoint[] }) {
 
   return (
     <ResponsiveContainer width="100%" height={260}>
-      <ComposedChart
+      <AreaChart
         data={series}
         margin={{ top: 10, right: 12, bottom: 4, left: 4 }}
       >
@@ -77,10 +71,7 @@ export function OffSeasonChart({ series }: { series: SeriesPoint[] }) {
         />
         <Tooltip
           labelFormatter={(iso) => shortDate(String(iso))}
-          formatter={(v: number, name: string) => [
-            usdFull(v),
-            SERIES_LABELS[name] ?? name,
-          ]}
+          formatter={(v: number) => [usdFull(v), 'Scheduled']}
           contentStyle={{
             borderRadius: 12,
             border: '2px solid #E7DFCE',
@@ -94,15 +85,7 @@ export function OffSeasonChart({ series }: { series: SeriesPoint[] }) {
           strokeWidth={2.5}
           fill="url(#schedFill)"
         />
-        <Line
-          type="monotone"
-          dataKey="ramp"
-          stroke={BARK}
-          strokeWidth={1.5}
-          strokeDasharray="5 4"
-          dot={false}
-        />
-      </ComposedChart>
+      </AreaChart>
     </ResponsiveContainer>
   );
 }

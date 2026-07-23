@@ -12,15 +12,6 @@ import { OffSeasonTotals } from './OffSeasonTotals';
 
 export const dynamic = 'force-dynamic';
 
-function niceDate(iso: string): string {
-  const d = new Date(`${iso}T00:00:00`);
-  return d.toLocaleDateString('en-US', {
-    month: 'short',
-    day: 'numeric',
-    year: 'numeric',
-  });
-}
-
 export default async function OffSeasonPage({
   searchParams,
 }: {
@@ -150,22 +141,6 @@ export default async function OffSeasonPage({
 }
 
 function WindowCard({ w }: { w: WindowSummary }) {
-  const tolerance = 0.02 * w.goalAmount;
-  let chipClass = 'bt-status-neutral';
-  let chipText = 'Not started yet';
-  if (w.hasStarted) {
-    if (Math.abs(w.pace) <= tolerance) {
-      chipClass = 'bt-status-onpace';
-      chipText = 'On pace';
-    } else if (w.pace > 0) {
-      chipClass = 'bt-status-ahead';
-      chipText = `${fmtUsd(w.pace)} ahead`;
-    } else {
-      chipClass = 'bt-status-behind';
-      chipText = `${fmtUsd(Math.abs(w.pace))} behind`;
-    }
-  }
-
   const reachedGoal = w.goalAmount > 0 && w.scheduled >= w.goalAmount;
   const milestoneCaption = reachedGoal
     ? 'Goal reached'
@@ -175,17 +150,14 @@ function WindowCard({ w }: { w: WindowSummary }) {
 
   return (
     <article className="bt-card">
-      <div className="flex items-start justify-between gap-3">
-        <div>
-          <p className="bt-eyebrow">{WINDOW_LABELS[w.osWindow]}</p>
-          <h2 className="mt-1 font-headline text-3xl font-black uppercase text-bark-deep">
-            {fmtUsd(w.scheduled)}
-            <span className="ml-2 text-base font-bold text-fg-2">
-              scheduled of {fmtUsd(w.goalAmount)}
-            </span>
-          </h2>
-        </div>
-        <span className={chipClass}>{chipText}</span>
+      <div>
+        <p className="bt-eyebrow">{WINDOW_LABELS[w.osWindow]}</p>
+        <h2 className="mt-1 font-headline text-3xl font-black uppercase text-bark-deep">
+          {fmtUsd(w.scheduled)}
+          <span className="ml-2 text-base font-bold text-fg-2">
+            scheduled of {fmtUsd(w.goalAmount)}
+          </span>
+        </h2>
       </div>
 
       <div className="mt-4">
@@ -202,9 +174,6 @@ function WindowCard({ w }: { w: WindowSummary }) {
             {fmtPct(w.pctToGoal)} to goal
           </span>
         </div>
-        <p className="mt-1 text-xs text-fg-3">
-          {niceDate(w.windowStart)} &ndash; {niceDate(w.windowEnd)}
-        </p>
       </div>
 
       {/* Breakdown: how the combined number splits across the two work types. */}

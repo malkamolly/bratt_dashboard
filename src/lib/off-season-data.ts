@@ -12,8 +12,10 @@
 //                → … up to a top goal.
 //
 // The tracked figure is SCHEDULED revenue — work on the calendar. Discounted
-// tracks also carry discount dollars. See migrations 062–064. (An earlier
-// "sold" figure was removed; the sold_revenue column, if present, is unused.)
+// tracks also carry discount dollars. There is no date-based "pace" — progress
+// is measured purely by how far up the milestone ladder the combined scheduled
+// total has climbed. See migrations 062–064. (Unused columns may linger in the
+// tables — sold_revenue, window_start/window_end — and are simply ignored.)
 // ============================================================================
 
 import { serverClient } from './supabase';
@@ -60,14 +62,11 @@ export type WindowTarget = {
   osWindow: OsWindow;
   goalAmount: number;
   milestoneStep: number;
-  windowStart: string;
-  windowEnd: string;
 };
 
 export type SeriesPoint = {
   date: string;
   scheduled: number;
-  ramp: number;
 };
 
 // Scheduled/discount for one track (work type) within a window.
@@ -82,15 +81,11 @@ export type TrackBreakdown = {
 // Everything the dashboard needs for one window (the combined view).
 export type WindowSummary = WindowTarget & {
   windowLabel: string;
-  asOf: string;
   scheduled: number; // combined, the tracked figure
   discount: number; // combined
-  expected: number; // even-pace target for combined scheduled, as of asOf
-  pace: number; // scheduled − expected
   pctToGoal: number; // scheduled / goal
   currentMilestone: number; // highest $-rung reached
   nextMilestone: number; // next rung to aim for
-  hasStarted: boolean;
   breakdown: TrackBreakdown[];
   series: SeriesPoint[];
 };
@@ -110,30 +105,15 @@ export type DashboardData = {
 };
 
 // ----------------------------------------------------------------------------
-// Date helpers
+// Helpers
 // ----------------------------------------------------------------------------
 
-function parseDay(s: string): Date {
-  return new Date(`${s}T00:00:00`);
-}
-function daysBetween(a: string, b: string): number {
-  return Math.round((parseDay(b).getTime() - parseDay(a).getTime()) / 86_400_000);
-}
-function clamp(n: number, lo: number, hi: number): number {
-  return Math.max(lo, Math.min(hi, n));
-}
 export function todayIso(): string {
   const d = new Date();
   const y = d.getFullYear();
   const m = String(d.getMonth() + 1).padStart(2, '0');
   const day = String(d.getDate()).padStart(2, '0');
   return `${y}-${m}-${day}`;
-}
-function rampValue(t: { windowStart: string; windowEnd: string; goalAmount: number }, date: string): number {
-  const total = daysBetween(t.windowStart, t.windowEnd);
-  if (total <= 0) return t.goalAmount;
-  const elapsed = clamp(daysBetween(t.windowStart, date), 0, total);
-  return (t.goalAmount * elapsed) / total;
 }
 
 // ----------------------------------------------------------------------------
@@ -155,19 +135,17 @@ export async function loadSeasons(): Promise<Season[]> {
 
 type Snapshot = { date: string; scheduled: number; discount: number };
 
-// Latest snapshot on or before `asOf`, or zeros.
-function latestUpTo(rows: Snapshot[], asOf: string): Snapshot {
-  const upTo = rows.filter((r) => r.date <= asOf);
-  return upTo.length > 0 ? upTo[upTo.length - 1] : { date: asOf, scheduled: 0, discount: 0 };
+// Latest snapshot overall (rows arrive sorted ascending), or zeros.
+function latest(rows: Snapshot[]): Snapshot {
+  return rows.length > 0
+    ? rows[rows.length - 1]
+    : { date: '', scheduled: 0, discount: 0 };
 }
 
 // Combined burn-up across both tracks: union of dates, carrying each track's
 // last value forward so the combined line is correct even when the two tracks
 // were logged on different days.
-function combinedSeries(
-  byType: Record<WorkType, Snapshot[]>,
-  target: WindowTarget,
-): SeriesPoint[] {
+function combinedSeries(byType: Record<WorkType, Snapshot[]>): SeriesPoint[] {
   const dates = Array.from(
     new Set(WORK_TYPES.flatMap((wt) => byType[wt].map((r) => r.date))),
   ).sort();
@@ -183,11 +161,7 @@ function combinedSeries(
         idx[wt]++;
       }
     }
-    return {
-      date,
-      scheduled: last.discounted + last.dormant,
-      ramp: rampValue(target, date),
-    };
+    return { date, scheduled: last.discounted + last.dormant };
   });
 }
 
@@ -206,7 +180,7 @@ export async function loadDashboard(
   const [targetsRes, entriesRes] = await Promise.all([
     supabase
       .from('off_season_targets')
-      .select('os_window, goal_amount, milestone_step, window_start, window_end')
+      .select('os_window, goal_amount, milestone_step')
       .eq('season_id', season.id),
     supabase
       .from('off_season_entries')
@@ -215,16 +189,12 @@ export async function loadDashboard(
       .order('entry_date', { ascending: true }),
   ]);
 
-  const today = todayIso();
-
   const windows: WindowSummary[] = OS_WINDOWS.map((osWindow) => {
     const tg = (targetsRes.data ?? []).find((r) => r.os_window === osWindow);
     const target: WindowTarget = {
       osWindow,
       goalAmount: tg ? Number(tg.goal_amount) : 0,
       milestoneStep: tg && Number(tg.milestone_step) > 0 ? Number(tg.milestone_step) : 100_000,
-      windowStart: (tg?.window_start as string) ?? today,
-      windowEnd: (tg?.window_end as string) ?? today,
     };
 
     const byType: Record<WorkType, Snapshot[]> = { discounted: [], dormant: [] };
@@ -237,10 +207,8 @@ export async function loadDashboard(
       });
     }
 
-    const asOf = season.isCurrent ? today : target.windowEnd;
-
     const breakdown: TrackBreakdown[] = WORK_TYPES.map((wt) => {
-      const s = latestUpTo(byType[wt], asOf);
+      const s = latest(byType[wt]);
       return {
         workType: wt,
         typeLabel: WORK_TYPE_LABELS[wt],
@@ -252,7 +220,6 @@ export async function loadDashboard(
 
     const scheduled = breakdown.reduce((a, b) => a + b.scheduled, 0);
     const discount = breakdown.reduce((a, b) => a + b.discount, 0);
-    const expected = rampValue(target, asOf);
 
     const step = target.milestoneStep;
     const currentMilestone = Math.min(Math.floor(scheduled / step) * step, target.goalAmount);
@@ -261,17 +228,13 @@ export async function loadDashboard(
     return {
       ...target,
       windowLabel: WINDOW_LABELS[osWindow],
-      asOf,
       scheduled,
       discount,
-      expected,
-      pace: scheduled - expected,
       pctToGoal: target.goalAmount > 0 ? scheduled / target.goalAmount : 0,
       currentMilestone,
       nextMilestone,
-      hasStarted: today >= target.windowStart,
       breakdown,
-      series: combinedSeries(byType, target),
+      series: combinedSeries(byType),
     };
   });
 
@@ -342,7 +305,7 @@ export async function loadSettings(): Promise<SeasonSettings[]> {
 
   const { data } = await supabase
     .from('off_season_targets')
-    .select('season_id, os_window, goal_amount, milestone_step, window_start, window_end');
+    .select('season_id, os_window, goal_amount, milestone_step');
 
   return seasons.map((s) => ({
     ...s,
@@ -354,8 +317,6 @@ export async function loadSettings(): Promise<SeasonSettings[]> {
         osWindow,
         goalAmount: t ? Number(t.goal_amount) : 0,
         milestoneStep: t && Number(t.milestone_step) > 0 ? Number(t.milestone_step) : 100_000,
-        windowStart: (t?.window_start as string) ?? '',
-        windowEnd: (t?.window_end as string) ?? '',
       };
     }),
   }));
