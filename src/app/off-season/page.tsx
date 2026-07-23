@@ -120,6 +120,9 @@ export default async function OffSeasonPage({
                 </div>
                 <p className="mt-3 text-sm text-cream/70">
                   {fmtUsd(data.grand.discount)} in discounts given
+                  <span className="block text-cream/50">
+                    {fmtPct(data.grand.discountPct)} of discounted work
+                  </span>
                 </p>
               </div>
 
@@ -259,7 +262,10 @@ function BreakdownTile({ b }: { b: TrackBreakdown }) {
         {fmtUsd(b.scheduled)}
       </p>
       {b.hasDiscount && (
-        <p className="text-xs text-fg-2">{fmtUsd(b.discount)} discounts</p>
+        <p className="text-xs text-fg-2">
+          {fmtUsd(b.discount)} discounts
+          {b.scheduled > 0 && ` (${fmtPct(b.discount / b.scheduled)})`}
+        </p>
       )}
     </div>
   );

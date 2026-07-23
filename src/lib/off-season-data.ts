@@ -84,6 +84,7 @@ export type WindowSummary = WindowTarget & {
   scheduled: number; // combined, the tracked figure
   discount: number; // combined
   pctToGoal: number; // scheduled / goal
+  discountPct: number; // discount / discounted-work scheduled (the discount rate)
   currentMilestone: number; // highest $-rung reached
   nextMilestone: number; // next rung to aim for
   breakdown: TrackBreakdown[];
@@ -95,6 +96,7 @@ export type Totals = {
   goal: number;
   discount: number;
   pctToGoal: number;
+  discountPct: number; // discount / discounted-work scheduled (the discount rate)
 };
 
 export type DashboardData = {
@@ -220,6 +222,11 @@ export async function loadDashboard(
 
     const scheduled = breakdown.reduce((a, b) => a + b.scheduled, 0);
     const discount = breakdown.reduce((a, b) => a + b.discount, 0);
+    // Discount rate is measured against DISCOUNTED work only (dormant is never
+    // discounted), matching the spreadsheet's "Total Discount Given %".
+    const discountedScheduled = breakdown
+      .filter((b) => b.hasDiscount)
+      .reduce((a, b) => a + b.scheduled, 0);
 
     const step = target.milestoneStep;
     const currentMilestone = Math.min(Math.floor(scheduled / step) * step, target.goalAmount);
@@ -231,6 +238,7 @@ export async function loadDashboard(
       scheduled,
       discount,
       pctToGoal: target.goalAmount > 0 ? scheduled / target.goalAmount : 0,
+      discountPct: discountedScheduled > 0 ? discount / discountedScheduled : 0,
       currentMilestone,
       nextMilestone,
       breakdown,
@@ -238,11 +246,18 @@ export async function loadDashboard(
     };
   });
 
+  const totalDiscountedScheduled = windows.reduce(
+    (a, w) =>
+      a + w.breakdown.filter((b) => b.hasDiscount).reduce((x, b) => x + b.scheduled, 0),
+    0,
+  );
+  const totalDiscount = windows.reduce((a, w) => a + w.discount, 0);
   const grand: Totals = {
     scheduled: windows.reduce((a, w) => a + w.scheduled, 0),
     goal: windows.reduce((a, w) => a + w.goalAmount, 0),
-    discount: windows.reduce((a, w) => a + w.discount, 0),
+    discount: totalDiscount,
     pctToGoal: 0,
+    discountPct: totalDiscountedScheduled > 0 ? totalDiscount / totalDiscountedScheduled : 0,
   };
   grand.pctToGoal = grand.goal > 0 ? grand.scheduled / grand.goal : 0;
 
