@@ -198,7 +198,11 @@ function WindowCard({ w }: { w: WindowSummary }) {
       {/* Breakdown: how the combined number splits across the two work types. */}
       <div className="mt-4 grid grid-cols-2 gap-3">
         {w.breakdown.map((b) => (
-          <BreakdownTile key={b.workType} b={b} />
+          <BreakdownTile
+            key={b.workType}
+            b={b}
+            discountShare={w.discountShareOfTotal}
+          />
         ))}
       </div>
 
@@ -252,7 +256,13 @@ function MilestoneBar({
   );
 }
 
-function BreakdownTile({ b }: { b: TrackBreakdown }) {
+function BreakdownTile({
+  b,
+  discountShare,
+}: {
+  b: TrackBreakdown;
+  discountShare: number;
+}) {
   return (
     <div className="rounded-2 border-2 border-paper-edge bg-paper/40 px-3 py-2.5">
       <p className="font-headline text-[10px] font-extrabold uppercase tracking-ribbon text-wood">
@@ -263,8 +273,7 @@ function BreakdownTile({ b }: { b: TrackBreakdown }) {
       </p>
       {b.hasDiscount && (
         <p className="text-xs text-fg-2">
-          {fmtUsd(b.discount)} discounts
-          {b.scheduled > 0 && ` (${fmtPct(b.discount / b.scheduled)})`}
+          {fmtUsd(b.discount)} discounts &middot; {fmtPct(discountShare)} of total
         </p>
       )}
     </div>

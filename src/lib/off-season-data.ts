@@ -85,6 +85,7 @@ export type WindowSummary = WindowTarget & {
   discount: number; // combined
   pctToGoal: number; // scheduled / goal
   discountPct: number; // discount / discounted-work scheduled (the discount rate)
+  discountShareOfTotal: number; // this window's discount ÷ total discount (both windows)
   currentMilestone: number; // highest $-rung reached
   nextMilestone: number; // next rung to aim for
   breakdown: TrackBreakdown[];
@@ -239,6 +240,7 @@ export async function loadDashboard(
       discount,
       pctToGoal: target.goalAmount > 0 ? scheduled / target.goalAmount : 0,
       discountPct: discountedScheduled > 0 ? discount / discountedScheduled : 0,
+      discountShareOfTotal: 0, // filled in once the both-window total is known
       currentMilestone,
       nextMilestone,
       breakdown,
@@ -260,6 +262,12 @@ export async function loadDashboard(
     discountPct: totalDiscountedScheduled > 0 ? totalDiscount / totalDiscountedScheduled : 0,
   };
   grand.pctToGoal = grand.goal > 0 ? grand.scheduled / grand.goal : 0;
+
+  // Each window's share of the total discount given (adds to 100%), matching
+  // the spreadsheet's "OS Discounts Given %".
+  for (const w of windows) {
+    w.discountShareOfTotal = totalDiscount !== 0 ? w.discount / totalDiscount : 0;
+  }
 
   return { season, seasons, windows, grand };
 }
