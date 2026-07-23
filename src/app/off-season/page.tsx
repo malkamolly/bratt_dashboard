@@ -9,8 +9,28 @@ import {
 } from '@/lib/off-season-data';
 import { OffSeasonChart } from './OffSeasonChart';
 import { OffSeasonTotals } from './OffSeasonTotals';
+import { CopyReport } from './CopyReport';
 
 export const dynamic = 'force-dynamic';
+
+// Plain-text morning summary for pasting into Slack.
+function buildReport(data: {
+  season: { label: string };
+  windows: WindowSummary[];
+  grand: { discount: number };
+}): string {
+  const lines: string[] = [`Off-Season Work — ${data.season.label}`, ''];
+  for (const w of data.windows) {
+    const disc = w.breakdown.find((b) => b.workType === 'discounted')?.scheduled ?? 0;
+    const dorm = w.breakdown.find((b) => b.workType === 'dormant')?.scheduled ?? 0;
+    lines.push(
+      `${w.windowLabel}: ${fmtUsd(w.scheduled)} of ${fmtUsd(w.goalAmount)} (${fmtPct(w.pctToGoal)})`,
+    );
+    lines.push(`   Discounted ${fmtUsd(disc)} · Dormant ${fmtUsd(dorm)}`);
+  }
+  lines.push('', `Discounts given: ${fmtUsd(data.grand.discount)}`);
+  return lines.join('\n');
+}
 
 export default async function OffSeasonPage({
   searchParams,
@@ -46,7 +66,8 @@ export default async function OffSeasonPage({
             Nov&ndash;Dec and Jan&ndash;March.
           </p>
         </div>
-        <div className="flex flex-shrink-0 gap-2">
+        <div className="flex flex-shrink-0 flex-wrap gap-2">
+          {data && <CopyReport text={buildReport(data)} />}
           <Link href="/off-season/entry" className="bt-btn bt-btn-primary">
             Enter today
           </Link>
@@ -94,16 +115,24 @@ export default async function OffSeasonPage({
             <div className="flex flex-col gap-6 lg:flex-row lg:items-center">
               <div className="lg:w-64 lg:flex-shrink-0">
                 <p className="font-headline text-xs font-extrabold uppercase tracking-ribbon text-lime">
-                  Scheduled &mdash; both windows
+                  Scheduled
                 </p>
-                <p className="mt-2 font-headline text-5xl font-black leading-none">
-                  {fmtUsd(data.grand.scheduled)}
-                </p>
-                <p className="mt-2 text-sm text-cream/70">
-                  {fmtPct(data.grand.pctToGoal)} of {fmtUsd(data.grand.goal)}{' '}
-                  combined goal
-                </p>
-                <p className="mt-1 text-sm text-cream/70">
+                <div className="mt-3 space-y-3">
+                  {data.windows.map((w) => (
+                    <div key={w.osWindow}>
+                      <p className="font-headline text-[11px] font-extrabold uppercase tracking-ribbon text-cream/60">
+                        {w.windowLabel}
+                      </p>
+                      <p className="font-headline text-3xl font-black leading-none">
+                        {fmtUsd(w.scheduled)}
+                      </p>
+                      <p className="mt-0.5 text-xs text-cream/70">
+                        {fmtPct(w.pctToGoal)} of {fmtUsd(w.goalAmount)}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+                <p className="mt-3 text-sm text-cream/70">
                   {fmtUsd(data.grand.discount)} in discounts given
                 </p>
               </div>
