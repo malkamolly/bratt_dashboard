@@ -69,6 +69,7 @@ export async function saveOffSeasonDay(
     work_type: WorkType;
     os_window: OsWindow;
     entry_date: string;
+    sold_revenue: number;
     scheduled_revenue: number;
     discount_given: number;
     created_by: string;
@@ -76,18 +77,20 @@ export async function saveOffSeasonDay(
 
   for (const { workType, osWindow } of TRACKS) {
     const key = trackKey(workType, osWindow);
+    const sold = parseAmount(formData.get(`sold__${key}`));
     const scheduled = parseAmount(formData.get(`scheduled__${key}`));
     const discount = parseAmount(formData.get(`discount__${key}`));
-    if (scheduled === 'bad' || discount === 'bad') {
+    if (sold === 'bad' || scheduled === 'bad' || discount === 'bad') {
       return { ok: false, error: 'Please check the numbers you entered.' };
     }
-    // Skip a track entirely if both fields are blank for this day.
-    if (scheduled == null && discount == null) continue;
+    // Skip a track entirely if every field is blank for this day.
+    if (sold == null && scheduled == null && discount == null) continue;
     rows.push({
       season_id: seasonId,
       work_type: workType,
       os_window: osWindow,
       entry_date: date,
+      sold_revenue: sold ?? 0,
       scheduled_revenue: scheduled ?? 0,
       discount_given: discount ?? 0,
       created_by: user.email,

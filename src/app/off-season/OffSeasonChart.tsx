@@ -3,9 +3,10 @@
 // ============================================================================
 // Off-Season pace chart (client — recharts must run client-side).
 // ============================================================================
-// One chart per work type: the cumulative booked revenue (orange area) against
-// the even-pace goal ramp (dashed bark line). Where the orange sits above the
-// dashed line, we're ahead of pace; below it, behind.
+// One chart per track: sold revenue (orange area, the primary metric) against
+// the even-pace goal ramp (dashed bark line), with scheduled revenue (teal
+// line) riding underneath so you can see how much of what's sold is on the
+// calendar. Sold above the dashed line = ahead of pace.
 // ============================================================================
 
 import {
@@ -17,10 +18,12 @@ import {
   YAxis,
   CartesianGrid,
   Tooltip,
+  Legend,
 } from 'recharts';
 import type { SeriesPoint } from '@/lib/off-season-data';
 
 const ORANGE = '#EB4C1B';
+const TEAL = '#0096AA';
 const BARK = '#26190E';
 
 const usdShort = (n: number) => {
@@ -31,18 +34,23 @@ const usdShort = (n: number) => {
 
 const usdFull = (n: number) => `$${Math.round(n).toLocaleString()}`;
 
-// "2025-11-08" -> "Nov 8"
 const shortDate = (iso: string) => {
   const d = new Date(`${iso}T00:00:00`);
   return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+};
+
+const SERIES_LABELS: Record<string, string> = {
+  sold: 'Sold',
+  scheduled: 'Scheduled',
+  ramp: 'Goal pace',
 };
 
 export function OffSeasonChart({ series }: { series: SeriesPoint[] }) {
   if (series.length === 0) {
     return (
       <div className="flex h-[260px] items-center justify-center rounded-2 border-2 border-dashed border-paper-edge bg-paper/40 px-6 text-center text-sm text-fg-3">
-        No daily numbers entered yet. Once you start logging days, the booking
-        pace shows up here.
+        No daily numbers entered yet. Once you start logging days, sold and
+        scheduled pace show up here.
       </div>
     );
   }
@@ -54,7 +62,7 @@ export function OffSeasonChart({ series }: { series: SeriesPoint[] }) {
         margin={{ top: 10, right: 12, bottom: 4, left: 4 }}
       >
         <defs>
-          <linearGradient id="bookedFill" x1="0" y1="0" x2="0" y2="1">
+          <linearGradient id="soldFill" x1="0" y1="0" x2="0" y2="1">
             <stop offset="0%" stopColor={ORANGE} stopOpacity={0.35} />
             <stop offset="100%" stopColor={ORANGE} stopOpacity={0.04} />
           </linearGradient>
@@ -75,7 +83,7 @@ export function OffSeasonChart({ series }: { series: SeriesPoint[] }) {
           labelFormatter={(iso) => shortDate(String(iso))}
           formatter={(v: number, name: string) => [
             usdFull(v),
-            name === 'booked' ? 'Booked' : 'Goal pace',
+            SERIES_LABELS[name] ?? name,
           ]}
           contentStyle={{
             borderRadius: 12,
@@ -83,12 +91,25 @@ export function OffSeasonChart({ series }: { series: SeriesPoint[] }) {
             fontSize: 12,
           }}
         />
+        <Legend
+          verticalAlign="top"
+          height={24}
+          formatter={(name: string) => SERIES_LABELS[name] ?? name}
+          wrapperStyle={{ fontSize: 11 }}
+        />
         <Area
           type="monotone"
-          dataKey="booked"
+          dataKey="sold"
           stroke={ORANGE}
           strokeWidth={2.5}
-          fill="url(#bookedFill)"
+          fill="url(#soldFill)"
+        />
+        <Line
+          type="monotone"
+          dataKey="scheduled"
+          stroke={TEAL}
+          strokeWidth={2}
+          dot={false}
         />
         <Line
           type="monotone"

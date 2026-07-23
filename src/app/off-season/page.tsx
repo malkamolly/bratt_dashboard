@@ -108,17 +108,18 @@ export default async function OffSeasonPage({
             <div className="flex flex-col gap-6 lg:flex-row lg:items-center">
               <div className="lg:w-64 lg:flex-shrink-0">
                 <p className="font-headline text-xs font-extrabold uppercase tracking-ribbon text-lime">
-                  On the books &mdash; all tracks
+                  Sold &mdash; all tracks
                 </p>
                 <p className="mt-2 font-headline text-5xl font-black leading-none">
-                  {fmtUsd(data.grand.booked)}
+                  {fmtUsd(data.grand.sold)}
                 </p>
                 <p className="mt-2 text-sm text-cream/70">
                   {fmtPct(data.grand.pctToGoal)} of {fmtUsd(data.grand.goal)}{' '}
                   combined goal
                 </p>
                 <p className="mt-1 text-sm text-cream/70">
-                  {fmtUsd(data.grand.discount)} in discounts given
+                  {fmtUsd(data.grand.scheduled)} scheduled &middot;{' '}
+                  {fmtUsd(data.grand.discount)} in discounts
                 </p>
 
                 <div className="mt-5 grid grid-cols-2 gap-2">
@@ -136,17 +137,18 @@ export default async function OffSeasonPage({
                     discounted:
                       data.tracks.find(
                         (t) => t.osWindow === win && t.workType === 'discounted',
-                      )?.booked ?? 0,
+                      )?.sold ?? 0,
                     dormant:
                       data.tracks.find(
                         (t) => t.osWindow === win && t.workType === 'dormant',
-                      )?.booked ?? 0,
+                      )?.sold ?? 0,
                     goal: data.byWindow[win].goal,
                   }))}
                 />
                 <p className="mt-1 text-center text-[11px] text-cream/50">
-                  Each bar is a window&rsquo;s booking toward goal &mdash; orange
-                  = discounted, green = dormant, faint = left to goal.
+                  Each bar is a window&rsquo;s <strong>sold</strong> work toward
+                  goal &mdash; orange = discounted, green = dormant, faint = left
+                  to goal.
                 </p>
               </div>
             </div>
@@ -188,7 +190,7 @@ function MiniTotal({
         {label}
       </p>
       <p className="mt-0.5 font-headline text-lg font-black leading-tight">
-        {fmtUsd(t.booked)}
+        {fmtUsd(t.sold)}
       </p>
     </div>
   );
@@ -219,9 +221,9 @@ function TrackCard({ t }: { t: TrackSummary }) {
         <div>
           <p className="bt-eyebrow">{t.windowLabel}</p>
           <h3 className="mt-1 font-headline text-xl font-black uppercase text-bark-deep">
-            {fmtUsd(t.booked)}
+            {fmtUsd(t.sold)}
             <span className="ml-2 text-sm font-bold text-fg-2">
-              of {fmtUsd(t.goalAmount)}
+              sold of {fmtUsd(t.goalAmount)}
             </span>
           </h3>
         </div>
@@ -241,6 +243,19 @@ function TrackCard({ t }: { t: TrackSummary }) {
             {niceDate(t.windowStart)} &ndash; {niceDate(t.windowEnd)}
           </span>
         </div>
+      </div>
+
+      {/* Scheduled — how much of the sold work has landed on the calendar. */}
+      <div className="mt-4 flex items-center justify-between rounded-2 border-2 border-paper-edge bg-paper/40 px-4 py-2.5">
+        <span className="font-headline text-xs font-extrabold uppercase tracking-ribbon text-fg-2">
+          Scheduled
+        </span>
+        <span className="font-headline text-base font-black text-ink">
+          {fmtUsd(t.scheduled)}
+          <span className="ml-2 text-xs font-bold text-fg-2">
+            {fmtPct(t.scheduledPctOfSold)} of sold
+          </span>
+        </span>
       </div>
 
       {WORK_TYPE_HAS_DISCOUNT[t.workType] && (

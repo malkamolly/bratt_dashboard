@@ -15,6 +15,7 @@ type Row = {
   typeLabel: string;
   windowLabel: string;
   hasDiscount: boolean;
+  sold: string;
   scheduled: string;
   discount: string;
 };
@@ -50,6 +51,7 @@ export function EntryForm({ date, seasonId, rows, hasExisting }: Props) {
   const [fields, setFields] = useState<Record<string, string>>(() => {
     const m: Record<string, string> = {};
     for (const r of rows) {
+      m[`sold__${r.key}`] = r.sold;
       m[`scheduled__${r.key}`] = r.scheduled;
       m[`discount__${r.key}`] = r.discount;
     }
@@ -58,6 +60,7 @@ export function EntryForm({ date, seasonId, rows, hasExisting }: Props) {
 
   const dirty = useMemo(() => {
     for (const r of rows) {
+      if (fields[`sold__${r.key}`] !== r.sold) return true;
       if (fields[`scheduled__${r.key}`] !== r.scheduled) return true;
       if (fields[`discount__${r.key}`] !== r.discount) return true;
     }
@@ -138,12 +141,24 @@ export function EntryForm({ date, seasonId, rows, hasExisting }: Props) {
                     {r.windowLabel}
                   </p>
                   <div
-                    className={`mt-2 grid grid-cols-1 gap-3 ${
-                      r.hasDiscount ? 'sm:grid-cols-2' : ''
+                    className={`mt-2 grid grid-cols-1 gap-3 sm:grid-cols-2 ${
+                      r.hasDiscount ? 'lg:grid-cols-3' : ''
                     }`}
                   >
                     <label className="flex flex-col gap-1">
-                      <span className="bt-eyebrow">Booked so far ($)</span>
+                      <span className="bt-eyebrow">Sold so far ($)</span>
+                      <input
+                        type="text"
+                        inputMode="decimal"
+                        name={`sold__${r.key}`}
+                        value={fields[`sold__${r.key}`] ?? ''}
+                        onChange={(e) => set(`sold__${r.key}`, e.target.value)}
+                        placeholder="0"
+                        className="rounded-2 border-2 border-paper-edge bg-white px-3 py-2 text-right font-headline text-base focus:border-orange focus:outline-none"
+                      />
+                    </label>
+                    <label className="flex flex-col gap-1">
+                      <span className="bt-eyebrow">Scheduled so far ($)</span>
                       <input
                         type="text"
                         inputMode="decimal"

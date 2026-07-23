@@ -38,12 +38,15 @@ export default async function OffSeasonEntryPage({
       typeLabel: WORK_TYPE_LABELS[workType],
       windowLabel: WINDOW_LABELS[osWindow],
       hasDiscount: WORK_TYPE_HAS_DISCOUNT[workType],
+      sold: v?.sold != null ? String(v.sold) : '',
       scheduled: v?.scheduled != null ? String(v.scheduled) : '',
       discount: v?.discount != null ? String(v.discount) : '',
     };
   });
 
-  const hasExisting = rows.some((r) => r.scheduled !== '' || r.discount !== '');
+  const hasExisting = rows.some(
+    (r) => r.sold !== '' || r.scheduled !== '' || r.discount !== '',
+  );
 
   return (
     <main className="mx-auto w-full max-w-3xl px-6 py-10">
@@ -62,10 +65,11 @@ export default async function OffSeasonEntryPage({
         Enter the day
       </h1>
       <p className="mt-4 text-fg-2">
-        For each track, enter the <strong>running total booked so far</strong>{' '}
-        and the <strong>total discount given</strong> &mdash; the same
-        cumulative numbers the old spreadsheet tracked. Leave a track blank to
-        skip it. The dashboard does the rest of the math.
+        For each track, enter the running totals so far:{' '}
+        <strong>Sold</strong> (estimates marked sold) and{' '}
+        <strong>Scheduled</strong> (what&rsquo;s on the calendar), plus the{' '}
+        <strong>discount given</strong> on discounted work. Sold is what the
+        dashboard tracks against goal. Leave a track blank to skip it.
       </p>
 
       {!entry ? (

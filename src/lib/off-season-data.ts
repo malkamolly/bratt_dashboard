@@ -10,14 +10,16 @@
 //   Dormant Season | dormant · nov_dec     | dormant · jan_march
 //
 //   * "discounted" — the discounted push.
-//   * "dormant"    — winter dormant-season work that must be done cold (oaks,
-//                    etc.) to limit disease spread. Mandatory, so rarely discounted.
+//   * "dormant"    — mandatory winter dormant-season work (oaks, etc.). Never
+//                    discounted.
 //
-// Each day the office records, per track, the running total of off-season
-// revenue on the books and the discount dollars given. This module turns those
-// snapshots into what the dashboard shows: per-track progress vs an even goal
-// ramp (ahead/behind pace), discount cost, and season totals across all four
-// tracks. See migration 062_off_season_pace.sql for the tables.
+// Each track carries two dollar figures per day:
+//   * SOLD      — estimates marked sold (work won). The PRIMARY metric: goals,
+//                 pace, and the dashboard's running totals all measure sold.
+//   * SCHEDULED — work actually on the calendar. Secondary, so you can see how
+//                 much of the sold work has landed on the schedule.
+// Discounted tracks also carry discount dollars given. See migrations
+// 062_off_season_pace.sql and 063_off_season_sold.sql.
 // ============================================================================
 
 import { serverClient } from './supabase';
@@ -72,13 +74,14 @@ export type Target = {
   workType: WorkType;
   osWindow: OsWindow;
   goalAmount: number;
-  windowStart: string; // YYYY-MM-DD
-  windowEnd: string; // YYYY-MM-DD
+  windowStart: string;
+  windowEnd: string;
 };
 
 export type SeriesPoint = {
   date: string;
-  booked: number;
+  sold: number;
+  scheduled: number;
   ramp: number;
 };
 
@@ -88,19 +91,22 @@ export type TrackSummary = Target & {
   windowLabel: string;
   blurb: string;
   asOf: string;
-  booked: number;
-  expected: number;
-  pace: number; // booked − expected (positive = ahead of pace)
-  pctToGoal: number;
+  sold: number; // primary
+  scheduled: number; // secondary
+  expected: number; // even-pace target for sold, as of `asOf`
+  pace: number; // sold − expected (positive = ahead of pace)
+  pctToGoal: number; // sold / goal
+  scheduledPctOfSold: number; // scheduled / sold
   discountGiven: number;
-  discountPct: number;
+  discountPct: number; // discount / sold
   hasStarted: boolean;
   series: SeriesPoint[];
 };
 
 // A rolled-up subtotal (per work type, per window, or grand total).
 export type Totals = {
-  booked: number;
+  sold: number;
+  scheduled: number;
   goal: number;
   discount: number;
   pctToGoal: number;
@@ -146,11 +152,14 @@ function rampValue(target: Target, date: string): number {
   return (target.goalAmount * elapsed) / total;
 }
 
-function mkTotals(rows: { booked: number; goal: number; discount: number }[]): Totals {
-  const booked = rows.reduce((s, r) => s + r.booked, 0);
+function mkTotals(
+  rows: { sold: number; scheduled: number; goal: number; discount: number }[],
+): Totals {
+  const sold = rows.reduce((s, r) => s + r.sold, 0);
+  const scheduled = rows.reduce((s, r) => s + r.scheduled, 0);
   const goal = rows.reduce((s, r) => s + r.goal, 0);
   const discount = rows.reduce((s, r) => s + r.discount, 0);
-  return { booked, goal, discount, pctToGoal: goal > 0 ? booked / goal : 0 };
+  return { sold, scheduled, goal, discount, pctToGoal: goal > 0 ? sold / goal : 0 };
 }
 
 // ----------------------------------------------------------------------------
@@ -189,7 +198,7 @@ export async function loadDashboard(
       .eq('season_id', season.id),
     supabase
       .from('off_season_entries')
-      .select('work_type, os_window, entry_date, scheduled_revenue, discount_given')
+      .select('work_type, os_window, entry_date, sold_revenue, scheduled_revenue, discount_given')
       .eq('season_id', season.id)
       .order('entry_date', { ascending: true }),
   ]);
@@ -212,20 +221,23 @@ export async function loadDashboard(
       .filter((r) => r.work_type === workType && r.os_window === osWindow)
       .map((r) => ({
         date: r.entry_date as string,
-        booked: Number(r.scheduled_revenue),
+        sold: Number(r.sold_revenue),
+        scheduled: Number(r.scheduled_revenue),
         discount: Number(r.discount_given),
       }));
 
     const asOf = season.isCurrent ? today : target.windowEnd;
     const upTo = rows.filter((r) => r.date <= asOf);
     const latest = upTo.length > 0 ? upTo[upTo.length - 1] : null;
-    const booked = latest?.booked ?? 0;
+    const sold = latest?.sold ?? 0;
+    const scheduled = latest?.scheduled ?? 0;
     const discountGiven = latest?.discount ?? 0;
     const expected = rampValue(target, asOf);
 
     const series: SeriesPoint[] = rows.map((r) => ({
       date: r.date,
-      booked: r.booked,
+      sold: r.sold,
+      scheduled: r.scheduled,
       ramp: rampValue(target, r.date),
     }));
 
@@ -235,19 +247,22 @@ export async function loadDashboard(
       windowLabel: WINDOW_LABELS[osWindow],
       blurb: WORK_TYPE_BLURB[workType],
       asOf,
-      booked,
+      sold,
+      scheduled,
       expected,
-      pace: booked - expected,
-      pctToGoal: target.goalAmount > 0 ? booked / target.goalAmount : 0,
+      pace: sold - expected,
+      pctToGoal: target.goalAmount > 0 ? sold / target.goalAmount : 0,
+      scheduledPctOfSold: sold > 0 ? scheduled / sold : 0,
       discountGiven,
-      discountPct: booked > 0 ? discountGiven / booked : 0,
+      discountPct: sold > 0 ? discountGiven / sold : 0,
       hasStarted: today >= target.windowStart,
       series,
     };
   });
 
   const asRow = (t: TrackSummary) => ({
-    booked: t.booked,
+    sold: t.sold,
+    scheduled: t.scheduled,
     goal: t.goalAmount,
     discount: t.discountGiven,
   });
@@ -275,7 +290,7 @@ export async function loadDashboard(
 // Key is `${workType}__${osWindow}`.
 export type EntryValues = Record<
   string,
-  { scheduled: number | null; discount: number | null }
+  { sold: number | null; scheduled: number | null; discount: number | null }
 >;
 
 export type EntrySeason = {
@@ -296,18 +311,23 @@ export async function loadEntrySeason(date: string): Promise<EntrySeason | null>
 
   const { data } = await supabase
     .from('off_season_entries')
-    .select('work_type, os_window, scheduled_revenue, discount_given')
+    .select('work_type, os_window, sold_revenue, scheduled_revenue, discount_given')
     .eq('season_id', season.id)
     .eq('entry_date', date);
 
   const values: EntryValues = {};
   for (const { workType, osWindow } of TRACKS) {
-    values[trackKey(workType, osWindow)] = { scheduled: null, discount: null };
+    values[trackKey(workType, osWindow)] = {
+      sold: null,
+      scheduled: null,
+      discount: null,
+    };
   }
   for (const r of data ?? []) {
     const key = trackKey(r.work_type as WorkType, r.os_window as OsWindow);
     if (key in values) {
       values[key] = {
+        sold: Number(r.sold_revenue),
         scheduled: Number(r.scheduled_revenue),
         discount: Number(r.discount_given),
       };
