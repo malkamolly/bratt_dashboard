@@ -9,28 +9,9 @@ import {
 } from '@/lib/off-season-data';
 import { OffSeasonChart } from './OffSeasonChart';
 import { OffSeasonTotals } from './OffSeasonTotals';
-import { CopyButton } from '@/components/CopyButton';
+import { CopyAsImageButton } from '@/components/CopyAsImageButton';
 
 export const dynamic = 'force-dynamic';
-
-// Plain-text morning summary for pasting into Slack.
-function buildReport(data: {
-  season: { label: string };
-  windows: WindowSummary[];
-  grand: { discount: number };
-}): string {
-  const lines: string[] = [`Off-Season Work — ${data.season.label}`, ''];
-  for (const w of data.windows) {
-    const disc = w.breakdown.find((b) => b.workType === 'discounted')?.scheduled ?? 0;
-    const dorm = w.breakdown.find((b) => b.workType === 'dormant')?.scheduled ?? 0;
-    lines.push(
-      `${w.windowLabel}: ${fmtUsd(w.scheduled)} of ${fmtUsd(w.goalAmount)} (${fmtPct(w.pctToGoal)})`,
-    );
-    lines.push(`   Discounted ${fmtUsd(disc)} · Dormant ${fmtUsd(dorm)}`);
-  }
-  lines.push('', `Discounts given: ${fmtUsd(data.grand.discount)}`);
-  return lines.join('\n');
-}
 
 export default async function OffSeasonPage({
   searchParams,
@@ -67,7 +48,7 @@ export default async function OffSeasonPage({
           </p>
         </div>
         <div className="flex flex-shrink-0 flex-wrap items-center gap-2">
-          {data && <CopyButton text={buildReport(data)} label="Copy" />}
+          {data && <CopyAsImageButton targetId="osw-snapshot" label="Copy" />}
           <Link href="/off-season/entry" className="bt-btn bt-btn-primary">
             Enter today
           </Link>
@@ -110,8 +91,14 @@ export default async function OffSeasonPage({
             </nav>
           )}
 
-          {/* ---- TOP: combined sold across both windows ---- */}
-          <section className="mt-8 rounded-card bg-bark p-6 text-cream sm:p-8">
+          {/* ---- TOP: scheduled per window (the Slack snapshot) ---- */}
+          <section
+            id="osw-snapshot"
+            className="mt-8 rounded-card bg-bark p-6 text-cream sm:p-8"
+          >
+            <p className="mb-5 font-headline text-sm font-black uppercase tracking-ribbon text-cream/80">
+              Off-Season Work &middot; {data.season.label}
+            </p>
             <div className="flex flex-col gap-6 lg:flex-row lg:items-center">
               <div className="lg:w-64 lg:flex-shrink-0">
                 <p className="font-headline text-xs font-extrabold uppercase tracking-ribbon text-lime">
