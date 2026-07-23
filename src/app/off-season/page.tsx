@@ -121,7 +121,7 @@ export default async function OffSeasonPage({
                 <p className="mt-3 text-sm text-cream/70">
                   {fmtUsd(data.grand.discount)} in discounts given
                   <span className="block text-cream/50">
-                    {fmtPct(data.grand.discountPct)} of discounted work
+                    {fmtPct(data.grand.discountPct)} of scheduled work
                   </span>
                 </p>
               </div>
@@ -253,8 +253,6 @@ function MilestoneBar({
 }
 
 function BreakdownTile({ b }: { b: TrackBreakdown }) {
-  // Discount rate for this track: discount ÷ its own scheduled revenue.
-  const rate = b.scheduled > 0 ? b.discount / b.scheduled : 0;
   return (
     <div className="rounded-2 border-2 border-paper-edge bg-paper/40 px-3 py-2.5">
       <p className="font-headline text-[10px] font-extrabold uppercase tracking-ribbon text-wood">
@@ -264,9 +262,7 @@ function BreakdownTile({ b }: { b: TrackBreakdown }) {
         {fmtUsd(b.scheduled)}
       </p>
       {b.hasDiscount && (
-        <p className="text-xs text-fg-2">
-          {fmtUsd(b.discount)} discounts &middot; {fmtPct(rate)}
-        </p>
+        <p className="text-xs text-fg-2">{fmtUsd(b.discount)} discounts</p>
       )}
     </div>
   );
