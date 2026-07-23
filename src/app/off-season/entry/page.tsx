@@ -108,7 +108,7 @@ export default async function OffSeasonEntryPage({
                       rel="noopener noreferrer"
                       className="font-semibold text-orange underline decoration-orange/40 underline-offset-2 hover:decoration-orange"
                     >
-                      {r.label} &nearr;
+                      {r.label} ↗
                     </a>
                   </li>
                 ))}

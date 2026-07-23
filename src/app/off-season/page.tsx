@@ -91,11 +91,10 @@ export default async function OffSeasonPage({
             </nav>
           )}
 
-          {/* ---- TOP: scheduled per window (the Slack snapshot) ---- */}
-          <section
-            id="osw-snapshot"
-            className="mt-8 rounded-card bg-bark p-6 text-cream sm:p-8"
-          >
+          {/* ---- Slack snapshot: summary panel + window cards ---- */}
+          <div id="osw-snapshot" className="mt-8 space-y-10">
+          {/* ---- TOP: scheduled per window ---- */}
+          <section className="rounded-card bg-bark p-6 text-cream sm:p-8">
             <p className="mb-5 font-headline text-sm font-black uppercase tracking-ribbon text-cream/80">
               Off-Season Work &middot; {data.season.label}
             </p>
@@ -145,11 +144,12 @@ export default async function OffSeasonPage({
           </section>
 
           {/* ---- Per-window detail with milestone ladders ---- */}
-          <section className="mt-10 grid grid-cols-1 gap-6 lg:grid-cols-2">
+          <section className="grid grid-cols-1 gap-6 lg:grid-cols-2">
             {data.windows.map((w) => (
               <WindowCard key={w.osWindow} w={w} />
             ))}
           </section>
+          </div>
         </>
       )}
     </main>
