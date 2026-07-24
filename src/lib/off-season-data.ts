@@ -28,7 +28,9 @@ export const OS_WINDOWS: OsWindow[] = ['nov_dec', 'jan_march'];
 
 export const WORK_TYPE_LABELS: Record<WorkType, string> = {
   discounted: 'Discounted OSW',
-  dormant: 'Dormant Season OSW',
+  // The non-discounted off-season bucket: dormant-season jobs plus regular
+  // off-season work. (Internal key stays 'dormant'.)
+  dormant: 'Dormant + Regular OSW',
 };
 
 export const WINDOW_LABELS: Record<OsWindow, string> = {

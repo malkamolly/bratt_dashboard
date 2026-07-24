@@ -50,9 +50,9 @@ export default async function OffSeasonPage({
             Off-Season Work
           </h1>
           <p className="mt-4 max-w-2xl text-fg-2">
-            Scheduled off-season work &mdash; discounted and dormant counted
-            together &mdash; tracked toward a combined goal in each window,
-            Nov&ndash;Dec and Jan&ndash;March.
+            Scheduled off-season work &mdash; the discounted push plus dormant
+            and regular off-season work &mdash; tracked toward a combined goal in
+            each window, Nov&ndash;Dec and Jan&ndash;March.
           </p>
         </div>
         <div className="flex flex-shrink-0 flex-wrap items-center gap-2">
