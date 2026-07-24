@@ -265,12 +265,15 @@ function MilestoneBar({
 }
 
 function BreakdownTile({ b }: { b: TrackBreakdown }) {
+  // Match the totals chart: orange = discounted, green = dormant + regular.
+  const accent =
+    b.workType === 'discounted' ? 'text-orange' : 'text-green-dark';
   return (
     <div className="rounded-2 border-2 border-paper-edge bg-paper/40 px-3 py-2.5">
-      <p className="font-headline text-[10px] font-extrabold uppercase tracking-ribbon text-wood">
+      <p className={`font-headline text-[10px] font-extrabold uppercase tracking-ribbon ${accent}`}>
         {b.typeLabel}
       </p>
-      <p className="mt-0.5 font-headline text-lg font-black leading-tight text-ink">
+      <p className={`mt-0.5 font-headline text-lg font-black leading-tight ${accent}`}>
         {fmtUsd(b.scheduled)}
       </p>
       {b.hasDiscount && (
