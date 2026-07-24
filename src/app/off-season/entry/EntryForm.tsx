@@ -34,7 +34,7 @@ function SaveButton({ dirty }: { dirty: boolean }) {
       disabled={pending || !dirty}
       className="bt-btn bt-btn-primary w-full justify-center disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
     >
-      {pending ? 'Saving…' : 'Save Day'}
+      {pending ? 'Saving…' : 'Save totals'}
     </button>
   );
 }
@@ -95,7 +95,7 @@ export function EntryForm({ date, seasonId, rows, hasExisting }: Props) {
 
       <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <label className="flex flex-col gap-1">
-          <span className="bt-eyebrow">Entry Date</span>
+          <span className="bt-eyebrow">As of date</span>
           <input
             type="date"
             value={date}
@@ -104,8 +104,8 @@ export function EntryForm({ date, seasonId, rows, hasExisting }: Props) {
           />
         </label>
         <p className="text-sm text-fg-2 sm:max-w-xs">
-          Fixing a past day? Change the date &mdash; existing numbers pre-fill so
-          you can overwrite them.
+          Defaults to today. Existing numbers pre-fill so you just overwrite them
+          with the new totals &mdash; this date shows as &ldquo;last updated.&rdquo;
         </p>
       </div>
 

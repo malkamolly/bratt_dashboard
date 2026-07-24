@@ -105,6 +105,7 @@ export type DashboardData = {
   seasons: Season[];
   windows: WindowSummary[];
   grand: Totals;
+  lastUpdated: string | null; // most recent entry date (YYYY-MM-DD), or null
 };
 
 // ----------------------------------------------------------------------------
@@ -253,7 +254,12 @@ export async function loadDashboard(
   };
   grand.pctToGoal = grand.goal > 0 ? grand.scheduled / grand.goal : 0;
 
-  return { season, seasons, windows, grand };
+  // Entries are ordered by date ascending, so the last one is the most recent.
+  const allEntries = entriesRes.data ?? [];
+  const lastUpdated =
+    allEntries.length > 0 ? (allEntries[allEntries.length - 1].entry_date as string) : null;
+
+  return { season, seasons, windows, grand, lastUpdated };
 }
 
 // ----------------------------------------------------------------------------

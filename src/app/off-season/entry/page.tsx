@@ -76,16 +76,17 @@ export default async function OffSeasonEntryPage({
           Off-Season Work
         </Link>
         <span className="mx-2 text-fg-3">/</span>
-        Daily Entry
+        Update Totals
       </p>
       <h1 className="mt-2 font-display text-4xl uppercase tracking-wider text-ink sm:text-5xl">
-        Enter the day
+        Update today
       </h1>
       <p className="mt-4 text-fg-2">
-        For each track, enter the <strong>running total scheduled so far</strong>{' '}
-        (work on the calendar), plus the <strong>discount given</strong> on
-        discounted work. Leave a track blank to skip it. The dashboard sums the
-        tracks into each window&rsquo;s combined total.
+        Update each track&rsquo;s <strong>running total scheduled</strong> (work
+        on the calendar) and the <strong>discount given</strong> on discounted
+        work &mdash; the latest numbers from ServiceTitan. Leave a track blank to
+        skip it. The date below stamps the dashboard&rsquo;s &ldquo;last
+        updated.&rdquo;
       </p>
 
       {/* Where the numbers come from — the ServiceTitan reports. */}

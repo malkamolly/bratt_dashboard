@@ -13,6 +13,15 @@ import { CopyAsImageButton } from '@/components/CopyAsImageButton';
 
 export const dynamic = 'force-dynamic';
 
+function niceDate(iso: string): string {
+  const d = new Date(`${iso}T00:00:00`);
+  return d.toLocaleDateString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+  });
+}
+
 export default async function OffSeasonPage({
   searchParams,
 }: {
@@ -50,7 +59,7 @@ export default async function OffSeasonPage({
         <div className="flex flex-shrink-0 flex-wrap items-center gap-2">
           {data && <CopyAsImageButton targetId="osw-snapshot" label="Copy" />}
           <Link href="/off-season/entry" className="bt-btn bt-btn-primary">
-            Enter today
+            Update today
           </Link>
           <Link href="/off-season/settings" className="bt-btn bt-btn-ghost">
             Goals
@@ -97,6 +106,11 @@ export default async function OffSeasonPage({
           <section className="rounded-card bg-bark p-6 text-cream sm:p-8">
             <p className="mb-5 font-headline text-sm font-black uppercase tracking-ribbon text-cream/80">
               Off-Season Work &middot; {data.season.label}
+              {data.lastUpdated && (
+                <span className="text-cream/50">
+                  {' '}&middot; Updated {niceDate(data.lastUpdated)}
+                </span>
+              )}
             </p>
             <div className="flex flex-col gap-6 lg:flex-row lg:items-center">
               <div className="lg:w-64 lg:flex-shrink-0">
