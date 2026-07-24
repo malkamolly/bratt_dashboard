@@ -7,7 +7,6 @@ import {
   type WindowSummary,
   type TrackBreakdown,
 } from '@/lib/off-season-data';
-import { OffSeasonChart } from './OffSeasonChart';
 import { OffSeasonTotals } from './OffSeasonTotals';
 import { CopyAsImageButton } from '@/components/CopyAsImageButton';
 
@@ -214,10 +213,6 @@ function WindowCard({ w }: { w: WindowSummary }) {
         {w.breakdown.map((b) => (
           <BreakdownTile key={b.workType} b={b} />
         ))}
-      </div>
-
-      <div className="mt-5">
-        <OffSeasonChart series={w.series} />
       </div>
     </article>
   );

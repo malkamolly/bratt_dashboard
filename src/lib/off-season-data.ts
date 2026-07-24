@@ -64,11 +64,6 @@ export type WindowTarget = {
   milestoneStep: number;
 };
 
-export type SeriesPoint = {
-  date: string;
-  scheduled: number;
-};
-
 // Scheduled/discount for one track (work type) within a window.
 export type TrackBreakdown = {
   workType: WorkType;
@@ -87,7 +82,6 @@ export type WindowSummary = WindowTarget & {
   currentMilestone: number; // highest $-rung reached
   nextMilestone: number; // next rung to aim for
   breakdown: TrackBreakdown[];
-  series: SeriesPoint[];
 };
 
 export type Totals = {
@@ -144,29 +138,6 @@ function latest(rows: Snapshot[]): Snapshot {
   return rows.length > 0
     ? rows[rows.length - 1]
     : { date: '', scheduled: 0, discount: 0 };
-}
-
-// Combined burn-up across both tracks: union of dates, carrying each track's
-// last value forward so the combined line is correct even when the two tracks
-// were logged on different days.
-function combinedSeries(byType: Record<WorkType, Snapshot[]>): SeriesPoint[] {
-  const dates = Array.from(
-    new Set(WORK_TYPES.flatMap((wt) => byType[wt].map((r) => r.date))),
-  ).sort();
-
-  const idx: Record<WorkType, number> = { discounted: 0, dormant: 0 };
-  const last: Record<WorkType, number> = { discounted: 0, dormant: 0 };
-
-  return dates.map((date) => {
-    for (const wt of WORK_TYPES) {
-      const rows = byType[wt];
-      while (idx[wt] < rows.length && rows[idx[wt]].date <= date) {
-        last[wt] = rows[idx[wt]].scheduled;
-        idx[wt]++;
-      }
-    }
-    return { date, scheduled: last.discounted + last.dormant };
-  });
 }
 
 export async function loadDashboard(
@@ -238,7 +209,6 @@ export async function loadDashboard(
       currentMilestone,
       nextMilestone,
       breakdown,
-      series: combinedSeries(byType),
     };
   });
 
