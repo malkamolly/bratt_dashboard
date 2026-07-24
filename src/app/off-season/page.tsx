@@ -99,8 +99,11 @@ export default async function OffSeasonPage({
             </nav>
           )}
 
-          {/* ---- Slack snapshot: summary panel + window cards ---- */}
-          <div id="osw-snapshot" className="mt-8 space-y-10">
+          {/* ---- Slack snapshot: summary panel + window cards ----
+               pb-8 gives the image capture bottom breathing room; html-to-image
+               trims a few px off the bottom, and without slack it clips the
+               window cards' padding/rounded corners. */}
+          <div id="osw-snapshot" className="mt-8 space-y-10 pb-8">
           {/* ---- TOP: scheduled per window ---- */}
           <section className="rounded-card bg-bark p-6 text-cream sm:p-8">
             <p className="mb-5 font-headline text-sm font-black uppercase tracking-ribbon text-cream/80">
