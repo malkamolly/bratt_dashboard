@@ -4,6 +4,7 @@ import {
   requireHubAccess,
   canUsePhcScheduling,
   canUseOffSeason,
+  canUseSops,
 } from '@/lib/auth';
 import { isTagsUser } from '@/lib/tags-config';
 
@@ -29,7 +30,7 @@ export default async function OfficeHubPage() {
           </h1>
           <p className="mt-4 max-w-2xl text-fg-2">
             The office toolkit &mdash; pace dashboards, off-season work,
-            scheduling, and your Slack tags, all in one place.
+            scheduling, SOPs, and your Slack tags, all in one place.
           </p>
         </div>
         <Image
@@ -53,7 +54,7 @@ export default async function OfficeHubPage() {
           </h2>
           <p className="mt-3 text-sm text-fg-2">
             Daily sales and production pace &mdash; goals, MTD totals, per-day
-            burn rate, tomorrow&rsquo;s schedule, and the SOP library.
+            burn rate, and tomorrow&rsquo;s schedule.
           </p>
           <p className="mt-6 font-headline text-xs font-extrabold uppercase tracking-ribbon text-orange">
             Open &rarr;
@@ -94,6 +95,25 @@ export default async function OfficeHubPage() {
             </p>
             <p className="mt-6 font-headline text-xs font-extrabold uppercase tracking-ribbon text-orange">
               Open &rarr;
+            </p>
+          </Link>
+        )}
+
+        {canUseSops(user.role) && (
+          <Link
+            href="/sops"
+            className="bt-card group transition-colors hover:!border-orange"
+          >
+            <p className="bt-eyebrow">Office Resource</p>
+            <h2 className="mt-2 font-headline text-3xl font-black uppercase text-bark-deep">
+              SOP Library
+            </h2>
+            <p className="mt-3 text-sm text-fg-2">
+              Standard operating procedures and documentation for the office
+              team. Upload Word docs, search, and read them in one place.
+            </p>
+            <p className="mt-6 font-headline text-xs font-extrabold uppercase tracking-ribbon text-orange">
+              Open library &rarr;
             </p>
           </Link>
         )}

@@ -118,19 +118,6 @@ export default async function PaceHomePage() {
             </p>
           </Link>
         )}
-
-        <Link href="/sops" className="bt-card group transition-colors hover:!border-orange">
-          <p className="bt-eyebrow">Office Resource</p>
-          <h2 className="mt-2 font-headline text-3xl font-black uppercase text-bark-deep">
-            SOP Library
-          </h2>
-          <p className="mt-3 text-sm text-fg-2">
-            Standard operating procedures and documentation for the office team. Upload Word docs, search, and read them in one place. Ask-a-question coming soon.
-          </p>
-          <p className="mt-6 font-headline text-xs font-extrabold uppercase tracking-ribbon text-orange">
-            Open library &rarr;
-          </p>
-        </Link>
       </section>
 
       <section className="mt-10 rounded-card bg-bark p-6 text-cream">
