@@ -1,4 +1,4 @@
-import { PRICING_MATRIX } from '@/lib/pricing-matrix';
+import { PRICING_MATRIX, type PricingCategory } from '@/lib/pricing-matrix';
 import { buildMeasureEffect, buildPricingVsActual, type EffectBand } from '@/lib/cost-analysis';
 import { PriceCalculator } from './PriceCalculator';
 import { fmtUsd } from '@/lib/format';
@@ -9,6 +9,9 @@ export default function PricingSection() {
   const effect = buildMeasureEffect();
   const pva = buildPricingVsActual();
   const analyzed = pva.bands.reduce((sum, b) => sum + b.count, 0);
+  // Rate card: sample every 5", then split down the middle into two columns.
+  const rateRows = PRICING_MATRIX.categories.filter((_, i) => (i + 1) % 5 === 0);
+  const rateHalf = Math.ceil(rateRows.length / 2);
 
   return (
     <>
@@ -72,33 +75,9 @@ export default function PricingSection() {
           bands — use the calculator above for any exact tree. This table samples
           every 5″ for a quick read.
         </p>
-        <div className="mt-2 overflow-x-auto">
-          <table className="text-xs">
-            <thead>
-              <tr className="border-b-2 border-bark/20 text-fg-3">
-                <th className="px-2 py-1 text-left font-bold">DBH size</th>
-                <th className="px-2 py-1 text-right font-bold">Base $/in</th>
-                <th className="px-2 py-1 text-right font-bold">Typical height</th>
-                <th className="px-2 py-1 text-right font-bold">Typical spread</th>
-              </tr>
-            </thead>
-            <tbody>
-              {PRICING_MATRIX.categories
-                .filter((_, i) => (i + 1) % 5 === 0)
-                .map((cat) => (
-                  <tr key={cat.label} className="border-b border-bark/10">
-                    <td className="px-2 py-1.5 font-bold text-ink">{cat.label}</td>
-                    <td className="px-2 py-1.5 text-right font-bold text-orange">{fmtUsd(cat.base)}</td>
-                    <td className="px-2 py-1.5 text-right text-fg-2">
-                      {PRICING_MATRIX.heightTiers[cat.refHeight]?.label ?? '—'}
-                    </td>
-                    <td className="px-2 py-1.5 text-right text-fg-2">
-                      {PRICING_MATRIX.canopyTiers[cat.refCanopy]?.label ?? '—'}
-                    </td>
-                  </tr>
-                ))}
-            </tbody>
-          </table>
+        <div className="mt-2 grid gap-x-8 gap-y-3 sm:grid-cols-2">
+          <RateCardTable rows={rateRows.slice(0, rateHalf)} />
+          <RateCardTable rows={rateRows.slice(rateHalf)} />
         </div>
         <p className="mt-2 max-w-3xl text-xs text-fg-3">
           <strong>Height &amp; spread:</strong> each 10-ft band above that size&apos;s
@@ -173,6 +152,37 @@ export default function PricingSection() {
         </p>
       </Card>
     </>
+  );
+}
+
+function RateCardTable({ rows }: { rows: PricingCategory[] }) {
+  return (
+    <div className="overflow-x-auto">
+      <table className="w-full text-xs">
+        <thead>
+          <tr className="border-b-2 border-bark/20 text-fg-3">
+            <th className="px-2 py-1 text-left font-bold">DBH</th>
+            <th className="px-2 py-1 text-right font-bold">Base $/in</th>
+            <th className="px-2 py-1 text-right font-bold">Typical height</th>
+            <th className="px-2 py-1 text-right font-bold">Typical spread</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((cat) => (
+            <tr key={cat.label} className="border-b border-bark/10">
+              <td className="px-2 py-1.5 font-bold text-ink">{cat.label}</td>
+              <td className="px-2 py-1.5 text-right font-bold text-orange">{fmtUsd(cat.base)}</td>
+              <td className="px-2 py-1.5 text-right text-fg-2">
+                {PRICING_MATRIX.heightTiers[cat.refHeight]?.label ?? '—'}
+              </td>
+              <td className="px-2 py-1.5 text-right text-fg-2">
+                {PRICING_MATRIX.canopyTiers[cat.refCanopy]?.label ?? '—'}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
   );
 }
 
