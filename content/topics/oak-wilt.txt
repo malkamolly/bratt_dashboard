@@ -1,0 +1,161 @@
+# ============================================================
+# BRATT TREE — Topic Deck: Oak Wilt
+# Source content for the slide deck shown at
+#   /topics/oak-wilt/present
+# Adapted from University of Minnesota Extension, "Oak Wilt."
+# Syntax matches the onboarding / training-module deck format:
+#   @layout-name  starts a new slide
+#   key: value    a single field on the current slide
+#   key: a | b    multi-part value (split by "|")
+#   - item        a list item
+#   # or //       a comment, ignored
+# ============================================================
+
+
+@cover
+eyebrow: Plant Health Care · Diseases
+unit: Oak Wilt
+subtitle: Minnesota's most destructive oak disease.
+tagline: Bretziella fagacearum
+tagline: Spot it early.
+tagline: Stop the spread.
+image: /topics/oak-wilt/cover.png
+image-fit: cover
+meta-left: Bratt Tree · Topic Library
+meta-right: Version 1.0
+
+
+@section-divider
+number: 01
+title: The Basics
+tagline: It kills large numbers of oaks every year — but it can be managed.
+
+
+@three-rules
+eyebrow: What Is Oak Wilt?
+title: Three things to know
+subtitle: A fungus that infects the water-conducting tissue of oak trees.
+rule: The Cause | A fungus, **Bretziella fagacearum**, that infects the **water-conducting tissue** (xylem) of oak trees and plugs it up.
+rule: The Impact | It **kills large numbers of oaks every year** in Minnesota and is spreading toward the northern forest.
+rule: The Good News | **Several proven management techniques exist** to prevent or control oak wilt on a property.
+
+
+@section-divider
+number: 02
+title: Susceptibility
+tagline: Not all oaks are equal — the red oak group dies fast, the white oak group dies slow.
+
+
+@two-column
+eyebrow: Susceptibility
+title: Not all oaks are equal.
+subtitle: The oak's group tells you how fast the story ends.
+left-header: Red Oak Group
+left-icon: ●
+left: **As little as 4 weeks** from branch infection to tree death
+left: Trees **do not survive**
+left: Root-graft infection kills the tree shortly after leaf-out the following spring
+left: Species: **Northern red oak, Northern pin oak, Black oak**
+right-header: White Oak Group
+right-icon: ●
+right: **2 to 5 years** or longer after first symptoms
+right: Disease progresses **very slowly**, advancing a little each year
+right: Trees can persist for years
+right: Species: **White oak, Bur oak, Swamp white oak, Chinkapin oak**
+
+
+@section-divider
+number: 03
+title: Identification
+tagline: The telltale leaf, and how the whole tree declines.
+
+
+@welcome
+eyebrow: Identification
+title: The telltale leaf.
+subtitle: The single most recognizable sign — in both oak groups.
+body: **Brown edges, green centers.** Browning continues inward toward the center and base of the leaf. This is the one symptom to burn into memory.
+body: **Wilting starts up high** — usually at the top or outer crown — then moves rapidly downward. **Wilted leaves drop fast** and collect on the ground around the tree.
+body: **Easy to spot in summer:** diseased red oaks stand out because of their bright red-brown foliage against the healthy green around them.
+
+
+@photo
+eyebrow: The Telltale Leaf
+title: Brown edges, green centers
+image: /topics/oak-wilt/telltale-leaf.png
+alt: Oak leaves with brown outer edges and green centers, the classic oak wilt symptom
+caption: Brown edges with green centers, browning spreading inward — the classic oak wilt leaf, here on a red oak.
+fit: contain
+
+
+@card-grid
+eyebrow: Symptoms · Red Oak Group
+title: Fast and fatal
+subtitle: Northern red oak · Northern pin oak · Black oak
+card: Leaves | Brown edges, green centers; browning spreads inward. Wilted leaves drop quickly.
+card: Crown | Wilting starts at the top or outer crown and moves downward fast. Bright red-brown crowns visible in summer.
+card: Speed of Decline | Branch infection: full wilt and death in as little as **4 weeks**. Root graft: death after leaf-out the next spring.
+card: Bark and Wood | **Bluish staining** on the wood under peeled bark. Cracking bark or fungal mats may appear on the trunk.
+
+
+@section-divider
+number: 04
+title: Transmission
+tagline: Two ways oak wilt travels — one starts it, one spreads it.
+
+
+@two-column
+eyebrow: Transmission
+title: Two ways oak wilt travels.
+subtitle: Insects start new centers; roots do most of the spreading.
+left-header: Step 1 · Above Ground
+left-icon: ●
+left: **Insects start it**
+left: Sap beetles carry fungal spores from a diseased tree to a **fresh wound** on a healthy tree
+left: This is how **brand-new oak wilt centers begin**
+right-header: Step 2 · Below Ground
+right-icon: ●
+right: **Roots spread it**
+right: Nearby oaks naturally **graft their roots together**
+right: Once one tree is infected, the fungus moves underground into its neighbors — **the cause of most new infections**
+
+
+@steps
+eyebrow: Spread by Insects
+title: Sap beetles and fresh wounds
+subtitle: How a new infection center gets started above ground.
+step: Beetles find the fungus | **Colopterus truncatus** and **Carpophilus sayi** are Minnesota's two carriers, drawn to chemicals from oak wilt fungal mats between the bark and wood.
+step: Beetles find fresh wounds | They are strongly attracted to the smell of **fresh, wood-penetrating wounds** — so a wounded oak visited by a contaminated beetle can become the next infection.
+step: Spring wood is vulnerable | Mats form April–July on red oaks that wilted the year before. In that same window, oaks grow large **spring-wood vessels** the fungus infects easily.
+step: One local exception | Oak bark beetles (*Pseudopityophthorus*) spread oak wilt in parts of the U.S., **but not here in Minnesota**.
+
+
+@welcome
+eyebrow: Spread Through Roots
+title: The underground highway.
+subtitle: Most new infections come from the fungus moving through grafted roots of neighboring trees.
+body: In a Twin Cities urban study, the **majority of root-graft spread happened within 30 ft**; the farthest researchers still found infected trees was **about 50 ft**. More distance between diseased trees means less spread by root grafting.
+body: **What makes grafting more likely:** the oak species involved (grafting is common among northern pin oaks), and tree size, soil type, and terrain — **sandy soil on flat ground is high risk**.
+body: Grafts also form **between different oak species**, such as northern pin oak and bur oak — so mixed stands are not automatically safe.
+
+
+@section-divider
+number: 05
+title: Prevention & Management
+tagline: Four actions that work best when used together.
+
+
+@card-grid
+eyebrow: Prevention & Management
+title: Four actions that work together
+subtitle: Coordinated use of several actions is the best way to stop the spread.
+card: 01 · Treat High-Value Trees | Apply **fungicides** to uninfected, high-value oaks you most want to protect.
+card: 02 · Remove Wilted Red Oaks | Take out red oaks that continue to produce **fungal mats**, the beetles' spore source.
+card: 03 · Dispose of Logs Properly | Handle and dispose of logs from wilted trees correctly so they **cannot spread spores**.
+card: 04 · Diversify Your Planting | Plant a **mix of species** so a single disease cannot take an entire landscape.
+
+
+@closing
+title: Spot it early. Stop the spread.
+subtitle: Brown edges with green centers, wilting from the top down — then think beetles, wounds, and grafted roots. Adapted from University of Minnesota Extension.
+mark: BT

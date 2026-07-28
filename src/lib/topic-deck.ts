@@ -39,6 +39,16 @@ export type TopicDeck = {
 // The `date` field is the date the topic was originally taught (or
 // added) — used to sort the library chronologically.
 export const TOPIC_DECKS: Record<string, TopicDeck> = {
+  'oak-wilt': {
+    slug: 'oak-wilt',
+    title: 'Oak Wilt',
+    description:
+      "Minnesota's most destructive oak disease. How to spot the telltale leaf, why the red oak group dies in weeks, and the four actions that stop the spread.",
+    tags: ['Disease', 'Plant Health Care', 'Tree ID'],
+    date: '2026-07-28',
+    footerLeft: 'BRATT TREE  |  OAK WILT',
+    version: 'Version 1.0',
+  },
   'verticillium-wilt': {
     slug: 'verticillium-wilt',
     title: 'Verticillium Wilt',
