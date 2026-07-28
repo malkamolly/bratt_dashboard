@@ -192,6 +192,45 @@ export default async function CostAnalysisPage() {
           </p>
         </div>
 
+        {/* What changed in the latest tuning pass (owner review, Jul 2026) */}
+        <div className="mb-6 rounded-card border-2 border-orange/40 bg-orange/5 p-4">
+          <div className="text-xs font-extrabold uppercase tracking-wide text-orange">
+            Updated Jul 2026 — big trees now priced higher
+          </div>
+          <p className="mt-1 max-w-2xl text-xs text-fg-2">
+            Latest tuning raised pricing for large trees (34″+) so it climbs with
+            size, and lifted the cap that was holding back unusual trees.
+            Everyday sizes are intentionally unchanged — so if a 20–30″ tree looks
+            the same, that&apos;s expected. Enter one of these to see the change:
+          </p>
+          <table className="mt-3 text-xs">
+            <thead>
+              <tr className="text-fg-3">
+                <th className="py-1 pr-4 text-left font-bold">Example tree</th>
+                <th className="py-1 pr-4 text-right font-bold">Was</th>
+                <th className="py-1 text-right font-bold">Now</th>
+              </tr>
+            </thead>
+            <tbody className="font-bold text-ink">
+              <tr>
+                <td className="py-1 pr-4">30″ · 45′ tall · 30′ spread</td>
+                <td className="py-1 pr-4 text-right text-fg-3">{fmtUsd(2670)}</td>
+                <td className="py-1 text-right text-fg-3">{fmtUsd(2670)}</td>
+              </tr>
+              <tr>
+                <td className="py-1 pr-4">60″ · 50′ tall · 40′ spread</td>
+                <td className="py-1 pr-4 text-right text-fg-3">{fmtUsd(5220)}</td>
+                <td className="py-1 text-right text-orange">{fmtUsd(7560)}</td>
+              </tr>
+              <tr>
+                <td className="py-1 pr-4">72″ · 85′ tall · 85′ spread</td>
+                <td className="py-1 pr-4 text-right text-fg-3">{fmtUsd(12096)}</td>
+                <td className="py-1 text-right text-orange">{fmtUsd(19656)}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
         {/* The rate card */}
         <div className="text-xs font-extrabold uppercase tracking-wide text-fg-2">
           The rate card ($/inch)
