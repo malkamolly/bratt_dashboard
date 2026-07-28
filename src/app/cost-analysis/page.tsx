@@ -4,6 +4,7 @@ import { getAllowedUser, canSeeCostAnalysis } from '@/lib/auth';
 import { buildCostAnalysis, SIZE_BANDS, type CostPerInchGrid } from '@/lib/cost-analysis';
 import { fmtUsd } from '@/lib/format';
 import { PriceVsSizeScatter } from './Charts';
+import PricingSection from './PricingSection';
 import {
   SizeBandSection,
   HaulingSection,
@@ -79,6 +80,9 @@ export default async function CostAnalysisPage() {
           sub="higher — big removals pull it up"
         />
       </section>
+
+      {/* ---------- Pricing calculator + its charts (the tool, up top) ---------- */}
+      <PricingSection />
 
       {/* ---------- Hero scatter ---------- */}
       <Card title="Price climbs with trunk size" className="mt-10">
@@ -158,22 +162,6 @@ export default async function CostAnalysisPage() {
         </p>
         <CostPerInchHeatmap grid={a.costPerInch} />
       </Card>
-
-      {/* ---------- Pricing calculator (its own page now) ---------- */}
-      <Link
-        href="/cost-analysis/calculator"
-        className="mt-8 block rounded-card border-[3px] border-orange bg-white/70 p-5 transition-colors hover:bg-lime/20"
-      >
-        <p className="bt-eyebrow">Tool — Pricing Calculator</p>
-        <p className="mt-1 font-headline text-lg font-black uppercase text-bark-deep">
-          Price a tree with the draft model &rarr;
-        </p>
-        <p className="mt-1 text-sm text-fg-2">
-          Our suggested going-forward pricing on its own page: enter DBH, height,
-          and spread for a price, see the rate card, and compare the model against
-          what we actually charged.
-        </p>
-      </Link>
 
       {/* ---------- Seller consistency (the case for a guide) ---------- */}
       <Card title="Same-size trees, very different prices by salesperson" className="mt-8 border-orange">
