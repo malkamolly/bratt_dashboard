@@ -26,6 +26,15 @@ function subtitleFor(pathname: string): string | null {
   }
   if (pathname.startsWith('/hub')) return 'Sales Arborist Hub';
   if (pathname.startsWith('/crew')) return 'Field Crew Hub';
+  if (
+    pathname.startsWith('/office') ||
+    pathname.startsWith('/off-season') ||
+    pathname.startsWith('/phc') ||
+    pathname.startsWith('/sops') ||
+    pathname.startsWith('/tags')
+  ) {
+    return 'Office Hub';
+  }
   return null;
 }
 

@@ -1,4 +1,14 @@
-import { getAllowedUser, canAccessHub, canSeeCostAnalysis, isOwner, type Role } from '@/lib/auth';
+import {
+  getAllowedUser,
+  canAccessHub,
+  canSeeCostAnalysis,
+  canUsePhcScheduling,
+  canUseSops,
+  canUseOffSeason,
+  isOwner,
+  type Role,
+} from '@/lib/auth';
+import { isTagsUser } from '@/lib/tags-config';
 import { BrandHeaderClient, type NavGroup, type NavItem } from './BrandHeaderClient';
 
 // Tomorrow's Schedule + Forecast vs Actual are gated to office/admin (same as
@@ -33,9 +43,18 @@ export async function BrandHeader() {
     if (canAccessHub(r, 'crew'))
       productionItems.push({ label: 'Field Crew Hub', href: '/crew' });
 
+    // Office tools — pace dashboards' sibling hub plus the office-only tools.
+    const officeItems: NavItem[] = [];
+    if (canAccessHub(r, 'pace')) officeItems.push({ label: 'Office Hub', href: '/office' });
+    if (canUseOffSeason(r)) officeItems.push({ label: 'Off-Season Work', href: '/off-season' });
+    if (canUsePhcScheduling(r)) officeItems.push({ label: 'PHC Scheduling', href: '/phc' });
+    if (canUseSops(r)) officeItems.push({ label: 'SOP Library', href: '/sops' });
+    if (isTagsUser(user.email)) officeItems.push({ label: 'Slack Tags', href: '/tags' });
+
     if (salesItems.length > 0) groups.push({ label: 'Sales', items: salesItems });
     if (productionItems.length > 0)
       groups.push({ label: 'Production', items: productionItems });
+    if (officeItems.length > 0) groups.push({ label: 'Office', items: officeItems });
   }
 
   // Admin gets its own dropdown (admins only). Mirrors the cards on the

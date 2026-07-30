@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { requireHubAccess } from '@/lib/auth';
+import { requireHubAccess, canUseOffSeason } from '@/lib/auth';
 import { fmtUsd, fmtPct } from '@/lib/format';
 import {
   loadDashboard,
@@ -26,7 +26,10 @@ export default async function OffSeasonPage({
 }: {
   searchParams: Promise<{ season?: string }>;
 }) {
-  await requireHubAccess('pace');
+  // Viewable by the whole hub audience (incl. sales arborists); only office
+  // roles can edit (enter totals, set goals).
+  const user = await requireHubAccess('hub');
+  const canEdit = canUseOffSeason(user.role);
   const params = await searchParams;
   const data = await loadDashboard(params.season);
 
@@ -37,9 +40,15 @@ export default async function OffSeasonPage({
           Bratt Tree
         </Link>
         <span className="mx-2 text-fg-3">/</span>
-        <Link href="/office" className="hover:underline">
-          Office Hub
-        </Link>
+        {canEdit ? (
+          <Link href="/office" className="hover:underline">
+            Office Hub
+          </Link>
+        ) : (
+          <Link href="/hub" className="hover:underline">
+            Sales Arborist Hub
+          </Link>
+        )}
         <span className="mx-2 text-fg-3">/</span>
         Off-Season Work
       </p>
@@ -57,12 +66,16 @@ export default async function OffSeasonPage({
         </div>
         <div className="flex flex-shrink-0 flex-wrap items-center gap-2">
           {data && <CopyAsImageButton targetId="osw-snapshot" label="Copy" />}
-          <Link href="/off-season/entry" className="bt-btn bt-btn-primary">
-            Update today
-          </Link>
-          <Link href="/off-season/settings" className="bt-btn bt-btn-ghost">
-            Goals
-          </Link>
+          {canEdit && (
+            <>
+              <Link href="/off-season/entry" className="bt-btn bt-btn-primary">
+                Update today
+              </Link>
+              <Link href="/off-season/settings" className="bt-btn bt-btn-ghost">
+                Goals
+              </Link>
+            </>
+          )}
         </div>
       </div>
 

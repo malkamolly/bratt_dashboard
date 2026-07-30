@@ -123,10 +123,15 @@ export async function middleware(req: NextRequest) {
     { prefix: '/sales', hub: 'pace' },
     { prefix: '/production', hub: 'pace' },
     { prefix: '/admin', hub: 'pace' },
-    // The Office Hub landing and the Off-Season tracker are office/dispatch
-    // tools — same audience as Pace (admin, office, sales manager).
+    // The Office Hub landing is office/dispatch — same audience as Pace.
     { prefix: '/office', hub: 'pace' },
-    { prefix: '/off-season', hub: 'pace' },
+    // Off-Season: entering totals and editing goals stay office-only, but the
+    // dashboard/report is viewable by the whole hub audience (incl. sales
+    // arborists). More specific prefixes must come first — the matcher takes
+    // the first hit. RLS (migration 065) enforces read vs. write to match.
+    { prefix: '/off-season/entry', hub: 'pace' },
+    { prefix: '/off-season/settings', hub: 'pace' },
+    { prefix: '/off-season', hub: 'hub' },
     { prefix: '/hub', hub: 'hub' },
     { prefix: '/crew', hub: 'crew' },
   ];
