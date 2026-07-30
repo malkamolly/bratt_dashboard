@@ -20,7 +20,7 @@ const DATA_PATH = '/cost-analysis/data';
 
 async function requireLeadership() {
   const u = await getAllowedUser();
-  if (!u || !canSeeCostAnalysis(u.role)) {
+  if (!u || !canSeeCostAnalysis(u.email)) {
     throw new Error('Forbidden: Cost Analysis access required.');
   }
   return u;

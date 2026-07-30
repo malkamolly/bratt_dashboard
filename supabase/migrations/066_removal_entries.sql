@@ -50,28 +50,31 @@ create index if not exists removal_entries_status_idx on removal_entries (status
 
 alter table removal_entries enable row level security;
 
--- Read: any allowed user. (The page itself is gated to leadership in app code;
--- this policy is the backstop and keeps reads simple.)
+-- Cost Analysis is restricted to three specific people, not a whole role — the
+-- same list as COST_ANALYSIS_EMAILS in src/lib/auth.ts. Both reading and writing
+-- these rows is limited to them, so the data layer matches the page gate. If you
+-- change who can see Cost Analysis, update BOTH places.
+--
+-- Read: the three cost-analysis users only.
 drop policy if exists removal_entries_read on removal_entries;
 create policy removal_entries_read on removal_entries
-  for select using (is_allowed_user());
+  for select using (
+    lower(coalesce(auth.jwt() ->> 'email', '')) in (
+      'molly@bratttree.com', 'connor@bratttree.com', 'caleb@bratttree.com'
+    )
+  );
 
--- Write (insert / update / delete): admins and sales managers only — the same
--- "leadership" set that can see Cost Analysis.
+-- Write (insert / update / delete): the same three.
 drop policy if exists removal_entries_write on removal_entries;
 create policy removal_entries_write on removal_entries
   for all
   using (
-    exists (
-      select 1 from allowed_emails
-       where lower(email) = lower(coalesce(auth.jwt() ->> 'email', ''))
-         and role in ('admin', 'sales_manager')
+    lower(coalesce(auth.jwt() ->> 'email', '')) in (
+      'molly@bratttree.com', 'connor@bratttree.com', 'caleb@bratttree.com'
     )
   )
   with check (
-    exists (
-      select 1 from allowed_emails
-       where lower(email) = lower(coalesce(auth.jwt() ->> 'email', ''))
-         and role in ('admin', 'sales_manager')
+    lower(coalesce(auth.jwt() ->> 'email', '')) in (
+      'molly@bratttree.com', 'connor@bratttree.com', 'caleb@bratttree.com'
     )
   );

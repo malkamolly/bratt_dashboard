@@ -24,7 +24,7 @@ function fmtDate(iso: string | null): string {
 export default async function CostAnalysisPage() {
   const user = await getAllowedUser();
   if (!user) redirect('/login');
-  if (!canSeeCostAnalysis(user.role)) redirect('/access-denied');
+  if (!canSeeCostAnalysis(user.email)) redirect('/access-denied');
 
   const a = await buildCostAnalysis();
   const { summary: s } = a;

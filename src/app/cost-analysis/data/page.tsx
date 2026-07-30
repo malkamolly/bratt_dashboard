@@ -35,7 +35,7 @@ export default async function CostAnalysisDataPage({
 }) {
   const user = await getAllowedUser();
   if (!user) redirect('/login');
-  if (!canSeeCostAnalysis(user.role)) redirect('/access-denied');
+  if (!canSeeCostAnalysis(user.email)) redirect('/access-denied');
 
   const sp = await searchParams;
   const entries = await loadAllEntries();

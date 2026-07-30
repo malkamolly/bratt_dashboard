@@ -143,8 +143,8 @@ export default async function LandingPage() {
           ),
         )}
 
-        {/* Cost Analysis — leadership review tool (admins + sales manager). */}
-        {canSeeCostAnalysis(user.role) && (
+        {/* Cost Analysis — restricted to specific people (see COST_ANALYSIS_EMAILS). */}
+        {canSeeCostAnalysis(user.email) && (
           <Link
             href="/cost-analysis"
             className="bt-card group transition-colors hover:!border-orange"
