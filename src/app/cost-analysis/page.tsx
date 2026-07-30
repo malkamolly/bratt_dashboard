@@ -26,7 +26,7 @@ export default async function CostAnalysisPage() {
   if (!user) redirect('/login');
   if (!canSeeCostAnalysis(user.role)) redirect('/access-denied');
 
-  const a = buildCostAnalysis();
+  const a = await buildCostAnalysis();
   const { summary: s } = a;
 
   return (
@@ -50,6 +50,20 @@ export default async function CostAnalysisPage() {
         (DBH, height, and crown spread) &mdash; the apples-to-apples set for
         analyzing price. Dates {fmtDate(s.dateFrom)} to {fmtDate(s.dateTo)}.
       </p>
+
+      <Link
+        href="/cost-analysis/data"
+        className="mt-6 block rounded-card border-[3px] border-orange bg-white/70 p-5 transition-colors hover:bg-lime/20"
+      >
+        <p className="bt-eyebrow">Add &amp; Review Jobs</p>
+        <p className="mt-1 font-headline text-lg font-black uppercase text-bark-deep">
+          Add your own removals to these numbers &rarr;
+        </p>
+        <p className="mt-1 text-sm text-fg-2">
+          Enter completed jobs, review them, and choose which ones count. Only the
+          jobs you include feed the figures on this page.
+        </p>
+      </Link>
 
       <Link
         href="/cost-analysis/job-costing"

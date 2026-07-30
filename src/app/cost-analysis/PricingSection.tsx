@@ -5,9 +5,9 @@ import { fmtUsd } from '@/lib/format';
 
 // The full pricing tool: calculator + rate card + the two live charts Connor
 // wants to see next to it. Rendered inline on the Cost Analysis page.
-export default function PricingSection() {
-  const effect = buildMeasureEffect();
-  const pva = buildPricingVsActual();
+export default async function PricingSection() {
+  const effect = await buildMeasureEffect();
+  const pva = await buildPricingVsActual();
   const analyzed = pva.bands.reduce((sum, b) => sum + b.count, 0);
   // Rate card: sample every 5", then split down the middle into two columns.
   const rateRows = PRICING_MATRIX.categories.filter((_, i) => (i + 1) % 5 === 0);

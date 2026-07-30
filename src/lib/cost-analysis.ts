@@ -17,6 +17,7 @@
 
 import rawRows from '@/data/removals.json';
 import { modelPriceMatrix } from './pricing-matrix';
+import { loadIncludedEntries } from './removal-entries';
 
 export type RemovalRow = {
   /** Invoice number — lets leadership look the job up in ServiceTitan. */
@@ -97,8 +98,45 @@ function toJobs(rows: RemovalRow[]): JobRef[] {
 const REF_LO = 13;
 const REF_HI = 24;
 
-export function loadRemovals(): RemovalRow[] {
-  return rawRows as RemovalRow[];
+/**
+ * Every removal the analysis should see: the static historical export PLUS any
+ * leadership-entered jobs marked "included" in the holding pen (removal_entries,
+ * migration 066). Pending / excluded entries are deliberately left out, so the
+ * figures only ever reflect data leadership has approved. Async because it reads
+ * the database; if that read fails it degrades to the static export alone.
+ */
+export async function loadRemovals(): Promise<RemovalRow[]> {
+  const base = rawRows as RemovalRow[];
+  const included = await loadIncludedEntries();
+  return included.length ? [...base, ...included] : base;
+}
+
+/**
+ * Invoice numbers already in the static historical export. The add-entry action
+ * rejects any invoice already here, so a job in the baseline can't be re-entered
+ * and double-counted. (Entry-vs-entry duplicates are caught by the table's
+ * UNIQUE(inv) constraint.)
+ */
+export function staticRemovalInvoices(): Set<string> {
+  return new Set(
+    (rawRows as RemovalRow[]).map((r) => r.inv).filter((x): x is string => !!x),
+  );
+}
+
+/**
+ * Would a single approved entry land in the pricing (clean/comparable) set, or
+ * only in the headline totals? Entries have unique invoices, so the "one tree
+ * per invoice" rule is automatic; this applies the same rest-of-the-test the
+ * analysis uses (real tree, non-municipal, single trunk, fully measured, at or
+ * above the size floor). Used for the review-screen badge.
+ */
+export function isEntryComparable(r: RemovalRow): boolean {
+  return (
+    r.kind === 'tree' &&
+    !r.muni &&
+    isComparable(r) &&
+    r.price >= bandFor(r.dbh).floor
+  );
 }
 
 // ---------------------------------------------------------------------------
@@ -340,8 +378,8 @@ function compare(rows: RemovalRow[], label: string): DriverCompare | null {
   return { label, count: valid.length, median: Math.round(m), items: toJobs(valid) };
 }
 
-export function buildCostAnalysis(): CostAnalysis {
-  const all = loadRemovals();
+export async function buildCostAnalysis(): Promise<CostAnalysis> {
+  const all = await loadRemovals();
   // Two exclusions up front, before any number is computed:
   //  1. Non-tree services (stump / vine / shrub) miscoded under the tree
   //     removal pricebook code — they're different work at different prices.
@@ -612,13 +650,13 @@ function round(n: number | null): number | null {
 // can reuse it.
 // ---------------------------------------------------------------------------
 
-export function getComparableRows(): (RemovalRow & {
+export async function getComparableRows(): Promise<(RemovalRow & {
   dbh: number;
   price: number;
   height: number;
   crown: number;
-})[] {
-  const removals = loadRemovals().filter((r) => r.kind === 'tree' && !r.muni);
+})[]> {
+  const removals = (await loadRemovals()).filter((r) => r.kind === 'tree' && !r.muni);
   const treesPerInvoice = new Map<string, number>();
   for (const r of removals) {
     if (!r.inv) continue;
@@ -648,8 +686,8 @@ function band10(v: number): number {
   return Math.min(9, Math.max(0, Math.ceil(v / 10) - 1));
 }
 
-export function buildMeasureEffect(): MeasureEffect {
-  const comp = getComparableRows();
+export async function buildMeasureEffect(): Promise<MeasureEffect> {
+  const comp = await getComparableRows();
   const cpi = (r: { price: number; dbh: number }) => r.price / r.dbh;
   // Divide out the trunk-size trend so height/spread show on their own.
   const baseData = (d: number): number => {
@@ -706,8 +744,8 @@ export type PvaBand = {
   deltaPct: number;
 };
 
-export function buildPricingVsActual(): { bands: PvaBand[]; overallDeltaPct: number } {
-  const comp = getComparableRows();
+export async function buildPricingVsActual(): Promise<{ bands: PvaBand[]; overallDeltaPct: number }> {
+  const comp = await getComparableRows();
   const byBand = new Map<string, { actual: number; modeled: number }[]>();
   for (const r of comp) {
     const modeled = modelPriceMatrix(r.dbh, r.height, r.crown).price;
