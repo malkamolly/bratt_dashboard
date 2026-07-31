@@ -163,84 +163,45 @@ export async function invoiceExists(inv: string): Promise<boolean> {
 
 export type JobSort = 'date' | 'price' | 'dbh' | 'height' | 'crown' | 'species' | 'seller' | 'inv';
 
-// UI sort key -> column. Price sorts by original_price (adjustments are rare, so
-// this matches the shown price for all but a handful of jobs).
-const SORT_COL: Record<JobSort, string> = {
-  date: 'date',
-  price: 'original_price',
-  dbh: 'dbh',
-  height: 'height',
-  crown: 'crown',
-  species: 'species',
-  seller: 'seller',
-  inv: 'inv',
-};
-
-/** One page of jobs for the management list, plus the total matching count. */
-export async function loadJobsPage(opts: {
-  q?: string;
-  sort?: JobSort;
-  dir?: 'asc' | 'desc';
-  page?: number;
-  pageSize?: number;
-  showRemoved?: boolean;
-}): Promise<{ jobs: RemovalEntry[]; total: number }> {
-  try {
-    const sb = await serverClient();
-    const pageSize = opts.pageSize ?? 50;
-    const page = Math.max(1, opts.page ?? 1);
-    const from = (page - 1) * pageSize;
-    const to = from + pageSize - 1;
-    const sortCol = SORT_COL[opts.sort ?? 'date'];
-    const ascending = (opts.dir ?? 'desc') === 'asc';
-
-    // Keep the search term to safe characters before interpolating into ilike.
-    const q = (opts.q ?? '').replace(/[^A-Za-z0-9 .\-]/g, '').trim();
-    const status = opts.showRemoved ? 'removed' : 'included';
-
-    // "Show removed" is a recycle bin: it lists ONLY removed jobs (to restore).
-    // Try with the original-snapshot column; if 067 hasn't run yet, retry without it.
-    const run = async (cols: string) => {
-      let query = sb.from('removals').select(cols, { count: 'exact' }).eq('status', status);
-      if (q) query = query.or(`inv.ilike.%${q}%,species.ilike.%${q}%,seller.ilike.%${q}%`);
-      return query
-        .order(sortCol, { ascending, nullsFirst: false })
-        .order('id', { ascending: true })
-        .range(from, to);
-    };
-    let { data, error, count } = await run(FULL_COLS);
-    if (error) ({ data, error, count } = await run(CORE_COLS));
-    if (error || !data) return { jobs: [], total: 0 };
-    return { jobs: (data as unknown as Record<string, unknown>[]).map(toEntry), total: count ?? 0 };
-  } catch {
-    return { jobs: [], total: 0 };
-  }
-}
-
 /**
- * Invoice -> count of INCLUDED rows, so the list can tell whether a job is the
- * only tree on its invoice (part of the "counts toward pricing" test).
+ * Every job of a given status (included or removed), for the management list.
+ * The dataset is small (~2k rows), so we load it all and let the page filter,
+ * sort, and paginate in memory — that's what lets us filter by the computed
+ * "in pricing" state, which isn't a stored column. Pages through the 1000-row
+ * cap, and falls back to CORE_COLS if the original-snapshot column (067) is
+ * missing.
  */
-export async function loadIncludedInvoiceCounts(): Promise<Map<string, number>> {
-  const m = new Map<string, number>();
+export async function loadEntriesByStatus(status: EntryStatus): Promise<RemovalEntry[]> {
+  const out: RemovalEntry[] = [];
   try {
     const sb = await serverClient();
+    let cols = FULL_COLS;
     for (let from = 0; ; from += PAGE) {
-      const { data, error } = await sb
+      let { data, error } = await sb
         .from('removals')
-        .select('inv')
-        .eq('status', 'included')
+        .select(cols)
+        .eq('status', status)
+        .order('date', { ascending: false, nullsFirst: false })
+        .order('id', { ascending: true })
         .range(from, from + PAGE - 1);
-      if (error || !data || data.length === 0) break;
-      for (const r of data as { inv: unknown }[]) {
-        const inv = r.inv == null ? null : String(r.inv);
-        if (inv) m.set(inv, (m.get(inv) ?? 0) + 1);
+      // If the snapshot column isn't there yet, drop to CORE_COLS and retry.
+      if (error && cols === FULL_COLS) {
+        cols = CORE_COLS;
+        ({ data, error } = await sb
+          .from('removals')
+          .select(cols)
+          .eq('status', status)
+          .order('date', { ascending: false, nullsFirst: false })
+          .order('id', { ascending: true })
+          .range(from, from + PAGE - 1));
       }
+      if (error || !data || data.length === 0) break;
+      out.push(...(data as unknown as Record<string, unknown>[]).map(toEntry));
       if (data.length < PAGE) break;
     }
-    return m;
+    return out;
   } catch {
-    return m;
+    return out;
   }
 }
 
