@@ -63,8 +63,14 @@ export default async function CostAnalysisDataPage({
         <Link href="/cost-analysis" className="font-bold text-orange hover:underline">
           Cost Analysis
         </Link>{' '}
-        figures &mdash; the pricing calculator itself is unaffected. Exclude a job
+        figures &mdash; the pricing calculator itself is unaffected. Remove a job
         anytime to pull it back out.
+      </p>
+      <p className="mt-3 text-sm">
+        <Link href="/cost-analysis/jobs" className="font-bold text-orange hover:underline">
+          Manage all jobs &rarr;
+        </Link>{' '}
+        <span className="text-fg-3">— search, sort, edit, or remove any job already in the numbers.</span>
       </p>
 
       {sp.ok && (
@@ -191,7 +197,15 @@ function EntryList({
                       {c.reason && <span className="ml-1 text-[10px] text-fg-3">{c.reason}</span>}
                     </td>
                     <td className="py-2">
-                      <div className="flex gap-1.5">
+                      <div className="flex items-center gap-1.5">
+                        <Link
+                          href={`/cost-analysis/jobs/${e.id}/edit?returnTo=${encodeURIComponent('/cost-analysis/data')}`}
+                          className="rounded px-1.5 py-1 text-base hover:bg-lime/30"
+                          title="Edit before including"
+                          aria-label="Edit job"
+                        >
+                          ✏️
+                        </Link>
                         <StatusButton id={e.id} status="included" current={e.status} label="Include" tone="good" />
                         <StatusButton id={e.id} status="removed" current={e.status} label="Remove" tone="bad" />
                       </div>

@@ -127,3 +127,94 @@ export async function invoiceExists(inv: string): Promise<boolean> {
     return false;
   }
 }
+
+// ---------------------------------------------------------------------------
+// Job management (the sortable / searchable list + edit page)
+// ---------------------------------------------------------------------------
+
+export type JobSort = 'date' | 'price' | 'dbh' | 'height' | 'crown' | 'species' | 'seller' | 'inv';
+
+// UI sort key -> column. Price sorts by original_price (adjustments are rare, so
+// this matches the shown price for all but a handful of jobs).
+const SORT_COL: Record<JobSort, string> = {
+  date: 'date',
+  price: 'original_price',
+  dbh: 'dbh',
+  height: 'height',
+  crown: 'crown',
+  species: 'species',
+  seller: 'seller',
+  inv: 'inv',
+};
+
+/** One page of jobs for the management list, plus the total matching count. */
+export async function loadJobsPage(opts: {
+  q?: string;
+  sort?: JobSort;
+  dir?: 'asc' | 'desc';
+  page?: number;
+  pageSize?: number;
+  showRemoved?: boolean;
+}): Promise<{ jobs: RemovalEntry[]; total: number }> {
+  try {
+    const sb = await serverClient();
+    const pageSize = opts.pageSize ?? 50;
+    const page = Math.max(1, opts.page ?? 1);
+    const from = (page - 1) * pageSize;
+    const to = from + pageSize - 1;
+    const sortCol = SORT_COL[opts.sort ?? 'date'];
+    const ascending = (opts.dir ?? 'desc') === 'asc';
+
+    let query = sb.from('removals').select(COLS, { count: 'exact' });
+    query = opts.showRemoved
+      ? query.in('status', ['included', 'removed'])
+      : query.eq('status', 'included');
+
+    // Keep the search term to safe characters before interpolating into ilike.
+    const q = (opts.q ?? '').replace(/[^A-Za-z0-9 .\-]/g, '').trim();
+    if (q) query = query.or(`inv.ilike.%${q}%,species.ilike.%${q}%,seller.ilike.%${q}%`);
+
+    query = query
+      .order(sortCol, { ascending, nullsFirst: false })
+      .order('id', { ascending: true })
+      .range(from, to);
+
+    const { data, error, count } = await query;
+    if (error || !data) return { jobs: [], total: 0 };
+    return { jobs: data.map(toEntry), total: count ?? 0 };
+  } catch {
+    return { jobs: [], total: 0 };
+  }
+}
+
+/**
+ * Invoice -> count of INCLUDED rows, so the list can tell whether a job is the
+ * only tree on its invoice (part of the "counts toward pricing" test).
+ */
+export async function loadIncludedInvoiceCounts(): Promise<Map<string, number>> {
+  const m = new Map<string, number>();
+  try {
+    const sb = await serverClient();
+    const { data, error } = await sb.from('removals').select('inv').eq('status', 'included');
+    if (error || !data) return m;
+    for (const r of data as { inv: unknown }[]) {
+      const inv = r.inv == null ? null : String(r.inv);
+      if (inv) m.set(inv, (m.get(inv) ?? 0) + 1);
+    }
+    return m;
+  } catch {
+    return m;
+  }
+}
+
+/** One job by id, for the edit page. */
+export async function loadJobById(id: string): Promise<RemovalEntry | null> {
+  try {
+    const sb = await serverClient();
+    const { data, error } = await sb.from('removals').select(COLS).eq('id', id).maybeSingle();
+    if (error || !data) return null;
+    return toEntry(data);
+  } catch {
+    return null;
+  }
+}
