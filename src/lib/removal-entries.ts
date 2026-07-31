@@ -38,10 +38,16 @@ export type RemovalEntry = RemovalRow & {
   /** Who last edited this job, and when (ISO). */
   updatedAt: string | null;
   reviewedBy: string | null;
+  /** Snapshot of the original field values (migration 067), or null if absent. */
+  original: Record<string, unknown> | null;
 };
 
-const COLS =
+// Core columns present since migration 066 — safe to select anywhere.
+const CORE_COLS =
   'id,inv,haul,original_price,adjusted_price,dbh,stems,height,crown,species,seller,date,muni,kind,status,source,note,added_by,created_at,updated_at,reviewed_by';
+// Adds the original-values snapshot (migration 067). Only the management/edit
+// reads need it; they fall back to CORE_COLS if 067 hasn't run yet.
+const FULL_COLS = `${CORE_COLS},original`;
 
 // Supabase returns at most 1000 rows per request. The dataset is larger than
 // that, so any read that must see EVERY row pages through in 1000-row chunks.
@@ -90,6 +96,8 @@ function toEntry(e: Record<string, unknown>): RemovalEntry {
     createdAt: String(e.created_at ?? ''),
     updatedAt: e.updated_at == null ? null : String(e.updated_at),
     reviewedBy: e.reviewed_by == null ? null : String(e.reviewed_by),
+    original:
+      e.original && typeof e.original === 'object' ? (e.original as Record<string, unknown>) : null,
   };
 }
 
@@ -105,7 +113,7 @@ export async function loadIncludedRemovals(): Promise<RemovalRow[] | null> {
     for (let from = 0; ; from += PAGE) {
       const { data, error } = await sb
         .from('removals')
-        .select(COLS)
+        .select(CORE_COLS)
         .eq('status', 'included')
         .range(from, from + PAGE - 1);
       // First-page error means the table isn't readable (e.g. not migrated yet)
@@ -127,7 +135,7 @@ export async function loadReviewEntries(): Promise<RemovalEntry[]> {
     const sb = await serverClient();
     const { data, error } = await sb
       .from('removals')
-      .select(COLS)
+      .select(CORE_COLS)
       .eq('status', 'pending')
       .order('created_at', { ascending: false });
     if (error || !data) return [];
@@ -186,24 +194,24 @@ export async function loadJobsPage(opts: {
     const sortCol = SORT_COL[opts.sort ?? 'date'];
     const ascending = (opts.dir ?? 'desc') === 'asc';
 
-    // "Show removed" is a recycle bin: it lists ONLY removed jobs (to restore).
-    let query = sb
-      .from('removals')
-      .select(COLS, { count: 'exact' })
-      .eq('status', opts.showRemoved ? 'removed' : 'included');
-
     // Keep the search term to safe characters before interpolating into ilike.
     const q = (opts.q ?? '').replace(/[^A-Za-z0-9 .\-]/g, '').trim();
-    if (q) query = query.or(`inv.ilike.%${q}%,species.ilike.%${q}%,seller.ilike.%${q}%`);
+    const status = opts.showRemoved ? 'removed' : 'included';
 
-    query = query
-      .order(sortCol, { ascending, nullsFirst: false })
-      .order('id', { ascending: true })
-      .range(from, to);
-
-    const { data, error, count } = await query;
+    // "Show removed" is a recycle bin: it lists ONLY removed jobs (to restore).
+    // Try with the original-snapshot column; if 067 hasn't run yet, retry without it.
+    const run = async (cols: string) => {
+      let query = sb.from('removals').select(cols, { count: 'exact' }).eq('status', status);
+      if (q) query = query.or(`inv.ilike.%${q}%,species.ilike.%${q}%,seller.ilike.%${q}%`);
+      return query
+        .order(sortCol, { ascending, nullsFirst: false })
+        .order('id', { ascending: true })
+        .range(from, to);
+    };
+    let { data, error, count } = await run(FULL_COLS);
+    if (error) ({ data, error, count } = await run(CORE_COLS));
     if (error || !data) return { jobs: [], total: 0 };
-    return { jobs: data.map(toEntry), total: count ?? 0 };
+    return { jobs: (data as unknown as Record<string, unknown>[]).map(toEntry), total: count ?? 0 };
   } catch {
     return { jobs: [], total: 0 };
   }
@@ -240,7 +248,8 @@ export async function loadIncludedInvoiceCounts(): Promise<Map<string, number>> 
 export async function loadJobById(id: string): Promise<RemovalEntry | null> {
   try {
     const sb = await serverClient();
-    const { data, error } = await sb.from('removals').select(COLS).eq('id', id).maybeSingle();
+    let { data, error } = await sb.from('removals').select(FULL_COLS).eq('id', id).maybeSingle();
+    if (error) ({ data, error } = await sb.from('removals').select(CORE_COLS).eq('id', id).maybeSingle());
     if (error || !data) return null;
     return toEntry(data);
   } catch {

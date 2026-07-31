@@ -102,6 +102,8 @@ export async function addEntry(formData: FormData): Promise<void> {
     status: 'pending',
     source: 'manual',
     added_by: user.email,
+    // Snapshot the original field values so later edits can be flagged as adjusted.
+    original: { dbh, height, crown, stems, species, seller, date, haul, muni },
   });
 
   if (error) {

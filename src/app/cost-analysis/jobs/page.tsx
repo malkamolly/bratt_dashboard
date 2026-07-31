@@ -223,6 +223,18 @@ function PageLink({ sp, page, disabled, label }: { sp: SP; page: number; disable
   );
 }
 
+/** Small "adj" tag when a field differs from its original snapshot. */
+function AdjMark({ j, k, cur }: { j: RemovalEntry; k: string; cur: unknown }) {
+  if (!j.original || !(k in j.original)) return null;
+  const orig = j.original[k];
+  if (String(orig ?? '') === String(cur ?? '')) return null;
+  return (
+    <span className="ml-1 text-[10px] font-bold text-fg-3" title={`was ${orig ?? '—'}`}>
+      adj
+    </span>
+  );
+}
+
 function JobRow({
   j,
   counts,
@@ -245,22 +257,37 @@ function JobRow({
         {j.inv ?? '—'}
         {!j.haul && <span className="ml-1 text-[10px] text-fg-3">(no haul)</span>}
       </td>
-      <td className="py-2 pr-3 text-ink">{j.dbh != null ? `${j.dbh}"` : '—'}</td>
-      <td className="py-2 pr-3 text-fg-2">{j.height != null ? `${j.height}′` : '—'}</td>
-      <td className="py-2 pr-3 text-fg-2">{j.crown != null ? `${j.crown}′` : '—'}</td>
+      <td className="py-2 pr-3 text-ink">
+        {j.dbh != null ? `${j.dbh}"` : '—'}
+        <AdjMark j={j} k="dbh" cur={j.dbh} />
+      </td>
+      <td className="py-2 pr-3 text-fg-2">
+        {j.height != null ? `${j.height}′` : '—'}
+        <AdjMark j={j} k="height" cur={j.height} />
+      </td>
+      <td className="py-2 pr-3 text-fg-2">
+        {j.crown != null ? `${j.crown}′` : '—'}
+        <AdjMark j={j} k="crown" cur={j.crown} />
+      </td>
       <td className="py-2 pr-3 font-bold text-orange">
         {j.price != null ? fmtUsd(j.price) : '—'}
         {adjusted && (
           <span
             className="ml-1 text-[10px] font-bold text-fg-3"
-            title={`Original ${fmtUsd(j.originalPrice ?? 0)}`}
+            title={`was ${fmtUsd(j.originalPrice ?? 0)}`}
           >
             adj
           </span>
         )}
       </td>
-      <td className="py-2 pr-3 text-fg-2">{j.species ?? '—'}</td>
-      <td className="py-2 pr-3 text-fg-2">{j.seller ?? '—'}</td>
+      <td className="py-2 pr-3 text-fg-2">
+        {j.species ?? '—'}
+        <AdjMark j={j} k="species" cur={j.species} />
+      </td>
+      <td className="py-2 pr-3 text-fg-2">
+        {j.seller ?? '—'}
+        <AdjMark j={j} k="seller" cur={j.seller} />
+      </td>
       <td className="py-2 pr-3 text-fg-2">
         {j.date ?? '—'}
         {j.updatedAt && (

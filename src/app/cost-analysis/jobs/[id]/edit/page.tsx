@@ -25,6 +25,15 @@ export default async function EditJobPage({
   const returnTo = (sp.returnTo ?? '').startsWith('/cost-analysis') ? sp.returnTo! : JOBS_PATH;
   const job = await loadJobById(id);
 
+  // "was X" hint under a field when its current value differs from the original.
+  const wasHint = (key: string, cur: unknown): string | undefined => {
+    const o = job?.original;
+    if (!o || !(key in o)) return undefined;
+    const orig = o[key];
+    if (String(orig ?? '') === String(cur ?? '')) return undefined;
+    return `was ${orig ?? '—'}`;
+  };
+
   if (!job) {
     return (
       <main className="bt-page">
@@ -93,13 +102,13 @@ export default async function EditJobPage({
         />
         <div className="hidden lg:block" />
 
-        <Field label="DBH — trunk diameter (in)" name="dbh" type="number" step="0.1" defaultValue={job.dbh ?? ''} />
-        <Field label="Height (ft)" name="height" type="number" step="0.1" defaultValue={job.height ?? ''} />
-        <Field label="Crown spread (ft)" name="crown" type="number" step="0.1" defaultValue={job.crown ?? ''} />
-        <Field label="Species" name="species" type="text" defaultValue={job.species ?? ''} />
-        <Field label="Sold by (First + last initial)" name="seller" type="text" defaultValue={job.seller ?? ''} />
-        <Field label="Date completed" name="date" type="date" defaultValue={job.date ?? ''} />
-        <Field label="Trunks (1 unless a clump)" name="stems" type="number" step="1" defaultValue={job.stems ?? 1} />
+        <Field label="DBH — trunk diameter (in)" name="dbh" type="number" step="0.1" defaultValue={job.dbh ?? ''} hint={wasHint('dbh', job.dbh)} />
+        <Field label="Height (ft)" name="height" type="number" step="0.1" defaultValue={job.height ?? ''} hint={wasHint('height', job.height)} />
+        <Field label="Crown spread (ft)" name="crown" type="number" step="0.1" defaultValue={job.crown ?? ''} hint={wasHint('crown', job.crown)} />
+        <Field label="Species" name="species" type="text" defaultValue={job.species ?? ''} hint={wasHint('species', job.species)} />
+        <Field label="Sold by (First + last initial)" name="seller" type="text" defaultValue={job.seller ?? ''} hint={wasHint('seller', job.seller)} />
+        <Field label="Date completed" name="date" type="date" defaultValue={job.date ?? ''} hint={wasHint('date', job.date)} />
+        <Field label="Trunks (1 unless a clump)" name="stems" type="number" step="1" defaultValue={job.stems ?? 1} hint={wasHint('stems', job.stems)} />
 
         <label className="flex flex-col text-sm">
           <span className="mb-1 font-bold text-fg-2">Hauling?</span>
@@ -151,6 +160,7 @@ function Field({
   step,
   defaultValue,
   placeholder,
+  hint,
 }: {
   label: string;
   name: string;
@@ -158,6 +168,7 @@ function Field({
   step?: string;
   defaultValue?: string | number;
   placeholder?: string;
+  hint?: string;
 }) {
   return (
     <label className="flex flex-col text-sm">
@@ -170,6 +181,7 @@ function Field({
         placeholder={placeholder}
         className="rounded-card border-2 border-bark/20 bg-white px-3 py-2 text-ink placeholder:text-fg-3/60"
       />
+      {hint && <span className="mt-1 text-[11px] font-bold text-orange">{hint}</span>}
     </label>
   );
 }
