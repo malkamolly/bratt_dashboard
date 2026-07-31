@@ -3,18 +3,18 @@
 // ============================================================================
 // Cost Analysis — leadership data entry (server actions)
 // ============================================================================
-// Two actions, both gated to leadership (admin / sales_manager):
-//   - addEntry:       add a job to the holding pen (lands as 'pending').
-//   - setEntryStatus: include / exclude / re-pend an entry after review.
-// Only 'included' entries reach the analysis (see cost-analysis.ts). The page
-// is force-dynamic, so a status change shows up in the figures on next load.
+// Two actions, both gated to the three Cost Analysis people:
+//   - addEntry:       add a job to the `removals` table (lands as 'pending').
+//   - setEntryStatus: include / remove / re-pend a job after review.
+// Only 'included' rows reach the analysis (see cost-analysis.ts). The page is
+// force-dynamic, so a status change shows up in the figures on next load.
 // ============================================================================
 
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { serverClient } from '@/lib/supabase';
 import { getAllowedUser, canSeeCostAnalysis } from '@/lib/auth';
-import { staticRemovalInvoices } from '@/lib/cost-analysis';
+import { invoiceExists } from '@/lib/removal-entries';
 
 const DATA_PATH = '/cost-analysis/data';
 
@@ -77,18 +77,19 @@ export async function addEntry(formData: FormData): Promise<void> {
   const haul = String(formData.get('haul') ?? 'yes') !== 'no';
   const muni = String(formData.get('muni') ?? '') === 'on';
 
-  // ---- Duplicate-invoice guardrail (part 1: the static historical baseline) ----
-  // The table's UNIQUE(inv) constraint stops entry-vs-entry duplicates; this
-  // stops re-entering an invoice that's already counted in the baseline export.
-  if (staticRemovalInvoices().has(inv)) {
-    back('error', `Invoice ${inv} is already in the historical data — no need to add it.`);
+  // ---- Duplicate-invoice guardrail ----
+  // Reject an invoice that already exists anywhere in the dataset (historical or
+  // added). Historical multi-line invoices legitimately repeat among themselves,
+  // but a NEW manual entry should never reuse an existing invoice.
+  if (await invoiceExists(inv)) {
+    back('error', `Invoice ${inv} is already in the system — no need to add it again.`);
   }
 
   const supabase = await serverClient();
-  const { error } = await supabase.from('removal_entries').insert({
+  const { error } = await supabase.from('removals').insert({
     inv,
     haul,
-    price,
+    original_price: price,
     dbh,
     stems,
     height,
@@ -99,14 +100,11 @@ export async function addEntry(formData: FormData): Promise<void> {
     muni,
     kind: 'tree',
     status: 'pending',
+    source: 'manual',
     added_by: user.email,
   });
 
   if (error) {
-    // 23505 = unique_violation on inv (part 2 of the guardrail).
-    if (error.code === '23505') {
-      back('error', `Invoice ${inv} has already been entered.`);
-    }
     back('error', `Could not save the job: ${error.message}`);
   }
 
@@ -121,20 +119,28 @@ export async function setEntryStatus(formData: FormData): Promise<void> {
   const id = String(formData.get('id') ?? '').trim();
   const status = String(formData.get('status') ?? '').trim();
   if (!id) back('error', 'Missing entry id.');
-  if (!['pending', 'included', 'excluded'].includes(status)) {
+  if (!['pending', 'included', 'removed'].includes(status)) {
     back('error', 'Invalid status.');
   }
 
+  const now = new Date().toISOString();
+  const patch: Record<string, unknown> = {
+    status,
+    reviewed_by: user.email,
+    reviewed_at: now,
+  };
+  if (status === 'removed') {
+    patch.removed_by = user.email;
+    patch.removed_at = now;
+  }
+
   const supabase = await serverClient();
-  const { error } = await supabase
-    .from('removal_entries')
-    .update({ status, reviewed_by: user.email, reviewed_at: new Date().toISOString() })
-    .eq('id', id);
+  const { error } = await supabase.from('removals').update(patch).eq('id', id);
 
   if (error) back('error', `Could not update the job: ${error.message}`);
 
   revalidatePath(DATA_PATH);
   revalidatePath('/cost-analysis');
-  const verb = status === 'included' ? 'included' : status === 'excluded' ? 'excluded' : 'set to pending';
+  const verb = status === 'included' ? 'included' : status === 'removed' ? 'removed' : 'set to pending';
   back('ok', `Job ${verb}. The analysis figures update on next load.`);
 }

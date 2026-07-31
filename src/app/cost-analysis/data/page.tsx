@@ -2,7 +2,7 @@ import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { getAllowedUser, canSeeCostAnalysis } from '@/lib/auth';
 import { isEntryComparable } from '@/lib/cost-analysis';
-import { loadAllEntries, type RemovalEntry, type EntryStatus } from '@/lib/removal-entries';
+import { loadReviewEntries, type RemovalEntry, type EntryStatus } from '@/lib/removal-entries';
 import { fmtUsd } from '@/lib/format';
 import { addEntry, setEntryStatus } from './actions';
 
@@ -38,10 +38,7 @@ export default async function CostAnalysisDataPage({
   if (!canSeeCostAnalysis(user.email)) redirect('/access-denied');
 
   const sp = await searchParams;
-  const entries = await loadAllEntries();
-  const pending = entries.filter((e) => e.status === 'pending');
-  const included = entries.filter((e) => e.status === 'included');
-  const excluded = entries.filter((e) => e.status === 'excluded');
+  const pending = await loadReviewEntries();
 
   return (
     <main className="bt-page">
@@ -126,22 +123,12 @@ export default async function CostAnalysisDataPage({
         </form>
       </section>
 
-      {/* ---------- Review lists ---------- */}
+      {/* ---------- Review queue ---------- */}
       <EntryList
         title="Pending — awaiting your review"
-        subtitle="These are NOT in the numbers yet. Include the ones you want counted."
+        subtitle="These are NOT in the numbers yet. Include the ones you want counted; remove the rest."
         entries={pending}
         highlight
-      />
-      <EntryList
-        title={`Included (${included.length}) — feeding the analysis`}
-        subtitle="Counted in the Cost Analysis figures. Exclude to pull one back out."
-        entries={included}
-      />
-      <EntryList
-        title={`Excluded (${excluded.length})`}
-        subtitle="Kept on record but never counted. Include one to bring it back."
-        entries={excluded}
       />
     </main>
   );
@@ -206,7 +193,7 @@ function EntryList({
                     <td className="py-2">
                       <div className="flex gap-1.5">
                         <StatusButton id={e.id} status="included" current={e.status} label="Include" tone="good" />
-                        <StatusButton id={e.id} status="excluded" current={e.status} label="Exclude" tone="bad" />
+                        <StatusButton id={e.id} status="removed" current={e.status} label="Remove" tone="bad" />
                       </div>
                     </td>
                   </tr>

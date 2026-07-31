@@ -17,7 +17,7 @@
 
 import rawRows from '@/data/removals.json';
 import { modelPriceMatrix } from './pricing-matrix';
-import { loadIncludedEntries } from './removal-entries';
+import { loadIncludedRemovals } from './removal-entries';
 
 export type RemovalRow = {
   /** Invoice number — lets leadership look the job up in ServiceTitan. */
@@ -99,28 +99,17 @@ const REF_LO = 13;
 const REF_HI = 24;
 
 /**
- * Every removal the analysis should see: the static historical export PLUS any
- * leadership-entered jobs marked "included" in the holding pen (removal_entries,
- * migration 066). Pending / excluded entries are deliberately left out, so the
- * figures only ever reflect data leadership has approved. Async because it reads
- * the database; if that read fails it degrades to the static export alone.
+ * Every removal the analysis should see: all 'included' rows from the `removals`
+ * table (migration 066), which holds the historical export plus anything
+ * leadership has added and approved. Pending / removed rows are left out.
+ *
+ * If the table can't be read (e.g. before the migration has run), we fall back
+ * to the static export bundled at src/data/removals.json, so the site keeps
+ * rendering the same numbers it did before the switch.
  */
 export async function loadRemovals(): Promise<RemovalRow[]> {
-  const base = rawRows as RemovalRow[];
-  const included = await loadIncludedEntries();
-  return included.length ? [...base, ...included] : base;
-}
-
-/**
- * Invoice numbers already in the static historical export. The add-entry action
- * rejects any invoice already here, so a job in the baseline can't be re-entered
- * and double-counted. (Entry-vs-entry duplicates are caught by the table's
- * UNIQUE(inv) constraint.)
- */
-export function staticRemovalInvoices(): Set<string> {
-  return new Set(
-    (rawRows as RemovalRow[]).map((r) => r.inv).filter((x): x is string => !!x),
-  );
+  const fromDb = await loadIncludedRemovals();
+  return fromDb ?? (rawRows as RemovalRow[]);
 }
 
 /**

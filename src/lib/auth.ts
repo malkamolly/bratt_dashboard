@@ -129,7 +129,7 @@ export function canUseOffSeason(role: Role): boolean {
 // Cost Analysis is restricted to specific PEOPLE, not a whole role — like the
 // private My Projects hub (see OWNER_EMAIL above). These three are the only ones
 // who see the pricing data, the Add & Review screen, and Job Costing. Keep this
-// list in sync with the removal_entries RLS policies in migration 066.
+// list in sync with the `removals` table RLS policies in migration 066.
 export const COST_ANALYSIS_EMAILS: readonly string[] = [
   'molly@bratttree.com',
   'connor@bratttree.com',
