@@ -51,19 +51,35 @@ export default async function CostAnalysisPage() {
         analyzing price. Dates {fmtDate(s.dateFrom)} to {fmtDate(s.dateTo)}.
       </p>
 
-      <Link
-        href="/cost-analysis/data"
-        className="mt-6 block rounded-card border-[3px] border-orange bg-white/70 p-5 transition-colors hover:bg-lime/20"
-      >
-        <p className="bt-eyebrow">Add &amp; Review Jobs</p>
-        <p className="mt-1 font-headline text-lg font-black uppercase text-bark-deep">
-          Add your own removals to these numbers &rarr;
-        </p>
-        <p className="mt-1 text-sm text-fg-2">
-          Enter completed jobs, review them, and choose which ones count. Only the
-          jobs you include feed the figures on this page.
-        </p>
-      </Link>
+      <div className="mt-6 grid gap-4 sm:grid-cols-2">
+        <Link
+          href="/cost-analysis/data"
+          className="block rounded-card border-[3px] border-orange bg-white/70 p-5 transition-colors hover:bg-lime/20"
+        >
+          <p className="bt-eyebrow">Add &amp; Review Jobs</p>
+          <p className="mt-1 font-headline text-lg font-black uppercase text-bark-deep">
+            Add your own removals &rarr;
+          </p>
+          <p className="mt-1 text-sm text-fg-2">
+            Enter completed jobs, review them, and choose which ones count toward
+            these figures.
+          </p>
+        </Link>
+
+        <Link
+          href="/cost-analysis/jobs"
+          className="block rounded-card border-[3px] border-orange bg-white/70 p-5 transition-colors hover:bg-lime/20"
+        >
+          <p className="bt-eyebrow">Manage All Jobs</p>
+          <p className="mt-1 font-headline text-lg font-black uppercase text-bark-deep">
+            Search, edit &amp; remove jobs &rarr;
+          </p>
+          <p className="mt-1 text-sm text-fg-2">
+            Every job behind these numbers &mdash; search, sort, adjust a price or
+            fix a detail, or remove one. Changes update the figures right away.
+          </p>
+        </Link>
+      </div>
 
       <Link
         href="/cost-analysis/job-costing"
