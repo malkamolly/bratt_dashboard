@@ -35,10 +35,17 @@ export type RemovalEntry = RemovalRow & {
   note: string | null;
   addedBy: string | null;
   createdAt: string;
+  /** Who last edited this job, and when (ISO). */
+  updatedAt: string | null;
+  reviewedBy: string | null;
 };
 
 const COLS =
-  'id,inv,haul,original_price,adjusted_price,dbh,stems,height,crown,species,seller,date,muni,kind,status,source,note,added_by,created_at';
+  'id,inv,haul,original_price,adjusted_price,dbh,stems,height,crown,species,seller,date,muni,kind,status,source,note,added_by,created_at,updated_at,reviewed_by';
+
+// Supabase returns at most 1000 rows per request. The dataset is larger than
+// that, so any read that must see EVERY row pages through in 1000-row chunks.
+const PAGE = 1000;
 
 function num(v: unknown): number | null {
   if (v == null || v === '') return null;
@@ -81,6 +88,8 @@ function toEntry(e: Record<string, unknown>): RemovalEntry {
     note: e.note == null ? null : String(e.note),
     addedBy: e.added_by == null ? null : String(e.added_by),
     createdAt: String(e.created_at ?? ''),
+    updatedAt: e.updated_at == null ? null : String(e.updated_at),
+    reviewedBy: e.reviewed_by == null ? null : String(e.reviewed_by),
   };
 }
 
@@ -92,9 +101,21 @@ function toEntry(e: Record<string, unknown>): RemovalEntry {
 export async function loadIncludedRemovals(): Promise<RemovalRow[] | null> {
   try {
     const sb = await serverClient();
-    const { data, error } = await sb.from('removals').select(COLS).eq('status', 'included');
-    if (error) return null;
-    return (data ?? []).map(toRow);
+    const out: RemovalRow[] = [];
+    for (let from = 0; ; from += PAGE) {
+      const { data, error } = await sb
+        .from('removals')
+        .select(COLS)
+        .eq('status', 'included')
+        .range(from, from + PAGE - 1);
+      // First-page error means the table isn't readable (e.g. not migrated yet)
+      // -> null so the caller falls back to the static export.
+      if (error) return from === 0 ? null : out;
+      if (!data || data.length === 0) break;
+      out.push(...data.map(toRow));
+      if (data.length < PAGE) break;
+    }
+    return out;
   } catch {
     return null;
   }
@@ -165,10 +186,11 @@ export async function loadJobsPage(opts: {
     const sortCol = SORT_COL[opts.sort ?? 'date'];
     const ascending = (opts.dir ?? 'desc') === 'asc';
 
-    let query = sb.from('removals').select(COLS, { count: 'exact' });
-    query = opts.showRemoved
-      ? query.in('status', ['included', 'removed'])
-      : query.eq('status', 'included');
+    // "Show removed" is a recycle bin: it lists ONLY removed jobs (to restore).
+    let query = sb
+      .from('removals')
+      .select(COLS, { count: 'exact' })
+      .eq('status', opts.showRemoved ? 'removed' : 'included');
 
     // Keep the search term to safe characters before interpolating into ilike.
     const q = (opts.q ?? '').replace(/[^A-Za-z0-9 .\-]/g, '').trim();
@@ -195,11 +217,18 @@ export async function loadIncludedInvoiceCounts(): Promise<Map<string, number>> 
   const m = new Map<string, number>();
   try {
     const sb = await serverClient();
-    const { data, error } = await sb.from('removals').select('inv').eq('status', 'included');
-    if (error || !data) return m;
-    for (const r of data as { inv: unknown }[]) {
-      const inv = r.inv == null ? null : String(r.inv);
-      if (inv) m.set(inv, (m.get(inv) ?? 0) + 1);
+    for (let from = 0; ; from += PAGE) {
+      const { data, error } = await sb
+        .from('removals')
+        .select('inv')
+        .eq('status', 'included')
+        .range(from, from + PAGE - 1);
+      if (error || !data || data.length === 0) break;
+      for (const r of data as { inv: unknown }[]) {
+        const inv = r.inv == null ? null : String(r.inv);
+        if (inv) m.set(inv, (m.get(inv) ?? 0) + 1);
+      }
+      if (data.length < PAGE) break;
     }
     return m;
   } catch {

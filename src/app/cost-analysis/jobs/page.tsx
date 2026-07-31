@@ -135,7 +135,11 @@ export default async function JobsPage({ searchParams }: { searchParams: Promise
       <section className="bt-card mt-4">
         {jobs.length === 0 ? (
           <p className="text-sm text-fg-3">
-            No jobs match. {total === 0 && 'If you just set this up, make sure migration 066 has run.'}
+            {showRemoved
+              ? 'No jobs have been removed. When you remove a job with ✕, it lands here so you can restore it.'
+              : q
+              ? 'No jobs match your search.'
+              : 'No jobs found. If you just set this up, make sure migration 066 has run.'}
           </p>
         ) : (
           <div className="overflow-x-auto">
@@ -247,14 +251,25 @@ function JobRow({
       <td className="py-2 pr-3 font-bold text-orange">
         {j.price != null ? fmtUsd(j.price) : '—'}
         {adjusted && (
-          <span className="ml-1 text-[10px] font-bold text-fg-3" title={`Original ${fmtUsd(j.originalPrice ?? 0)}`}>
+          <span
+            className="ml-1 text-[10px] font-bold text-fg-3"
+            title={`Original ${fmtUsd(j.originalPrice ?? 0)}`}
+          >
             adj
           </span>
         )}
       </td>
       <td className="py-2 pr-3 text-fg-2">{j.species ?? '—'}</td>
       <td className="py-2 pr-3 text-fg-2">{j.seller ?? '—'}</td>
-      <td className="py-2 pr-3 text-fg-2">{j.date ?? '—'}</td>
+      <td className="py-2 pr-3 text-fg-2">
+        {j.date ?? '—'}
+        {j.updatedAt && (
+          <div className="text-[10px] text-fg-3" title={j.reviewedBy ?? undefined}>
+            edited {j.reviewedBy ? `by ${j.reviewedBy} ` : ''}
+            {j.updatedAt.slice(0, 10)}
+          </div>
+        )}
+      </td>
       <td className="py-2 pr-3">
         {j.muni ? (
           <span className="rounded bg-paper-edge/50 px-2 py-0.5 text-[11px] font-bold text-fg-2">Municipal</span>

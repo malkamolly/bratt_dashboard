@@ -54,6 +54,16 @@ export default async function EditJobPage({
       <h1 className="mt-2 font-display text-4xl uppercase tracking-wider text-ink sm:text-5xl">
         Edit job — invoice {job.inv ?? '—'}
       </h1>
+      {job.updatedAt ? (
+        <p className="mt-2 text-sm text-fg-2">
+          Last edited{job.reviewedBy ? ` by ${job.reviewedBy}` : ''} on {job.updatedAt.slice(0, 10)}
+          {job.adjustedPrice != null && job.originalPrice != null && (
+            <> · price adjusted from {fmtUsd(job.originalPrice)} to {fmtUsd(job.adjustedPrice)}</>
+          )}
+        </p>
+      ) : (
+        <p className="mt-2 text-sm text-fg-3">Not edited yet — original job as recorded.</p>
+      )}
 
       {sp.error && (
         <div className="mt-6 rounded-card border-2 border-orange bg-orange/10 px-4 py-3 text-sm font-bold text-orange">
