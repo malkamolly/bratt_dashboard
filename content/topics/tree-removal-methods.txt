@@ -1,0 +1,182 @@
+# ============================================================
+# BRATT TREE — Topic Deck: The 5 Best Tree Removal Methods
+# Source content for the slide deck shown at
+#   /topics/tree-removal-methods/present
+# Converted from the "Tree Removal Methods" Keynote field reference.
+# Syntax matches the onboarding / training-module deck format:
+#   @layout-name  starts a new slide
+#   key: value    a single field on the current slide
+#   key: a | b    multi-part value (split by "|")
+#   # or //       a comment, ignored
+# ============================================================
+
+
+@cover
+eyebrow: Field Reference · Removals
+unit: The 5 Best Tree Removal Methods
+subtitle: In order of preference.
+tagline: What has to be true before we pick each one.
+tagline: What the tree looks like when it fits.
+tagline: And where people get hurt.
+meta-left: Bratt Tree · Topic Library
+meta-right: Version 1.0
+
+
+@steps
+eyebrow: Overview
+title: Work down the list, not up it
+subtitle: Each step down the list adds setup, adds time, and puts a person closer to the material. Start at the top and take the first method that fits.
+step: Tip it over | Fewest steps. One good notch and a clean fall path.
+step: Bucket / lift + crane | Fast picks, high capacity available, aerial tricks in play.
+step: Climb + crane | Same reach, less capacity to spare. Slower, pick by pick.
+step: Bucket / lift + rig | No crane. Rope the material down, forward it out.
+step: Climb and rig | Everything by hand and rope. The hardest option.
+
+
+@two-column
+eyebrow: Method 01
+title: Tip it over
+subtitle: Cheapest and quickest when it fits — which is why it sits at the top of the list.
+left-header: Everything below has to be true
+left-icon: ●
+left: **No obstructions** in the fall path
+left: Not so far gone it **explodes on impact** and throws sticks across the street
+left: Room for a truck or machine to get a **decent pulling angle**
+left: Lean runs straight toward or straight away from the drop zone — **side lean disqualifies the tree**
+left: Notch area is **hard green wood**, or dead but not soft and punky
+left: **No large seam** through the notch area to cut into your holding wood
+right-header: Good candidates
+right-icon: ●
+right: Front yard trees leaning toward the road
+right: Backyard trees that will fit, pulled over with a machine
+right: Parking lot and boulevard trees near a street they'll fit in — these suit a bucket truck too
+right: **One hard rule:** never notch a tall tree on spikes to reach green wood (next slide)
+
+
+@welcome
+eyebrow: Safety · Read this one twice
+title: Do not notch a tall tree while on spikes.
+subtitle: Climbing the stem to find green wood for the notch puts you in the strike zone.
+body: The tips can hit the ground first and **bounce the butt of the log straight back into the climber.**
+body: Someone I know **broke his leg** doing exactly this. He was lucky it didn't hit him in the head, or he'd be dead — and he was extremely experienced by that point. He just got lazy.
+body: **Experience is not the protection here. The geometry is the same for everybody.**
+
+
+@card-grid
+eyebrow: Method 02
+title: Bucket or lift, plus a crane
+subtitle: For any tree you can't comfortably tip over but a crane can still reach — right behind the house, large front-yard trees, wide sprawling silvers and oaks. Farthest pick under 80% of the chart.
+card: Bucket Access | Ample room to work the tree from the lift.
+card: Crane Footprint | Space to set up and lower picks into a clear drop zone.
+card: Clear Overhead | Few aerial obstructions between tree and drop zone.
+card: Firm and Flat | 3% slope or less. Measure across the outriggers, not with a phone level.
+card: Radius Run | Capacity calculated and confirmed for the trunk logs.
+card: Slingable Trunks | Sections small enough against capacity to sling correctly.
+
+
+@two-column
+eyebrow: Method 03
+title: Climb, plus a crane
+subtitle: Reachable by crane but can't be felled. Farthest pick tops out at 70% of the chart — versus 80% from a bucket — because the lift tricks disappear.
+left-header: Why capacity has to be higher
+left-icon: ●
+left: **Lift tricks mostly disappear** — tip tying and standing up far limbs to regain capacity can't be done from a climbing line
+left: Climbing and tying **many small picks** takes far longer than reaching them from a lift
+left: Short on capacity? **Notch or peel the limb toward the crane** while the operator booms up, before the pick separates
+left: The farthest pick needs the ball **directly above its center of gravity**
+right-header: Good candidates
+right-icon: ●
+right: Reachable by crane but **cannot be felled**
+right: Long meandering machine access, or delicate paved surfaces
+right: **Many targets** below the tree
+right: Much of the material hangs **over a structure**
+right: Rigging would mean fence removal or a wet yard
+
+
+@two-column
+eyebrow: Method 04
+title: Bucket or lift, and rig
+subtitle: No crane. Rope the material down and forward it out. Good candidates: trunks under ~40", limited crane access, ample forwarding-machine access, under half the material over a structure.
+left-header: What we need
+left-icon: ●
+left: Ample space to **set the bucket up**, with most or all of the tree reachable from it
+left: **Few ground targets** — anything movable gets moved first, which speeds the whole job up
+left: A **path out for the material** — the bigger the opening for the forwarding machine, the better
+left: **Room to let material fall** — distance to the nearest breakable thing decides how much protection work it takes
+right-header: "Permanent" targets that often move
+right-icon: ●
+right: Old clothesline poles
+right: Phone lines — most homes no longer have a landline
+right: Bird baths and bird feeders
+right: Fence sections
+
+
+@steps
+eyebrow: Access · Every rigging job
+title: Walk the yard before you rig it
+subtitle: Anything you can move out from under the tree gets the tree down faster.
+step: Find the bottleneck | Locate the tightest point, then picture driving a machine through it with a huge log in the grapple. If it won't fit, the plan changes.
+step: Count the turns | Sharp turns slow everything down. A straighter path out is worth more than a shorter one.
+step: Note what you can't mark up | Fresh grass, gardens, seal-coated driveways, paver areas — and how close the wires run.
+step: Measure the drop room | Distance between the material coming down and the next thing that could break is the biggest factor in how hard the rigging gets.
+
+
+@two-column
+eyebrow: Method 05 · Last resort
+title: Climb and rig
+subtitle: The hardest of the five. Every method above this one exists so we spend less time here.
+left-header: What makes it hard
+left-icon: ●
+left: Hardest when a large section **hangs over something that can't move** — a house, a fence, a grill
+left: The question that decides the day: **how much has to come down by rope** before we can tip the rest over
+left: The **more room to drop the trunk**, the easier the job gets
+left: **Dead ash:** don't use this method unless the ground is **100% unobstructed**
+right-header: Good candidates
+right-icon: ●
+right: Lift or bucket access limited or nonexistent
+right: Tree is too far out for the crane
+right: Generally **under 30" in diameter**, with few targets
+right: Forwarding-machine access still matters — clearing material opens up better felling options
+
+
+@three-rules
+eyebrow: Climb and rig · Tie-in
+title: Save the tallest section for last
+subtitle: The higher the tie-in and rigging points, the more mechanical advantage you hold over the material below.
+rule: Tie In High | Ideally the tallest section has the least obstructed path to the ground. Attach yourself to it and rig off it.
+rule: Take It Out Last | Lower limbs come off first, worked from above. The tall section comes out **last**, so you keep a high tie-in and rigging point the whole removal.
+rule: Expect It To Fight | If the tallest section is the part hanging over a structure, expect the rigging to be harder.
+
+
+@two-column
+eyebrow: Large Removals
+title: Dealing with the knuckle
+subtitle: The knuckle is the oversized butt log left at the end of a large removal. Sooner or later there's a big log on the ground and no crane capacity to pick it up — you need options to get it out of the yard.
+left-header: The 40-inch problem
+left-icon: ●
+left: Past roughly **40" diameter** it gets hard to sling a log and keep the pick long enough that the sling doesn't slide off when you cut it free
+left: Crane parked **within 25 ft** of the tree? Generally a non-issue
+left: Plenty of crane capacity means a **longer pick**, which lets the slings sit lower on the log
+right-header: Your options
+right-icon: ●
+right: Favorable lean? **Tip it over.**
+right: Nothing at the base? **Slab off big sections** onto a brush pile so the yard doesn't take the hit
+right: Get a **forwarding machine** into the yard to control the pull while felling
+right: Over ~40", **tip the log into the yard**, cut it smaller, then sling and deadlift it off the ground with the crane
+
+
+@steps
+eyebrow: Putting It Together
+title: Ask these in order
+subtitle: The first yes wins. Stop there.
+step: Can we safely tip it over?
+step: Can a crane reach it, worked from a bucket or lift?
+step: Can a crane reach it, worked by a climber?
+step: Can we reach it from a bucket and rope it down?
+step: Then we climb it and rig it.
+
+
+@closing
+title: The first yes wins.
+subtitle: Work down the list, not up it. Every method near the top exists so we spend less time — and less risk — at the bottom.
+mark: BT

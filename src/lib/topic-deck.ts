@@ -39,6 +39,16 @@ export type TopicDeck = {
 // The `date` field is the date the topic was originally taught (or
 // added) — used to sort the library chronologically.
 export const TOPIC_DECKS: Record<string, TopicDeck> = {
+  'tree-removal-methods': {
+    slug: 'tree-removal-methods',
+    title: 'The 5 Best Tree Removal Methods',
+    description:
+      'Our five removal methods ranked easiest/safest to hardest — what has to be true before we pick each one, what the tree looks like when it fits, and where people get hurt.',
+    tags: ['Removals', 'Safety'],
+    date: '2026-08-04',
+    footerLeft: 'BRATT TREE  |  TREE REMOVAL METHODS',
+    version: 'Version 1.0',
+  },
   'oak-wilt': {
     slug: 'oak-wilt',
     title: 'Oak Wilt',
