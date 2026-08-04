@@ -258,6 +258,14 @@ function LibraryImport() {
           {message}
         </p>
       )}
+      <p className="pt-1 text-sm">
+        <a href="/hub/video-notes/playbook" className="font-medium underline">
+          Manage Playbook →
+        </a>{' '}
+        <span className="text-neutral-500">
+          (view, edit, turn off, or delete every entry)
+        </span>
+      </p>
     </div>
   );
 }
