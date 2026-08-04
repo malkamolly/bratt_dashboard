@@ -46,6 +46,7 @@ export type VisualFinding = {
 export type Findings = {
   property: string; // address if visible/known, else ""
   summary: string;
+  arborist_notes: string[]; // key things the arborist said out loud (empty if no audio)
   visual_findings: VisualFinding[];
   sales_opportunities: { observation: string; timestamp: string }[];
   access_notes: string[];
@@ -64,6 +65,8 @@ Study the frames and produce an estimate findings report. Watch specifically for
 
 If a Bratt Tree Sales Arborist Playbook is included below, treat it as authoritative team expertise — use it to identify species, recognize the visible signs of the diseases/pests/hazards it describes, judge remove-vs-treat-vs-prune, and surface the plant-health-care and sales opportunities it calls out.
 
+If a transcript of the arborist's narration is provided, use it alongside the frames: it often names trees, calls out problems, gives measurements, or states the work they intend to quote. Capture the substantive things they say in "arborist_notes", and let their narration corroborate or sharpen your visual findings (note when a finding is confirmed by what they said). Do not just transcribe filler — capture what matters for the estimate.
+
 Rules:
 - You are looking at still frames, not the live video, so you may miss things that happened between frames. Treat every visual observation as something to VERIFY on site, not as confirmed fact.
 - Give an honest confidence level for each observation. If the frames are unclear or you cannot tell, say so rather than guessing.
@@ -75,6 +78,7 @@ const SYSTEM_JSON_SPEC = `Respond with ONLY a single JSON object (no prose befor
 {
   "property": "string — the address if it is visible/known, otherwise an empty string",
   "summary": "string — 2-3 sentences on the overall assessment",
+  "arborist_notes": ["string — a substantive point the arborist said out loud; empty array [] if no transcript was provided or nothing meaningful was said"],
   "visual_findings": [
     {
       "category": "one of: power_line | slope | wet_area | access_parking | tree_condition | other",
@@ -137,7 +141,7 @@ function secondsToLabel(s: number): string {
  */
 export async function analyzeFrames(
   frames: Frame[],
-  opts: { address?: string; playbookText?: string } = {},
+  opts: { address?: string; playbookText?: string; transcript?: string } = {},
 ): Promise<Findings> {
   if (!process.env.ANTHROPIC_API_KEY) {
     throw new Error(
@@ -165,6 +169,12 @@ export async function analyzeFrames(
     content.push({
       type: 'image',
       source: { type: 'base64', media_type: 'image/jpeg', data: frame.dataBase64 },
+    });
+  }
+  if (opts.transcript && opts.transcript.trim()) {
+    content.push({
+      type: 'text',
+      text: `Transcript of the arborist's narration while filming:\n"""\n${opts.transcript.trim()}\n"""`,
     });
   }
 

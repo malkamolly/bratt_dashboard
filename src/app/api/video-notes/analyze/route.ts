@@ -25,6 +25,7 @@ type Body = {
   address?: string;
   videoName?: string;
   durationSeconds?: number;
+  transcript?: string;
 };
 
 export async function POST(request: Request) {
@@ -57,6 +58,7 @@ export async function POST(request: Request) {
     const findings = await analyzeFrames(frames, {
       address: body.address,
       playbookText,
+      transcript: body.transcript,
     });
 
     const { data, error } = await supabase

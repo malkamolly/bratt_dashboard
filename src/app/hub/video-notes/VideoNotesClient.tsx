@@ -16,6 +16,7 @@
 import { useRef, useState } from 'react';
 import type { Findings, VisualFinding } from '@/lib/video-notes';
 import CoachMode from './CoachMode';
+import { extractAudioMp3 } from './extractAudio';
 
 // Tuning knobs. ~40 frames of an under-10-minute walkthrough is plenty of
 // coverage while keeping the payload small (base64 inflates size by ~33%).
@@ -100,7 +101,7 @@ async function extractFrames(
   }
 }
 
-type Phase = 'idle' | 'extracting' | 'analyzing' | 'done' | 'error';
+type Phase = 'idle' | 'extracting' | 'transcribing-audio' | 'analyzing' | 'done' | 'error';
 
 export default function VideoNotesClient({ isAdmin = false }: { isAdmin?: boolean }) {
   const [phase, setPhase] = useState<Phase>('idle');
@@ -109,6 +110,7 @@ export default function VideoNotesClient({ isAdmin = false }: { isAdmin?: boolea
   const [error, setError] = useState('');
   const [findings, setFindings] = useState<Findings | null>(null);
   const [coaching, setCoaching] = useState(false);
+  const [audioNote, setAudioNote] = useState('');
   const fileRef = useRef<HTMLInputElement>(null);
 
   async function handleAnalyze() {
@@ -120,6 +122,7 @@ export default function VideoNotesClient({ isAdmin = false }: { isAdmin?: boolea
     setError('');
     setFindings(null);
     setCoaching(false);
+    setAudioNote('');
 
     try {
       setPhase('extracting');
@@ -127,6 +130,31 @@ export default function VideoNotesClient({ isAdmin = false }: { isAdmin?: boolea
       const { frames, duration } = await extractFrames(file, (done, total) =>
         setProgress({ done, total }),
       );
+
+      // Best-effort: extract the narration audio and transcribe it. If anything
+      // here fails (silent video, odd codec, no Groq key), we quietly fall back
+      // to a visual-only analysis rather than blocking on it.
+      let transcript: string | undefined;
+      try {
+        setPhase('transcribing-audio');
+        const mp3 = await extractAudioMp3(file);
+        if (mp3 && mp3.size > 0) {
+          const form = new FormData();
+          form.append('audio', mp3, 'narration.mp3');
+          const tr = await fetch('/api/video-notes/transcribe', { method: 'POST', body: form });
+          if (tr.ok) {
+            const j = await tr.json();
+            if (j.text) transcript = j.text as string;
+          }
+        }
+        setAudioNote(
+          transcript
+            ? ''
+            : "No narration was picked up — this analysis is visual-only.",
+        );
+      } catch {
+        setAudioNote("Couldn't process the audio — this analysis is visual-only.");
+      }
 
       setPhase('analyzing');
       const res = await fetch('/api/video-notes/analyze', {
@@ -137,6 +165,7 @@ export default function VideoNotesClient({ isAdmin = false }: { isAdmin?: boolea
           address: address.trim() || undefined,
           videoName: file.name,
           durationSeconds: duration,
+          transcript,
         }),
       });
       const json = await res.json();
@@ -150,7 +179,8 @@ export default function VideoNotesClient({ isAdmin = false }: { isAdmin?: boolea
     }
   }
 
-  const busy = phase === 'extracting' || phase === 'analyzing';
+  const busy =
+    phase === 'extracting' || phase === 'transcribing-audio' || phase === 'analyzing';
 
   return (
     <div className="space-y-6">
@@ -191,10 +221,16 @@ export default function VideoNotesClient({ isAdmin = false }: { isAdmin?: boolea
             Pulling frames from the video… {progress.done}/{progress.total || '…'}
           </p>
         )}
+        {phase === 'transcribing-audio' && (
+          <p className="text-sm text-neutral-600">Listening to the narration…</p>
+        )}
         {phase === 'analyzing' && (
           <p className="text-sm text-neutral-600">
             Claude is reviewing {progress.total} frames — this can take a minute…
           </p>
+        )}
+        {audioNote && phase !== 'transcribing-audio' && (
+          <p className="text-sm text-neutral-500">{audioNote}</p>
         )}
         {error && <p className="text-sm text-red-600">{error}</p>}
       </div>
@@ -297,6 +333,17 @@ function Report({ findings }: { findings: Findings }) {
         <h2 className="font-semibold mb-1">Summary</h2>
         <p className="text-sm text-neutral-800">{findings.summary}</p>
       </section>
+
+      {findings.arborist_notes && findings.arborist_notes.length > 0 && (
+        <section>
+          <h2 className="font-semibold mb-2">What the arborist said</h2>
+          <ul className="list-disc pl-5 space-y-1 text-sm text-neutral-800">
+            {findings.arborist_notes.map((n, i) => (
+              <li key={i}>{n}</li>
+            ))}
+          </ul>
+        </section>
+      )}
 
       <section>
         <h2 className="font-semibold mb-2">
