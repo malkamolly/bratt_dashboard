@@ -7,6 +7,10 @@
 // want to know: power-line drops, slopes, wet areas, access/parking concerns,
 // and extra trees worth quoting.
 //
+// It also applies the Bratt Tree Sales Arborist Playbook (src/lib/playbook.ts)
+// when one is provided — that's the team's own expertise, distilled from the
+// Training Library and taught in Coach Mode.
+//
 // v1 is VISUAL only — no audio transcript yet (see docs/video-notes.md). The
 // prompt is written so the report clearly marks visual findings as "verify on
 // site", because Claude is a sharp second set of eyes, not the ground truth.
@@ -47,23 +51,27 @@ export type Findings = {
   access_notes: string[];
 };
 
-const SYSTEM_PROMPT = `You are helping Bratt Tree, an arborist company, review a video an arborist recorded while walking a property to prepare a tree-work estimate. You are given a series of still frames captured from that video, each labeled with the time it was taken.
+// The instructions, minus the JSON contract. The playbook (if any) is inserted
+// between this and the JSON spec so the "respond with only JSON" rule stays last.
+const SYSTEM_HEAD = `You are helping Bratt Tree, an arborist company, review a video an arborist recorded while walking a property to prepare a tree-work estimate. You are given a series of still frames captured from that video, each labeled with the time it was taken.
 
 Study the frames and produce an estimate findings report. Watch specifically for:
 - POWER LINES crossing the property or running near/through the tree canopy (possible power-line drop needed).
 - SLOPES / terrain: steep banks or grade changes that affect equipment access or safety.
 - WET AREAS: standing water, mud, or boggy ground.
 - ACCESS / PARKING: narrow roads, no driveway, tight frontage — where no-parking permits or special staging might be needed.
-- ADDITIONAL SALES OPPORTUNITIES: other trees or issues visible in the frames (deadwood, cracks, leaning trees, disease signs, stumps) that could be quoted.
+- ADDITIONAL SALES OPPORTUNITIES: other trees or issues visible in the frames (deadwood, cracks, leaning trees, disease/pest signs, stumps) that could be quoted.
+
+If a Bratt Tree Sales Arborist Playbook is included below, treat it as authoritative team expertise — use it to identify species, recognize the visible signs of the diseases/pests/hazards it describes, judge remove-vs-treat-vs-prune, and surface the plant-health-care and sales opportunities it calls out.
 
 Rules:
 - You are looking at still frames, not the live video, so you may miss things that happened between frames. Treat every visual observation as something to VERIFY on site, not as confirmed fact.
 - Give an honest confidence level for each observation. If the frames are unclear or you cannot tell, say so rather than guessing.
 - Reference the timestamp label of the frame(s) an observation comes from.
 - When you refer to a person, only ever use a first name + last initial (e.g. "Taylor M") — never a full last name.
-- Do not include any internal or system XML tags in your response.
+- Do not include any internal or system XML tags in your response.`;
 
-Respond with ONLY a single JSON object (no prose before or after, no markdown fences) matching exactly this shape:
+const SYSTEM_JSON_SPEC = `Respond with ONLY a single JSON object (no prose before or after, no markdown fences) matching exactly this shape:
 {
   "property": "string — the address if it is visible/known, otherwise an empty string",
   "summary": "string — 2-3 sentences on the overall assessment",
@@ -81,6 +89,12 @@ Respond with ONLY a single JSON object (no prose before or after, no markdown fe
   ],
   "access_notes": ["string"]
 }`;
+
+function buildSystemPrompt(playbookText?: string): string {
+  return playbookText
+    ? `${SYSTEM_HEAD}\n\n---\n${playbookText}\n---\n\n${SYSTEM_JSON_SPEC}`
+    : `${SYSTEM_HEAD}\n\n${SYSTEM_JSON_SPEC}`;
+}
 
 /**
  * Pull the first balanced JSON object out of a string. Claude is asked to return
@@ -123,7 +137,7 @@ function secondsToLabel(s: number): string {
  */
 export async function analyzeFrames(
   frames: Frame[],
-  addressHint?: string,
+  opts: { address?: string; playbookText?: string } = {},
 ): Promise<Findings> {
   if (!process.env.ANTHROPIC_API_KEY) {
     throw new Error(
@@ -142,7 +156,7 @@ export async function analyzeFrames(
       type: 'text',
       text:
         `Here are ${frames.length} frames from the walkthrough video, in order.` +
-        (addressHint ? ` The property address is: ${addressHint}.` : '') +
+        (opts.address ? ` The property address is: ${opts.address}.` : '') +
         ` Produce the findings report as specified.`,
     },
   ];
@@ -160,7 +174,7 @@ export async function analyzeFrames(
     // Thinking off keeps cost and latency predictable for this bounded
     // extract-and-describe task; default effort ("high") allows disabling it.
     thinking: { type: 'disabled' },
-    system: SYSTEM_PROMPT,
+    system: buildSystemPrompt(opts.playbookText),
     messages: [{ role: 'user', content }],
   });
 

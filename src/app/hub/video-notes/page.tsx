@@ -4,7 +4,7 @@ import VideoNotesClient from './VideoNotesClient';
 // Video Notes: upload an arborist estimate-walkthrough video and get an
 // AI findings report (visual analysis). Gated to hub roles.
 export default async function VideoNotesPage() {
-  await requireHubAccess('hub');
+  const user = await requireHubAccess('hub');
 
   return (
     <main className="bt-page">
@@ -15,7 +15,7 @@ export default async function VideoNotesPage() {
         access/parking concerns, and extra trees worth quoting. Everything Claude
         flags visually should be verified on site.
       </p>
-      <VideoNotesClient />
+      <VideoNotesClient isAdmin={user.role === 'admin'} />
     </main>
   );
 }

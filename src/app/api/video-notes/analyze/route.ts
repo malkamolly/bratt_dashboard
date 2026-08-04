@@ -13,6 +13,7 @@ import { NextResponse } from 'next/server';
 import { serverClient } from '@/lib/supabase';
 import { getAllowedUser, canAccessHub } from '@/lib/auth';
 import { analyzeFrames, VIDEO_NOTES_MODEL, type Frame } from '@/lib/video-notes';
+import { getActivePlaybook, formatPlaybookForPrompt } from '@/lib/playbook';
 
 // Vision over a few dozen images can take a while — give it room (Vercel caps
 // this at the plan's max; 60s is the Pro default).
@@ -48,9 +49,16 @@ export async function POST(request: Request) {
   }
 
   try {
-    const findings = await analyzeFrames(frames, body.address);
-
     const supabase = await serverClient();
+
+    // Load the Bratt Tree playbook so the analysis applies team expertise.
+    const playbookText = formatPlaybookForPrompt(await getActivePlaybook(supabase));
+
+    const findings = await analyzeFrames(frames, {
+      address: body.address,
+      playbookText,
+    });
+
     const { data, error } = await supabase
       .from('video_analyses')
       .insert({

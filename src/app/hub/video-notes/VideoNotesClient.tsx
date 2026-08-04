@@ -101,7 +101,7 @@ async function extractFrames(
 
 type Phase = 'idle' | 'extracting' | 'analyzing' | 'done' | 'error';
 
-export default function VideoNotesClient() {
+export default function VideoNotesClient({ isAdmin = false }: { isAdmin?: boolean }) {
   const [phase, setPhase] = useState<Phase>('idle');
   const [progress, setProgress] = useState({ done: 0, total: 0 });
   const [address, setAddress] = useState('');
@@ -197,6 +197,54 @@ export default function VideoNotesClient() {
       </div>
 
       {findings && <Report findings={findings} />}
+
+      {isAdmin && <LibraryImport />}
+    </div>
+  );
+}
+
+// Admin-only: distill the Training Library into the playbook every analysis uses.
+function LibraryImport() {
+  const [state, setState] = useState<'idle' | 'running' | 'done' | 'error'>('idle');
+  const [message, setMessage] = useState('');
+
+  async function run() {
+    setState('running');
+    setMessage('');
+    try {
+      const res = await fetch('/api/video-notes/ingest-library', { method: 'POST' });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || 'Import failed.');
+      setState('done');
+      setMessage(
+        `Imported ${json.count} playbook entries from ${json.sources} library items. New analyses now apply them.`,
+      );
+    } catch (err) {
+      setState('error');
+      setMessage(err instanceof Error ? err.message : 'Import failed.');
+    }
+  }
+
+  return (
+    <div className="bt-card space-y-2">
+      <h2 className="font-semibold">Admin: Training Library</h2>
+      <p className="text-sm text-neutral-600">
+        Distill the Sales Arborist Training Library into the analysis playbook.
+        Re-run this whenever the Library changes. (This replaces the previously
+        imported library entries; anything taught in Coach Mode is untouched.)
+      </p>
+      <button
+        onClick={run}
+        disabled={state === 'running'}
+        className="rounded border border-neutral-400 px-3 py-1.5 text-sm font-medium disabled:opacity-50"
+      >
+        {state === 'running' ? 'Importing…' : 'Import / refresh Library'}
+      </button>
+      {message && (
+        <p className={`text-sm ${state === 'error' ? 'text-red-600' : 'text-neutral-700'}`}>
+          {message}
+        </p>
+      )}
     </div>
   );
 }
