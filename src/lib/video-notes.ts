@@ -14,9 +14,10 @@
 
 import Anthropic from '@anthropic-ai/sdk';
 
-// Default to Claude's strongest model. To trade a little quality for lower
-// per-video cost, set VIDEO_NOTES_MODEL=claude-sonnet-5 in the environment.
-export const VIDEO_NOTES_MODEL = process.env.VIDEO_NOTES_MODEL || 'claude-opus-5';
+// Default to Sonnet — the best quality/cost balance for this visual-review task
+// (roughly half the per-video cost of Opus). To trade cost for maximum quality,
+// set VIDEO_NOTES_MODEL=claude-opus-5 in the environment.
+export const VIDEO_NOTES_MODEL = process.env.VIDEO_NOTES_MODEL || 'claude-sonnet-5';
 
 // One frame pulled from the video, as base64 JPEG plus the time it was captured.
 export type Frame = {
