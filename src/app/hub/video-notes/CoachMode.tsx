@@ -286,34 +286,55 @@ export default function CoachMode({ findings }: { findings: Findings }) {
                 </p>
               )}
               {lessons.map((l, i) => (
-                <div key={i} className="space-y-1 border-l-2 border-lime pl-3">
-                  <div className="flex gap-2">
-                    <input
-                      value={l.category}
-                      onChange={(e) => updateLesson(i, 'category', e.target.value)}
-                      className="w-40 rounded border border-neutral-300 px-2 py-1 text-xs"
-                      placeholder="Category"
-                    />
-                    <input
-                      value={l.title}
-                      onChange={(e) => updateLesson(i, 'title', e.target.value)}
-                      className="flex-1 rounded border border-neutral-300 px-2 py-1 text-xs"
-                      placeholder="Title"
-                    />
+                <div
+                  key={i}
+                  className="space-y-3 rounded-lg border border-neutral-300 bg-white p-3"
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-semibold uppercase tracking-wide text-neutral-500">
+                      Lesson {i + 1}
+                    </span>
                     <button
                       onClick={() => removeLesson(i)}
-                      className="text-xs text-red-600 hover:underline"
+                      className="text-xs font-medium text-red-600 hover:underline"
                     >
                       Remove
                     </button>
                   </div>
-                  <textarea
-                    value={l.content}
-                    onChange={(e) => updateLesson(i, 'content', e.target.value)}
-                    rows={2}
-                    className="w-full rounded border border-neutral-300 px-2 py-1 text-sm"
-                    placeholder="Guidance"
-                  />
+                  <label className="block">
+                    <span className="mb-1 block text-xs font-medium text-neutral-500">
+                      Category
+                    </span>
+                    <input
+                      value={l.category}
+                      onChange={(e) => updateLesson(i, 'category', e.target.value)}
+                      className="w-full rounded border border-neutral-300 px-2 py-1.5 text-sm"
+                      placeholder="e.g. Hazard flags"
+                    />
+                  </label>
+                  <label className="block">
+                    <span className="mb-1 block text-xs font-medium text-neutral-500">
+                      Title
+                    </span>
+                    <input
+                      value={l.title}
+                      onChange={(e) => updateLesson(i, 'title', e.target.value)}
+                      className="w-full rounded border border-neutral-300 px-2 py-1.5 text-sm"
+                      placeholder="Short label"
+                    />
+                  </label>
+                  <label className="block">
+                    <span className="mb-1 block text-xs font-medium text-neutral-500">
+                      Guidance
+                    </span>
+                    <textarea
+                      value={l.content}
+                      onChange={(e) => updateLesson(i, 'content', e.target.value)}
+                      rows={4}
+                      className="w-full rounded border border-neutral-300 px-2 py-1.5 text-sm leading-relaxed"
+                      placeholder="What to look for and how to judge it"
+                    />
+                  </label>
                 </div>
               ))}
               {lessons.length > 0 && (
