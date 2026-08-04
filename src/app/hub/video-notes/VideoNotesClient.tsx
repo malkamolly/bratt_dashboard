@@ -15,6 +15,7 @@
 
 import { useRef, useState } from 'react';
 import type { Findings, VisualFinding } from '@/lib/video-notes';
+import CoachMode from './CoachMode';
 
 // Tuning knobs. ~40 frames of an under-10-minute walkthrough is plenty of
 // coverage while keeping the payload small (base64 inflates size by ~33%).
@@ -107,6 +108,7 @@ export default function VideoNotesClient({ isAdmin = false }: { isAdmin?: boolea
   const [address, setAddress] = useState('');
   const [error, setError] = useState('');
   const [findings, setFindings] = useState<Findings | null>(null);
+  const [coaching, setCoaching] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
   async function handleAnalyze() {
@@ -117,6 +119,7 @@ export default function VideoNotesClient({ isAdmin = false }: { isAdmin?: boolea
     }
     setError('');
     setFindings(null);
+    setCoaching(false);
 
     try {
       setPhase('extracting');
@@ -197,6 +200,16 @@ export default function VideoNotesClient({ isAdmin = false }: { isAdmin?: boolea
       </div>
 
       {findings && <Report findings={findings} />}
+
+      {findings && !coaching && (
+        <button
+          onClick={() => setCoaching(true)}
+          className="rounded border border-neutral-400 px-4 py-2 text-sm font-semibold"
+        >
+          🎓 Coach this analysis — teach Claude to do it better
+        </button>
+      )}
+      {findings && coaching && <CoachMode findings={findings} />}
 
       {isAdmin && <LibraryImport />}
     </div>

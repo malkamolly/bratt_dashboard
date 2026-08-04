@@ -1,0 +1,53 @@
+// ============================================================================
+// POST /api/video-notes/coach  (hub roles)
+// ============================================================================
+// Drives the Coach Mode conversation. Stateless: the client sends the analysis
+// findings plus the whole conversation so far.
+//   mode = "chat"      -> returns { reply }   (the coach's next message)
+//   mode = "summarize" -> returns { lessons } (proposed playbook lessons)
+// ============================================================================
+
+import { NextResponse } from 'next/server';
+import { getAllowedUser, canAccessHub } from '@/lib/auth';
+import { runCoachChat, runCoachSummarize, type CoachMessage } from '@/lib/coach';
+import type { Findings } from '@/lib/video-notes';
+
+export const maxDuration = 60;
+export const dynamic = 'force-dynamic';
+
+type Body = {
+  findings?: Findings;
+  history?: CoachMessage[];
+  mode?: 'chat' | 'summarize';
+};
+
+export async function POST(request: Request) {
+  const user = await getAllowedUser();
+  if (!user) return NextResponse.json({ error: 'Not signed in.' }, { status: 401 });
+  if (!canAccessHub(user.role, 'hub')) {
+    return NextResponse.json({ error: 'No access.' }, { status: 403 });
+  }
+
+  let body: Body;
+  try {
+    body = (await request.json()) as Body;
+  } catch {
+    return NextResponse.json({ error: 'Invalid request body.' }, { status: 400 });
+  }
+  if (!body.findings) {
+    return NextResponse.json({ error: 'Missing analysis context.' }, { status: 400 });
+  }
+  const history = body.history ?? [];
+
+  try {
+    if (body.mode === 'summarize') {
+      const lessons = await runCoachSummarize(body.findings, history);
+      return NextResponse.json({ lessons });
+    }
+    const reply = await runCoachChat(body.findings, history);
+    return NextResponse.json({ reply });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'The coach hit an error.';
+    return NextResponse.json({ error: message }, { status: 500 });
+  }
+}
