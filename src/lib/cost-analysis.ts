@@ -16,6 +16,8 @@
 // ============================================================================
 
 import rawRows from '@/data/removals.json';
+import { modelPriceMatrix } from './pricing-matrix';
+import { loadIncludedRemovals } from './removal-entries';
 
 export type RemovalRow = {
   /** Invoice number — lets leadership look the job up in ServiceTitan. */
@@ -96,8 +98,34 @@ function toJobs(rows: RemovalRow[]): JobRef[] {
 const REF_LO = 13;
 const REF_HI = 24;
 
-export function loadRemovals(): RemovalRow[] {
-  return rawRows as RemovalRow[];
+/**
+ * Every removal the analysis should see: all 'included' rows from the `removals`
+ * table (migration 066), which holds the historical export plus anything
+ * leadership has added and approved. Pending / removed rows are left out.
+ *
+ * If the table can't be read (e.g. before the migration has run), we fall back
+ * to the static export bundled at src/data/removals.json, so the site keeps
+ * rendering the same numbers it did before the switch.
+ */
+export async function loadRemovals(): Promise<RemovalRow[]> {
+  const fromDb = await loadIncludedRemovals();
+  return fromDb ?? (rawRows as RemovalRow[]);
+}
+
+/**
+ * Would a single approved entry land in the pricing (clean/comparable) set, or
+ * only in the headline totals? Entries have unique invoices, so the "one tree
+ * per invoice" rule is automatic; this applies the same rest-of-the-test the
+ * analysis uses (real tree, non-municipal, single trunk, fully measured, at or
+ * above the size floor). Used for the review-screen badge.
+ */
+export function isEntryComparable(r: RemovalRow): boolean {
+  return (
+    r.kind === 'tree' &&
+    !r.muni &&
+    isComparable(r) &&
+    r.price >= bandFor(r.dbh).floor
+  );
 }
 
 // ---------------------------------------------------------------------------
@@ -339,8 +367,8 @@ function compare(rows: RemovalRow[], label: string): DriverCompare | null {
   return { label, count: valid.length, median: Math.round(m), items: toJobs(valid) };
 }
 
-export function buildCostAnalysis(): CostAnalysis {
-  const all = loadRemovals();
+export async function buildCostAnalysis(): Promise<CostAnalysis> {
+  const all = await loadRemovals();
   // Two exclusions up front, before any number is computed:
   //  1. Non-tree services (stump / vine / shrub) miscoded under the tree
   //     removal pricebook code — they're different work at different prices.
@@ -603,4 +631,132 @@ function groupCompare(
 
 function round(n: number | null): number | null {
   return n == null ? null : Math.round(n);
+}
+
+// ---------------------------------------------------------------------------
+// Shared: the clean comparable set (single tree/trunk, fully measured, priced)
+// Same universe buildCostAnalysis narrows to — extracted so the pricing pages
+// can reuse it.
+// ---------------------------------------------------------------------------
+
+export async function getComparableRows(): Promise<(RemovalRow & {
+  dbh: number;
+  price: number;
+  height: number;
+  crown: number;
+})[]> {
+  const removals = (await loadRemovals()).filter((r) => r.kind === 'tree' && !r.muni);
+  const treesPerInvoice = new Map<string, number>();
+  for (const r of removals) {
+    if (!r.inv) continue;
+    treesPerInvoice.set(r.inv, (treesPerInvoice.get(r.inv) ?? 0) + 1);
+  }
+  return removals
+    .filter(isComparable)
+    .filter((r) => r.price >= bandFor(r.dbh).floor)
+    .filter((r) => r.inv != null && treesPerInvoice.get(r.inv) === 1);
+}
+
+// ---------------------------------------------------------------------------
+// How much do height & spread actually move the price? (size effect removed)
+// ---------------------------------------------------------------------------
+
+export type EffectBand = { label: string; ratioPct: number; count: number };
+export type MeasureEffect = {
+  height: EffectBand[];
+  canopy: EffectBand[];
+  heightStepPct: number; // implied change per 10-ft band, % of base
+  canopyStepPct: number;
+  modelStepPct: number; // what the calculator currently assumes per band
+};
+
+const TENFT_LABELS = ['≤10′', '11–20′', '21–30′', '31–40′', '41–50′', '51–60′', '61–70′', '71–80′', '81–90′', '91′+'];
+function band10(v: number): number {
+  return Math.min(9, Math.max(0, Math.ceil(v / 10) - 1));
+}
+
+export async function buildMeasureEffect(): Promise<MeasureEffect> {
+  const comp = await getComparableRows();
+  const cpi = (r: { price: number; dbh: number }) => r.price / r.dbh;
+  // Divide out the trunk-size trend so height/spread show on their own.
+  const baseData = (d: number): number => {
+    let win = comp.filter((r) => Math.abs(r.dbh - d) <= 3);
+    if (win.length < 8) win = comp.filter((r) => Math.abs(r.dbh - d) <= 6);
+    return median(win.map(cpi)) ?? 1;
+  };
+  const rows = comp.map((r) => ({ r, ratio: cpi(r) / baseData(r.dbh) }));
+
+  const effectFor = (val: (r: { height: number; crown: number }) => number): EffectBand[] => {
+    const out: EffectBand[] = [];
+    for (let b = 0; b < 10; b++) {
+      const g = rows.filter((x) => band10(val(x.r)) === b);
+      if (g.length === 0) continue;
+      const m = median(g.map((x) => x.ratio)) ?? 1;
+      out.push({ label: TENFT_LABELS[b], ratioPct: Math.round((m - 1) * 100), count: g.length });
+    }
+    return out;
+  };
+  const slopePct = (val: (r: { height: number; crown: number }) => number): number => {
+    const xs = rows.map((x) => band10(val(x.r)));
+    const ys = rows.map((x) => x.ratio);
+    const n = xs.length;
+    if (n === 0) return 0;
+    const mx = xs.reduce((s, x) => s + x, 0) / n;
+    const my = ys.reduce((s, y) => s + y, 0) / n;
+    let num = 0;
+    let den = 0;
+    for (let i = 0; i < n; i++) {
+      num += (xs[i] - mx) * (ys[i] - my);
+      den += (xs[i] - mx) ** 2;
+    }
+    return den ? Math.round((num / den) * 1000) / 10 : 0;
+  };
+
+  return {
+    height: effectFor((r) => r.height),
+    canopy: effectFor((r) => r.crown),
+    heightStepPct: slopePct((r) => r.height),
+    canopyStepPct: slopePct((r) => r.crown),
+    modelStepPct: 8,
+  };
+}
+
+// ---------------------------------------------------------------------------
+// New pricing (rate card) vs. what we actually charged, by size band
+// ---------------------------------------------------------------------------
+
+export type PvaBand = {
+  label: string;
+  count: number;
+  medianActual: number;
+  medianModeled: number;
+  deltaPct: number;
+};
+
+export async function buildPricingVsActual(): Promise<{ bands: PvaBand[]; overallDeltaPct: number }> {
+  const comp = await getComparableRows();
+  const byBand = new Map<string, { actual: number; modeled: number }[]>();
+  for (const r of comp) {
+    const modeled = modelPriceMatrix(r.dbh, r.height, r.crown).price;
+    const label = bandFor(r.dbh).label;
+    if (!byBand.has(label)) byBand.set(label, []);
+    byBand.get(label)!.push({ actual: r.price, modeled });
+  }
+  const bands: PvaBand[] = SIZE_BANDS.map((b) => {
+    const g = byBand.get(b.label);
+    if (!g || g.length === 0) return null;
+    const ma = median(g.map((x) => x.actual))!;
+    const mm = median(g.map((x) => x.modeled))!;
+    return {
+      label: b.label,
+      count: g.length,
+      medianActual: Math.round(ma),
+      medianModeled: Math.round(mm),
+      deltaPct: Math.round((mm / ma - 1) * 100),
+    } satisfies PvaBand;
+  }).filter((x): x is PvaBand => x !== null);
+
+  const allActual = median(comp.map((r) => r.price))!;
+  const allModeled = median(comp.map((r) => modelPriceMatrix(r.dbh, r.height, r.crown).price))!;
+  return { bands, overallDeltaPct: Math.round((allModeled / allActual - 1) * 100) };
 }

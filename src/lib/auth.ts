@@ -126,8 +126,19 @@ export function canUseOffSeason(role: Role): boolean {
  * limited to admins and the sales manager because it surfaces pricing and
  * per-salesperson comparisons.
  */
-export function canSeeCostAnalysis(role: Role): boolean {
-  return role === 'admin' || role === 'sales_manager';
+// Cost Analysis is restricted to specific PEOPLE, not a whole role — like the
+// private My Projects hub (see OWNER_EMAIL above). These three are the only ones
+// who see the pricing data, the Add & Review screen, and Job Costing. Keep this
+// list in sync with the `removals` table RLS policies in migration 066.
+export const COST_ANALYSIS_EMAILS: readonly string[] = [
+  'molly@bratttree.com',
+  'connor@bratttree.com',
+  'caleb@bratttree.com',
+];
+
+/** Can this person see Cost Analysis? Gated by email, case-insensitive. */
+export function canSeeCostAnalysis(email: string | null | undefined): boolean {
+  return !!email && COST_ANALYSIS_EMAILS.includes(email.toLowerCase());
 }
 
 /**

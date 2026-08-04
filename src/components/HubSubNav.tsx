@@ -19,6 +19,9 @@ export async function HubSubNav({ active }: { active: string }) {
   if (user && canUseSiteMarkup(user.role)) {
     sections.push({ href: '/hub/site-plan', label: 'Site Markup' });
   }
+  // The Off-Season report is viewable by the whole hub (view-only for sales
+  // arborists; office edits it from the Office Hub).
+  sections.push({ href: '/off-season', label: 'Off-Season' });
 
   return (
     <nav className="mb-8 flex flex-wrap gap-x-3 gap-y-2 border-b-2 border-paper-edge pb-4 sm:gap-x-6">

@@ -10,7 +10,7 @@ export const dynamic = 'force-dynamic';
 export default async function JobCostingPage() {
   const user = await getAllowedUser();
   if (!user) redirect('/login');
-  if (!canSeeCostAnalysis(user.role)) redirect('/access-denied');
+  if (!canSeeCostAnalysis(user.email)) redirect('/access-denied');
 
   const jobs = loadCostedJobs();
   const s = jobCostingSummary(jobs);

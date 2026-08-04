@@ -51,9 +51,14 @@ export function PriceCalculator() {
   const [height, setHeight] = useState('40');
   const [crown, setCrown] = useState('20');
 
-  const d = parseFloat(dbh);
-  const h = height.trim() === '' ? null : parseFloat(height);
-  const c = crown.trim() === '' ? null : parseFloat(crown);
+  // Round each entry to the nearest whole number (.4 and below down, .5 and up
+  // up). The size/height/crown bands are whole-number ranges with gaps between
+  // them (…61–70, then 71–80), so a decimal like 70.4 falls in no band and used
+  // to grab the top band's surcharge — rounding first keeps every entry in a
+  // real band. Math.round(NaN) stays NaN, so blank/garbage inputs behave as before.
+  const d = Math.round(parseFloat(dbh));
+  const h = height.trim() === '' ? null : Math.round(parseFloat(height));
+  const c = crown.trim() === '' ? null : Math.round(parseFloat(crown));
   const valid = Number.isFinite(d) && d > 0;
   const res = valid ? modelPriceMatrix(d, h, c) : null;
 

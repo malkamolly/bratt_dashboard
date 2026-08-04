@@ -2,10 +2,9 @@ import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { getAllowedUser, canSeeCostAnalysis } from '@/lib/auth';
 import { buildCostAnalysis, SIZE_BANDS, type CostPerInchGrid } from '@/lib/cost-analysis';
-import { PRICING_MATRIX } from '@/lib/pricing-matrix';
-import { PriceCalculator } from './PriceCalculator';
 import { fmtUsd } from '@/lib/format';
 import { PriceVsSizeScatter } from './Charts';
+import PricingSection from './PricingSection';
 import {
   SizeBandSection,
   HaulingSection,
@@ -25,9 +24,9 @@ function fmtDate(iso: string | null): string {
 export default async function CostAnalysisPage() {
   const user = await getAllowedUser();
   if (!user) redirect('/login');
-  if (!canSeeCostAnalysis(user.role)) redirect('/access-denied');
+  if (!canSeeCostAnalysis(user.email)) redirect('/access-denied');
 
-  const a = buildCostAnalysis();
+  const a = await buildCostAnalysis();
   const { summary: s } = a;
 
   return (
@@ -51,6 +50,36 @@ export default async function CostAnalysisPage() {
         (DBH, height, and crown spread) &mdash; the apples-to-apples set for
         analyzing price. Dates {fmtDate(s.dateFrom)} to {fmtDate(s.dateTo)}.
       </p>
+
+      <div className="mt-6 grid gap-4 sm:grid-cols-2">
+        <Link
+          href="/cost-analysis/data"
+          className="block rounded-card border-[3px] border-orange bg-white/70 p-5 transition-colors hover:bg-lime/20"
+        >
+          <p className="bt-eyebrow">Add &amp; Review Jobs</p>
+          <p className="mt-1 font-headline text-lg font-black uppercase text-bark-deep">
+            Add your own removals &rarr;
+          </p>
+          <p className="mt-1 text-sm text-fg-2">
+            Enter completed jobs, review them, and choose which ones count toward
+            these figures.
+          </p>
+        </Link>
+
+        <Link
+          href="/cost-analysis/jobs"
+          className="block rounded-card border-[3px] border-orange bg-white/70 p-5 transition-colors hover:bg-lime/20"
+        >
+          <p className="bt-eyebrow">Manage All Jobs</p>
+          <p className="mt-1 font-headline text-lg font-black uppercase text-bark-deep">
+            Search, edit &amp; remove jobs &rarr;
+          </p>
+          <p className="mt-1 text-sm text-fg-2">
+            Every job behind these numbers &mdash; search, sort, adjust a price or
+            fix a detail, or remove one. Changes update the figures right away.
+          </p>
+        </Link>
+      </div>
 
       <Link
         href="/cost-analysis/job-costing"
@@ -81,6 +110,9 @@ export default async function CostAnalysisPage() {
           sub="higher — big removals pull it up"
         />
       </section>
+
+      {/* ---------- Pricing calculator + its charts (the tool, up top) ---------- */}
+      <PricingSection />
 
       {/* ---------- Hero scatter ---------- */}
       <Card title="Price climbs with trunk size" className="mt-10">
@@ -159,125 +191,6 @@ export default async function CostAnalysisPage() {
           should factor <strong>height and canopy</strong>, not just trunk size.
         </p>
         <CostPerInchHeatmap grid={a.costPerInch} />
-      </Card>
-
-      {/* ---------- Draft pricing model (sandbox) ---------- */}
-      <Card title="Draft pricing model — a sandbox to play with" className="mt-8">
-        <div className="mb-4 rounded-md bg-status-warn/40 px-4 py-2 text-xs font-extrabold uppercase tracking-wide text-ink">
-          Draft only — pricing isn&apos;t finalized. A starting point to react to, not a rate sheet.
-        </div>
-        <p className="mb-4 max-w-3xl text-sm text-fg-2">
-          A rate matrix: each of the <strong>12 DBH size categories</strong> has
-          its own <strong>base $/inch</strong> (the real median for that size),
-          then a per-inch adjustment for <strong>height</strong> and{' '}
-          <strong>canopy</strong>. Key fix: the adjustment is measured{' '}
-          <strong>against what&apos;s normal for that size</strong> &mdash; a big
-          tree that&apos;s tall &amp; wide (normal for a big tree) sits at its
-          base, and only trees unusually tall/wide <em>for their size</em> move
-          off it. The blank (&ldquo;&mdash;&rdquo;) cell in each row is that
-          size&apos;s typical tree. The final rate is also capped to the range
-          the data actually supports, so nothing runs away.
-        </p>
-
-        {/* Try it first — the calculator */}
-        <div className="mb-6">
-          <div className="mb-2 text-xs font-extrabold uppercase tracking-wide text-fg-2">
-            Try it — price any tree (up to 100″)
-          </div>
-          <PriceCalculator />
-          <p className="mt-2 text-xs text-fg-3">
-            Enter DBH, height, and crown to get the modeled price and the size
-            category / adjustments used. For the 07/13 job Black was on, plug in
-            its numbers here and compare to the actual bid.
-          </p>
-        </div>
-
-        {/* What changed in the latest tuning pass (owner review, Jul 2026) */}
-        <div className="mb-6 rounded-card border-2 border-orange/40 bg-orange/5 p-4">
-          <div className="text-xs font-extrabold uppercase tracking-wide text-orange">
-            Updated Jul 2026 — big trees now priced higher
-          </div>
-          <p className="mt-1 max-w-2xl text-xs text-fg-2">
-            Latest tuning raised pricing for large trees (34″+) so it climbs with
-            size, and lifted the cap that was holding back unusual trees.
-            Everyday sizes are intentionally unchanged — so if a 20–30″ tree looks
-            the same, that&apos;s expected. Enter one of these to see the change:
-          </p>
-          <table className="mt-3 text-xs">
-            <thead>
-              <tr className="text-fg-3">
-                <th className="py-1 pr-4 text-left font-bold">Example tree</th>
-                <th className="py-1 pr-4 text-right font-bold">Was</th>
-                <th className="py-1 text-right font-bold">Now</th>
-              </tr>
-            </thead>
-            <tbody className="font-bold text-ink">
-              <tr>
-                <td className="py-1 pr-4">30″ · 45′ tall · 30′ spread</td>
-                <td className="py-1 pr-4 text-right text-fg-3">{fmtUsd(2670)}</td>
-                <td className="py-1 text-right text-fg-3">{fmtUsd(2670)}</td>
-              </tr>
-              <tr>
-                <td className="py-1 pr-4">60″ · 50′ tall · 40′ spread</td>
-                <td className="py-1 pr-4 text-right text-fg-3">{fmtUsd(5220)}</td>
-                <td className="py-1 text-right text-orange">{fmtUsd(7560)}</td>
-              </tr>
-              <tr>
-                <td className="py-1 pr-4">72″ · 85′ tall · 85′ spread</td>
-                <td className="py-1 pr-4 text-right text-fg-3">{fmtUsd(12096)}</td>
-                <td className="py-1 text-right text-orange">{fmtUsd(19656)}</td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-
-        {/* The rate card */}
-        <div className="text-xs font-extrabold uppercase tracking-wide text-fg-2">
-          The rate card ($/inch)
-        </div>
-        <p className="mt-1 mb-2 max-w-3xl rounded-md bg-lime/20 px-3 py-2 text-xs text-fg-2">
-          <strong>How to read this:</strong> price = DBH × the base $/inch for
-          that size, then adjusted for height and spread. The model now runs at{' '}
-          <strong>1&Prime; DBH steps</strong> (100 sizes) with 10-ft height and
-          spread bands — use the calculator above for any exact tree. This table
-          samples every 5&Prime; for a quick read.
-        </p>
-        <div className="mt-2 overflow-x-auto">
-          <table className="text-xs">
-            <thead>
-              <tr className="border-b-2 border-bark/20 text-fg-3">
-                <th className="px-2 py-1 text-left font-bold">DBH size</th>
-                <th className="px-2 py-1 text-right font-bold">Base $/in</th>
-                <th className="px-2 py-1 text-right font-bold">Typical height</th>
-                <th className="px-2 py-1 text-right font-bold">Typical spread</th>
-              </tr>
-            </thead>
-            <tbody>
-              {PRICING_MATRIX.categories
-                .filter((_, i) => (i + 1) % 5 === 0)
-                .map((cat) => (
-                  <tr key={cat.label} className="border-b border-bark/10">
-                    <td className="px-2 py-1.5 font-bold text-ink">{cat.label}</td>
-                    <td className="px-2 py-1.5 text-right font-bold text-orange">{fmtUsd(cat.base)}</td>
-                    <td className="px-2 py-1.5 text-right text-fg-2">
-                      {PRICING_MATRIX.heightTiers[cat.refHeight]?.label ?? '—'}
-                    </td>
-                    <td className="px-2 py-1.5 text-right text-fg-2">
-                      {PRICING_MATRIX.canopyTiers[cat.refCanopy]?.label ?? '—'}
-                    </td>
-                  </tr>
-                ))}
-            </tbody>
-          </table>
-        </div>
-        <p className="mt-2 max-w-3xl text-xs text-fg-3">
-          <strong>Height &amp; spread:</strong> each 10-ft band above that
-          size&apos;s typical adds about 8% of its base rate; each band below
-          subtracts the same. The final rate is capped between{' '}
-          {PRICING_MATRIX.minFactor}× and {PRICING_MATRIX.maxFactor}× the base so
-          one unusual tree can&apos;t swing it too far. Tell me any base rate to
-          change and I&apos;ll set it.
-        </p>
       </Card>
 
       {/* ---------- Seller consistency (the case for a guide) ---------- */}
