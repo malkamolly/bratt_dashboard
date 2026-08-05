@@ -38,6 +38,10 @@ Always store and display people's names as **First Name + Last Initial** (e.g. `
 
 Ask one specific clarifying question rather than offering 3 options. If I've already rejected the "proper" path once in a conversation, don't re-suggest it.
 
+## Database migrations
+
+**Whenever you create or change a Supabase migration, ALWAYS give me a direct, clickable link to the migration file in your reply** — a GitHub blob link on `main` (e.g. `https://github.com/malkamolly/bratt_dashboard/blob/main/supabase/migrations/<file>.sql`). Every time, no exceptions, so I can open it and run it without digging through the repo. If you create several in one change, link each of them.
+
 ## Git workflow
 
 **Always commit and push directly to `main`. No feature branches, ever.**
