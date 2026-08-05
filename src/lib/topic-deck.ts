@@ -41,13 +41,13 @@ export type TopicDeck = {
 export const TOPIC_DECKS: Record<string, TopicDeck> = {
   'equipment-specs': {
     slug: 'equipment-specs',
-    title: 'Equipment Specifications',
+    title: 'Equipment Specs',
     description:
-      'Drive and working dimensions, weights, outrigger spread, and reach for the whole fleet — stump grinders, forwarders, bucket and clam trucks, the aerial lift, and the cranes.',
+      'At-a-glance spec sheet for the whole fleet — dimensions, weights, outrigger spread, reach, and crane load charts. Built for quick field lookup, one table per machine.',
     tags: ['Equipment', 'Removals'],
     date: '2026-08-05',
     footerLeft: 'BRATT TREE  |  EQUIPMENT SPECS',
-    version: 'Version 1.1',
+    version: 'Version 2.0',
   },
   'tree-removal-methods': {
     slug: 'tree-removal-methods',
