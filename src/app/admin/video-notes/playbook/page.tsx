@@ -25,7 +25,7 @@ export default async function PlaybookPage() {
   return (
     <main className="bt-page">
       <p className="text-sm text-neutral-500 mb-1">
-        <Link href="/hub/video-notes" className="hover:underline">
+        <Link href="/admin/video-notes" className="hover:underline">
           Video Notes
         </Link>{' '}
         / Playbook

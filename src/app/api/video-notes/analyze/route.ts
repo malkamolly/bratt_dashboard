@@ -11,7 +11,7 @@
 
 import { NextResponse } from 'next/server';
 import { serverClient } from '@/lib/supabase';
-import { getAllowedUser, canAccessHub } from '@/lib/auth';
+import { getAllowedUser, canUseVideoNotes } from '@/lib/auth';
 import { analyzeFrames, VIDEO_NOTES_MODEL, type Frame } from '@/lib/video-notes';
 import { getActivePlaybook, formatPlaybookForPrompt } from '@/lib/playbook';
 
@@ -33,7 +33,7 @@ export async function POST(request: Request) {
   if (!user) {
     return NextResponse.json({ error: 'Not signed in.' }, { status: 401 });
   }
-  if (!canAccessHub(user.role, 'hub')) {
+  if (!canUseVideoNotes(user.email)) {
     return NextResponse.json({ error: 'You do not have access to this tool.' }, { status: 403 });
   }
 

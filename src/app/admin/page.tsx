@@ -1,27 +1,47 @@
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
-import { getAllowedUser } from '@/lib/auth';
+import { getAllowedUser, canUseVideoNotes } from '@/lib/auth';
 
 export const dynamic = 'force-dynamic';
 
 export default async function AdminLandingPage() {
   const user = await getAllowedUser();
   if (!user) redirect('/login');
-  if (user.role !== 'admin') redirect('/access-denied');
+  const isAdmin = user.role === 'admin';
+  const videoAccess = canUseVideoNotes(user.email);
+  if (!isAdmin && !videoAccess) redirect('/access-denied');
 
   return (
     <main className="mx-auto max-w-6xl px-6 py-12">
       <p className="bt-eyebrow">Admin</p>
       <h1 className="mt-2 font-display text-5xl uppercase tracking-wider text-ink sm:text-6xl">
-        Settings
+        Admin
       </h1>
       <p className="mt-3 max-w-xl text-fg-2">
-        Pick a side to edit. Sales handles the salesperson roster, annual and
-        monthly goals, and historical totals. Production handles the crew
-        roster.
+        {isAdmin
+          ? 'Video Notes plus dashboard settings — access, the salesperson and crew rosters, goals, and PHC timing.'
+          : 'Your admin tools.'}
       </p>
 
       <section className="mt-10 grid grid-cols-1 gap-6 md:grid-cols-2">
+        {videoAccess && (
+          <Link href="/admin/video-notes" className="bt-card group transition-colors hover:!border-orange">
+            <p className="bt-eyebrow">Video</p>
+            <h2 className="mt-2 font-headline text-3xl font-black uppercase text-bark-deep">
+              Video Notes
+            </h2>
+            <p className="mt-3 text-sm text-fg-2">
+              Analyze arborist walkthrough videos, coach the analysis, and manage
+              the Sales Arborist Playbook.
+            </p>
+            <p className="mt-6 font-headline text-xs font-extrabold uppercase tracking-ribbon text-orange">
+              Open &rarr;
+            </p>
+          </Link>
+        )}
+
+        {isAdmin && (
+          <>
         <Link href="/admin/sales" className="bt-card group transition-colors hover:!border-orange">
           <p className="bt-eyebrow">Admin 1</p>
           <h2 className="mt-2 font-headline text-3xl font-black uppercase text-bark-deep">
@@ -79,6 +99,8 @@ export default async function AdminLandingPage() {
             Open &rarr;
           </p>
         </Link>
+          </>
+        )}
       </section>
     </main>
   );

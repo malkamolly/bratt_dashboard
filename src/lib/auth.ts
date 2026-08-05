@@ -141,6 +141,21 @@ export function canSeeCostAnalysis(email: string | null | undefined): boolean {
   return !!email && COST_ANALYSIS_EMAILS.includes(email.toLowerCase());
 }
 
+// Video Notes lives in the Admin area but is restricted to specific PEOPLE, not
+// the whole admin role — the leadership trio. Anyone can see the Admin card if
+// they're an admin, but only these three see (and can use) the Video Notes tool
+// and its API routes. Keep in sync with the RLS in migrations 060 and 061.
+export const VIDEO_NOTES_EMAILS: readonly string[] = [
+  'molly@bratttree.com',
+  'connor@bratttree.com',
+  'caleb@bratttree.com',
+];
+
+/** Can this person use the Video Notes tool? Gated by email, case-insensitive. */
+export function canUseVideoNotes(email: string | null | undefined): boolean {
+  return !!email && VIDEO_NOTES_EMAILS.includes(email.toLowerCase());
+}
+
 /**
  * Returns the current user's email + role if they are signed in AND on the
  * allowlist. Returns null otherwise.

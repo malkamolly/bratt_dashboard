@@ -8,7 +8,7 @@
 // ============================================================================
 
 import { NextResponse } from 'next/server';
-import { getAllowedUser, canAccessHub } from '@/lib/auth';
+import { getAllowedUser, canUseVideoNotes } from '@/lib/auth';
 import { runCoachChat, runCoachSummarize, type CoachMessage } from '@/lib/coach';
 import type { Findings } from '@/lib/video-notes';
 
@@ -24,7 +24,7 @@ type Body = {
 export async function POST(request: Request) {
   const user = await getAllowedUser();
   if (!user) return NextResponse.json({ error: 'Not signed in.' }, { status: 401 });
-  if (!canAccessHub(user.role, 'hub')) {
+  if (!canUseVideoNotes(user.email)) {
     return NextResponse.json({ error: 'No access.' }, { status: 403 });
   }
 

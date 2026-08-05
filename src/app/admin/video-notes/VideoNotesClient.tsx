@@ -295,7 +295,7 @@ function LibraryImport() {
         </p>
       )}
       <p className="pt-1 text-sm">
-        <a href="/hub/video-notes/playbook" className="font-medium underline">
+        <a href="/admin/video-notes/playbook" className="font-medium underline">
           Manage Playbook →
         </a>{' '}
         <span className="text-neutral-500">

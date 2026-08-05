@@ -9,7 +9,7 @@
 
 import { NextResponse } from 'next/server';
 import { serverClient } from '@/lib/supabase';
-import { getAllowedUser, canAccessHub } from '@/lib/auth';
+import { getAllowedUser, canUseVideoNotes } from '@/lib/auth';
 import type { ProposedLesson } from '@/lib/coach';
 
 export const dynamic = 'force-dynamic';
@@ -19,7 +19,7 @@ type Body = { lessons?: ProposedLesson[] };
 export async function POST(request: Request) {
   const user = await getAllowedUser();
   if (!user) return NextResponse.json({ error: 'Not signed in.' }, { status: 401 });
-  if (!canAccessHub(user.role, 'hub')) {
+  if (!canUseVideoNotes(user.email)) {
     return NextResponse.json({ error: 'No access.' }, { status: 403 });
   }
 

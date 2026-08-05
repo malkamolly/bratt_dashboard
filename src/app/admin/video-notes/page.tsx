@@ -1,10 +1,16 @@
-import { requireHubAccess } from '@/lib/auth';
+import { redirect } from 'next/navigation';
+import { getAllowedUser, canUseVideoNotes } from '@/lib/auth';
 import VideoNotesClient from './VideoNotesClient';
 
+export const dynamic = 'force-dynamic';
+
 // Video Notes: upload an arborist estimate-walkthrough video and get an
-// AI findings report (visual analysis). Gated to hub roles.
+// AI findings report. Restricted to the leadership trio (VIDEO_NOTES_EMAILS),
+// not the whole admin role.
 export default async function VideoNotesPage() {
-  const user = await requireHubAccess('hub');
+  const user = await getAllowedUser();
+  if (!user) redirect('/login');
+  if (!canUseVideoNotes(user.email)) redirect('/access-denied');
 
   return (
     <main className="bt-page">

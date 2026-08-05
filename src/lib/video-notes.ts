@@ -1,7 +1,7 @@
 // ============================================================================
 // Video notes — turn arborist estimate-walkthrough frames into a findings report
 // ============================================================================
-// This is the server-side brain of the /hub/video-notes tool. It takes a set of
+// This is the server-side brain of the /admin/video-notes tool. It takes a set of
 // still frames pulled from a walkthrough video (each tagged with the time it was
 // captured) and asks Claude to "look" at them and report what an estimator would
 // want to know: power-line drops, slopes, wet areas, access/parking concerns,

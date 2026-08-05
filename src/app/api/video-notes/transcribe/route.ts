@@ -7,7 +7,7 @@
 // ============================================================================
 
 import { NextResponse } from 'next/server';
-import { getAllowedUser, canAccessHub } from '@/lib/auth';
+import { getAllowedUser, canUseVideoNotes } from '@/lib/auth';
 
 export const maxDuration = 60;
 export const dynamic = 'force-dynamic';
@@ -17,7 +17,7 @@ const GROQ_WHISPER_MODEL = process.env.GROQ_WHISPER_MODEL || 'whisper-large-v3-t
 export async function POST(request: Request) {
   const user = await getAllowedUser();
   if (!user) return NextResponse.json({ error: 'Not signed in.' }, { status: 401 });
-  if (!canAccessHub(user.role, 'hub')) {
+  if (!canUseVideoNotes(user.email)) {
     return NextResponse.json({ error: 'No access.' }, { status: 403 });
   }
   if (!process.env.GROQ_API_KEY) {
