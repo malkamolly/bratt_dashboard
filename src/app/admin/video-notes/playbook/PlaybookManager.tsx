@@ -48,6 +48,7 @@ export default function PlaybookManager({
   // Server sends these newest-first; keep new/edited items in place.
   const [entries, setEntries] = useState<AdminPlaybookEntry[]>(initialEntries);
   const [error, setError] = useState('');
+  const [filter, setFilter] = useState<'all' | AdminPlaybookEntry['source']>('all');
   // One shared voice engine — only the row being refined uses it at a time.
   const voice = useCoachVoice();
 
@@ -91,30 +92,60 @@ export default function PlaybookManager({
   const referenceCount = entries.filter((e) => e.source === 'reference').length;
   const coachCount = entries.length - libraryCount - referenceCount;
 
+  // Source filter: 'all' shows everything; otherwise only that source.
+  const filters: { key: 'all' | AdminPlaybookEntry['source']; label: string; count: number }[] = [
+    { key: 'all', label: 'All', count: entries.length },
+    { key: 'coach', label: 'Coach', count: coachCount },
+    { key: 'library', label: 'Library', count: libraryCount },
+    { key: 'reference', label: 'Reference', count: referenceCount },
+  ];
+  const visible = filter === 'all' ? entries : entries.filter((e) => e.source === filter);
+
   return (
     <div className="space-y-3">
       {error && <p className="text-sm text-red-600">{error}</p>}
+
+      <div className="flex flex-wrap gap-2">
+        {filters.map((f) => (
+          <button
+            key={f.key}
+            onClick={() => setFilter(f.key)}
+            className={`rounded-full px-3 py-1 text-xs font-semibold ${
+              filter === f.key
+                ? 'bg-lime text-black'
+                : 'border border-neutral-300 text-neutral-600 hover:bg-neutral-50'
+            }`}
+          >
+            {f.label} ({f.count})
+          </button>
+        ))}
+      </div>
+
       <p className="text-xs text-neutral-500">
-        {entries.length} entries ({coachCount} from Coach, {libraryCount} from
-        Library, {referenceCount} from Reference PDFs) — newest first.
+        Showing {visible.length} of {entries.length} — newest first.
       </p>
-      {entries.map((e) => (
-        <PlaybookRow
-          key={e.id}
-          entry={e}
-          voice={voice}
-          onToggle={() => toggleActive(e)}
-          onSave={async (fields) => {
-            patchLocal(e.id, fields);
-            try {
-              await post({ action: 'update', id: e.id, ...fields });
-            } catch (err) {
-              setError(err instanceof Error ? err.message : 'Save failed.');
-            }
-          }}
-          onDelete={() => remove(e.id)}
-        />
-      ))}
+
+      {visible.length === 0 ? (
+        <p className="text-sm text-neutral-500">No entries for this filter.</p>
+      ) : (
+        visible.map((e) => (
+          <PlaybookRow
+            key={e.id}
+            entry={e}
+            voice={voice}
+            onToggle={() => toggleActive(e)}
+            onSave={async (fields) => {
+              patchLocal(e.id, fields);
+              try {
+                await post({ action: 'update', id: e.id, ...fields });
+              } catch (err) {
+                setError(err instanceof Error ? err.message : 'Save failed.');
+              }
+            }}
+            onDelete={() => remove(e.id)}
+          />
+        ))
+      )}
     </div>
   );
 }
