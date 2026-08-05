@@ -20,6 +20,9 @@ export default function CoachMode({ findings }: { findings: Findings }) {
   const [recording, setRecording] = useState(false);
   const [transcribing, setTranscribing] = useState(false);
   const [muted, setMuted] = useState(false);
+  const [voices, setVoices] = useState<SpeechSynthesisVoice[]>([]);
+  const [voiceURI, setVoiceURI] = useState('');
+  const [rate, setRate] = useState(1);
   const [text, setText] = useState('');
   const [phase, setPhase] = useState<'chat' | 'lessons'>('chat');
   const [lessons, setLessons] = useState<ProposedLesson[]>([]);
@@ -33,15 +36,59 @@ export default function CoachMode({ findings }: { findings: Findings }) {
   const chunksRef = useRef<Blob[]>([]);
   const streamRef = useRef<MediaStream | null>(null);
   const mutedRef = useRef(false);
+  const voicesRef = useRef<SpeechSynthesisVoice[]>([]);
+  const voiceURIRef = useRef('');
+  const rateRef = useRef(1);
 
   useEffect(() => {
     mutedRef.current = muted;
   }, [muted]);
+  useEffect(() => {
+    voicesRef.current = voices;
+  }, [voices]);
+  useEffect(() => {
+    voiceURIRef.current = voiceURI;
+  }, [voiceURI]);
+  useEffect(() => {
+    rateRef.current = rate;
+  }, [rate]);
+
+  // Load the browser's available voices (they populate asynchronously) and
+  // restore the saved preference, defaulting to a sensible English voice.
+  useEffect(() => {
+    if (typeof window === 'undefined' || !window.speechSynthesis) return;
+    const load = () => {
+      const list = window.speechSynthesis.getVoices();
+      if (!list.length) return;
+      setVoices(list);
+      setVoiceURI((current) => {
+        if (current && list.some((v) => v.voiceURI === current)) return current;
+        const saved = localStorage.getItem('coachVoiceURI');
+        if (saved && list.some((v) => v.voiceURI === saved)) return saved;
+        const pick =
+          list.find((v) => v.default) ||
+          list.find((v) => v.lang?.toLowerCase().startsWith('en')) ||
+          list[0];
+        return pick ? pick.voiceURI : '';
+      });
+    };
+    load();
+    window.speechSynthesis.onvoiceschanged = load;
+    const savedRate = Number(localStorage.getItem('coachVoiceRate'));
+    if (savedRate >= 0.5 && savedRate <= 1.5) setRate(savedRate);
+    return () => {
+      if (window.speechSynthesis) window.speechSynthesis.onvoiceschanged = null;
+    };
+  }, []);
 
   function speak(t: string) {
     if (mutedRef.current || typeof window === 'undefined' || !window.speechSynthesis) return;
     window.speechSynthesis.cancel();
-    window.speechSynthesis.speak(new SpeechSynthesisUtterance(t));
+    const u = new SpeechSynthesisUtterance(t);
+    const v = voicesRef.current.find((x) => x.voiceURI === voiceURIRef.current);
+    if (v) u.voice = v;
+    u.rate = rateRef.current;
+    window.speechSynthesis.speak(u);
   }
 
   // Ask the coach for its next message given a conversation state.
@@ -194,6 +241,50 @@ export default function CoachMode({ findings }: { findings: Findings }) {
           {muted ? '🔇 Voice off' : '🔊 Voice on'}
         </button>
       </div>
+
+      {!muted && voices.length > 0 && (
+        <div className="flex flex-wrap items-center gap-3 text-sm">
+          <label className="flex items-center gap-1">
+            <span className="text-neutral-500">Voice</span>
+            <select
+              value={voiceURI}
+              onChange={(e) => {
+                setVoiceURI(e.target.value);
+                localStorage.setItem('coachVoiceURI', e.target.value);
+              }}
+              className="max-w-[12rem] rounded border border-neutral-300 px-2 py-1 text-sm"
+            >
+              {voices.map((v) => (
+                <option key={v.voiceURI} value={v.voiceURI}>
+                  {v.name} ({v.lang})
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="flex items-center gap-1">
+            <span className="text-neutral-500">Speed</span>
+            <input
+              type="range"
+              min={0.5}
+              max={1.5}
+              step={0.1}
+              value={rate}
+              onChange={(e) => {
+                const r = Number(e.target.value);
+                setRate(r);
+                localStorage.setItem('coachVoiceRate', String(r));
+              }}
+            />
+            <span className="w-9 text-neutral-500">{rate.toFixed(1)}x</span>
+          </label>
+          <button
+            onClick={() => speak('Hi! This is how I sound. Ready when you are.')}
+            className="text-neutral-600 hover:underline"
+          >
+            ▶ Preview
+          </button>
+        </div>
+      )}
 
       {/* Conversation transcript */}
       <div className="space-y-3 max-h-96 overflow-y-auto">
