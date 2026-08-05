@@ -16,9 +16,8 @@ export default async function PlaybookPage() {
   const supabase = await serverClient();
   const { data } = await supabase
     .from('arborist_playbook')
-    .select('id, category, title, content, source, active')
-    .order('source', { ascending: true })
-    .order('category', { ascending: true });
+    .select('id, category, title, content, source, active, created_at')
+    .order('created_at', { ascending: false });
 
   const entries = (data ?? []) as AdminPlaybookEntry[];
 
