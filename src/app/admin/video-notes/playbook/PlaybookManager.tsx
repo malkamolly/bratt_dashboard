@@ -4,12 +4,13 @@
 // Playbook Manager (admin) — view/edit/deactivate/delete playbook entries
 // ============================================================================
 // Entries are shown newest-first. Editing an entry opens an optional
-// "Refine with Claude" conversation so you can talk an entry into better shape
-// and apply the result back into the fields before saving.
+// "Refine with Claude" conversation (voice or typed, hands-free supported) so
+// you can talk an entry into better shape and apply the result before saving.
 // ============================================================================
 
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { RefineMessage } from '@/lib/playbook-refine';
+import { useCoachVoice, VoiceControls, type CoachVoice } from '../useCoachVoice';
 
 export type AdminPlaybookEntry = {
   id: string;
@@ -46,6 +47,8 @@ export default function PlaybookManager({
   // Server sends these newest-first; keep new/edited items in place.
   const [entries, setEntries] = useState<AdminPlaybookEntry[]>(initialEntries);
   const [error, setError] = useState('');
+  // One shared voice engine — only the row being refined uses it at a time.
+  const voice = useCoachVoice();
 
   function patchLocal(id: string, fields: Partial<AdminPlaybookEntry>) {
     setEntries((es) => es.map((e) => (e.id === id ? { ...e, ...fields } : e)));
@@ -97,6 +100,7 @@ export default function PlaybookManager({
         <PlaybookRow
           key={e.id}
           entry={e}
+          voice={voice}
           onToggle={() => toggleActive(e)}
           onSave={async (fields) => {
             patchLocal(e.id, fields);
@@ -115,11 +119,13 @@ export default function PlaybookManager({
 
 function PlaybookRow({
   entry,
+  voice,
   onToggle,
   onSave,
   onDelete,
 }: {
   entry: AdminPlaybookEntry;
+  voice: CoachVoice;
   onToggle: () => void;
   onSave: (fields: Partial<AdminPlaybookEntry>) => Promise<void>;
   onDelete: () => void;
@@ -138,33 +144,77 @@ function PlaybookRow({
   const [refineNote, setRefineNote] = useState('');
   const [refineError, setRefineError] = useState('');
 
+  const messagesRef = useRef<RefineMessage[]>([]);
+  const refineOpenRef = useRef(false);
+  const fieldsRef = useRef({ category, title, content });
+  useEffect(() => void (messagesRef.current = messages), [messages]);
+  useEffect(() => void (refineOpenRef.current = refineOpen), [refineOpen]);
+  useEffect(() => {
+    fieldsRef.current = { category, title, content };
+  }, [category, title, content]);
+
   async function refinePost(mode: 'chat' | 'apply', history: RefineMessage[]) {
     const res = await fetch('/api/video-notes/playbook/refine', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ entry: { category, title, content }, history, mode }),
+      body: JSON.stringify({ entry: fieldsRef.current, history, mode }),
     });
     const json = await res.json();
     if (!res.ok) throw new Error(json.error || 'Request failed.');
     return json;
   }
 
-  async function sendRefine() {
-    const t = refineInput.trim();
-    if (!t) return;
-    const next: RefineMessage[] = [...messages, { role: 'user', text: t }];
-    setMessages(next);
-    setRefineInput('');
+  async function refineAsk(history: RefineMessage[]) {
     setRefineBusy(true);
     setRefineError('');
     setRefineNote('');
     try {
-      const { reply } = await refinePost('chat', next);
-      setMessages([...next, { role: 'assistant', text: reply || '' }]);
+      const { reply } = await refinePost('chat', history);
+      const next: RefineMessage[] = [...history, { role: 'assistant', text: reply || '' }];
+      setMessages(next);
+      messagesRef.current = next;
+      setRefineBusy(false);
+      await voice.speak(reply || '');
+      if (voice.handsFree && refineOpenRef.current) void refineListen();
     } catch (err) {
       setRefineError(err instanceof Error ? err.message : 'Something went wrong.');
-    } finally {
       setRefineBusy(false);
+    }
+  }
+
+  function sendRefine(textIn: string) {
+    const t = textIn.trim();
+    if (!t) return;
+    const next: RefineMessage[] = [...messagesRef.current, { role: 'user', text: t }];
+    setMessages(next);
+    messagesRef.current = next;
+    setRefineInput('');
+    refineAsk(next);
+  }
+
+  async function refineListen() {
+    if (voice.listening) return;
+    const heard = await voice.listenOnce();
+    if (voice.handsFree && refineOpenRef.current && heard.trim()) sendRefine(heard);
+  }
+
+  // Hands-free: when it's the user's turn (nothing said yet, or Claude just
+  // replied) and hands-free is on, start listening.
+  useEffect(() => {
+    if (!refineOpen || !voice.handsFree || refineBusy || voice.listening) return;
+    const last = messages[messages.length - 1];
+    if (!last || last.role === 'assistant') void refineListen();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [voice.handsFree, refineOpen]);
+
+  async function toggleMic() {
+    setRefineError('');
+    if (voice.recording) {
+      const heard = await voice.endRecording();
+      if (heard.trim()) sendRefine(heard);
+    } else {
+      const ok = await voice.beginRecording();
+      if (!ok) setRefineError('Could not access the microphone. Type instead.');
     }
   }
 
@@ -172,7 +222,7 @@ function PlaybookRow({
     setRefineBusy(true);
     setRefineError('');
     try {
-      const { entry: refined } = await refinePost('apply', messages);
+      const { entry: refined } = await refinePost('apply', messagesRef.current);
       if (refined) {
         setCategory(refined.category ?? category);
         setTitle(refined.title ?? title);
@@ -186,12 +236,18 @@ function PlaybookRow({
     }
   }
 
+  function closeRefine() {
+    setRefineOpen(false);
+    voice.stopSpeaking();
+    voice.setHandsFree(false);
+  }
+
   async function save() {
     setSaving(true);
     await onSave({ category, title, content });
     setSaving(false);
     setEditing(false);
-    setRefineOpen(false);
+    closeRefine();
   }
 
   function cancel() {
@@ -199,11 +255,13 @@ function PlaybookRow({
     setTitle(entry.title);
     setContent(entry.content);
     setEditing(false);
-    setRefineOpen(false);
+    closeRefine();
     setMessages([]);
     setRefineNote('');
     setRefineError('');
   }
+
+  const refineBusyAll = refineBusy || voice.transcribing;
 
   return (
     <div
@@ -244,7 +302,7 @@ function PlaybookRow({
               Cancel
             </button>
             <button
-              onClick={() => setRefineOpen((o) => !o)}
+              onClick={() => (refineOpen ? closeRefine() : setRefineOpen(true))}
               className="rounded border border-neutral-400 px-3 py-1.5 text-sm"
             >
               {refineOpen ? 'Hide refine chat' : '💬 Refine with Claude'}
@@ -254,10 +312,10 @@ function PlaybookRow({
           {refineOpen && (
             <div className="mt-2 space-y-2 rounded-lg border border-neutral-200 bg-neutral-50 p-3">
               <p className="text-xs text-neutral-500">
-                Talk through this entry — Claude has its current wording. When you
-                like where it&apos;s headed, apply Claude&apos;s version into the
-                fields above, then Save.
+                Talk it through (or type) — Claude has this entry&apos;s wording. When
+                you like it, apply Claude&apos;s version into the fields above, then Save.
               </p>
+              <VoiceControls v={voice} />
               <div className="space-y-2 max-h-60 overflow-y-auto">
                 {messages.map((m, i) => (
                   <div key={i} className={m.role === 'assistant' ? '' : 'text-right'}>
@@ -274,18 +332,40 @@ function PlaybookRow({
                 ))}
                 {refineBusy && <p className="text-sm text-neutral-500">Thinking…</p>}
               </div>
+
+              {voice.handsFree ? (
+                <p className="text-sm text-neutral-600">
+                  {voice.listening
+                    ? '🎤 Listening — just talk, I’ll send when you pause.'
+                    : 'Hands-free on — talk any time.'}
+                </p>
+              ) : (
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={toggleMic}
+                    disabled={refineBusyAll}
+                    className={`rounded px-3 py-1.5 text-sm font-semibold disabled:opacity-50 ${
+                      voice.recording ? 'bg-red-500 text-white' : 'bg-lime text-black'
+                    }`}
+                  >
+                    {voice.recording ? '⏹ Stop & send' : '🎤 Tap to talk'}
+                  </button>
+                  {voice.transcribing && <span className="text-sm text-neutral-500">Transcribing…</span>}
+                </div>
+              )}
+
               <div className="flex gap-2">
                 <input
                   value={refineInput}
                   onChange={(e) => setRefineInput(e.target.value)}
-                  onKeyDown={(e) => e.key === 'Enter' && sendRefine()}
-                  disabled={refineBusy}
+                  onKeyDown={(e) => e.key === 'Enter' && sendRefine(refineInput)}
+                  disabled={refineBusyAll}
                   placeholder="e.g. make this specific to bur oak"
                   className="flex-1 rounded border border-neutral-300 px-2 py-1.5 text-sm"
                 />
                 <button
-                  onClick={sendRefine}
-                  disabled={refineBusy || !refineInput.trim()}
+                  onClick={() => sendRefine(refineInput)}
+                  disabled={refineBusyAll || !refineInput.trim()}
                   className="rounded border border-neutral-400 px-3 py-1.5 text-sm disabled:opacity-50"
                 >
                   Send
@@ -294,7 +374,7 @@ function PlaybookRow({
               {messages.length > 0 && (
                 <button
                   onClick={applyRefine}
-                  disabled={refineBusy}
+                  disabled={refineBusyAll}
                   className="rounded bg-lime px-3 py-1.5 text-sm font-semibold text-black disabled:opacity-50"
                 >
                   Apply Claude&apos;s version to the fields
