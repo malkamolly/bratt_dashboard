@@ -39,8 +39,10 @@ export function useCoachVoice() {
   const [listening, setListening] = useState(false);
   const [premiumFailed, setPremiumFailed] = useState(false);
   const [ttsError, setTtsError] = useState('');
+  const [ttsRate, setTtsRate] = useState(1);
 
   const ttsVoiceRef = useRef('hannah');
+  const ttsRateRef = useRef(1);
   const mutedRef = useRef(false);
   const handsFreeRef = useRef(false);
   const recorderRef = useRef<MediaRecorder | null>(null);
@@ -53,6 +55,10 @@ export function useCoachVoice() {
     ttsVoiceRef.current = ttsVoice;
     localStorage.setItem('coachTTSVoice', ttsVoice);
   }, [ttsVoice]);
+  useEffect(() => {
+    ttsRateRef.current = ttsRate;
+    localStorage.setItem('coachTTSRate', String(ttsRate));
+  }, [ttsRate]);
   useEffect(() => void (mutedRef.current = muted), [muted]);
   useEffect(() => void (handsFreeRef.current = handsFree), [handsFree]);
 
@@ -60,6 +66,8 @@ export function useCoachVoice() {
   useEffect(() => {
     const saved = localStorage.getItem('coachTTSVoice');
     if (saved && PREMIUM_VOICES.some((v) => v.id === saved)) setTtsVoice(saved);
+    const savedRate = parseFloat(localStorage.getItem('coachTTSRate') || '');
+    if (savedRate >= 0.5 && savedRate <= 2) setTtsRate(savedRate);
     if (typeof window === 'undefined' || !window.speechSynthesis) return;
     const load = () => {
       const list = window.speechSynthesis.getVoices();
@@ -84,6 +92,7 @@ export function useCoachVoice() {
     return new Promise((resolve) => {
       const url = URL.createObjectURL(blob);
       const audio = new Audio(url);
+      audio.playbackRate = ttsRateRef.current;
       audioRef.current = audio;
       const done = () => {
         URL.revokeObjectURL(url);
@@ -110,6 +119,7 @@ export function useCoachVoice() {
         list.find((x) => x.lang?.toLowerCase().startsWith('en')) ||
         list[0];
       if (v) u.voice = v;
+      u.rate = ttsRateRef.current;
       u.onend = () => resolve();
       u.onerror = () => resolve();
       window.speechSynthesis.speak(u);
@@ -285,6 +295,8 @@ export function useCoachVoice() {
     premiumVoices: PREMIUM_VOICES,
     premiumFailed,
     ttsError,
+    ttsRate,
+    setTtsRate,
     muted,
     setMuted,
     handsFree,
@@ -327,6 +339,21 @@ export function VoiceControls({ v }: { v: CoachVoice }) {
                   {voice.label}
                 </option>
               ))}
+            </select>
+          </label>
+          <label className="flex items-center gap-1">
+            <span className="text-neutral-500">Speed</span>
+            <select
+              value={v.ttsRate}
+              onChange={(e) => v.setTtsRate(parseFloat(e.target.value))}
+              className="rounded border border-neutral-300 px-2 py-1 text-sm"
+            >
+              <option value={0.75}>0.75×</option>
+              <option value={1}>1×</option>
+              <option value={1.25}>1.25×</option>
+              <option value={1.5}>1.5×</option>
+              <option value={1.75}>1.75×</option>
+              <option value={2}>2×</option>
             </select>
           </label>
           <button
