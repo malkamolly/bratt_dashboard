@@ -19,7 +19,7 @@ tagline: Drive dimensions — will it get in?
 tagline: Working dimensions — what can it do once it's set?
 tagline: Weights, outriggers, and reach for every machine.
 meta-left: Bratt Tree · Topic Library
-meta-right: Version 1.0
+meta-right: Version 1.1
 
 
 @welcome
@@ -99,14 +99,80 @@ row: Max Slope (setting) | 18% / 10°
 @table
 eyebrow: Cranes
 title: Crane Fleet
-subtitle: The KB uses stabilizers instead of outriggers, spread wider front-to-back.
+subtitle: 20T Manitex 22101 · 40T Manitex 40124SHL · KB EFFER 505. The KB uses stabilizers instead of outriggers, spread wider front-to-back.
 cols: Spec | 40T Crane | 20T Crane | KB Crane
 row: Drive Height | 13' | 12' | 13' 6"
 row: Drive Width | 9' | 9' | 8' 6"
 row: Drive Length | 40' | 32' | 33'
 row: Outrigger / Stabilizer Width | 24' | 22' | 21' 6" front · 27' 6" rear
 row: Outrigger / Stabilizer Length | 24' | 22' | 18' 9"
-tip: Turret sits **8' from the rear** of the truck on the 40T and **4' from the rear** on the 20T.
+tip: Turret sits **8' from the rear** on the 40T. On the 20T, sources disagree — **4'** on the spec sheet, **6'** on the setup doc — confirm on site.
+
+
+@three-rules
+eyebrow: Cranes · The Fleet
+title: Three cranes, three footprints
+subtitle: Pick the smallest one that can still make the picks.
+rule: 20T · Manitex 22101 | The "Tree Monster." **Gets into driveways and yards** with less damage than the 40T — but it will still crack weak sidewalks and weak driveways.
+rule: 40T · Manitex 40124SHL | **Designed to stay on the road.** The most capacity of the three, but it will crack sidewalks and driveways.
+rule: KB · EFFER 505 6S+3S HD | Knuckle boom, also **built to stay on the road.** Runs a hook and slings or grapple-saw attachments — reach and capacity depend on the attachment.
+
+
+@three-rules
+eyebrow: Cranes · Setup Rules
+title: Before you set up
+subtitle: The same three checks apply on every crane job.
+rule: Get the disclaimer signed | **Never drive onto private property without a signed Equipment Disclaimer.** All three cranes will crack weak concrete.
+rule: Check the slope | Setting up over **3°** needs approval on the 20T and 40T; the KB needs a **second opinion over 4°.** Use the slope chart to turn a driveway's drop into a percentage.
+rule: Measure from the turret | Reach is measured from the turret, not the bumper. **40T: 8′ from the rear.** 20T: confirm on site (sources say 4′ or 6′).
+
+
+@table
+eyebrow: Cranes · Capacity
+title: Quick capacity by radius
+subtitle: At-a-glance numbers with outriggers fully extended. Always confirm against the full load chart for the actual boom length and setup.
+cols: Load radius | 20T (22101) | 40T (40124SHL)
+row: 40 ft | 4,500 lbs | 12,500 lbs
+row: 60 ft | 2,100 lbs | 6,000 lbs
+row: 80 ft | 800 lbs | 3,000 lbs
+row: 100 ft | — | 1,200 lbs
+tip: KB (EFFER 505) capacity depends entirely on the attachment — read it off the knuckle-boom placards.
+
+
+@photo
+eyebrow: Cranes · Load Chart
+title: 40T — Manitex 40124SHL
+image: /topics/equipment-specs/crane-chart-40t.png
+alt: 40-ton crane load chart, fully extended outrigger configuration, load capacity by boom length and load radius
+caption: Fully extended outriggers only. Read down to your load radius, across to the boom length — that cell is your max capacity.
+fit: contain
+
+
+@photo
+eyebrow: Cranes · Load Chart
+title: 20T — Manitex 22101
+image: /topics/equipment-specs/crane-chart-20t.png
+alt: 20-ton crane load chart with main boom and jib load ratings, fully extended outriggers
+caption: Use only with all outriggers fully extended. Includes both main-boom and jib load ratings.
+fit: contain
+
+
+@photo
+eyebrow: Cranes · Load Chart
+title: KB — EFFER 505 6S+3S HD
+image: /topics/equipment-specs/crane-chart-kb.jpg
+alt: Knuckle boom crane EFFER 505 load chart placards for hook use and grapple-saw attachments
+caption: One placard per configuration — hook use, plus the GMT-040 and GMT-050 grapple saws. Match the placard to the attachment on the machine.
+fit: contain
+
+
+@photo
+eyebrow: Cranes · Slope
+title: Percent-of-slope chart
+image: /topics/equipment-specs/slope-chart.jpg
+alt: Percent of slope reference chart converting distance and drop into a slope percentage
+caption: Left column = distance in feet, top row = % slope, center = drop in tenths of a foot. Example: a 40′ driveway that falls 1.6′ is a 4% slope.
+fit: contain
 
 
 @closing

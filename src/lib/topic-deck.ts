@@ -47,7 +47,7 @@ export const TOPIC_DECKS: Record<string, TopicDeck> = {
     tags: ['Equipment', 'Removals'],
     date: '2026-08-05',
     footerLeft: 'BRATT TREE  |  EQUIPMENT SPECS',
-    version: 'Version 1.0',
+    version: 'Version 1.1',
   },
   'tree-removal-methods': {
     slug: 'tree-removal-methods',
