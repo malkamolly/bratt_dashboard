@@ -1,0 +1,115 @@
+# ============================================================
+# BRATT TREE — Topic Deck: Equipment Specifications
+# Source content for the slide deck shown at
+#   /topics/equipment-specs/present
+# Transcribed from the fleet equipment spec sheet.
+# Syntax matches the onboarding / training-module deck format:
+#   @layout-name  starts a new slide
+#   key: value    a single field on the current slide
+#   key: a | b    multi-part value (split by "|")
+#   # or //       a comment, ignored
+# ============================================================
+
+
+@cover
+eyebrow: Field Reference · Fleet
+unit: Equipment Specifications
+subtitle: The numbers that decide what fits and what it can reach.
+tagline: Drive dimensions — will it get in?
+tagline: Working dimensions — what can it do once it's set?
+tagline: Weights, outriggers, and reach for every machine.
+meta-left: Bratt Tree · Topic Library
+meta-right: Version 1.0
+
+
+@welcome
+eyebrow: How To Use This
+title: Two kinds of numbers.
+subtitle: Every machine has both — mixing them up is how a truck shows up and can't do the job.
+body: **Drive dimensions** (length, width, height, weight) tell you whether the machine can *get to* the tree — through the gate, down the driveway, over the ground.
+body: **Working dimensions** (outrigger/stabilizer spread, working height, reach) tell you what it can *do* once it's parked and set up.
+body: When you're sizing up a job, check both against the yard before you commit a machine to it.
+
+
+@table
+eyebrow: Ground Equipment
+title: Stump Grinders
+subtitle: Min-Width is the tightest gap the machine will squeeze through.
+cols: Model | Length | Width | Min-Width | Height | Weight (lbs)
+row: 60tx | 142" | 51" | 36" | 72" | 3,500
+row: 70tx | 142" | 51" | 36" | 72" | 3,900
+row: 262 | 110" | 50" | NA | 72" | 1,320
+
+
+@table
+eyebrow: Ground Equipment
+title: Forwarding Machines
+subtitle: What we use to move material out of the yard once it's on the ground.
+cols: Model | Length | Width | Min-Width | Height | Weight (lbs)
+row: CAT 259D3 | 79" | 69" | NA | 83" | 8,987
+row: Avant 528 | 100" | 50" | NA | 78.2" | 3,130
+row: Swinger 2000 | 162" | 56" | NA | 94" | 7,600
+row: Bobcat A300 | 143" | 75" | NA | 81" | 8,350
+
+
+@table
+eyebrow: Aerial Equipment
+title: Bucket Trucks
+subtitle: Same drive footprint; the outrigger spread and reach are where they differ.
+cols: Spec | Elevator Bucket | Non-Elevator Bucket
+row: Drive Height | 12' 10" | 12' 10"
+row: Drive Width | 8' 6" | 8' 6"
+row: Drive Length | 28' 5" | 28' 5"
+row: Outrigger Width | 12' | 9' 9" front · 11' 2" back
+row: Outrigger Length | 8' 6" | 11' 7"
+row: Working Height | 75' | *TBD*
+row: Working Outreach | 42' | *TBD*
+tip: Non-elevator working height and outreach still need to be measured and filled in.
+
+
+@table
+eyebrow: Aerial Equipment
+title: Clam Trucks
+subtitle: Grapple trucks — outrigger width plus how far they reach out and up.
+cols: Spec | 305 Clam | Big Clams
+row: Drive Height | 13' 4" | 13' 8"
+row: Drive Width | 8' 6" | 8' 6"
+row: Drive Length | 28' 5" | 38'
+row: Outrigger Width | 15' | 10'
+row: Max Side Reach | 30' | 26'
+row: Max Vertical Reach | 42' | 35'
+
+
+@table
+eyebrow: Aerial Equipment
+title: Aerial Lift — Nifty SD64
+subtitle: Our tracked lift. Drive it in tight, then set it on grade.
+cols: Spec | Nifty SD64
+row: Drive Length × Width × Height | 242" × 81" × 89"
+row: Weight | 9,170 lbs
+row: Working Height | 70'
+row: Working Outreach | 42'
+row: Platform Height | 63.5'
+row: Working Width | 15'
+row: Working Length | 15.58'
+row: Gradeability (driving) | 45% / 24°
+row: Max Slope (setting) | 18% / 10°
+
+
+@table
+eyebrow: Cranes
+title: Crane Fleet
+subtitle: The KB uses stabilizers instead of outriggers, spread wider front-to-back.
+cols: Spec | 40T Crane | 20T Crane | KB Crane
+row: Drive Height | 13' | 12' | 13' 6"
+row: Drive Width | 9' | 9' | 8' 6"
+row: Drive Length | 40' | 32' | 33'
+row: Outrigger / Stabilizer Width | 24' | 22' | 21' 6" front · 27' 6" rear
+row: Outrigger / Stabilizer Length | 24' | 22' | 18' 9"
+tip: Turret sits **8' from the rear** of the truck on the 40T and **4' from the rear** on the 20T.
+
+
+@closing
+title: Check both before you commit.
+subtitle: Drive dimensions get the machine to the tree. Working dimensions get the tree down. Know them cold.
+mark: BT

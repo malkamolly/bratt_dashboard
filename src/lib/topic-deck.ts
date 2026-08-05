@@ -39,6 +39,16 @@ export type TopicDeck = {
 // The `date` field is the date the topic was originally taught (or
 // added) — used to sort the library chronologically.
 export const TOPIC_DECKS: Record<string, TopicDeck> = {
+  'equipment-specs': {
+    slug: 'equipment-specs',
+    title: 'Equipment Specifications',
+    description:
+      'Drive and working dimensions, weights, outrigger spread, and reach for the whole fleet — stump grinders, forwarders, bucket and clam trucks, the aerial lift, and the cranes.',
+    tags: ['Equipment', 'Removals'],
+    date: '2026-08-05',
+    footerLeft: 'BRATT TREE  |  EQUIPMENT SPECS',
+    version: 'Version 1.0',
+  },
   'tree-removal-methods': {
     slug: 'tree-removal-methods',
     title: 'The 5 Best Tree Removal Methods',
