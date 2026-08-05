@@ -70,6 +70,19 @@ export default async function HubHomePage() {
           </p>
         </Link>
 
+        <Link href="/equipment" className="bt-card group transition-colors hover:!border-orange">
+          <h2 className="font-headline text-3xl font-black uppercase text-bark-deep">
+            Equipment Specs
+          </h2>
+          <p className="mt-3 text-sm text-fg-2">
+            At-a-glance dimensions, weights, reach, and crane load charts for
+            the whole fleet &mdash; the same reference the field crews use.
+          </p>
+          <p className="mt-6 font-headline text-xs font-extrabold uppercase tracking-ribbon text-orange">
+            Open spec sheet &rarr;
+          </p>
+        </Link>
+
         {showCalculator && (
           <Link href="/hub/calculator" className="bt-card group transition-colors hover:!border-orange">
             <h2 className="font-headline text-3xl font-black uppercase text-bark-deep">

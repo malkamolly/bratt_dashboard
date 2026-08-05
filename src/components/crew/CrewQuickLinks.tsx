@@ -23,6 +23,7 @@ const LINKS: Array<{ href: string; label: string }> = [
   { href: '/crew/cdl', label: 'CDL' },
   { href: '/crew/plans', label: 'Plans' },
   { href: '/crew/reports', label: 'Reports' },
+  { href: '/equipment', label: 'Equipment' },
 ];
 
 function isActive(pathname: string, href: string): boolean {
