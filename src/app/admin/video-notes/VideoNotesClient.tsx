@@ -272,6 +272,7 @@ export default function VideoNotesClient({
       )}
 
       {isOwner && <LibraryImport />}
+      {isOwner && <ReferenceImport />}
     </div>
   );
 }
@@ -312,6 +313,60 @@ function LibraryImport() {
         className="rounded border border-neutral-400 px-3 py-1.5 text-sm font-medium disabled:opacity-50"
       >
         {state === 'running' ? 'Importing…' : 'Import / refresh Library'}
+      </button>
+      {message && (
+        <p className={`text-sm ${state === 'error' ? 'text-red-600' : 'text-neutral-700'}`}>
+          {message}
+        </p>
+      )}
+    </div>
+  );
+}
+
+// Owner-only: distill the reference PDFs in content/references into the playbook.
+// Separate from the Library import — these entries never appear in the Sales
+// Arborist Library, and neither import can wipe the other's entries.
+function ReferenceImport() {
+  const [state, setState] = useState<'idle' | 'running' | 'done' | 'error'>('idle');
+  const [message, setMessage] = useState('');
+
+  async function run() {
+    setState('running');
+    setMessage('');
+    try {
+      const res = await fetch('/api/video-notes/ingest-references', { method: 'POST' });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || 'Import failed.');
+      setState('done');
+      const skipped =
+        json.skipped && json.skipped.length > 0
+          ? ` Skipped: ${json.skipped.join('; ')}.`
+          : '';
+      setMessage(
+        `Imported ${json.count} playbook entries from ${json.sources} reference PDF(s). New analyses now apply them.${skipped}`,
+      );
+    } catch (err) {
+      setState('error');
+      setMessage(err instanceof Error ? err.message : 'Import failed.');
+    }
+  }
+
+  return (
+    <div className="bt-card space-y-2">
+      <h2 className="font-semibold">Reference PDFs import</h2>
+      <p className="text-sm text-neutral-600">
+        Distill the PDFs in <code>content/references/</code> into the analysis
+        playbook. Re-run this whenever those PDFs change. (This replaces the
+        previously imported reference entries; the Training Library and Coach
+        Mode entries are untouched. These entries do not appear in the Sales
+        Arborist Library.)
+      </p>
+      <button
+        onClick={run}
+        disabled={state === 'running'}
+        className="rounded border border-neutral-400 px-3 py-1.5 text-sm font-medium disabled:opacity-50"
+      >
+        {state === 'running' ? 'Importing…' : 'Import / refresh Reference PDFs'}
       </button>
       {message && (
         <p className={`text-sm ${state === 'error' ? 'text-red-600' : 'text-neutral-700'}`}>

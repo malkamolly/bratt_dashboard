@@ -32,9 +32,10 @@ export default async function PlaybookPage() {
       <h1 className="text-2xl font-bold mb-2">Sales Arborist Playbook</h1>
       <p className="text-sm text-neutral-600 mb-6 max-w-2xl">
         Everything the video analyzer applies. Library entries come from the
-        Training Library import; Coach entries come from Coach Mode sessions.
-        Edit the wording, turn an entry off without deleting it, or remove it
-        entirely. Inactive entries are ignored by analyses.
+        Training Library import; Coach entries come from Coach Mode sessions;
+        Reference entries come from the PDF import. Edit the wording, turn an
+        entry off without deleting it, or remove it entirely. Inactive entries
+        are ignored by analyses.
       </p>
       <PlaybookManager initialEntries={entries} />
     </main>

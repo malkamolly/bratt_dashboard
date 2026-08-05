@@ -17,7 +17,7 @@ export type AdminPlaybookEntry = {
   category: string;
   title: string;
   content: string;
-  source: 'library' | 'coach';
+  source: 'library' | 'coach' | 'reference';
   active: boolean;
   created_at: string;
 };
@@ -25,6 +25,7 @@ export type AdminPlaybookEntry = {
 const SOURCE_BADGE: Record<AdminPlaybookEntry['source'], string> = {
   library: 'Library',
   coach: 'Coach',
+  reference: 'Reference',
 };
 
 async function post(body: unknown): Promise<void> {
@@ -87,14 +88,15 @@ export default function PlaybookManager({
   }
 
   const libraryCount = entries.filter((e) => e.source === 'library').length;
-  const coachCount = entries.length - libraryCount;
+  const referenceCount = entries.filter((e) => e.source === 'reference').length;
+  const coachCount = entries.length - libraryCount - referenceCount;
 
   return (
     <div className="space-y-3">
       {error && <p className="text-sm text-red-600">{error}</p>}
       <p className="text-xs text-neutral-500">
         {entries.length} entries ({coachCount} from Coach, {libraryCount} from
-        Library) — newest first.
+        Library, {referenceCount} from Reference PDFs) — newest first.
       </p>
       {entries.map((e) => (
         <PlaybookRow

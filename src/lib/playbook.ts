@@ -14,7 +14,7 @@ export type PlaybookEntry = {
   category: string;
   title: string;
   content: string;
-  source: 'library' | 'coach';
+  source: 'library' | 'coach' | 'reference';
   created_by: string;
 };
 
@@ -40,7 +40,11 @@ export function formatPlaybookForPrompt(entries: PlaybookEntry[]): string | unde
   if (entries.length === 0) return undefined;
 
   const coach = entries.filter((e) => e.source === 'coach');
-  const library = entries.filter((e) => e.source === 'library');
+  // The training library and outside reference PDFs share the same authority
+  // tier — trusted background knowledge that any team correction overrides.
+  const reference = entries.filter(
+    (e) => e.source === 'library' || e.source === 'reference',
+  );
 
   const lines: string[] = [
     'BRATT TREE SALES ARBORIST PLAYBOOK',
@@ -48,13 +52,13 @@ export function formatPlaybookForPrompt(entries: PlaybookEntry[]): string | unde
     'AUTHORITY / PRECEDENCE — when anything conflicts, the higher rule wins:',
     "  1. Connor (head arborist) — marked [CONNOR — FINAL WORD]. His corrections are absolute and override everything below, including your own general knowledge.",
     '  2. Other team corrections (from coaching).',
-    '  3. Reference knowledge from the training library.',
+    '  3. Reference knowledge from the training library and outside reference documents.',
     '  4. Your own general arboriculture knowledge (lowest).',
     '',
   ];
 
   if (coach.length > 0) {
-    lines.push('## TEAM CORRECTIONS (authoritative — override the library and general knowledge)');
+    lines.push('## TEAM CORRECTIONS (authoritative — override the reference knowledge and general knowledge)');
     for (const e of coach) {
       const tag = isHeadArborist(e.created_by) ? ' [CONNOR — FINAL WORD]' : '';
       lines.push(`- (${e.category}) ${e.title}: ${e.content}${tag}`);
@@ -62,9 +66,9 @@ export function formatPlaybookForPrompt(entries: PlaybookEntry[]): string | unde
     lines.push('');
   }
 
-  if (library.length > 0) {
-    lines.push('## REFERENCE KNOWLEDGE (from the training library — defer to any team correction above that conflicts)');
-    for (const e of library) {
+  if (reference.length > 0) {
+    lines.push('## REFERENCE KNOWLEDGE (from the training library and outside reference documents — defer to any team correction above that conflicts)');
+    for (const e of reference) {
       lines.push(`- (${e.category}) ${e.title}: ${e.content}`);
     }
     lines.push('');
