@@ -38,6 +38,7 @@ export function useCoachVoice() {
   const [transcribing, setTranscribing] = useState(false);
   const [listening, setListening] = useState(false);
   const [premiumFailed, setPremiumFailed] = useState(false);
+  const [ttsError, setTtsError] = useState('');
 
   const ttsVoiceRef = useRef('hannah');
   const mutedRef = useRef(false);
@@ -125,13 +126,26 @@ export function useCoachVoice() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ text, voice: ttsVoiceRef.current }),
       });
-      if (!res.ok) throw new Error('tts');
+      if (!res.ok) {
+        // Surface Groq's exact message so we can diagnose why the natural
+        // voice failed (terms, model name, quota, etc.) instead of guessing.
+        let detail = `TTS request failed (${res.status}).`;
+        try {
+          const j = (await res.json()) as { error?: string; detail?: string };
+          detail = j.detail || j.error || detail;
+        } catch {
+          /* body was not JSON — keep the status-based message */
+        }
+        throw new Error(detail);
+      }
       const blob = await res.blob();
-      if (!blob.size) throw new Error('empty');
+      if (!blob.size) throw new Error('The natural voice returned no audio.');
       setPremiumFailed(false);
+      setTtsError('');
       await playBlob(blob);
-    } catch {
+    } catch (err) {
       setPremiumFailed(true);
+      setTtsError(err instanceof Error ? err.message : 'Natural voice failed.');
       await browserSpeak(text);
     }
   }
@@ -270,6 +284,7 @@ export function useCoachVoice() {
     setTtsVoice,
     premiumVoices: PREMIUM_VOICES,
     premiumFailed,
+    ttsError,
     muted,
     setMuted,
     handsFree,
@@ -332,8 +347,8 @@ export function VoiceControls({ v }: { v: CoachVoice }) {
       </label>
       {v.premiumFailed && !v.muted && (
         <span className="text-xs text-amber-600">
-          Natural voice unavailable — using the device voice. (Check the Groq TTS
-          model terms.)
+          Natural voice unavailable — using the device voice.
+          {v.ttsError ? ` (${v.ttsError})` : ''}
         </span>
       )}
     </div>
