@@ -164,19 +164,23 @@ const REFERENCES_ROOT = path.join(process.cwd(), 'content', 'references');
 // size by ~33%, so cap the raw PDF a bit under 32 MB to stay safe once encoded.
 const MAX_PDF_BYTES = 24 * 1024 * 1024;
 
-const REFERENCE_INGEST_SYSTEM = `You are distilling an OUTSIDE arborist reference document (a PDF such as a study guide, manual, or spec sheet) into a concise playbook that an AI will apply when reviewing property-walkthrough videos to prepare tree-work estimates.
+const REFERENCE_INGEST_SYSTEM = `You are distilling an OUTSIDE arborist reference document (a PDF such as a study guide, field manual, climbing/rigging guide, pest guide, or spec sheet) into a concise playbook. An AI applies this playbook when reviewing property-walkthrough videos to help a Bratt Tree arborist scope and estimate tree work.
 
-Extract ONLY knowledge that helps when visually reviewing frames of a property, to:
-- identify tree species from bark/leaf/form cues,
-- recognize the visible signs of diseases, pests, and disorders,
-- judge hazards and structure (remove vs. cable/brace vs. prune vs. leave),
-- surface plant-health-care and other sales opportunities,
-- spot soil / site / access issues.
+Capture any knowledge that would help an experienced arborist estimator on a property walkthrough. Depending on the document, that includes:
+- identifying trees from bark, leaf, or form cues,
+- recognizing signs of diseases, pests, defects, and disorders,
+- judging structural hazards and risk (dead limbs, cracks, decay, lean, included bark, poor unions),
+- deciding and scoping the work: removal method, rigging complexity, felling vs. climbing vs. crane, pruning, cabling/bracing,
+- crew and site safety (power lines, drop zones, hazards to plan around),
+- plant-health-care and other sales opportunities,
+- access, soil, and site conditions.
+
+Take what the document actually covers. A climbing/rigging manual should yield rigging, removal-method, knot/gear, and safety guidance; a pest guide should yield diagnostic cues; and so on. Do NOT force it into only one of the categories above.
 
 Rules:
-- Be compact. Each entry is 1-4 sentences of actionable, visually-checkable guidance. Skip history, exam-prep trivia, pricing tables, and anything not useful from images.
-- Prefer concrete visual cues ("flagging red-brown leaves from the top down on a red oak in summer -> suspect oak wilt") over general prose.
-- Produce roughly 10-25 entries from this document, grouped into sensible categories.
+- Be compact. Each entry is 1-4 sentences of actionable guidance. Skip history, exam-prep trivia, pricing tables, and pure administrivia.
+- Prefer concrete, usable guidance over general prose.
+- Produce roughly 12-30 entries from this document, grouped into sensible categories. This is a substantial arborist reference — it will always contain plenty worth capturing, so do not return an empty list.
 - Use only first name + last initial if any person is named.
 
 Respond with ONLY a JSON array (no prose, no markdown fences) of objects:
@@ -268,6 +272,7 @@ export async function ingestReferences(
     active: boolean;
   }[] = [];
   const skipped: string[] = [];
+  const empty: string[] = []; // processed fine, but the model returned no entries
 
   for (const fileName of fileNames) {
     try {
@@ -281,6 +286,10 @@ export async function ingestReferences(
         fileName,
         buf.toString('base64'),
       );
+      if (entries.length === 0) {
+        empty.push(fileName);
+        continue;
+      }
       for (const e of entries) {
         rows.push({
           category: e.category,
@@ -299,8 +308,13 @@ export async function ingestReferences(
   }
 
   if (rows.length === 0) {
+    const detail: string[] = [];
+    if (empty.length > 0) {
+      detail.push(`the model found nothing applicable in: ${empty.join(', ')}`);
+    }
+    if (skipped.length > 0) detail.push(`skipped: ${skipped.join('; ')}`);
     throw new Error(
-      `No entries were produced. Skipped: ${skipped.join('; ') || 'none'}.`,
+      `No entries were produced${detail.length ? ` (${detail.join('; ')})` : ''}.`,
     );
   }
 
