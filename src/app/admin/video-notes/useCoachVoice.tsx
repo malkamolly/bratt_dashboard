@@ -3,17 +3,23 @@
 // ============================================================================
 // useCoachVoice — shared voice engine for Coach Mode and the Playbook refine chat
 // ============================================================================
-// Handles: text-to-speech (with a voice picker + speed, remembered), tap-to-talk
-// recording → Groq Whisper transcription, and a hands-free mode that listens
-// automatically and stops when you go quiet (silence detection). Components
-// drive the conversation loop with speak() + listenOnce().
+// Text-to-speech uses Groq's natural Orpheus voices (via /api/video-notes/tts),
+// falling back to the browser's built-in voice only if that errors. Also
+// handles tap-to-talk recording → Whisper transcription and a hands-free mode
+// that listens automatically and stops when you go quiet. Components drive the
+// conversation loop with speak() + listenOnce().
 // ============================================================================
 
 import { useEffect, useRef, useState } from 'react';
 
-type WebkitWindow = Window & {
-  webkitAudioContext?: typeof AudioContext;
-};
+type WebkitWindow = Window & { webkitAudioContext?: typeof AudioContext };
+
+// Natural voices offered by Groq's Orpheus English model.
+export const PREMIUM_VOICES = [
+  { id: 'hannah', label: 'Hannah' },
+  { id: 'troy', label: 'Troy' },
+  { id: 'austin', label: 'Austin' },
+];
 
 async function transcribeBlob(blob: Blob): Promise<string> {
   const form = new FormData();
@@ -25,58 +31,41 @@ async function transcribeBlob(blob: Blob): Promise<string> {
 }
 
 export function useCoachVoice() {
-  const [voices, setVoices] = useState<SpeechSynthesisVoice[]>([]);
-  const [voiceURI, setVoiceURI] = useState('');
-  const [rate, setRate] = useState(1);
+  const [ttsVoice, setTtsVoice] = useState('hannah');
   const [muted, setMuted] = useState(false);
   const [handsFree, setHandsFree] = useState(false);
   const [recording, setRecording] = useState(false);
   const [transcribing, setTranscribing] = useState(false);
   const [listening, setListening] = useState(false);
+  const [premiumFailed, setPremiumFailed] = useState(false);
 
-  const voicesRef = useRef<SpeechSynthesisVoice[]>([]);
-  const voiceURIRef = useRef('');
-  const rateRef = useRef(1);
+  const ttsVoiceRef = useRef('hannah');
   const mutedRef = useRef(false);
   const handsFreeRef = useRef(false);
   const recorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
   const streamRef = useRef<MediaStream | null>(null);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const browserVoicesRef = useRef<SpeechSynthesisVoice[]>([]);
 
-  useEffect(() => void (voicesRef.current = voices), [voices]);
   useEffect(() => {
-    voiceURIRef.current = voiceURI;
-    if (voiceURI) localStorage.setItem('coachVoiceURI', voiceURI);
-  }, [voiceURI]);
-  useEffect(() => {
-    rateRef.current = rate;
-    localStorage.setItem('coachVoiceRate', String(rate));
-  }, [rate]);
+    ttsVoiceRef.current = ttsVoice;
+    localStorage.setItem('coachTTSVoice', ttsVoice);
+  }, [ttsVoice]);
   useEffect(() => void (mutedRef.current = muted), [muted]);
   useEffect(() => void (handsFreeRef.current = handsFree), [handsFree]);
 
-  // Load the browser's voices (async) and restore saved preferences.
+  // Restore the saved voice; load browser voices (only used as a fallback).
   useEffect(() => {
+    const saved = localStorage.getItem('coachTTSVoice');
+    if (saved && PREMIUM_VOICES.some((v) => v.id === saved)) setTtsVoice(saved);
     if (typeof window === 'undefined' || !window.speechSynthesis) return;
     const load = () => {
       const list = window.speechSynthesis.getVoices();
-      if (!list.length) return;
-      setVoices(list);
-      setVoiceURI((cur) => {
-        if (cur && list.some((v) => v.voiceURI === cur)) return cur;
-        const saved = localStorage.getItem('coachVoiceURI');
-        if (saved && list.some((v) => v.voiceURI === saved)) return saved;
-        const pick =
-          list.find((v) => v.default) ||
-          list.find((v) => v.lang?.toLowerCase().startsWith('en')) ||
-          list[0];
-        return pick ? pick.voiceURI : '';
-      });
+      if (list.length) browserVoicesRef.current = list;
     };
     load();
     window.speechSynthesis.onvoiceschanged = load;
-    const savedRate = Number(localStorage.getItem('coachVoiceRate'));
-    if (savedRate >= 0.5 && savedRate <= 1.5) setRate(savedRate);
     return () => {
       if (window.speechSynthesis) window.speechSynthesis.onvoiceschanged = null;
     };
@@ -84,24 +73,67 @@ export function useCoachVoice() {
 
   function stopSpeaking() {
     if (typeof window !== 'undefined' && window.speechSynthesis) window.speechSynthesis.cancel();
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current = null;
+    }
   }
 
-  // Resolves when the utterance finishes (or immediately if muted).
-  function speak(text: string): Promise<void> {
+  function playBlob(blob: Blob): Promise<void> {
     return new Promise((resolve) => {
-      if (mutedRef.current || typeof window === 'undefined' || !window.speechSynthesis || !text) {
+      const url = URL.createObjectURL(blob);
+      const audio = new Audio(url);
+      audioRef.current = audio;
+      const done = () => {
+        URL.revokeObjectURL(url);
+        if (audioRef.current === audio) audioRef.current = null;
+        resolve();
+      };
+      audio.onended = done;
+      audio.onerror = done;
+      audio.play().catch(done);
+    });
+  }
+
+  function browserSpeak(text: string): Promise<void> {
+    return new Promise((resolve) => {
+      if (typeof window === 'undefined' || !window.speechSynthesis) {
         resolve();
         return;
       }
       window.speechSynthesis.cancel();
       const u = new SpeechSynthesisUtterance(text);
-      const v = voicesRef.current.find((x) => x.voiceURI === voiceURIRef.current);
+      const list = browserVoicesRef.current;
+      const v =
+        list.find((x) => x.default) ||
+        list.find((x) => x.lang?.toLowerCase().startsWith('en')) ||
+        list[0];
       if (v) u.voice = v;
-      u.rate = rateRef.current;
       u.onend = () => resolve();
       u.onerror = () => resolve();
       window.speechSynthesis.speak(u);
     });
+  }
+
+  // Natural voice first; fall back to the browser voice if it errors.
+  async function speak(text: string): Promise<void> {
+    if (mutedRef.current || !text) return;
+    stopSpeaking();
+    try {
+      const res = await fetch('/api/video-notes/tts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text, voice: ttsVoiceRef.current }),
+      });
+      if (!res.ok) throw new Error('tts');
+      const blob = await res.blob();
+      if (!blob.size) throw new Error('empty');
+      setPremiumFailed(false);
+      await playBlob(blob);
+    } catch {
+      setPremiumFailed(true);
+      await browserSpeak(text);
+    }
   }
 
   // --- Manual tap-to-talk -------------------------------------------------
@@ -174,10 +206,10 @@ export function useCoachVoice() {
     setListening(true);
 
     const buf = new Uint8Array(analyser.frequencyBinCount);
-    const THRESHOLD = 0.025; // RMS level that counts as speech
-    const SILENCE_MS = 1500; // trailing quiet that ends a turn
-    const MAX_MS = 30000; // hard cap on one turn
-    const NO_SPEECH_MS = 7000; // give up if they never start talking
+    const THRESHOLD = 0.025;
+    const SILENCE_MS = 1500;
+    const MAX_MS = 30000;
+    const NO_SPEECH_MS = 7000;
     const startedAt = Date.now();
     let spoke = false;
     let lastLoud = Date.now();
@@ -185,7 +217,7 @@ export function useCoachVoice() {
 
     await new Promise<void>((resolve) => {
       const tick = () => {
-        if (!handsFreeRef.current) return resolve(); // toggled off mid-listen
+        if (!handsFreeRef.current) return resolve();
         analyser.getByteTimeDomainData(buf);
         let sum = 0;
         for (let i = 0; i < buf.length; i++) {
@@ -234,11 +266,10 @@ export function useCoachVoice() {
   }
 
   return {
-    voices,
-    voiceURI,
-    setVoiceURI,
-    rate,
-    setRate,
+    ttsVoice,
+    setTtsVoice,
+    premiumVoices: PREMIUM_VOICES,
+    premiumFailed,
     muted,
     setMuted,
     handsFree,
@@ -257,7 +288,7 @@ export function useCoachVoice() {
 
 export type CoachVoice = ReturnType<typeof useCoachVoice>;
 
-// Shared controls: mute, voice picker, speed, preview, hands-free toggle.
+// Shared controls: mute, natural-voice picker, preview, hands-free toggle.
 export function VoiceControls({ v }: { v: CoachVoice }) {
   return (
     <div className="flex flex-wrap items-center gap-3 text-sm">
@@ -267,33 +298,21 @@ export function VoiceControls({ v }: { v: CoachVoice }) {
       >
         {v.muted ? '🔇 Voice off' : '🔊 Voice on'}
       </button>
-      {!v.muted && v.voices.length > 0 && (
+      {!v.muted && (
         <>
           <label className="flex items-center gap-1">
             <span className="text-neutral-500">Voice</span>
             <select
-              value={v.voiceURI}
-              onChange={(e) => v.setVoiceURI(e.target.value)}
-              className="max-w-[11rem] rounded border border-neutral-300 px-2 py-1 text-sm"
+              value={v.ttsVoice}
+              onChange={(e) => v.setTtsVoice(e.target.value)}
+              className="rounded border border-neutral-300 px-2 py-1 text-sm"
             >
-              {v.voices.map((voice) => (
-                <option key={voice.voiceURI} value={voice.voiceURI}>
-                  {voice.name} ({voice.lang})
+              {v.premiumVoices.map((voice) => (
+                <option key={voice.id} value={voice.id}>
+                  {voice.label}
                 </option>
               ))}
             </select>
-          </label>
-          <label className="flex items-center gap-1">
-            <span className="text-neutral-500">Speed</span>
-            <input
-              type="range"
-              min={0.5}
-              max={1.5}
-              step={0.1}
-              value={v.rate}
-              onChange={(e) => v.setRate(Number(e.target.value))}
-            />
-            <span className="w-9 text-neutral-500">{v.rate.toFixed(1)}x</span>
           </label>
           <button
             onClick={() => v.speak('Hi! This is how I sound. Ready when you are.')}
@@ -311,6 +330,12 @@ export function VoiceControls({ v }: { v: CoachVoice }) {
         />
         Hands-free
       </label>
+      {v.premiumFailed && !v.muted && (
+        <span className="text-xs text-amber-600">
+          Natural voice unavailable — using the device voice. (Check the Groq TTS
+          model terms.)
+        </span>
+      )}
     </div>
   );
 }
