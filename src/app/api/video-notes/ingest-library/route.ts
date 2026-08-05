@@ -9,7 +9,7 @@
 
 import { NextResponse } from 'next/server';
 import { adminClient } from '@/lib/supabase';
-import { getAllowedUser } from '@/lib/auth';
+import { getAllowedUser, isOwner } from '@/lib/auth';
 import { ingestLibrary } from '@/lib/playbook-ingest';
 
 // Distilling the full library is one big Claude call — give it room.
@@ -21,9 +21,9 @@ export async function POST() {
   if (!user) {
     return NextResponse.json({ error: 'Not signed in.' }, { status: 401 });
   }
-  if (user.role !== 'admin') {
+  if (!isOwner(user.email)) {
     return NextResponse.json(
-      { error: 'Only an admin can import the Training Library.' },
+      { error: 'Only the owner can import the Training Library.' },
       { status: 403 },
     );
   }

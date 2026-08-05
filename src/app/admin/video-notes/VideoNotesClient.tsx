@@ -103,7 +103,13 @@ async function extractFrames(
 
 type Phase = 'idle' | 'extracting' | 'transcribing-audio' | 'analyzing' | 'done' | 'error';
 
-export default function VideoNotesClient({ isAdmin = false }: { isAdmin?: boolean }) {
+export default function VideoNotesClient({
+  isAdmin = false,
+  isOwner = false,
+}: {
+  isAdmin?: boolean;
+  isOwner?: boolean;
+}) {
   const [phase, setPhase] = useState<Phase>('idle');
   const [progress, setProgress] = useState({ done: 0, total: 0 });
   const [address, setAddress] = useState('');
@@ -247,7 +253,25 @@ export default function VideoNotesClient({ isAdmin = false }: { isAdmin?: boolea
       )}
       {findings && coaching && <CoachMode findings={findings} />}
 
-      {isAdmin && <LibraryImport />}
+      {isAdmin && (
+        <div className="bt-card space-y-1">
+          <h2 className="font-semibold">Playbook</h2>
+          <p className="text-sm text-neutral-600">
+            The expertise every analysis applies — from the Training Library and
+            from Coach Mode sessions.
+          </p>
+          <p className="pt-1 text-sm">
+            <a href="/admin/video-notes/playbook" className="font-medium underline">
+              Manage Playbook →
+            </a>{' '}
+            <span className="text-neutral-500">
+              (view, edit, turn off, or delete every entry)
+            </span>
+          </p>
+        </div>
+      )}
+
+      {isOwner && <LibraryImport />}
     </div>
   );
 }
@@ -276,7 +300,7 @@ function LibraryImport() {
 
   return (
     <div className="bt-card space-y-2">
-      <h2 className="font-semibold">Admin: Training Library</h2>
+      <h2 className="font-semibold">Training Library import</h2>
       <p className="text-sm text-neutral-600">
         Distill the Sales Arborist Training Library into the analysis playbook.
         Re-run this whenever the Library changes. (This replaces the previously
@@ -294,14 +318,6 @@ function LibraryImport() {
           {message}
         </p>
       )}
-      <p className="pt-1 text-sm">
-        <a href="/admin/video-notes/playbook" className="font-medium underline">
-          Manage Playbook →
-        </a>{' '}
-        <span className="text-neutral-500">
-          (view, edit, turn off, or delete every entry)
-        </span>
-      </p>
     </div>
   );
 }

@@ -1,5 +1,5 @@
 import { redirect } from 'next/navigation';
-import { getAllowedUser, canUseVideoNotes } from '@/lib/auth';
+import { getAllowedUser, canUseVideoNotes, isOwner } from '@/lib/auth';
 import VideoNotesClient from './VideoNotesClient';
 
 export const dynamic = 'force-dynamic';
@@ -21,7 +21,10 @@ export default async function VideoNotesPage() {
         access/parking concerns, and extra trees worth quoting. Everything Claude
         flags visually should be verified on site.
       </p>
-      <VideoNotesClient isAdmin={user.role === 'admin'} />
+      <VideoNotesClient
+        isAdmin={user.role === 'admin'}
+        isOwner={isOwner(user.email)}
+      />
     </main>
   );
 }
