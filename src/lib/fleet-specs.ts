@@ -143,7 +143,7 @@ export const CRANE_DIMENSIONS: SpecTable = {
     ['Drive Length', '40′', '32′', '33′'],
     ['Outrigger / Stabilizer Width', '24′', '22′', '21′ 6″ front · 27′ 6″ rear'],
     ['Outrigger / Stabilizer Length', '24′', '22′', '18′ 9″'],
-    ['Turret from rear', '8′', '4′ or 6′ (confirm)', '—'],
+    ['Turret from rear', '8′', '4′ 11″', '—'],
   ],
 };
 
@@ -178,7 +178,7 @@ export const CRANE_RULES: { label: string; body: string }[] = [
   },
   {
     label: 'Measure from the turret',
-    body: 'Reach is measured from the turret, not the bumper. The 40T is 8′ from the rear; the 20T is unconfirmed — the spec sheet says 4′, the setup doc says 6′.',
+    body: 'Reach is measured from the turret, not the bumper. The 40T is 8′ from the rear; the 20T is 4′ 11″.',
   },
 ];
 
