@@ -25,8 +25,11 @@ const MIN_FRAMES = 6;
 const TARGET_INTERVAL_SECONDS = 8;
 const MAX_WIDTH = 800;
 const JPEG_QUALITY = 0.6;
+// Cap standalone photos so the upload stays under the serverless size limit and
+// the AI cost stays predictable. Connor's realistic case is a handful.
+const MAX_PHOTOS = 24;
 
-type Frame = { timecodeSeconds: number; dataBase64: string };
+type Frame = { timecodeSeconds: number; dataBase64: string; label?: string };
 
 const CATEGORY_LABELS: Record<VisualFinding['category'], string> = {
   power_line: 'Power line',
@@ -43,8 +46,13 @@ function fmt(seconds: number): string {
 }
 
 // Pull evenly-spaced frames out of a video File, entirely in the browser.
+// `maxFrames` caps how many to take (so multiple videos can share the budget);
+// `videoLabel`, when set, prefixes each frame caption (e.g. "Video 2 @ 1:20")
+// so Claude can tell frames from different clips apart.
 async function extractFrames(
   file: File,
+  maxFrames: number,
+  videoLabel: string | undefined,
   onProgress: (done: number, total: number) => void,
 ): Promise<{ frames: Frame[]; duration: number }> {
   const video = document.createElement('video');
@@ -67,7 +75,7 @@ async function extractFrames(
     }
 
     const count = Math.min(
-      MAX_FRAMES,
+      maxFrames,
       Math.max(MIN_FRAMES, Math.floor(duration / TARGET_INTERVAL_SECONDS)),
     );
     const interval = duration / count;
@@ -91,11 +99,37 @@ async function extractFrames(
       });
       ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
       const dataUrl = canvas.toDataURL('image/jpeg', JPEG_QUALITY);
-      frames.push({ timecodeSeconds: t, dataBase64: dataUrl.split(',')[1] });
+      const label = videoLabel ? `${videoLabel} @ ${fmt(t)}` : undefined;
+      frames.push({ timecodeSeconds: t, dataBase64: dataUrl.split(',')[1], label });
       onProgress(i + 1, count);
     }
 
     return { frames, duration };
+  } finally {
+    URL.revokeObjectURL(url);
+  }
+}
+
+// Downscale a standalone photo into the same small JPEG the analyzer expects,
+// entirely in the browser. Labeled ("Photo 1") rather than timecoded.
+async function imageToFrame(file: File, label: string): Promise<Frame> {
+  const img = document.createElement('img');
+  const url = URL.createObjectURL(file);
+  try {
+    await new Promise<void>((resolve, reject) => {
+      img.onload = () => resolve();
+      img.onerror = () => reject(new Error(`Could not read the image ${file.name}.`));
+      img.src = url;
+    });
+    const scale = Math.min(1, MAX_WIDTH / (img.naturalWidth || MAX_WIDTH));
+    const canvas = document.createElement('canvas');
+    canvas.width = Math.round((img.naturalWidth || MAX_WIDTH) * scale);
+    canvas.height = Math.round((img.naturalHeight || MAX_WIDTH) * scale);
+    const ctx = canvas.getContext('2d');
+    if (!ctx) throw new Error('Your browser could not create a drawing canvas.');
+    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+    const dataUrl = canvas.toDataURL('image/jpeg', JPEG_QUALITY);
+    return { timecodeSeconds: 0, dataBase64: dataUrl.split(',')[1], label };
   } finally {
     URL.revokeObjectURL(url);
   }
@@ -117,60 +151,104 @@ export default function VideoNotesClient({
   const [findings, setFindings] = useState<Findings | null>(null);
   const [coaching, setCoaching] = useState(false);
   const [audioNote, setAudioNote] = useState('');
+  const [mediaNote, setMediaNote] = useState('');
   const fileRef = useRef<HTMLInputElement>(null);
 
   async function handleAnalyze() {
-    const file = fileRef.current?.files?.[0];
-    if (!file) {
-      setError('Choose a video file first.');
+    const files = Array.from(fileRef.current?.files ?? []);
+    const videos = files.filter((f) => f.type.startsWith('video/'));
+    const images = files.filter((f) => f.type.startsWith('image/'));
+    if (videos.length === 0 && images.length === 0) {
+      setError('Choose a video, some photos, or both.');
       return;
     }
     setError('');
     setFindings(null);
     setCoaching(false);
     setAudioNote('');
+    setMediaNote('');
 
     try {
       setPhase('extracting');
       setProgress({ done: 0, total: 0 });
-      const { frames, duration } = await extractFrames(file, (done, total) =>
-        setProgress({ done, total }),
-      );
 
-      // Best-effort: extract the narration audio and transcribe it. If anything
-      // here fails (silent video, odd codec, no Groq key), we quietly fall back
-      // to a visual-only analysis rather than blocking on it.
-      let transcript: string | undefined;
-      try {
-        setPhase('transcribing-audio');
-        const mp3 = await extractAudioMp3(file);
-        if (mp3 && mp3.size > 0) {
-          const form = new FormData();
-          form.append('audio', mp3, 'narration.mp3');
-          const tr = await fetch('/api/video-notes/transcribe', { method: 'POST', body: form });
-          if (tr.ok) {
-            const j = await tr.json();
-            if (j.text) transcript = j.text as string;
-          }
-        }
-        setAudioNote(
-          transcript
-            ? ''
-            : "No narration was picked up — this analysis is visual-only.",
+      const allFrames: Frame[] = [];
+
+      // Split the video frame budget across however many clips were uploaded, so
+      // the total payload stays bounded whether it's one video or several.
+      const perVideoMax =
+        videos.length <= 1
+          ? MAX_FRAMES
+          : Math.max(MIN_FRAMES, Math.floor(MAX_FRAMES / videos.length));
+      let totalDuration = 0;
+      for (let vi = 0; vi < videos.length; vi++) {
+        const label = videos.length > 1 ? `Video ${vi + 1}` : undefined;
+        const { frames, duration } = await extractFrames(
+          videos[vi],
+          perVideoMax,
+          label,
+          (done, total) => setProgress({ done, total }),
         );
-      } catch {
-        setAudioNote("Couldn't process the audio — this analysis is visual-only.");
+        allFrames.push(...frames);
+        totalDuration += duration;
+      }
+
+      // Turn each standalone photo into an analysis image.
+      const usePhotos = images.slice(0, MAX_PHOTOS);
+      for (let ii = 0; ii < usePhotos.length; ii++) {
+        allFrames.push(await imageToFrame(usePhotos[ii], `Photo ${ii + 1}`));
+      }
+      if (images.length > MAX_PHOTOS) {
+        setMediaNote(
+          `Using the first ${MAX_PHOTOS} of ${images.length} photos to keep the upload manageable.`,
+        );
+      }
+
+      if (allFrames.length === 0) {
+        throw new Error('Could not read any images from those files.');
+      }
+
+      // Best-effort: extract the narration audio from each video and transcribe
+      // it. If anything here fails (silent video, odd codec, no Groq key, or a
+      // photos-only upload), we quietly fall back to a visual-only analysis.
+      let transcript: string | undefined;
+      if (videos.length > 0) {
+        try {
+          setPhase('transcribing-audio');
+          const parts: string[] = [];
+          for (let vi = 0; vi < videos.length; vi++) {
+            const mp3 = await extractAudioMp3(videos[vi]);
+            if (mp3 && mp3.size > 0) {
+              const form = new FormData();
+              form.append('audio', mp3, 'narration.mp3');
+              const tr = await fetch('/api/video-notes/transcribe', { method: 'POST', body: form });
+              if (tr.ok) {
+                const j = await tr.json();
+                if (j.text) {
+                  parts.push(videos.length > 1 ? `[Video ${vi + 1}] ${j.text}` : (j.text as string));
+                }
+              }
+            }
+          }
+          transcript = parts.length ? parts.join('\n\n') : undefined;
+          setAudioNote(
+            transcript ? '' : 'No narration was picked up — this analysis is visual-only.',
+          );
+        } catch {
+          setAudioNote("Couldn't process the audio — this analysis is visual-only.");
+        }
       }
 
       setPhase('analyzing');
+      setProgress({ done: allFrames.length, total: allFrames.length });
       const res = await fetch('/api/video-notes/analyze', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          frames,
+          frames: allFrames,
           address: address.trim() || undefined,
-          videoName: file.name,
-          durationSeconds: duration,
+          videoName: files.map((f) => f.name).join(', '),
+          durationSeconds: totalDuration || undefined,
           transcript,
         }),
       });
@@ -192,14 +270,19 @@ export default function VideoNotesClient({
     <div className="space-y-6">
       <div className="bt-card space-y-4">
         <div>
-          <label className="block text-sm font-medium mb-1">Video file</label>
+          <label className="block text-sm font-medium mb-1">Video and/or photos</label>
           <input
             ref={fileRef}
             type="file"
-            accept="video/*"
+            accept="video/*,image/*"
+            multiple
             disabled={busy}
             className="block w-full text-sm"
           />
+          <p className="mt-1 text-xs text-neutral-500">
+            Upload a walkthrough video, a few close-up photos, or both — they&apos;re
+            reviewed together as one property.
+          </p>
         </div>
         <div>
           <label className="block text-sm font-medium mb-1">
@@ -219,12 +302,12 @@ export default function VideoNotesClient({
           disabled={busy}
           className="rounded bg-lime px-4 py-2 text-sm font-semibold text-black disabled:opacity-50"
         >
-          {busy ? 'Working…' : 'Analyze video'}
+          {busy ? 'Working…' : 'Analyze'}
         </button>
 
         {phase === 'extracting' && (
           <p className="text-sm text-neutral-600">
-            Pulling frames from the video… {progress.done}/{progress.total || '…'}
+            Preparing your media… {progress.done}/{progress.total || '…'}
           </p>
         )}
         {phase === 'transcribing-audio' && (
@@ -232,9 +315,10 @@ export default function VideoNotesClient({
         )}
         {phase === 'analyzing' && (
           <p className="text-sm text-neutral-600">
-            Claude is reviewing {progress.total} frames — this can take a minute…
+            Claude is reviewing {progress.total} images — this can take a minute…
           </p>
         )}
+        {mediaNote && <p className="text-sm text-neutral-500">{mediaNote}</p>}
         {audioNote && phase !== 'transcribing-audio' && (
           <p className="text-sm text-neutral-500">{audioNote}</p>
         )}
