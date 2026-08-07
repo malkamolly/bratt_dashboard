@@ -1,6 +1,6 @@
 import { redirect } from 'next/navigation';
 import Link from 'next/link';
-import { getAllowedUser, isHeadArborist } from '@/lib/auth';
+import { getAllowedUser } from '@/lib/auth';
 import { serverClient } from '@/lib/supabase';
 import { personFromEmail } from '@/lib/format';
 import PlaybookManager, { type AdminPlaybookEntry } from './PlaybookManager';
@@ -20,19 +20,11 @@ export default async function PlaybookPage() {
     .select('id, category, title, content, source, active, created_at, created_by')
     .order('created_at', { ascending: false });
 
-  // Derive the author label here rather than in the client: turning an email
-  // into a name needs the house naming rule, and flagging Connor needs
-  // HEAD_ARBORIST_EMAIL from auth.ts — which pulls in the server Supabase
-  // client and so can't be imported by a 'use client' component.
+  // Derive the author label here rather than in the client so the house naming
+  // rule (First name + Last initial) is applied in one place.
   const entries: AdminPlaybookEntry[] = (data ?? []).map((row) => {
-    const r = row as Omit<AdminPlaybookEntry, 'author' | 'final_word'> & {
-      created_by: string | null;
-    };
-    return {
-      ...r,
-      author: personFromEmail(r.created_by),
-      final_word: isHeadArborist(r.created_by),
-    };
+    const r = row as Omit<AdminPlaybookEntry, 'author'>;
+    return { ...r, author: personFromEmail(r.created_by) };
   });
 
   return (

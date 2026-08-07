@@ -23,8 +23,6 @@ export type AdminPlaybookEntry = {
   created_by: string | null;
   /** Display name for created_by (First name + Last initial), set by the page. */
   author: string;
-  /** True when the author is the head arborist — his entries are the final word. */
-  final_word: boolean;
 };
 
 const SOURCE_BADGE: Record<AdminPlaybookEntry['source'], string> = {
@@ -483,15 +481,10 @@ function PlaybookRow({
                   {SOURCE_BADGE[entry.source]}
                 </span>
                 <span
-                  className={`rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase ${
-                    entry.final_word
-                      ? 'bg-orange/20 text-neutral-800'
-                      : 'bg-neutral-100 text-neutral-600'
-                  }`}
+                  className="rounded bg-neutral-100 px-1.5 py-0.5 text-[10px] font-semibold uppercase text-neutral-600"
                   title={entry.created_by ?? 'Unknown'}
                 >
                   {entry.author}
-                  {entry.final_word && ' — final word'}
                 </span>
               </div>
               <p className="font-medium text-sm">{entry.title}</p>
