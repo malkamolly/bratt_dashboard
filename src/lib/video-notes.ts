@@ -23,10 +23,14 @@ import Anthropic from '@anthropic-ai/sdk';
 // set VIDEO_NOTES_MODEL=claude-opus-5 in the environment.
 export const VIDEO_NOTES_MODEL = process.env.VIDEO_NOTES_MODEL || 'claude-sonnet-5';
 
-// One frame pulled from the video, as base64 JPEG plus the time it was captured.
+// One image sent to the analyzer, as base64 JPEG. Usually a frame pulled from
+// the video (labeled with the time it was captured), but it can also be a
+// standalone photo the arborist added — in which case `label` carries its own
+// caption (e.g. "Photo 2") and the timecode is ignored.
 export type Frame = {
   timecodeSeconds: number;
   dataBase64: string; // raw base64 (no "data:image/jpeg;base64," prefix)
+  label?: string; // overrides the timecode caption (used for standalone photos)
 };
 
 export type VisualFinding = {
@@ -54,7 +58,7 @@ export type Findings = {
 
 // The instructions, minus the JSON contract. The playbook (if any) is inserted
 // between this and the JSON spec so the "respond with only JSON" rule stays last.
-const SYSTEM_HEAD = `You are helping Bratt Tree, an arborist company, review a video an arborist recorded while walking a property to prepare a tree-work estimate. You are given a series of still frames captured from that video, each labeled with the time it was taken.
+const SYSTEM_HEAD = `You are helping Bratt Tree, an arborist company, review media an arborist captured while walking a property to prepare a tree-work estimate. You are given a series of still images. Most are frames captured from a walkthrough video, each labeled with the time it was taken ("Frame at 1:20"). Some may be standalone photos the arborist added, labeled "Photo 1", "Photo 2", etc. — treat those as deliberate close-up detail shots and give them extra attention, since the arborist chose to capture them.
 
 Study the frames and produce an estimate findings report. Watch specifically for:
 - POWER LINES crossing the property or running near/through the tree canopy (possible power-line drop needed).
@@ -64,6 +68,8 @@ Study the frames and produce an estimate findings report. Watch specifically for
 - ADDITIONAL SALES OPPORTUNITIES: other trees or issues visible in the frames (deadwood, cracks, leaning trees, disease/pest signs, stumps) that could be quoted.
 
 If a Bratt Tree Sales Arborist Playbook is included below, treat it as authoritative team expertise — use it to identify species, recognize the visible signs of the diseases/pests/hazards it describes, judge remove-vs-treat-vs-prune, and surface the plant-health-care and sales opportunities it calls out.
+
+AUTHORITY — this is a hard rule: when guidance conflicts, follow the playbook's stated precedence. Team corrections override the reference library and your own general knowledge. Connor is the head arborist and the FINAL word — any entry marked "[CONNOR — FINAL WORD]" is absolute and overrides everything else, including your own training and anything from outside resources. If Connor's guidance contradicts what you would otherwise conclude, defer to Connor without exception.
 
 If a transcript of the arborist's narration is provided, use it alongside the frames: it often names trees, calls out problems, gives measurements, or states the work they intend to quote. Capture the substantive things they say in "arborist_notes", and let their narration corroborate or sharpen your visual findings (note when a finding is confirmed by what they said). Do not just transcribe filler — capture what matters for the estimate.
 
@@ -159,13 +165,14 @@ export async function analyzeFrames(
     {
       type: 'text',
       text:
-        `Here are ${frames.length} frames from the walkthrough video, in order.` +
+        `Here are ${frames.length} images from the property walkthrough — video frames labeled by time, plus any standalone photos.` +
         (opts.address ? ` The property address is: ${opts.address}.` : '') +
         ` Produce the findings report as specified.`,
     },
   ];
   for (const frame of frames) {
-    content.push({ type: 'text', text: `Frame at ${secondsToLabel(frame.timecodeSeconds)}:` });
+    const caption = frame.label ?? `Frame at ${secondsToLabel(frame.timecodeSeconds)}`;
+    content.push({ type: 'text', text: `${caption}:` });
     content.push({
       type: 'image',
       source: { type: 'base64', media_type: 'image/jpeg', data: frame.dataBase64 },

@@ -7,12 +7,15 @@
 // ============================================================================
 
 import type { SupabaseClient } from '@supabase/supabase-js';
+import { isHeadArborist } from './auth';
 
 export type PlaybookEntry = {
   id: string;
   category: string;
   title: string;
   content: string;
+  source: 'library' | 'coach' | 'reference';
+  created_by: string;
 };
 
 export async function getActivePlaybook(
@@ -20,7 +23,7 @@ export async function getActivePlaybook(
 ): Promise<PlaybookEntry[]> {
   const { data, error } = await supabase
     .from('arborist_playbook')
-    .select('id, category, title, content')
+    .select('id, category, title, content, source, created_by')
     .eq('active', true)
     .order('category', { ascending: true });
   if (error || !data) return [];
@@ -28,32 +31,48 @@ export async function getActivePlaybook(
 }
 
 /**
- * Render the playbook as a prompt block, grouped by category. Returns undefined
- * when the playbook is empty so callers can skip the section entirely.
+ * Render the playbook as a prompt block, split by authority so the analyzer
+ * knows what overrides what. Coach-taught corrections outrank the imported
+ * Library; Connor (head arborist) outranks everything. Returns undefined when
+ * the playbook is empty so callers can skip the section entirely.
  */
 export function formatPlaybookForPrompt(entries: PlaybookEntry[]): string | undefined {
   if (entries.length === 0) return undefined;
 
-  const byCategory = new Map<string, PlaybookEntry[]>();
-  for (const e of entries) {
-    const list = byCategory.get(e.category) ?? [];
-    list.push(e);
-    byCategory.set(e.category, list);
-  }
+  const coach = entries.filter((e) => e.source === 'coach');
+  // The training library and outside reference PDFs share the same authority
+  // tier — trusted background knowledge that any team correction overrides.
+  const reference = entries.filter(
+    (e) => e.source === 'library' || e.source === 'reference',
+  );
 
   const lines: string[] = [
     'BRATT TREE SALES ARBORIST PLAYBOOK',
-    "This is our team's own expertise and standards. Apply it when identifying",
-    'species, judging disease / pest / hazard signs, deciding remove-vs-treat,',
-    'and spotting sales opportunities in the frames.',
+    '',
+    'AUTHORITY / PRECEDENCE — when anything conflicts, the higher rule wins:',
+    "  1. Connor (head arborist) — marked [CONNOR — FINAL WORD]. His corrections are absolute and override everything below, including your own general knowledge.",
+    '  2. Other team corrections (from coaching).',
+    '  3. Reference knowledge from the training library and outside reference documents.',
+    '  4. Your own general arboriculture knowledge (lowest).',
     '',
   ];
-  for (const [category, list] of byCategory) {
-    lines.push(`## ${category}`);
-    for (const e of list) {
-      lines.push(`- ${e.title}: ${e.content}`);
+
+  if (coach.length > 0) {
+    lines.push('## TEAM CORRECTIONS (authoritative — override the reference knowledge and general knowledge)');
+    for (const e of coach) {
+      const tag = isHeadArborist(e.created_by) ? ' [CONNOR — FINAL WORD]' : '';
+      lines.push(`- (${e.category}) ${e.title}: ${e.content}${tag}`);
     }
     lines.push('');
   }
+
+  if (reference.length > 0) {
+    lines.push('## REFERENCE KNOWLEDGE (from the training library and outside reference documents — defer to any team correction above that conflicts)');
+    for (const e of reference) {
+      lines.push(`- (${e.category}) ${e.title}: ${e.content}`);
+    }
+    lines.push('');
+  }
+
   return lines.join('\n').trim();
 }

@@ -38,6 +38,18 @@ Always store and display people's names as **First Name + Last Initial** (e.g. `
 
 Ask one specific clarifying question rather than offering 3 options. If I've already rejected the "proper" path once in a conversation, don't re-suggest it.
 
+## Video analysis playbook — Connor has the final word
+
+The Video Notes analyzer applies a "playbook" of arborist knowledge that grows
+from outside resources (the Training Library) and from Coach Mode. A permanent
+rule governs conflicts: **Connor (head arborist) is the final authority.** His
+coaching corrections override imported/outside knowledge, the AI's own
+knowledge, and everyone else's corrections. Precedence, highest to lowest:
+Connor's corrections → other team corrections → Training Library → AI general
+knowledge. This is enforced in `src/lib/playbook.ts` (authority-tagged prompt),
+`src/lib/video-notes.ts` (precedence instruction), and `HEAD_ARBORIST_EMAIL` in
+`src/lib/auth.ts`. **Never weaken this precedence** when changing the analysis.
+
 ## Database migrations
 
 **Whenever you create or change a Supabase migration, ALWAYS give me a direct, clickable link to the migration file in your reply** — a GitHub blob link on `main` (e.g. `https://github.com/malkamolly/bratt_dashboard/blob/main/supabase/migrations/<file>.sql`). Every time, no exceptions, so I can open it and run it without digging through the repo. If you create several in one change, link each of them.

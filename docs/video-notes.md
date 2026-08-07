@@ -52,6 +52,27 @@ pipeline setup needed.
 Names of people always follow the house rule: **First name + last initial**
 (e.g. `Taylor M`), never full last names.
 
+## Authority / precedence — Connor has the final word
+
+As the playbook fills with knowledge from outside resources (the Training
+Library, general arboriculture), a hard rule governs conflicts. From highest to
+lowest authority:
+
+1. **Connor (head arborist) — the final word.** His coaching corrections are
+   absolute and override everything else, including imported Library knowledge
+   and the AI's own training. In the playbook these are tagged
+   `[CONNOR — FINAL WORD]`.
+2. Other team coaching corrections.
+3. Reference knowledge from the Training Library.
+4. The AI's general knowledge (lowest).
+
+This is enforced, not just documented: `formatPlaybookForPrompt`
+(`src/lib/playbook.ts`) splits the playbook by authority and flags Connor's
+entries, and the analysis prompt (`src/lib/video-notes.ts`) instructs the model
+to defer to the higher rule on any conflict, Connor above all. Connor is
+identified by `HEAD_ARBORIST_EMAIL` in `src/lib/auth.ts`. **Do not weaken this
+precedence.**
+
 ## Known gotchas
 
 - **The connection can be flaky.** The Adobe media connection sometimes gets

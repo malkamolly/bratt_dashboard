@@ -156,6 +156,18 @@ export function canUseVideoNotes(email: string | null | undefined): boolean {
   return !!email && VIDEO_NOTES_EMAILS.includes(email.toLowerCase());
 }
 
+// The head arborist. His coaching corrections are the FINAL authority in the
+// analysis playbook — they override imported Library knowledge, Claude's
+// general knowledge, and any other team member's corrections. This is a
+// deliberate, load-bearing rule (see docs/video-notes.md and CLAUDE.md); do not
+// weaken it. Update the address here if Connor ever logs in under a new one.
+export const HEAD_ARBORIST_EMAIL = 'connor@bratttree.com';
+
+/** Is this the head arborist (final authority over the playbook)? */
+export function isHeadArborist(email: string | null | undefined): boolean {
+  return !!email && email.toLowerCase() === HEAD_ARBORIST_EMAIL;
+}
+
 /**
  * Returns the current user's email + role if they are signed in AND on the
  * allowlist. Returns null otherwise.

@@ -5,24 +5,21 @@
 // ============================================================================
 // A voice (or typed) mentoring conversation. Claude, playing an eager junior
 // arborist, interviews the mentor about the analysis; the mentor answers by
-// talking (recorded → Whisper → text) or typing; Claude's replies are read
-// aloud. At the end, Claude proposes reusable "lessons" the mentor edits and
-// approves into the Playbook.
+// talking or typing; Claude's replies are read aloud. Hands-free mode listens
+// automatically after each reply and sends when the mentor stops talking, so
+// there's no button to press each turn. At the end, Claude proposes reusable
+// "lessons" the mentor edits and approves into the Playbook.
 // ============================================================================
 
 import { useEffect, useRef, useState } from 'react';
 import type { Findings } from '@/lib/video-notes';
 import type { CoachMessage, ProposedLesson } from '@/lib/coach';
+import { useCoachVoice, VoiceControls } from './useCoachVoice';
 
 export default function CoachMode({ findings }: { findings: Findings }) {
+  const v = useCoachVoice();
   const [messages, setMessages] = useState<CoachMessage[]>([]);
   const [coachThinking, setCoachThinking] = useState(false);
-  const [recording, setRecording] = useState(false);
-  const [transcribing, setTranscribing] = useState(false);
-  const [muted, setMuted] = useState(false);
-  const [voices, setVoices] = useState<SpeechSynthesisVoice[]>([]);
-  const [voiceURI, setVoiceURI] = useState('');
-  const [rate, setRate] = useState(1);
   const [text, setText] = useState('');
   const [phase, setPhase] = useState<'chat' | 'lessons'>('chat');
   const [lessons, setLessons] = useState<ProposedLesson[]>([]);
@@ -32,66 +29,13 @@ export default function CoachMode({ findings }: { findings: Findings }) {
   const [error, setError] = useState('');
 
   const startedRef = useRef(false);
-  const recorderRef = useRef<MediaRecorder | null>(null);
-  const chunksRef = useRef<Blob[]>([]);
-  const streamRef = useRef<MediaStream | null>(null);
-  const mutedRef = useRef(false);
-  const voicesRef = useRef<SpeechSynthesisVoice[]>([]);
-  const voiceURIRef = useRef('');
-  const rateRef = useRef(1);
+  const phaseRef = useRef<'chat' | 'lessons'>('chat');
+  const messagesRef = useRef<CoachMessage[]>([]);
 
-  useEffect(() => {
-    mutedRef.current = muted;
-  }, [muted]);
-  useEffect(() => {
-    voicesRef.current = voices;
-  }, [voices]);
-  useEffect(() => {
-    voiceURIRef.current = voiceURI;
-  }, [voiceURI]);
-  useEffect(() => {
-    rateRef.current = rate;
-  }, [rate]);
+  useEffect(() => void (phaseRef.current = phase), [phase]);
+  useEffect(() => void (messagesRef.current = messages), [messages]);
 
-  // Load the browser's available voices (they populate asynchronously) and
-  // restore the saved preference, defaulting to a sensible English voice.
-  useEffect(() => {
-    if (typeof window === 'undefined' || !window.speechSynthesis) return;
-    const load = () => {
-      const list = window.speechSynthesis.getVoices();
-      if (!list.length) return;
-      setVoices(list);
-      setVoiceURI((current) => {
-        if (current && list.some((v) => v.voiceURI === current)) return current;
-        const saved = localStorage.getItem('coachVoiceURI');
-        if (saved && list.some((v) => v.voiceURI === saved)) return saved;
-        const pick =
-          list.find((v) => v.default) ||
-          list.find((v) => v.lang?.toLowerCase().startsWith('en')) ||
-          list[0];
-        return pick ? pick.voiceURI : '';
-      });
-    };
-    load();
-    window.speechSynthesis.onvoiceschanged = load;
-    const savedRate = Number(localStorage.getItem('coachVoiceRate'));
-    if (savedRate >= 0.5 && savedRate <= 1.5) setRate(savedRate);
-    return () => {
-      if (window.speechSynthesis) window.speechSynthesis.onvoiceschanged = null;
-    };
-  }, []);
-
-  function speak(t: string) {
-    if (mutedRef.current || typeof window === 'undefined' || !window.speechSynthesis) return;
-    window.speechSynthesis.cancel();
-    const u = new SpeechSynthesisUtterance(t);
-    const v = voicesRef.current.find((x) => x.voiceURI === voiceURIRef.current);
-    if (v) u.voice = v;
-    u.rate = rateRef.current;
-    window.speechSynthesis.speak(u);
-  }
-
-  // Ask the coach for its next message given a conversation state.
+  // Ask the coach for its next message, then speak it and (if hands-free) listen.
   async function askCoach(history: CoachMessage[]) {
     setCoachThinking(true);
     setError('');
@@ -104,92 +48,73 @@ export default function CoachMode({ findings }: { findings: Findings }) {
       const json = await res.json();
       if (!res.ok) throw new Error(json.error || 'The coach hit an error.');
       const reply = (json.reply as string) || '';
-      setMessages((m) => [...m, { role: 'assistant', text: reply }]);
-      speak(reply);
+      const next: CoachMessage[] = [...history, { role: 'assistant', text: reply }];
+      setMessages(next);
+      messagesRef.current = next;
+      setCoachThinking(false);
+      await v.speak(reply);
+      if (v.handsFree && phaseRef.current === 'chat') void handsFreeListen();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'The coach hit an error.');
-    } finally {
       setCoachThinking(false);
     }
   }
 
-  // Kick off the conversation once.
-  useEffect(() => {
-    if (startedRef.current) return;
-    startedRef.current = true;
-    askCoach([]);
-    return () => {
-      if (typeof window !== 'undefined' && window.speechSynthesis) window.speechSynthesis.cancel();
-      streamRef.current?.getTracks().forEach((t) => t.stop());
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
   function submitAnswer(answer: string) {
     const trimmed = answer.trim();
     if (!trimmed) return;
-    const next: CoachMessage[] = [...messages, { role: 'user', text: trimmed }];
+    const next: CoachMessage[] = [...messagesRef.current, { role: 'user', text: trimmed }];
     setMessages(next);
+    messagesRef.current = next;
     setText('');
     askCoach(next);
   }
 
-  async function startRecording() {
-    setError('');
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      streamRef.current = stream;
-      const recorder = new MediaRecorder(stream);
-      chunksRef.current = [];
-      recorder.ondataavailable = (e) => {
-        if (e.data.size > 0) chunksRef.current.push(e.data);
-      };
-      recorder.onstop = async () => {
-        stream.getTracks().forEach((t) => t.stop());
-        const blob = new Blob(chunksRef.current, { type: recorder.mimeType || 'audio/webm' });
-        await transcribe(blob);
-      };
-      recorder.start();
-      recorderRef.current = recorder;
-      setRecording(true);
-      if (typeof window !== 'undefined' && window.speechSynthesis) window.speechSynthesis.cancel();
-    } catch {
-      setError('Could not access the microphone. Check browser permissions, or type your answer.');
+  async function handsFreeListen() {
+    if (v.listening) return;
+    const heard = await v.listenOnce();
+    if (v.handsFree && phaseRef.current === 'chat' && heard.trim()) submitAnswer(heard);
+  }
+
+  // Kick off the conversation once; clean up voice on unmount.
+  useEffect(() => {
+    if (startedRef.current) return;
+    startedRef.current = true;
+    askCoach([]);
+    return () => v.stopAll();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // When hands-free is switched on during the mentor's turn, start listening.
+  useEffect(() => {
+    if (v.handsFree && phase === 'chat' && !coachThinking && !v.listening) {
+      const last = messages[messages.length - 1];
+      if (last && last.role === 'assistant') void handsFreeListen();
     }
-  }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [v.handsFree]);
 
-  function stopRecording() {
-    recorderRef.current?.stop();
-    setRecording(false);
-  }
-
-  async function transcribe(blob: Blob) {
-    setTranscribing(true);
+  async function toggleMic() {
     setError('');
-    try {
-      const form = new FormData();
-      form.append('audio', blob, 'answer.webm');
-      const res = await fetch('/api/video-notes/transcribe', { method: 'POST', body: form });
-      const json = await res.json();
-      if (!res.ok) throw new Error(json.error || 'Could not transcribe that.');
-      if (json.text) submitAnswer(json.text);
-      else setError('Nothing was transcribed — try again or type your answer.');
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Transcription failed.');
-    } finally {
-      setTranscribing(false);
+    if (v.recording) {
+      const heard = await v.endRecording();
+      if (heard.trim()) submitAnswer(heard);
+    } else {
+      const ok = await v.beginRecording();
+      if (!ok) setError('Could not access the microphone. Check permissions, or type instead.');
     }
   }
 
   async function wrapUp() {
     setSummarizing(true);
     setError('');
-    if (typeof window !== 'undefined' && window.speechSynthesis) window.speechSynthesis.cancel();
+    v.setHandsFree(false);
+    v.stopSpeaking();
     try {
       const res = await fetch('/api/video-notes/coach', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ findings, history: messages, mode: 'summarize' }),
+        body: JSON.stringify({ findings, history: messagesRef.current, mode: 'summarize' }),
       });
       const json = await res.json();
       if (!res.ok) throw new Error(json.error || 'Could not summarize.');
@@ -228,65 +153,15 @@ export default function CoachMode({ findings }: { findings: Findings }) {
     }
   }
 
-  const busy = coachThinking || transcribing;
+  const busy = coachThinking || v.transcribing;
 
   return (
     <div className="bt-card space-y-4">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-2">
         <h2 className="font-semibold">Coach Mode</h2>
-        <button
-          onClick={() => setMuted((m) => !m)}
-          className="text-xs text-neutral-500 hover:underline"
-        >
-          {muted ? '🔇 Voice off' : '🔊 Voice on'}
-        </button>
+        <VoiceControls v={v} />
       </div>
 
-      {!muted && voices.length > 0 && (
-        <div className="flex flex-wrap items-center gap-3 text-sm">
-          <label className="flex items-center gap-1">
-            <span className="text-neutral-500">Voice</span>
-            <select
-              value={voiceURI}
-              onChange={(e) => {
-                setVoiceURI(e.target.value);
-                localStorage.setItem('coachVoiceURI', e.target.value);
-              }}
-              className="max-w-[12rem] rounded border border-neutral-300 px-2 py-1 text-sm"
-            >
-              {voices.map((v) => (
-                <option key={v.voiceURI} value={v.voiceURI}>
-                  {v.name} ({v.lang})
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className="flex items-center gap-1">
-            <span className="text-neutral-500">Speed</span>
-            <input
-              type="range"
-              min={0.5}
-              max={1.5}
-              step={0.1}
-              value={rate}
-              onChange={(e) => {
-                const r = Number(e.target.value);
-                setRate(r);
-                localStorage.setItem('coachVoiceRate', String(r));
-              }}
-            />
-            <span className="w-9 text-neutral-500">{rate.toFixed(1)}x</span>
-          </label>
-          <button
-            onClick={() => speak('Hi! This is how I sound. Ready when you are.')}
-            className="text-neutral-600 hover:underline"
-          >
-            ▶ Preview
-          </button>
-        </div>
-      )}
-
-      {/* Conversation transcript */}
       <div className="space-y-3 max-h-96 overflow-y-auto">
         {messages.map((m, i) => (
           <div key={i} className={m.role === 'assistant' ? '' : 'text-right'}>
@@ -306,26 +181,35 @@ export default function CoachMode({ findings }: { findings: Findings }) {
 
       {phase === 'chat' && (
         <>
-          {/* Voice + typed answer controls */}
-          <div className="flex flex-wrap items-center gap-2">
-            {!recording ? (
-              <button
-                onClick={startRecording}
-                disabled={busy}
-                className="rounded bg-lime px-4 py-2 text-sm font-semibold text-black disabled:opacity-50"
-              >
-                🎤 Hold the floor — tap to talk
-              </button>
-            ) : (
-              <button
-                onClick={stopRecording}
-                className="rounded bg-red-500 px-4 py-2 text-sm font-semibold text-white"
-              >
-                ⏹ Stop &amp; send
-              </button>
-            )}
-            {transcribing && <span className="text-sm text-neutral-500">Transcribing…</span>}
-          </div>
+          {v.handsFree ? (
+            <p className="text-sm text-neutral-600">
+              {v.listening
+                ? '🎤 Listening — just talk, I’ll send when you pause.'
+                : busy
+                  ? 'One moment…'
+                  : 'Hands-free is on — I’ll start listening right after I speak.'}
+            </p>
+          ) : (
+            <div className="flex flex-wrap items-center gap-2">
+              {!v.recording ? (
+                <button
+                  onClick={toggleMic}
+                  disabled={busy}
+                  className="rounded bg-lime px-4 py-2 text-sm font-semibold text-black disabled:opacity-50"
+                >
+                  🎤 Tap to talk
+                </button>
+              ) : (
+                <button
+                  onClick={toggleMic}
+                  className="rounded bg-red-500 px-4 py-2 text-sm font-semibold text-white"
+                >
+                  ⏹ Stop &amp; send
+                </button>
+              )}
+              {v.transcribing && <span className="text-sm text-neutral-500">Transcribing…</span>}
+            </div>
+          )}
 
           <div className="flex gap-2">
             <input
@@ -377,10 +261,7 @@ export default function CoachMode({ findings }: { findings: Findings }) {
                 </p>
               )}
               {lessons.map((l, i) => (
-                <div
-                  key={i}
-                  className="space-y-3 rounded-lg border border-neutral-300 bg-white p-3"
-                >
+                <div key={i} className="space-y-3 rounded-lg border border-neutral-300 bg-white p-3">
                   <div className="flex items-center justify-between">
                     <span className="text-xs font-semibold uppercase tracking-wide text-neutral-500">
                       Lesson {i + 1}
@@ -393,37 +274,28 @@ export default function CoachMode({ findings }: { findings: Findings }) {
                     </button>
                   </div>
                   <label className="block">
-                    <span className="mb-1 block text-xs font-medium text-neutral-500">
-                      Category
-                    </span>
+                    <span className="mb-1 block text-xs font-medium text-neutral-500">Category</span>
                     <input
                       value={l.category}
                       onChange={(e) => updateLesson(i, 'category', e.target.value)}
                       className="w-full rounded border border-neutral-300 px-2 py-1.5 text-sm"
-                      placeholder="e.g. Hazard flags"
                     />
                   </label>
                   <label className="block">
-                    <span className="mb-1 block text-xs font-medium text-neutral-500">
-                      Title
-                    </span>
+                    <span className="mb-1 block text-xs font-medium text-neutral-500">Title</span>
                     <input
                       value={l.title}
                       onChange={(e) => updateLesson(i, 'title', e.target.value)}
                       className="w-full rounded border border-neutral-300 px-2 py-1.5 text-sm"
-                      placeholder="Short label"
                     />
                   </label>
                   <label className="block">
-                    <span className="mb-1 block text-xs font-medium text-neutral-500">
-                      Guidance
-                    </span>
+                    <span className="mb-1 block text-xs font-medium text-neutral-500">Guidance</span>
                     <textarea
                       value={l.content}
                       onChange={(e) => updateLesson(i, 'content', e.target.value)}
                       rows={4}
                       className="w-full rounded border border-neutral-300 px-2 py-1.5 text-sm leading-relaxed"
-                      placeholder="What to look for and how to judge it"
                     />
                   </label>
                 </div>

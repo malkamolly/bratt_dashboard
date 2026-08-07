@@ -12,6 +12,8 @@
 // walkthrough*, not the full decks verbatim.
 // ============================================================================
 
+import { readFile, readdir } from 'node:fs/promises';
+import path from 'node:path';
 import Anthropic from '@anthropic-ai/sdk';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { listTopicDecks, loadTopicSource } from './topic-deck';
@@ -140,4 +142,190 @@ export async function ingestLibrary(
   if (error) throw new Error(error.message);
 
   return { count: rows.length, sources: parts.length };
+}
+
+// ============================================================================
+// Reference-PDF → Playbook ingestion
+// ============================================================================
+// Reads every PDF in content/references/ and asks Claude to distill each into
+// playbook entries tagged source='reference'. These feed the video analyzer but
+// are kept separate from the Training Library: they never show up in the Sales
+// Arborist Library, and re-running the Library import can't delete them (it only
+// touches source='library'). See docs/video-notes.md and content/references.
+//
+// We send each PDF to Claude as a `document` block (base64) rather than parsing
+// the text ourselves — no extra dependency, and it handles the diagrams, photos,
+// and ID charts these arborist references are full of.
+// ============================================================================
+
+const REFERENCES_ROOT = path.join(process.cwd(), 'content', 'references');
+
+// Claude's per-request document limits are 32 MB / 600 pages. base64 inflates
+// size by ~33%, so cap the raw PDF a bit under 32 MB to stay safe once encoded.
+const MAX_PDF_BYTES = 24 * 1024 * 1024;
+
+const REFERENCE_INGEST_SYSTEM = `You are distilling an OUTSIDE arborist reference document (a PDF such as a study guide, field manual, climbing/rigging guide, pest guide, or spec sheet) into a concise playbook. An AI applies this playbook when reviewing property-walkthrough videos to help a Bratt Tree arborist scope and estimate tree work.
+
+Capture any knowledge that would help an experienced arborist estimator on a property walkthrough. Depending on the document, that includes:
+- identifying trees from bark, leaf, or form cues,
+- recognizing signs of diseases, pests, defects, and disorders,
+- judging structural hazards and risk (dead limbs, cracks, decay, lean, included bark, poor unions),
+- deciding and scoping the work: removal method, rigging complexity, felling vs. climbing vs. crane, pruning, cabling/bracing,
+- crew and site safety (power lines, drop zones, hazards to plan around),
+- plant-health-care and other sales opportunities,
+- access, soil, and site conditions.
+
+Take what the document actually covers. A climbing/rigging manual should yield rigging, removal-method, knot/gear, and safety guidance; a pest guide should yield diagnostic cues; and so on. Do NOT force it into only one of the categories above.
+
+Rules:
+- Be compact. Each entry is 1-4 sentences of actionable guidance. Skip history, exam-prep trivia, pricing tables, and pure administrivia.
+- Prefer concrete, usable guidance over general prose.
+- Produce roughly 12-30 entries from this document, grouped into sensible categories. This is a substantial arborist reference — it will always contain plenty worth capturing, so do not return an empty list.
+- Use only first name + last initial if any person is named.
+
+Respond with ONLY a JSON array (no prose, no markdown fences) of objects:
+[{ "category": "string", "title": "string (short)", "content": "string (1-4 sentences)" }]`;
+
+/**
+ * Distill one PDF into playbook entries. Throws on an API refusal or unparseable
+ * response so the caller can record which file failed and keep going.
+ */
+async function distillReferencePdf(
+  client: Anthropic,
+  fileName: string,
+  base64: string,
+): Promise<IngestEntry[]> {
+  const content: Anthropic.ContentBlockParam[] = [
+    {
+      type: 'document',
+      source: { type: 'base64', media_type: 'application/pdf', data: base64 },
+    },
+    {
+      type: 'text',
+      text: `This is an outside arborist reference titled "${fileName}". Distill it into the playbook as specified.`,
+    },
+  ];
+
+  const response = await client.messages.create({
+    model: VIDEO_NOTES_MODEL,
+    max_tokens: 8000,
+    thinking: { type: 'disabled' },
+    system: REFERENCE_INGEST_SYSTEM,
+    messages: [{ role: 'user', content }],
+  });
+
+  if (response.stop_reason === 'refusal') {
+    throw new Error('The model declined to distill this document.');
+  }
+  const textBlock = response.content.find((b) => b.type === 'text');
+  if (!textBlock || textBlock.type !== 'text') {
+    throw new Error('The model returned no text to parse.');
+  }
+  const entries = JSON.parse(extractJsonArray(textBlock.text)) as IngestEntry[];
+  if (!Array.isArray(entries)) {
+    throw new Error('The distillation did not produce a list.');
+  }
+  return entries;
+}
+
+/**
+ * Read every PDF in content/references, distill each into playbook entries, and
+ * replace the existing source='reference' rows. `supabase` should be a
+ * service-role client (the caller must already have checked owner access).
+ *
+ * Best-effort per file: a PDF that's too big or that Claude can't read is
+ * skipped and named in the result rather than sinking the whole batch. Nothing
+ * is written to the database until every PDF has been processed, so a mid-run
+ * timeout leaves the existing entries untouched — just re-run it.
+ */
+export async function ingestReferences(
+  supabase: SupabaseClient,
+  createdBy: string,
+): Promise<{ count: number; sources: number; skipped: string[] }> {
+  if (!process.env.ANTHROPIC_API_KEY) {
+    throw new Error('ANTHROPIC_API_KEY is not set.');
+  }
+
+  // 1. Find the PDFs.
+  let fileNames: string[];
+  try {
+    const all = await readdir(REFERENCES_ROOT);
+    fileNames = all.filter((f) => f.toLowerCase().endsWith('.pdf')).sort();
+  } catch {
+    throw new Error(
+      'No content/references folder was found. Add PDFs there first.',
+    );
+  }
+  if (fileNames.length === 0) {
+    throw new Error('No PDF files were found in content/references.');
+  }
+
+  // 2. Distill each PDF. Collect entries; note any we had to skip.
+  const client = new Anthropic();
+  const rows: {
+    category: string;
+    title: string;
+    content: string;
+    source: 'reference';
+    source_ref: string;
+    created_by: string;
+    active: boolean;
+  }[] = [];
+  const skipped: string[] = [];
+  const empty: string[] = []; // processed fine, but the model returned no entries
+
+  for (const fileName of fileNames) {
+    try {
+      const buf = await readFile(path.join(REFERENCES_ROOT, fileName));
+      if (buf.length > MAX_PDF_BYTES) {
+        skipped.push(`${fileName} (too large — over 24 MB)`);
+        continue;
+      }
+      const entries = await distillReferencePdf(
+        client,
+        fileName,
+        buf.toString('base64'),
+      );
+      if (entries.length === 0) {
+        empty.push(fileName);
+        continue;
+      }
+      for (const e of entries) {
+        rows.push({
+          category: e.category,
+          title: e.title,
+          content: e.content,
+          source: 'reference',
+          source_ref: fileName,
+          created_by: createdBy,
+          active: true,
+        });
+      }
+    } catch (err) {
+      const why = err instanceof Error ? err.message : 'unknown error';
+      skipped.push(`${fileName} (${why})`);
+    }
+  }
+
+  if (rows.length === 0) {
+    const detail: string[] = [];
+    if (empty.length > 0) {
+      detail.push(`the model found nothing applicable in: ${empty.join(', ')}`);
+    }
+    if (skipped.length > 0) detail.push(`skipped: ${skipped.join('; ')}`);
+    throw new Error(
+      `No entries were produced${detail.length ? ` (${detail.join('; ')})` : ''}.`,
+    );
+  }
+
+  // 3. Replace the previous reference batch with the fresh one.
+  await supabase.from('arborist_playbook').delete().eq('source', 'reference');
+  const { error } = await supabase.from('arborist_playbook').insert(rows);
+  if (error) throw new Error(error.message);
+
+  return {
+    count: rows.length,
+    sources: fileNames.length - skipped.length,
+    skipped,
+  };
 }
