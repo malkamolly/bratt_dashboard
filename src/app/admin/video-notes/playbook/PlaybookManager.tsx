@@ -20,6 +20,11 @@ export type AdminPlaybookEntry = {
   source: 'library' | 'coach' | 'reference';
   active: boolean;
   created_at: string;
+  created_by: string | null;
+  /** Display name for created_by (First name + Last initial), set by the page. */
+  author: string;
+  /** True when the author is the head arborist — his entries are the final word. */
+  final_word: boolean;
 };
 
 const SOURCE_BADGE: Record<AdminPlaybookEntry['source'], string> = {
@@ -49,6 +54,8 @@ export default function PlaybookManager({
   const [entries, setEntries] = useState<AdminPlaybookEntry[]>(initialEntries);
   const [error, setError] = useState('');
   const [filter, setFilter] = useState<'all' | AdminPlaybookEntry['source']>('all');
+  // Independent of the source filter: 'all', or one author's display name.
+  const [author, setAuthor] = useState<string>('all');
   // One shared voice engine — only the row being refined uses it at a time.
   const voice = useCoachVoice();
 
@@ -99,7 +106,15 @@ export default function PlaybookManager({
     { key: 'library', label: 'Library', count: libraryCount },
     { key: 'reference', label: 'Reference', count: referenceCount },
   ];
-  const visible = filter === 'all' ? entries : entries.filter((e) => e.source === filter);
+
+  // Author filter: every distinct contributor, most entries first.
+  const authorCounts = new Map<string, number>();
+  for (const e of entries) authorCounts.set(e.author, (authorCounts.get(e.author) ?? 0) + 1);
+  const authors = [...authorCounts.entries()].sort((a, b) => b[1] - a[1]);
+
+  const visible = entries.filter(
+    (e) => (filter === 'all' || e.source === filter) && (author === 'all' || e.author === author),
+  );
 
   return (
     <div className="space-y-3">
@@ -120,6 +135,38 @@ export default function PlaybookManager({
           </button>
         ))}
       </div>
+
+      {/* Only worth showing once more than one person has contributed. */}
+      {authors.length > 1 && (
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="text-xs font-semibold uppercase tracking-wide text-neutral-500">
+            Added by
+          </span>
+          <button
+            onClick={() => setAuthor('all')}
+            className={`rounded-full px-3 py-1 text-xs font-semibold ${
+              author === 'all'
+                ? 'bg-neutral-800 text-white'
+                : 'border border-neutral-300 text-neutral-600 hover:bg-neutral-50'
+            }`}
+          >
+            Everyone ({entries.length})
+          </button>
+          {authors.map(([name, count]) => (
+            <button
+              key={name}
+              onClick={() => setAuthor(name)}
+              className={`rounded-full px-3 py-1 text-xs font-semibold ${
+                author === name
+                  ? 'bg-neutral-800 text-white'
+                  : 'border border-neutral-300 text-neutral-600 hover:bg-neutral-50'
+              }`}
+            >
+              {name} ({count})
+            </button>
+          ))}
+        </div>
+      )}
 
       <p className="text-xs text-neutral-500">
         Showing {visible.length} of {entries.length} — newest first.
@@ -434,6 +481,17 @@ function PlaybookRow({
                   }`}
                 >
                   {SOURCE_BADGE[entry.source]}
+                </span>
+                <span
+                  className={`rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase ${
+                    entry.final_word
+                      ? 'bg-orange/20 text-neutral-800'
+                      : 'bg-neutral-100 text-neutral-600'
+                  }`}
+                  title={entry.created_by ?? 'Unknown'}
+                >
+                  {entry.author}
+                  {entry.final_word && ' — final word'}
                 </span>
               </div>
               <p className="font-medium text-sm">{entry.title}</p>

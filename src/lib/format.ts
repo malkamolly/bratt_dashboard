@@ -43,3 +43,21 @@ const monthNames = [
 export function monthLabel(year: number, month: number): string {
   return `${monthNames[month - 1]} ${year}`;
 }
+
+/**
+ * Turn a work email into a display name, First name + Last initial — the house
+ * naming rule (see CLAUDE.md); we never render a full last name. Our addresses
+ * are usually just a first name ("connor@" → "Connor"), but a dotted or
+ * hyphenated address contributes an initial ("sean.b@" → "Sean B"). Anything
+ * unparseable falls back to the address itself so a row is never unattributed.
+ */
+export function personFromEmail(email: string | null | undefined): string {
+  const local = (email ?? '').split('@')[0]?.trim();
+  if (!local) return 'Unknown';
+  const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1).toLowerCase();
+  const parts = local.split(/[._]+/).filter(Boolean);
+  if (parts.length === 0) return email ?? 'Unknown';
+  // A hyphenated first name stays whole ("sean-paul" → "Sean-Paul").
+  const first = parts[0].split('-').filter(Boolean).map(cap).join('-');
+  return parts.length > 1 ? `${first} ${parts[1].charAt(0).toUpperCase()}` : first;
+}
