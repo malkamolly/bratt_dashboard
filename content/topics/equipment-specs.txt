@@ -48,9 +48,8 @@ row: Drive Width | 8' 6" | 8' 6"
 row: Drive Length | 28' 5" | 28' 5"
 row: Outrigger Width | 12' | 9' 9" front · 11' 2" back
 row: Outrigger Length | 8' 6" | 11' 7"
-row: Working Height | 75' | *TBD*
-row: Working Outreach | 42' | *TBD*
-tip: Non-elevator working height and outreach still need to be measured.
+row: Working Height | 75' | 65'
+row: Working Outreach | 42' | 42'
 
 
 @table
@@ -91,7 +90,7 @@ row: Drive Width | 9' | 9' | 8' 6"
 row: Drive Length | 40' | 32' | 33'
 row: Outrigger / Stabilizer Width | 24' | 22' | 21' 6" front · 27' 6" rear
 row: Outrigger / Stabilizer Length | 24' | 22' | 18' 9"
-tip: **Signed Equipment Disclaimer required** before driving on private property. Turret from rear: 40T **8′**; 20T **4′ 11″**.
+tip: **Signed Equipment Disclaimer required** before driving on private property. Turret from rear: 40T **8′ 6″**; 20T **5′**.
 
 
 @table
@@ -99,7 +98,7 @@ eyebrow: Cranes · Capacity
 title: Quick capacity by radius
 subtitle: Outriggers fully extended. Confirm against the full load chart for the actual boom length and setup.
 cols: Load radius | 20T (22101) | 40T (40124SHL)
-row: 40 ft | 4,500 lbs | 12,500 lbs
+row: 40 ft | 4,500 lbs | 9,500 lbs
 row: 60 ft | 2,100 lbs | 6,000 lbs
 row: 80 ft | 800 lbs | 3,000 lbs
 row: 100 ft | — | 1,200 lbs

@@ -86,10 +86,9 @@ export const BUCKET_TRUCKS: SpecTable = {
     ['Drive Length', '28′ 5″', '28′ 5″'],
     ['Outrigger Width', '12′', '9′ 9″ front · 11′ 2″ back'],
     ['Outrigger Length', '8′ 6″', '11′ 7″'],
-    ['Working Height', '75′', 'TBD'],
-    ['Working Outreach', '42′', 'TBD'],
+    ['Working Height', '75′', '65′'],
+    ['Working Outreach', '42′', '42′'],
   ],
-  tip: 'Non-elevator working height and outreach still need to be measured.',
 };
 
 export const CLAM_TRUCKS: SpecTable = {
@@ -143,7 +142,7 @@ export const CRANE_DIMENSIONS: SpecTable = {
     ['Drive Length', '40′', '32′', '33′'],
     ['Outrigger / Stabilizer Width', '24′', '22′', '21′ 6″ front · 27′ 6″ rear'],
     ['Outrigger / Stabilizer Length', '24′', '22′', '18′ 9″'],
-    ['Turret from rear', '8′', '4′ 11″', '—'],
+    ['Turret from rear', '8′ 6″', '5′', '—'],
   ],
 };
 
@@ -154,7 +153,7 @@ export const CRANE_CAPACITY: SpecTable = {
   note: 'Outriggers fully extended. Confirm against the full load chart for the actual boom length and setup.',
   cols: ['Load radius', '20T (22101)', '40T (40124SHL)'],
   rows: [
-    ['40 ft', '4,500 lbs', '12,500 lbs'],
+    ['40 ft', '4,500 lbs', '9,500 lbs'],
     ['60 ft', '2,100 lbs', '6,000 lbs'],
     ['80 ft', '800 lbs', '3,000 lbs'],
     ['100 ft', '—', '1,200 lbs'],
@@ -178,7 +177,7 @@ export const CRANE_RULES: { label: string; body: string }[] = [
   },
   {
     label: 'Measure from the turret',
-    body: 'Reach is measured from the turret, not the bumper. The 40T is 8′ from the rear; the 20T is 4′ 11″.',
+    body: 'Reach is measured from the turret, not the bumper. The 40T is 8′ 6″ from the rear; the 20T is 5′.',
   },
 ];
 
