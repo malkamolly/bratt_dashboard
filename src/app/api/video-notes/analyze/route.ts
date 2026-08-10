@@ -15,9 +15,11 @@ import { getAllowedUser, canUseVideoNotes } from '@/lib/auth';
 import { analyzeFrames, VIDEO_NOTES_MODEL, type Frame } from '@/lib/video-notes';
 import { getActivePlaybook, formatPlaybookForPrompt } from '@/lib/playbook';
 
-// Vision over a few dozen images can take a while — give it room (Vercel caps
-// this at the plan's max; 60s is the Pro default).
-export const maxDuration = 60;
+// Vision over a few dozen images can take a while — give it room. 60s was not
+// enough for a 40-frame walkthrough, and the timeout surfaced in the browser as
+// an unreadable error. This is a ceiling, not a reservation: Vercel bills active
+// CPU, and most of this duration is spent idle waiting on Claude.
+export const maxDuration = 300;
 export const dynamic = 'force-dynamic';
 
 type Body = {

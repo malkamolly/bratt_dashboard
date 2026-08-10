@@ -135,6 +135,25 @@ async function imageToFrame(file: File, label: string): Promise<Frame> {
   }
 }
 
+// Turn a failed analyze response into something an arborist can act on. Our
+// route's own errors arrive as JSON; anything that fails above it (the Vercel
+// platform) sends an HTML page instead, so fall back to naming the status.
+function describeFailure(status: number, body: string): string {
+  try {
+    const json = JSON.parse(body) as { error?: string };
+    if (json.error) return json.error;
+  } catch {
+    // Not JSON — a platform error page. Fall through to the status messages.
+  }
+  if (status === 413) {
+    return 'That upload was too large for the server. Try a shorter video, or fewer photos.';
+  }
+  if (status === 502 || status === 504) {
+    return 'The analysis ran too long and timed out. Try a shorter video.';
+  }
+  return `The analysis failed (HTTP ${status}).`;
+}
+
 type Phase = 'idle' | 'extracting' | 'transcribing-audio' | 'analyzing' | 'done' | 'error';
 
 export default function VideoNotesClient({
@@ -252,8 +271,20 @@ export default function VideoNotesClient({
           transcript,
         }),
       });
-      const json = await res.json();
-      if (!res.ok) throw new Error(json.error || 'The analysis failed.');
+      // Read the body once as text, then decide how to parse it. Checking
+      // res.ok first matters: our own route always replies with JSON, but a
+      // platform-level failure (Vercel timeout, payload too large) returns an
+      // HTML error page, and calling res.json() on that is what produced
+      // Safari's cryptic "The string did not match the expected pattern."
+      const raw = await res.text();
+      if (!res.ok) throw new Error(describeFailure(res.status, raw));
+
+      let json: { findings?: Findings };
+      try {
+        json = JSON.parse(raw) as { findings?: Findings };
+      } catch {
+        throw new Error(`The server sent a reply we couldn't read (HTTP ${res.status}).`);
+      }
 
       setFindings(json.findings as Findings);
       setPhase('done');
