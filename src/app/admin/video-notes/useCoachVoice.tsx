@@ -14,12 +14,22 @@ import { useEffect, useRef, useState } from 'react';
 
 type WebkitWindow = Window & { webkitAudioContext?: typeof AudioContext };
 
-// Natural voices offered by Groq's Orpheus English model.
-export const PREMIUM_VOICES = [
-  { id: 'hannah', label: 'Hannah' },
-  { id: 'troy', label: 'Troy' },
-  { id: 'austin', label: 'Austin' },
-];
+// The voices offered in the picker — the four Connor chose after listening on
+// openai.fm. Overridable via NEXT_PUBLIC_TTS_VOICES (comma-separated) so that
+// changing voice provider stays a config change, matching the server route.
+// A voice saved from an older list is ignored on load (see the restore effect).
+const DEFAULT_VOICES = ['sage', 'ash', 'cedar', 'marin'];
+
+const configuredVoices = (process.env.NEXT_PUBLIC_TTS_VOICES || '')
+  .split(',')
+  .map((v) => v.trim())
+  .filter(Boolean);
+
+export const PREMIUM_VOICES = (
+  configuredVoices.length > 0 ? configuredVoices : DEFAULT_VOICES
+).map((id) => ({ id, label: id.charAt(0).toUpperCase() + id.slice(1) }));
+
+const DEFAULT_VOICE = PREMIUM_VOICES[0].id;
 
 async function transcribeBlob(blob: Blob): Promise<string> {
   const form = new FormData();
@@ -31,7 +41,7 @@ async function transcribeBlob(blob: Blob): Promise<string> {
 }
 
 export function useCoachVoice() {
-  const [ttsVoice, setTtsVoice] = useState('hannah');
+  const [ttsVoice, setTtsVoice] = useState(DEFAULT_VOICE);
   const [muted, setMuted] = useState(false);
   const [handsFree, setHandsFree] = useState(false);
   const [recording, setRecording] = useState(false);
@@ -41,7 +51,7 @@ export function useCoachVoice() {
   const [ttsError, setTtsError] = useState('');
   const [ttsRate, setTtsRate] = useState(1);
 
-  const ttsVoiceRef = useRef('hannah');
+  const ttsVoiceRef = useRef(DEFAULT_VOICE);
   const ttsRateRef = useRef(1);
   const mutedRef = useRef(false);
   const handsFreeRef = useRef(false);

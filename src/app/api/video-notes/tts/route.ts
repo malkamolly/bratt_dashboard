@@ -1,10 +1,18 @@
 // ============================================================================
 // POST /api/video-notes/tts  (video-notes trio)
 // ============================================================================
-// Natural text-to-speech via Groq's Orpheus model, so Coach Mode and the
-// Playbook refine chat can speak in a human voice instead of the robotic
-// browser default. Reuses the existing GROQ_API_KEY. Returns audio bytes; the
-// client plays them, and falls back to the browser voice if this errors.
+// Natural text-to-speech so Coach Mode and the Playbook refine chat can speak
+// in a human voice instead of the robotic browser default. Returns audio bytes;
+// the client plays them and falls back to the browser voice if this errors.
+//
+// The provider is CONFIGURATION, not code. Every field below is an env var, so
+// switching voice companies is a Vercel change rather than a deploy. This works
+// because the OpenAI /audio/speech request shape is shared across providers —
+// it's why Groq's own endpoint is /openai/v1/... To move back to Groq, set
+// TTS_BASE_URL=https://api.groq.com/openai/v1 with a Groq key and model.
+//
+// Speech-to-text still runs on Groq (see ../transcribe) — its Whisper limits are
+// generous. Only the outbound voice moved.
 // ============================================================================
 
 import { NextResponse } from 'next/server';
@@ -13,8 +21,27 @@ import { getAllowedUser, canUseVideoNotes } from '@/lib/auth';
 export const dynamic = 'force-dynamic';
 export const maxDuration = 30;
 
-const MODEL = process.env.GROQ_TTS_MODEL || 'canopylabs/orpheus-v1-english';
-const DEFAULT_VOICE = 'hannah';
+const BASE_URL = (process.env.TTS_BASE_URL || 'https://api.openai.com/v1').replace(/\/+$/, '');
+const API_KEY = process.env.TTS_API_KEY || process.env.OPENAI_API_KEY || '';
+const MODEL = process.env.TTS_MODEL || 'gpt-4o-mini-tts';
+const DEFAULT_VOICE = process.env.TTS_DEFAULT_VOICE || 'sage';
+
+// gpt-4o-mini-tts takes a plain-English delivery note, which matters more for
+// coaching than the voice choice does. Checked against undefined rather than
+// falsiness so setting the var empty genuinely disables it — needed for models
+// (and providers) that reject an unknown field.
+const DEFAULT_INSTRUCTIONS =
+  'Warm and patient, like a senior arborist mentoring a colleague in the field. ' +
+  'Unhurried and genuinely curious, never salesy.';
+const INSTRUCTIONS =
+  process.env.TTS_INSTRUCTIONS !== undefined
+    ? process.env.TTS_INSTRUCTIONS.trim()
+    : DEFAULT_INSTRUCTIONS;
+
+// Comfortably inside both limits we care about (tts-1 caps at 4096 characters,
+// gpt-4o-mini-tts at 2000 tokens). The old 1000 cut long coaching replies off
+// mid-sentence.
+const MAX_CHARS = 4000;
 
 // "2h51m12s" -> "3 hours"; "14m2s" -> "15 minutes". Rounded up, so we never tell
 // someone the voice is back before the quota has actually reset.
@@ -26,8 +53,8 @@ function humanizeRetry(raw: string): string {
   return `${Math.max(1, total)} minutes`;
 }
 
-// Translate Groq's error into something an arborist can act on. The daily quota
-// is the case we actually hit, so name it and say when the voice comes back.
+// Translate the provider's error into something an arborist can act on, rather
+// than printing a nested JSON blob on screen mid-coaching.
 function describeFailure(status: number, raw: string): string {
   let code = '';
   let message = '';
@@ -39,14 +66,18 @@ function describeFailure(status: number, raw: string): string {
     // Not JSON — fall through to the status-based message.
   }
 
-  if (code === 'rate_limit_exceeded') {
+  if (code === 'insufficient_quota') {
+    return 'The voice account is out of credit — top it up to bring the natural voice back.';
+  }
+  if (code === 'rate_limit_exceeded' || status === 429) {
     const retry = /try again in ([\dhms.]+)/i.exec(message)?.[1];
     return retry
-      ? `Natural voice is out of quota for today — back in about ${humanizeRetry(retry)}.`
-      : 'Natural voice is out of quota for today.';
+      ? `Natural voice is rate limited — back in about ${humanizeRetry(retry)}.`
+      : 'Natural voice is rate limited. Try again in a moment.';
   }
   if (status === 401 || status === 403) return 'The natural-voice key was rejected.';
   if (status === 404) return `The natural-voice model is unavailable (${MODEL}).`;
+  if (status === 400 && message) return `The natural voice rejected the request: ${message}`;
   return `The natural voice service failed (${status}).`;
 }
 
@@ -56,8 +87,11 @@ export async function POST(request: Request) {
   if (!canUseVideoNotes(user.email)) {
     return NextResponse.json({ error: 'No access.' }, { status: 403 });
   }
-  if (!process.env.GROQ_API_KEY) {
-    return NextResponse.json({ error: 'GROQ_API_KEY is not set.' }, { status: 500 });
+  if (!API_KEY) {
+    return NextResponse.json(
+      { error: 'No natural-voice key is set (TTS_API_KEY).' },
+      { status: 500 },
+    );
   }
 
   let body: { text?: string; voice?: string };
@@ -66,25 +100,29 @@ export async function POST(request: Request) {
   } catch {
     return NextResponse.json({ error: 'Invalid request body.' }, { status: 400 });
   }
-  const text = (body.text ?? '').toString().slice(0, 1000).trim();
+  const text = (body.text ?? '').toString().slice(0, MAX_CHARS).trim();
   if (!text) return NextResponse.json({ error: 'No text.' }, { status: 400 });
   const voice = (body.voice ?? DEFAULT_VOICE).toString();
 
   try {
-    const res = await fetch('https://api.groq.com/openai/v1/audio/speech', {
+    const res = await fetch(`${BASE_URL}/audio/speech`, {
       method: 'POST',
       headers: {
-        Authorization: `Bearer ${process.env.GROQ_API_KEY}`,
+        Authorization: `Bearer ${API_KEY}`,
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ model: MODEL, input: text, voice, response_format: 'wav' }),
+      body: JSON.stringify({
+        model: MODEL,
+        input: text,
+        voice,
+        response_format: 'wav',
+        ...(INSTRUCTIONS ? { instructions: INSTRUCTIONS } : {}),
+      }),
     });
     if (!res.ok) {
       const raw = await res.text();
-      // Keep the upstream body for diagnosis, but in the server logs only — it's
-      // a nested JSON blob carrying our Groq org ID, and it used to get printed
-      // verbatim on screen mid-coaching.
-      console.error(`Groq TTS failed (${res.status}): ${raw}`);
+      // Keep the upstream body for diagnosis, but in the server logs only.
+      console.error(`TTS failed (${res.status}) via ${BASE_URL}: ${raw}`);
       return NextResponse.json({ error: describeFailure(res.status, raw) }, { status: 502 });
     }
     const audio = await res.arrayBuffer();
