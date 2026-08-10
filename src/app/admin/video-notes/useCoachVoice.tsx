@@ -89,6 +89,9 @@ export function useCoachVoice() {
   const [ttsRate, setTtsRate] = useState(1);
   const [liveTranscript, setLiveTranscript] = useState('');
   const [micLevel, setMicLevel] = useState(0);
+  // Stage timings for the reply lag, surfaced in the UI. Guesswork about which
+  // stage dominates has been wrong twice; these are the real numbers.
+  const [timings, setTimings] = useState({ transcribeMs: 0, firstAudioMs: 0 });
 
   const ttsVoiceRef = useRef(DEFAULT_VOICE);
   const ttsRateRef = useRef(1);
@@ -214,6 +217,7 @@ export function useCoachVoice() {
     if (mutedRef.current || !text) return;
     stopSpeaking();
     const token = ++speakTokenRef.current;
+    const startedAt = Date.now();
     const chunks = splitForSpeech(text);
     let spokenUpTo = 0;
     try {
@@ -228,6 +232,7 @@ export function useCoachVoice() {
         if (i === 0) {
           setPremiumFailed(false);
           setTtsError('');
+          setTimings((t) => ({ ...t, firstAudioMs: Date.now() - startedAt }));
         }
         await playBlob(blob);
         spokenUpTo = i + 1;
@@ -375,11 +380,13 @@ export function useCoachVoice() {
         streamRef.current?.getTracks().forEach((t) => t.stop());
         const blob = new Blob(chunksRef.current, { type: rec.mimeType || 'audio/webm' });
         setTranscribing(true);
+        const startedAt = Date.now();
         try {
           resolve(await transcribeBlob(blob));
         } catch {
           resolve('');
         } finally {
+          setTimings({ transcribeMs: Date.now() - startedAt, firstAudioMs: 0 });
           setTranscribing(false);
           // Keep the live text up through transcription, then let the real
           // message in the chat take over.
@@ -471,6 +478,7 @@ export function useCoachVoice() {
       return '';
     }
     setTranscribing(true);
+    const transcribeStartedAt = Date.now();
     try {
       return await transcribeBlob(blob);
     } catch {
@@ -478,6 +486,7 @@ export function useCoachVoice() {
     } finally {
       setTranscribing(false);
       setLiveTranscript('');
+      setTimings({ transcribeMs: Date.now() - transcribeStartedAt, firstAudioMs: 0 });
     }
   }
 
@@ -508,6 +517,7 @@ export function useCoachVoice() {
     listening,
     liveTranscript,
     micLevel,
+    timings,
     speak,
     stopSpeaking,
     beginRecording,

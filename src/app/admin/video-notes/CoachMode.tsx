@@ -20,6 +20,8 @@ export default function CoachMode({ findings }: { findings: Findings }) {
   const v = useCoachVoice();
   const [messages, setMessages] = useState<CoachMessage[]>([]);
   const [coachThinking, setCoachThinking] = useState(false);
+  // How long the coach's reply took to come back, for the lag breakdown below.
+  const [replyMs, setReplyMs] = useState(0);
   const [text, setText] = useState('');
   const [phase, setPhase] = useState<'chat' | 'lessons'>('chat');
   const [lessons, setLessons] = useState<ProposedLesson[]>([]);
@@ -39,6 +41,7 @@ export default function CoachMode({ findings }: { findings: Findings }) {
   async function askCoach(history: CoachMessage[]) {
     setCoachThinking(true);
     setError('');
+    const startedAt = Date.now();
     try {
       const res = await fetch('/api/video-notes/coach', {
         method: 'POST',
@@ -46,6 +49,7 @@ export default function CoachMode({ findings }: { findings: Findings }) {
         body: JSON.stringify({ findings, history, mode: 'chat' }),
       });
       const json = await res.json();
+      setReplyMs(Date.now() - startedAt);
       if (!res.ok) throw new Error(json.error || 'The coach hit an error.');
       const reply = (json.reply as string) || '';
       const next: CoachMessage[] = [...history, { role: 'assistant', text: reply }];
@@ -212,6 +216,17 @@ export default function CoachMode({ findings }: { findings: Findings }) {
           )}
 
           <LiveDictation v={v} />
+
+          {/* Where the wait actually goes, so it can be fixed at the slow stage
+              instead of the guessed one. Each is a separate round trip today. */}
+          {(v.timings.transcribeMs > 0 || replyMs > 0) && (
+            <p className="text-xs text-neutral-400">
+              {v.timings.transcribeMs > 0 && `heard in ${(v.timings.transcribeMs / 1000).toFixed(1)}s`}
+              {replyMs > 0 && ` · reply in ${(replyMs / 1000).toFixed(1)}s`}
+              {v.timings.firstAudioMs > 0 &&
+                ` · voice in ${(v.timings.firstAudioMs / 1000).toFixed(1)}s`}
+            </p>
+          )}
 
           <div className="flex gap-2">
             <input
