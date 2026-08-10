@@ -137,12 +137,12 @@ export function useCoachVoice() {
         body: JSON.stringify({ text, voice: ttsVoiceRef.current }),
       });
       if (!res.ok) {
-        // Surface Groq's exact message so we can diagnose why the natural
-        // voice failed (terms, model name, quota, etc.) instead of guessing.
-        let detail = `TTS request failed (${res.status}).`;
+        // The route has already translated Groq's error into a readable line and
+        // logged the raw body server-side, so just show what it hands back.
+        let detail = `The natural voice failed (${res.status}).`;
         try {
-          const j = (await res.json()) as { error?: string; detail?: string };
-          detail = j.detail || j.error || detail;
+          const j = (await res.json()) as { error?: string };
+          detail = j.error || detail;
         } catch {
           /* body was not JSON — keep the status-based message */
         }
