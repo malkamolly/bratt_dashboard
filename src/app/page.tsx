@@ -164,7 +164,7 @@ export default async function LandingPage() {
         )}
 
         {/* Proposal Reviews — leadership view; compares named supervisors. */}
-        {canSeeReviewStats(user.email, user.role) && (
+        {canSeeReviewStats(user.email) && (
           <Link
             href="/review-stats"
             className="bt-card group transition-colors hover:!border-orange"

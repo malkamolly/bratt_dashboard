@@ -38,7 +38,7 @@ export default async function ReviewStatsPage({
 }) {
   const user = await getAllowedUser();
   if (!user) redirect('/login');
-  if (!canSeeReviewStats(user.email, user.role)) redirect('/access-denied');
+  if (!canSeeReviewStats(user.email)) redirect('/access-denied');
 
   const params = await searchParams;
   const days = WINDOWS.some((w) => String(w.days) === params.days)

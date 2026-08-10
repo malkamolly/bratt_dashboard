@@ -168,16 +168,19 @@ export function isHeadArborist(email: string | null | undefined): boolean {
   return !!email && email.toLowerCase() === HEAD_ARBORIST_EMAIL;
 }
 
-/**
- * Can this person see Proposal Reviews (/review-stats)? It compares named
- * supervisors against each other, so it's a leadership view: admins, the sales
- * manager, and the head arborist. Same spirit as Cost Analysis above.
- */
-export function canSeeReviewStats(
-  email: string | null | undefined,
-  role: Role,
-): boolean {
-  return role === 'admin' || role === 'sales_manager' || isHeadArborist(email);
+// Proposal Reviews (/review-stats) is restricted to specific PEOPLE, not a role
+// — like Cost Analysis and My Projects above. Deliberately NOT role-based: the
+// report compares two named supervisors' workloads against each other, and one
+// of those supervisors could hold the sales_manager (or admin) role, which would
+// hand them a scoreboard of themselves versus their colleague. An explicit list
+// is the only gate that can't be widened by a role change.
+export const REVIEW_STATS_EMAILS: readonly string[] = [
+  'molly@bratttree.com',
+];
+
+/** Can this person see Proposal Reviews? Gated by email, case-insensitive. */
+export function canSeeReviewStats(email: string | null | undefined): boolean {
+  return !!email && REVIEW_STATS_EMAILS.includes(email.toLowerCase());
 }
 
 /**
