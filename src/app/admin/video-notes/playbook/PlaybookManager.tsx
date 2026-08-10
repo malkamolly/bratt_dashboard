@@ -10,7 +10,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import type { RefineMessage } from '@/lib/playbook-refine';
-import { useCoachVoice, VoiceControls, type CoachVoice } from '../useCoachVoice';
+import { useCoachVoice, VoiceControls, LiveDictation, type CoachVoice } from '../useCoachVoice';
 
 export type AdminPlaybookEntry = {
   id: string;
@@ -431,6 +431,8 @@ function PlaybookRow({
                   {voice.transcribing && <span className="text-sm text-neutral-500">Transcribing…</span>}
                 </div>
               )}
+
+              <LiveDictation v={voice} />
 
               <div className="flex gap-2">
                 <input

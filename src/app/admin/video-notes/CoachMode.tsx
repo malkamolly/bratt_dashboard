@@ -14,7 +14,7 @@
 import { useEffect, useRef, useState } from 'react';
 import type { Findings } from '@/lib/video-notes';
 import type { CoachMessage, ProposedLesson } from '@/lib/coach';
-import { useCoachVoice, VoiceControls } from './useCoachVoice';
+import { useCoachVoice, VoiceControls, LiveDictation } from './useCoachVoice';
 
 export default function CoachMode({ findings }: { findings: Findings }) {
   const v = useCoachVoice();
@@ -210,6 +210,8 @@ export default function CoachMode({ findings }: { findings: Findings }) {
               {v.transcribing && <span className="text-sm text-neutral-500">Transcribing…</span>}
             </div>
           )}
+
+          <LiveDictation v={v} />
 
           <div className="flex gap-2">
             <input

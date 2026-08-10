@@ -43,6 +43,19 @@ const INSTRUCTIONS =
 // mid-sentence.
 const MAX_CHARS = 4000;
 
+// WAV is uncompressed: a 40-second coaching reply runs 1-2 MB, which is a real
+// wait on truck cell service before a single word plays. MP3 is roughly a tenth
+// of that for the same speech.
+const FORMAT = process.env.TTS_FORMAT || 'mp3';
+const AUDIO_MIME: Record<string, string> = {
+  mp3: 'audio/mpeg',
+  opus: 'audio/ogg',
+  aac: 'audio/aac',
+  flac: 'audio/flac',
+  wav: 'audio/wav',
+  pcm: 'audio/pcm',
+};
+
 // "2h51m12s" -> "3 hours"; "14m2s" -> "15 minutes". Rounded up, so we never tell
 // someone the voice is back before the quota has actually reset.
 function humanizeRetry(raw: string): string {
@@ -115,7 +128,7 @@ export async function POST(request: Request) {
         model: MODEL,
         input: text,
         voice,
-        response_format: 'wav',
+        response_format: FORMAT,
         ...(INSTRUCTIONS ? { instructions: INSTRUCTIONS } : {}),
       }),
     });
@@ -127,7 +140,10 @@ export async function POST(request: Request) {
     }
     const audio = await res.arrayBuffer();
     return new NextResponse(audio, {
-      headers: { 'Content-Type': 'audio/wav', 'Cache-Control': 'no-store' },
+      headers: {
+        'Content-Type': AUDIO_MIME[FORMAT] || 'application/octet-stream',
+        'Cache-Control': 'no-store',
+      },
     });
   } catch (err) {
     const message = err instanceof Error ? err.message : 'TTS failed.';

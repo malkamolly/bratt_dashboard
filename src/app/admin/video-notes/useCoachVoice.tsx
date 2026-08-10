@@ -14,6 +14,21 @@ import { useEffect, useRef, useState } from 'react';
 
 type WebkitWindow = Window & { webkitAudioContext?: typeof AudioContext };
 
+// Minimal shape of the browser's built-in speech recognition — the same engine
+// phone voice-to-text uses. Declared locally rather than relying on lib.dom,
+// which types it inconsistently across TypeScript versions.
+type LiveResult = ArrayLike<{ transcript: string }> & { isFinal: boolean };
+type LiveResultEvent = { resultIndex: number; results: ArrayLike<LiveResult> };
+type LiveRecognition = {
+  lang: string;
+  continuous: boolean;
+  interimResults: boolean;
+  onresult: ((event: LiveResultEvent) => void) | null;
+  onerror: (() => void) | null;
+  start: () => void;
+  stop: () => void;
+};
+
 // The voices offered in the picker — the four Connor chose after listening on
 // openai.fm. Overridable via NEXT_PUBLIC_TTS_VOICES (comma-separated) so that
 // changing voice provider stays a config change, matching the server route.
@@ -50,6 +65,7 @@ export function useCoachVoice() {
   const [premiumFailed, setPremiumFailed] = useState(false);
   const [ttsError, setTtsError] = useState('');
   const [ttsRate, setTtsRate] = useState(1);
+  const [liveTranscript, setLiveTranscript] = useState('');
 
   const ttsVoiceRef = useRef(DEFAULT_VOICE);
   const ttsRateRef = useRef(1);
@@ -60,6 +76,7 @@ export function useCoachVoice() {
   const streamRef = useRef<MediaStream | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const browserVoicesRef = useRef<SpeechSynthesisVoice[]>([]);
+  const recognitionRef = useRef<LiveRecognition | null>(null);
 
   useEffect(() => {
     ttsVoiceRef.current = ttsVoice;
@@ -170,6 +187,59 @@ export function useCoachVoice() {
     }
   }
 
+  // --- Live dictation -----------------------------------------------------
+  // Shows words on screen as the arborist speaks, so he can tell the tool is
+  // hearing him instead of finding out only when it fails. This is purely
+  // additive: Whisper still produces the transcript that actually gets used,
+  // because it handles arborist vocabulary (DBH, codominant, defoliation) far
+  // better than the browser engine does. Every failure path here is silent — an
+  // unsupported browser, or iOS declining to share the mic with MediaRecorder,
+  // must never disturb the recording that matters.
+  function startLiveDictation() {
+    setLiveTranscript('');
+    if (typeof window === 'undefined') return;
+    const w = window as unknown as {
+      SpeechRecognition?: new () => LiveRecognition;
+      webkitSpeechRecognition?: new () => LiveRecognition;
+    };
+    const Recognition = w.SpeechRecognition || w.webkitSpeechRecognition;
+    if (!Recognition) return;
+    try {
+      const rec = new Recognition();
+      rec.lang = 'en-US';
+      rec.continuous = true;
+      rec.interimResults = true;
+      // Finalized phrases accumulate; the interim tail is replaced each event.
+      let settled = '';
+      rec.onresult = (event) => {
+        let interim = '';
+        for (let i = event.resultIndex; i < event.results.length; i++) {
+          const result = event.results[i];
+          const text = result[0]?.transcript ?? '';
+          if (result.isFinal) settled += text;
+          else interim += text;
+        }
+        setLiveTranscript((settled + interim).trim());
+      };
+      rec.onerror = () => {};
+      rec.start();
+      recognitionRef.current = rec;
+    } catch {
+      // Live text is a nicety, not the transcript. Carry on without it.
+    }
+  }
+
+  function stopLiveDictation() {
+    const rec = recognitionRef.current;
+    recognitionRef.current = null;
+    if (!rec) return;
+    try {
+      rec.stop();
+    } catch {
+      // Already stopped.
+    }
+  }
+
   // --- Manual tap-to-talk -------------------------------------------------
   async function beginRecording(): Promise<boolean> {
     stopSpeaking();
@@ -182,6 +252,7 @@ export function useCoachVoice() {
       rec.start();
       recorderRef.current = rec;
       setRecording(true);
+      startLiveDictation();
       return true;
     } catch {
       return false;
@@ -205,8 +276,12 @@ export function useCoachVoice() {
           resolve('');
         } finally {
           setTranscribing(false);
+          // Keep the live text up through transcription, then let the real
+          // message in the chat take over.
+          setLiveTranscript('');
         }
       };
+      stopLiveDictation();
       rec.stop();
       setRecording(false);
     });
@@ -238,6 +313,7 @@ export function useCoachVoice() {
     rec.ondataavailable = (e) => e.data.size > 0 && chunks.push(e.data);
     rec.start();
     setListening(true);
+    startLiveDictation();
 
     const buf = new Uint8Array(analyser.frequencyBinCount);
     const THRESHOLD = 0.025;
@@ -272,6 +348,7 @@ export function useCoachVoice() {
       raf = requestAnimationFrame(tick);
     });
     cancelAnimationFrame(raf);
+    stopLiveDictation();
 
     const blob = await new Promise<Blob>((res) => {
       rec.onstop = () => res(new Blob(chunks, { type: rec.mimeType || 'audio/webm' }));
@@ -281,7 +358,10 @@ export function useCoachVoice() {
     if (ctx.state !== 'closed') ctx.close();
     setListening(false);
 
-    if (!spoke) return '';
+    if (!spoke) {
+      setLiveTranscript('');
+      return '';
+    }
     setTranscribing(true);
     try {
       return await transcribeBlob(blob);
@@ -289,11 +369,14 @@ export function useCoachVoice() {
       return '';
     } finally {
       setTranscribing(false);
+      setLiveTranscript('');
     }
   }
 
   function stopAll() {
     stopSpeaking();
+    stopLiveDictation();
+    setLiveTranscript('');
     handsFreeRef.current = false;
     setHandsFree(false);
     streamRef.current?.getTracks().forEach((t) => t.stop());
@@ -314,6 +397,7 @@ export function useCoachVoice() {
     recording,
     transcribing,
     listening,
+    liveTranscript,
     speak,
     stopSpeaking,
     beginRecording,
@@ -324,6 +408,17 @@ export function useCoachVoice() {
 }
 
 export type CoachVoice = ReturnType<typeof useCoachVoice>;
+
+// What the browser is hearing, live, while the arborist talks. Renders nothing
+// until there are words, so a browser without dictation simply shows no change.
+export function LiveDictation({ v }: { v: CoachVoice }) {
+  if (!v.liveTranscript) return null;
+  return (
+    <p className="text-sm italic text-neutral-500" aria-live="polite">
+      {v.liveTranscript}
+    </p>
+  );
+}
 
 // Shared controls: mute, natural-voice picker, preview, hands-free toggle.
 export function VoiceControls({ v }: { v: CoachVoice }) {
