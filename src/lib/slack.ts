@@ -398,6 +398,47 @@ export async function fetchChannelAfter(
 }
 
 /**
+ * Pulls EVERY top-level message in a channel between two Unix-second bounds,
+ * following Slack's cursor pagination.
+ *
+ * The reason this exists: `conversations.history` returns each message with its
+ * complete reaction list, and each reaction carries the member IDs of everyone
+ * who reacted (`reactions[].users`). That's the only bulk way to learn WHO
+ * reacted — the Slack UI and `reactions.get` both make you ask one message at a
+ * time. Used by the review-attribution report (src/lib/review-attribution.ts).
+ *
+ * `limit: 999` is deliberate: at the default 100 a three-month sweep across nine
+ * channels needs hundreds of calls and bumps into Slack's rate limit, where at
+ * 999 it needs a few dozen.
+ */
+export async function fetchChannelRange(
+  token: string,
+  channelId: string,
+  oldest: number,
+  latest: number,
+): Promise<SlackMessage[]> {
+  const messages: SlackMessage[] = [];
+  let cursor: string | undefined;
+  do {
+    const params: Record<string, string> = {
+      channel: channelId,
+      oldest: String(oldest),
+      latest: String(latest),
+      inclusive: 'true',
+      limit: '999',
+    };
+    if (cursor) params.cursor = cursor;
+    const data = await slackApi<{
+      messages?: SlackMessage[];
+      response_metadata?: { next_cursor?: string };
+    }>(token, 'conversations.history', params);
+    messages.push(...(data.messages ?? []));
+    cursor = data.response_metadata?.next_cursor || undefined;
+  } while (cursor);
+  return messages;
+}
+
+/**
  * Resolves a member ID to a user record (name + is_bot), memoized within a
  * single board build so we never look the same person up twice.
  */

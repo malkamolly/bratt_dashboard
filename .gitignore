@@ -38,6 +38,3 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
-
-# review-attribution script output (generated data, not source)
-/review-attribution*.csv

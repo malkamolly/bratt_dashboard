@@ -169,6 +169,18 @@ export function isHeadArborist(email: string | null | undefined): boolean {
 }
 
 /**
+ * Can this person see Proposal Reviews (/review-stats)? It compares named
+ * supervisors against each other, so it's a leadership view: admins, the sales
+ * manager, and the head arborist. Same spirit as Cost Analysis above.
+ */
+export function canSeeReviewStats(
+  email: string | null | undefined,
+  role: Role,
+): boolean {
+  return role === 'admin' || role === 'sales_manager' || isHeadArborist(email);
+}
+
+/**
  * Returns the current user's email + role if they are signed in AND on the
  * allowlist. Returns null otherwise.
  */

@@ -1,113 +1,58 @@
-# Proposal-review attribution — who's reviewing the sales team's proposals?
+# Proposal Reviews (`/review-stats`)
 
-Answers: **of all the proposals sent for review, what share did Brent review vs.
-Nic?** Exact counts, not an estimate.
+Answers: **of the proposals sent for review, what share did each supervisor
+review?** Exact counts, not an estimate.
 
-## The short version
+## Using it
 
-```bash
-npm run review-stats
-```
+Sign in to the dashboard and click **Proposal Reviews** on the home page, or go
+straight to `/review-stats`. Pick a window (30 days / 3 months / 6 months) and
+wait 20–60 seconds while it counts.
 
-That's it. It prints the split for the last three months and writes a CSV with
-every single review request and a clickable Slack link, so anyone can spot-check
-it.
+The only setup is a one-time **Connect Slack** on the `/tags` page. If you've
+already done that, this just works — the report borrows the same connection. The
+page tells you if you haven't.
 
-## How it works (and why a script)
-
-Each sales arborist has their own Slack channel (`#clayton_sales`,
-`#dave_sales`, …). When a proposal is ready they post a short message
-@-mentioning the review group. A supervisor drops a ❤️ on it to mark it
-reviewed.
-
-Slack's UI will show you that a message got one heart — but **not who left it**
-unless you open that specific message. Over three months that's roughly 2,500
-messages, so counting by hand (or by chat assistant) means sampling, and a
-sample can only ever give you a range.
-
-The Slack API doesn't have that limitation. `conversations.history` returns each
-message *with* its full reaction list, including the member ID of everyone who
-reacted:
-
-```json
-"reactions": [ { "name": "heart", "count": 1, "users": ["U065DMEA72P"] } ]
-```
-
-One call covers 200 messages, reactions included. The whole three months is a
-couple hundred calls and finishes in a few minutes. That's the entire reason
-this script exists.
+Who can see it: admins, the sales manager, and Connor (head arborist). It
+compares named supervisors against each other, so it's a leadership view, same
+as Cost Analysis. Change that in `canSeeReviewStats()` in `src/lib/auth.ts`.
 
 ## What it counts
 
 | Term | Definition used |
 | --- | --- |
-| **Review request** | Any message mentioning the review @-group (`S0911Q0HTDF`). This is more reliable than matching words, since people write "ready", "review please", just an address, or nothing at all. |
+| **Proposal sent for review** | A message in a sales channel mentioning the review @-group (`S0911Q0HTDF`). More reliable than matching words, since people write "ready", "review please", just an address, or nothing at all. |
 | **Reviewed** | That message carries a ❤️. |
-| **Reviewer** | Whoever left the ❤️. Verified against the thread replies — when Nic writes the verdict ("Good to go"), Nic is also the one who hearted it. |
+| **Reviewer** | Whoever left the ❤️. Verified against thread replies — when Nic writes the verdict ("Good to go"), Nic is also the one who hearted it. |
 
-It reports the overall split, a **week-by-week** breakdown, and a **per-channel**
-breakdown. The weekly view is the important one: coverage runs in multi-day
-blocks (one supervisor picks up the load while the other is out), so the split
-swings a lot week to week and a single overall percentage hides that.
+Read the **week-by-week** table, not just the headline number. Review coverage
+runs in multi-day stretches — one supervisor picks up the load while the other is
+out — so the split swings hard week to week and one overall percentage hides it.
 
-## Setup
+The page also shows **how many requests never got a ❤️ at all**, which is worth
+watching on its own: it's either proposals going out unreviewed, or reviewers not
+marking them.
 
-You need a Slack token that can read the private sales channels. Two options:
+## Why this needed building at all
 
-**Option A — reuse the token you already have (no new setup).** If you've ever
-clicked "Connect Slack" on the `/tags` board, your token is already stored. The
-script borrows it automatically. It just needs these in `.env.local`, which you
-already have if the dashboard runs locally:
+Slack shows that a message got one heart but **not who left it** — you have to
+open each message to see the name. Over three months that's ~2,500 messages, so
+counting by hand (or by asking an assistant to read Slack) forces sampling, and a
+sample only ever gives you a range.
 
-- `NEXT_PUBLIC_SUPABASE_URL`
-- `SUPABASE_SERVICE_ROLE_KEY`
-- `SLACK_TOKEN_ENC_KEY`
+The Slack API has no such limit. `conversations.history` returns every message
+*with* its full reaction list, including the member ID of everyone who reacted:
 
-**Option B — paste a token directly.** Put `SLACK_USER_TOKEN=xoxp-…` in
-`.env.local`. This wins over Option A when both are present.
-
-The token acts **as a person**, so whoever it belongs to must be a member of
-every sales channel. If they're not, that channel is skipped and the script says
-so rather than silently dropping it. Use `--owner someone@bratttree.com` to
-borrow a different person's stored token.
-
-## Options
-
-```bash
-npm run review-stats                                   # last 3 months
-npm run review-stats -- --months 1                     # last month
-npm run review-stats -- --since 2026-05-11 --until 2026-08-10
-npm run review-stats -- --include-threads               # exhaustive (see below)
-npm run review-stats -- --emoji white_check_mark        # if the team changes emoji
-npm run review-stats -- --csv ~/Desktop/reviews.csv     # where to write the CSV
-npm run review-stats -- --owner nic@bratttree.com       # use someone else's token
-npm run review-stats -- --help
+```json
+"reactions": [ { "name": "heart", "count": 1, "users": ["U065DMEA72P"] } ]
 ```
 
-### `--include-threads`
-
-By default the script reads top-level channel messages. Occasionally someone
-posts a review request as a *reply inside* an existing thread, where top-level
-history can't see it. `--include-threads` sweeps every thread too. It's
-exhaustive but costs one extra API call per thread, so it takes far longer
-(tens of minutes rather than a few). The default run prints a note reminding you
-it skipped these.
-
-## Reading the output
-
-- **`Review requests found`** — the denominator. Includes ones nobody reviewed.
-- **`reviewed (has the emoji)` / `no review emoji`** — your review-coverage rate.
-  A high "no review emoji" number is worth investigating on its own: it's either
-  proposals going out unreviewed, or reviewers not marking them.
-- **`Share of the N completed reviews`** — the answer to the original question.
-- **`Notes / limits of this run`** — read this. It surfaces anything that could
-  make the numbers wrong: channels it couldn't read, reactions Slack truncated,
-  and whether unreviewed requests are carrying some *other* emoji (which would
-  mean the convention changed and the `--emoji` flag needs updating).
+One call covers up to 999 messages, reactions included — so the whole window is a
+few dozen calls. That's the entire reason an exact answer is cheap here.
 
 ## Maintenance
 
-Three things go stale. All are at the top of `scripts/review-attribution.mjs`
+Three things go stale. All are at the top of `src/lib/review-attribution.ts`
 under `CONFIG`:
 
 - **`SALES_CHANNELS`** — add a channel when a new sales arborist starts. In
@@ -115,14 +60,25 @@ under `CONFIG`:
   the bottom of the panel.
 - **`REVIEW_SUBTEAM_ID`** — the @-group the arborists mention. Only changes if
   the group is recreated.
-- **`REVIEW_EMOJI`** — the ❤️. If the team switches, the run notes will tell you,
-  because unreviewed requests will suddenly all be carrying the new emoji.
+- **`REVIEW_EMOJI`** — the ❤️. If the team switches, the page's "worth knowing"
+  box will tell you, because unreviewed requests will suddenly all be carrying
+  some other emoji.
 
 ## Known limits
 
-- Top-level messages only unless you pass `--include-threads`.
-- Attribution is by reaction. If a supervisor reviews a proposal and forgets the
-  ❤️, it counts as unreviewed — the same as it looks in Slack today.
-- A message hearted by *both* supervisors counts once for each, so reviewer
-  totals can slightly exceed the reviewed-message count. Percentages are taken
-  over total attributions, which is why they always add to 100%.
+The page prints these itself, in its "worth knowing about these numbers" box, so
+they travel with the data rather than living only here:
+
+- **Top-level messages only.** A review request posted as a reply *inside*
+  another thread isn't visible to `conversations.history`. Spot-checks put that
+  under 1% of requests; catching them would need one extra API call per thread
+  (thousands), which no page render can afford.
+- **Attribution is by reaction.** If a supervisor reviews a proposal and forgets
+  the ❤️, it counts as unreviewed — the same as it looks in Slack today.
+- **A proposal hearted by both supervisors counts once for each**, so the
+  reviewer columns sum to the total rather than to the message count. They'd
+  otherwise overshoot the total and look like an arithmetic error.
+- **Channels it can't read are named, not silently dropped.** The token acts as
+  the signed-in person, so a channel they're not in gets reported as skipped.
+- **Nothing is cached.** Every load is a fresh sweep, so the numbers are always
+  current and always cost 20–60 seconds.

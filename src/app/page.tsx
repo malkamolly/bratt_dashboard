@@ -1,7 +1,7 @@
 import Image from 'next/image';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
-import { allowedHubsFor, canSeeCostAnalysis, canUseVideoNotes, getAllowedUser, isOwner, type Hub } from '@/lib/auth';
+import { allowedHubsFor, canSeeCostAnalysis, canSeeReviewStats, canUseVideoNotes, getAllowedUser, isOwner, type Hub } from '@/lib/auth';
 import { isTagsUser } from '@/lib/tags-config';
 import { getCurrentEmployeeSlug } from '@/lib/crew-data';
 
@@ -156,6 +156,26 @@ export default async function LandingPage() {
             <p className="mt-3 text-sm text-fg-2">
               Tree removal pricing over the last year, by tree size &mdash; the
               groundwork for a standard pricing guide.
+            </p>
+            <p className="mt-6 font-headline text-xs font-extrabold uppercase tracking-ribbon text-orange">
+              Open &rarr;
+            </p>
+          </Link>
+        )}
+
+        {/* Proposal Reviews — leadership view; compares named supervisors. */}
+        {canSeeReviewStats(user.email, user.role) && (
+          <Link
+            href="/review-stats"
+            className="bt-card group transition-colors hover:!border-orange"
+          >
+            <p className="bt-eyebrow">Leadership</p>
+            <h2 className="mt-2 font-headline text-3xl font-black uppercase text-bark-deep">
+              Proposal Reviews
+            </h2>
+            <p className="mt-3 text-sm text-fg-2">
+              Who&rsquo;s reviewing the sales team&rsquo;s proposals &mdash; the
+              Brent / Nic split, week by week, plus how many go out unreviewed.
             </p>
             <p className="mt-6 font-headline text-xs font-extrabold uppercase tracking-ribbon text-orange">
               Open &rarr;
