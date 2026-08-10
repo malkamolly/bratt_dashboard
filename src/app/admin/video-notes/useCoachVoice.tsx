@@ -46,6 +46,28 @@ export const PREMIUM_VOICES = (
 
 const DEFAULT_VOICE = PREMIUM_VOICES[0].id;
 
+// Split a reply for speaking. The first chunk is deliberately left as a single
+// sentence: it alone decides how long the arborist waits before hearing anything.
+// Later chunks may merge, since they're fetched while earlier audio is playing.
+const SPEECH_CHUNK_CHARS = 350;
+
+export function splitForSpeech(text: string): string[] {
+  const sentences = (text.match(/[^.!?]+[.!?]*\s*/g) ?? [text])
+    .map((s) => s.trim())
+    .filter(Boolean);
+  if (sentences.length === 0) return [text];
+
+  const chunks: string[] = [];
+  for (const sentence of sentences) {
+    const last = chunks[chunks.length - 1];
+    const canMerge =
+      chunks.length > 1 && last.length + sentence.length + 1 <= SPEECH_CHUNK_CHARS;
+    if (canMerge) chunks[chunks.length - 1] = `${last} ${sentence}`;
+    else chunks.push(sentence);
+  }
+  return chunks;
+}
+
 async function transcribeBlob(blob: Blob): Promise<string> {
   const form = new FormData();
   form.append('audio', blob, 'answer.webm');
@@ -66,6 +88,7 @@ export function useCoachVoice() {
   const [ttsError, setTtsError] = useState('');
   const [ttsRate, setTtsRate] = useState(1);
   const [liveTranscript, setLiveTranscript] = useState('');
+  const [micLevel, setMicLevel] = useState(0);
 
   const ttsVoiceRef = useRef(DEFAULT_VOICE);
   const ttsRateRef = useRef(1);
@@ -77,6 +100,8 @@ export function useCoachVoice() {
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const browserVoicesRef = useRef<SpeechSynthesisVoice[]>([]);
   const recognitionRef = useRef<LiveRecognition | null>(null);
+  const speakTokenRef = useRef(0);
+  const meterRef = useRef<{ ctx: AudioContext; raf: number } | null>(null);
 
   useEffect(() => {
     ttsVoiceRef.current = ttsVoice;
@@ -108,6 +133,8 @@ export function useCoachVoice() {
   }, []);
 
   function stopSpeaking() {
+    // Invalidates any chunked utterance still in flight (see speak).
+    speakTokenRef.current += 1;
     if (typeof window !== 'undefined' && window.speechSynthesis) window.speechSynthesis.cancel();
     if (audioRef.current) {
       audioRef.current.pause();
@@ -153,38 +180,115 @@ export function useCoachVoice() {
     });
   }
 
+  async function fetchSpeech(text: string): Promise<Blob> {
+    const res = await fetch('/api/video-notes/tts', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text, voice: ttsVoiceRef.current }),
+    });
+    if (!res.ok) {
+      // The route has already translated the provider's error into a readable
+      // line and logged the raw body server-side, so just show what it hands back.
+      let detail = `The natural voice failed (${res.status}).`;
+      try {
+        const j = (await res.json()) as { error?: string };
+        detail = j.error || detail;
+      } catch {
+        /* body was not JSON — keep the status-based message */
+      }
+      throw new Error(detail);
+    }
+    const blob = await res.blob();
+    if (!blob.size) throw new Error('The natural voice returned no audio.');
+    return blob;
+  }
+
   // Natural voice first; fall back to the browser voice if it errors.
+  //
+  // Speaks in chunks rather than waiting for the whole reply to be rendered.
+  // Generating audio for a long coaching answer takes seconds, and none of it
+  // could be heard until all of it existed. Now the first sentence is requested
+  // on its own, and each later chunk is fetched while the previous one plays —
+  // so time-to-first-word is one short sentence instead of the full answer.
   async function speak(text: string): Promise<void> {
     if (mutedRef.current || !text) return;
     stopSpeaking();
+    const token = ++speakTokenRef.current;
+    const chunks = splitForSpeech(text);
+    let spokenUpTo = 0;
     try {
-      const res = await fetch('/api/video-notes/tts', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text, voice: ttsVoiceRef.current }),
-      });
-      if (!res.ok) {
-        // The route has already translated Groq's error into a readable line and
-        // logged the raw body server-side, so just show what it hands back.
-        let detail = `The natural voice failed (${res.status}).`;
-        try {
-          const j = (await res.json()) as { error?: string };
-          detail = j.error || detail;
-        } catch {
-          /* body was not JSON — keep the status-based message */
+      let pending: Promise<Blob> | null = fetchSpeech(chunks[0]);
+      for (let i = 0; i < chunks.length; i++) {
+        const blob = await pending;
+        if (!blob) break;
+        // Start the next request before playing this one, so generation overlaps
+        // playback instead of following it.
+        pending = i + 1 < chunks.length ? fetchSpeech(chunks[i + 1]) : null;
+        if (speakTokenRef.current !== token) return;
+        if (i === 0) {
+          setPremiumFailed(false);
+          setTtsError('');
         }
-        throw new Error(detail);
+        await playBlob(blob);
+        spokenUpTo = i + 1;
+        if (speakTokenRef.current !== token) return;
       }
-      const blob = await res.blob();
-      if (!blob.size) throw new Error('The natural voice returned no audio.');
-      setPremiumFailed(false);
-      setTtsError('');
-      await playBlob(blob);
     } catch (err) {
+      // A newer utterance (or a stop) superseded this one — say nothing.
+      if (speakTokenRef.current !== token) return;
       setPremiumFailed(true);
       setTtsError(err instanceof Error ? err.message : 'Natural voice failed.');
-      await browserSpeak(text);
+      // Only read out what wasn't already spoken, so a mid-reply failure doesn't
+      // repeat the opening in a different voice.
+      const remaining = chunks.slice(spokenUpTo).join(' ');
+      if (remaining) await browserSpeak(remaining);
     }
+  }
+
+  // --- Mic level ----------------------------------------------------------
+  // Bars that move while the arborist talks. This is the answer to "is it even
+  // hearing me?" on iPhone, where the dictation below can't run: it reads the
+  // same MediaStream the recorder is already using, so there's no second claim
+  // on the microphone and nothing to conflict over.
+  function startLevelMeter(stream: MediaStream) {
+    stopLevelMeter();
+    const AudioCtx = window.AudioContext || (window as WebkitWindow).webkitAudioContext;
+    if (!AudioCtx) return;
+    try {
+      const ctx = new AudioCtx();
+      const analyser = ctx.createAnalyser();
+      analyser.fftSize = 512;
+      ctx.createMediaStreamSource(stream).connect(analyser);
+      const buf = new Uint8Array(analyser.frequencyBinCount);
+      let lastPaint = 0;
+      const tick = (now: number) => {
+        analyser.getByteTimeDomainData(buf);
+        // Repaint ~12x a second; per-frame React updates aren't worth the churn.
+        if (now - lastPaint > 80) {
+          lastPaint = now;
+          let sum = 0;
+          for (let i = 0; i < buf.length; i++) {
+            const x = (buf[i] - 128) / 128;
+            sum += x * x;
+          }
+          // Speech sits well below full scale, so scale up before clamping.
+          setMicLevel(Math.min(1, Math.sqrt(sum / buf.length) * 6));
+        }
+        if (meterRef.current) meterRef.current.raf = requestAnimationFrame(tick);
+      };
+      meterRef.current = { ctx, raf: requestAnimationFrame(tick) };
+    } catch {
+      // A meter is a nicety; never let it break recording.
+    }
+  }
+
+  function stopLevelMeter() {
+    const meter = meterRef.current;
+    meterRef.current = null;
+    setMicLevel(0);
+    if (!meter) return;
+    cancelAnimationFrame(meter.raf);
+    if (meter.ctx.state !== 'closed') void meter.ctx.close();
   }
 
   // --- Live dictation -----------------------------------------------------
@@ -252,6 +356,7 @@ export function useCoachVoice() {
       rec.start();
       recorderRef.current = rec;
       setRecording(true);
+      startLevelMeter(stream);
       startLiveDictation();
       return true;
     } catch {
@@ -282,6 +387,7 @@ export function useCoachVoice() {
         }
       };
       stopLiveDictation();
+      stopLevelMeter();
       rec.stop();
       setRecording(false);
     });
@@ -313,6 +419,7 @@ export function useCoachVoice() {
     rec.ondataavailable = (e) => e.data.size > 0 && chunks.push(e.data);
     rec.start();
     setListening(true);
+    startLevelMeter(stream);
     startLiveDictation();
 
     const buf = new Uint8Array(analyser.frequencyBinCount);
@@ -349,6 +456,7 @@ export function useCoachVoice() {
     });
     cancelAnimationFrame(raf);
     stopLiveDictation();
+    stopLevelMeter();
 
     const blob = await new Promise<Blob>((res) => {
       rec.onstop = () => res(new Blob(chunks, { type: rec.mimeType || 'audio/webm' }));
@@ -376,6 +484,7 @@ export function useCoachVoice() {
   function stopAll() {
     stopSpeaking();
     stopLiveDictation();
+    stopLevelMeter();
     setLiveTranscript('');
     handsFreeRef.current = false;
     setHandsFree(false);
@@ -398,6 +507,7 @@ export function useCoachVoice() {
     transcribing,
     listening,
     liveTranscript,
+    micLevel,
     speak,
     stopSpeaking,
     beginRecording,
@@ -409,14 +519,37 @@ export function useCoachVoice() {
 
 export type CoachVoice = ReturnType<typeof useCoachVoice>;
 
-// What the browser is hearing, live, while the arborist talks. Renders nothing
-// until there are words, so a browser without dictation simply shows no change.
+// Proof the tool is hearing you. Two layers, because they fail differently:
+// the bars read the recorder's own audio and work everywhere including iPhone,
+// while the live words come from browser dictation, which iOS won't run at the
+// same time as the recorder. On desktop you get both; on a phone, the bars.
 export function LiveDictation({ v }: { v: CoachVoice }) {
-  if (!v.liveTranscript) return null;
+  const active = v.recording || v.listening;
+  if (!active && !v.liveTranscript) return null;
+
+  const bars = [0.15, 0.4, 0.65, 0.4, 0.15];
   return (
-    <p className="text-sm italic text-neutral-500" aria-live="polite">
-      {v.liveTranscript}
-    </p>
+    <div className="space-y-1">
+      {active && (
+        <div className="flex h-5 items-center gap-1" aria-hidden="true">
+          {bars.map((weight, i) => (
+            <span
+              key={i}
+              className="w-1 rounded-full bg-lime transition-[height] duration-75"
+              // A floor keeps the bars visible when the cab is quiet, so silence
+              // reads as "listening" rather than "broken".
+              style={{ height: `${Math.max(3, v.micLevel * weight * 40 + 3)}px` }}
+            />
+          ))}
+          <span className="ml-1 text-xs text-neutral-500">Listening…</span>
+        </div>
+      )}
+      {v.liveTranscript && (
+        <p className="text-sm italic text-neutral-500" aria-live="polite">
+          {v.liveTranscript}
+        </p>
+      )}
+    </div>
   );
 }
 
