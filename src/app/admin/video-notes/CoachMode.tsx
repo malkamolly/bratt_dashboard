@@ -17,7 +17,10 @@ import type { CoachMessage, ProposedLesson } from '@/lib/coach';
 import { useCoachVoice, VoiceControls, LiveDictation } from './useCoachVoice';
 import { streamReply } from './streamReply';
 
-export default function CoachMode({ findings }: { findings: Findings }) {
+// findings is null for a "talk it through" session: no video, the arborist just
+// has thoughts to contribute. The conversation and the wrap-up into playbook
+// lessons are the same either way.
+export default function CoachMode({ findings }: { findings: Findings | null }) {
   const v = useCoachVoice();
   const [messages, setMessages] = useState<CoachMessage[]>([]);
   const [coachThinking, setCoachThinking] = useState(false);
@@ -176,7 +179,7 @@ export default function CoachMode({ findings }: { findings: Findings }) {
   return (
     <div className="bt-card space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <h2 className="font-semibold">Coach Mode</h2>
+        <h2 className="font-semibold">{findings ? 'Coach Mode' : 'Talk it through'}</h2>
         <VoiceControls v={v} />
       </div>
 

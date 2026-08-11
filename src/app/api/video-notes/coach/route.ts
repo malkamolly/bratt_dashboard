@@ -42,18 +42,19 @@ export async function POST(request: Request) {
   } catch {
     return NextResponse.json({ error: 'Invalid request body.' }, { status: 400 });
   }
-  if (!body.findings) {
-    return NextResponse.json({ error: 'Missing analysis context.' }, { status: 400 });
-  }
+  // findings is optional: with none, this is a "talk it through" session where the
+  // arborist has thoughts to contribute and no video to review. The conversation
+  // and the wrap-up into playbook lessons are otherwise identical.
+  const findings = body.findings ?? null;
   const history = body.history ?? [];
 
   try {
     if (body.mode === 'summarize') {
-      const lessons = await runCoachSummarize(body.findings, history);
+      const lessons = await runCoachSummarize(findings, history);
       return NextResponse.json({ lessons });
     }
     if (body.stream) {
-      return new NextResponse(streamCoachChat(body.findings, history), {
+      return new NextResponse(streamCoachChat(findings, history), {
         headers: {
           'Content-Type': 'text/event-stream; charset=utf-8',
           'Cache-Control': 'no-store, no-transform',
@@ -66,7 +67,7 @@ export async function POST(request: Request) {
         },
       });
     }
-    const reply = await runCoachChat(body.findings, history);
+    const reply = await runCoachChat(findings, history);
     return NextResponse.json({ reply });
   } catch (err) {
     const message = err instanceof Error ? err.message : 'The coach hit an error.';

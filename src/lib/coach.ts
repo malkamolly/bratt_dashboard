@@ -21,17 +21,39 @@ export type ProposedLesson = { category: string; title: string; content: string 
 const KICKOFF =
   "I've just finished analyzing this property from the walkthrough video. Ask me your questions so you can learn to assess it the way I would.";
 
-function coachSystem(findings: Findings): string {
-  return `You are an eager, sharp, up-and-coming sales arborist at Bratt Tree, reviewing an estimate walkthrough with a senior mentor (the person you're talking to). You produced the analysis below from the video. Your goal is to LEARN how the mentor assesses this property so that future analyses get better.
+// Opening turn when there's no video — the mentor came here with something to
+// say rather than something to review.
+const KICKOFF_OPEN =
+  "I've got something on my mind I want to think through with you. It might be about how we price work, how to read a property, or something I noticed in the field.";
 
-Ask specific, curious, genuinely insightful questions — about tree species and health, hazards and structure, what work to recommend and how to scope/price it, access, and especially anything you might have missed or gotten wrong. Ground your questions in specifics from the analysis. React to the mentor's answers and dig deeper where it's interesting.
+export function coachKickoff(hasFindings: boolean): string {
+  return hasFindings ? KICKOFF : KICKOFF_OPEN;
+}
 
-Style:
+const STYLE = `Style:
 - Ask 2-4 questions at a time, not a wall of them.
 - Keep every message short and conversational — it will be read aloud.
 - Be humble and curious, not a know-it-all.
 - Use a first name + last initial for any person; never a full last name.
-- Do not use any internal or system XML tags.
+- Do not use any internal or system XML tags.`;
+
+function coachSystem(findings: Findings | null): string {
+  // No analysis: the mentor is thinking out loud. Same junior-arborist persona
+  // and the same wrap-up into playbook lessons, but the job is to draw out what's
+  // already in their head rather than to interrogate a specific property.
+  if (!findings) {
+    return `You are an eager, sharp, up-and-coming sales arborist at Bratt Tree, and a senior mentor (the person you're talking to) has something on their mind — how the team prices work, how to read a property, something they noticed in the field. There is no video and no analysis here; they just want to think out loud with you.
+
+Your goal is to draw that thinking out and make it USABLE by the rest of the team. Ask what makes them say that, what the exception looks like, and how someone else would recognise the same situation from a walkthrough video. Push gently for specifics — numbers, species, thresholds, visual cues — because guidance that stays vague can't be applied later. Follow their lead on the topic; don't steer them toward anything they didn't raise.
+
+${STYLE}`;
+  }
+
+  return `You are an eager, sharp, up-and-coming sales arborist at Bratt Tree, reviewing an estimate walkthrough with a senior mentor (the person you're talking to). You produced the analysis below from the video. Your goal is to LEARN how the mentor assesses this property so that future analyses get better.
+
+Ask specific, curious, genuinely insightful questions — about tree species and health, hazards and structure, what work to recommend and how to scope/price it, access, and especially anything you might have missed or gotten wrong. Ground your questions in specifics from the analysis. React to the mentor's answers and dig deeper where it's interesting.
+
+${STYLE}
 
 Here is the analysis you produced:
 ${JSON.stringify(findings, null, 2)}`;
@@ -42,7 +64,7 @@ ${JSON.stringify(findings, null, 2)}`;
 // re-processes it from scratch before the model writes a word. Cached reads are
 // both cheaper and faster. Prefixes shorter than the model's minimum simply
 // aren't cached — no error, no downside.
-function cachedSystem(findings: Findings): Anthropic.TextBlockParam[] {
+function cachedSystem(findings: Findings | null): Anthropic.TextBlockParam[] {
   return [
     {
       type: 'text',
@@ -52,10 +74,10 @@ function cachedSystem(findings: Findings): Anthropic.TextBlockParam[] {
   ];
 }
 
-function toMessages(history: CoachMessage[]): Anthropic.MessageParam[] {
+function toMessages(history: CoachMessage[], hasFindings: boolean): Anthropic.MessageParam[] {
   // The API needs the first message to be from the user, so we always lead with
   // a kickoff user turn, then replay the real Q&A.
-  const msgs: Anthropic.MessageParam[] = [{ role: 'user', content: KICKOFF }];
+  const msgs: Anthropic.MessageParam[] = [{ role: 'user', content: coachKickoff(hasFindings) }];
   for (const m of history) {
     msgs.push({ role: m.role, content: m.text });
   }
@@ -78,7 +100,7 @@ function client(): Anthropic {
  * two slow stages overlap instead of running end to end.
  */
 export function streamCoachChat(
-  findings: Findings,
+  findings: Findings | null,
   history: CoachMessage[],
 ): ReadableStream<Uint8Array> {
   const stream = client().messages.stream({
@@ -86,7 +108,7 @@ export function streamCoachChat(
     max_tokens: 1000,
     thinking: { type: 'disabled' },
     system: cachedSystem(findings),
-    messages: toMessages(history),
+    messages: toMessages(history, Boolean(findings)),
   });
 
   // Framed as server-sent events rather than raw text. Plain text responses are
@@ -121,7 +143,7 @@ export function streamCoachChat(
 
 /** Produce the coach's next message given the conversation so far. */
 export async function runCoachChat(
-  findings: Findings,
+  findings: Findings | null,
   history: CoachMessage[],
 ): Promise<string> {
   const response = await client().messages.create({
@@ -129,7 +151,7 @@ export async function runCoachChat(
     max_tokens: 1000,
     thinking: { type: 'disabled' },
     system: cachedSystem(findings),
-    messages: toMessages(history),
+    messages: toMessages(history, Boolean(findings)),
   });
   if (response.stop_reason === 'refusal') {
     throw new Error('The coach declined to respond.');
@@ -162,10 +184,10 @@ function extractJsonArray(text: string): string {
 
 /** At wrap-up, distill the conversation into reusable playbook lessons. */
 export async function runCoachSummarize(
-  findings: Findings,
+  findings: Findings | null,
   history: CoachMessage[],
 ): Promise<ProposedLesson[]> {
-  const messages = toMessages(history);
+  const messages = toMessages(history, Boolean(findings));
   messages.push({
     role: 'user',
     content:

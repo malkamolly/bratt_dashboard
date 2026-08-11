@@ -169,6 +169,10 @@ export default function VideoNotesClient({
   const [error, setError] = useState('');
   const [findings, setFindings] = useState<Findings | null>(null);
   const [coaching, setCoaching] = useState(false);
+  // A media-free session: the arborist has something to say rather than something
+  // to review. Hidden once an analysis exists, so the two entry points don't
+  // compete for attention on the same screen.
+  const [talking, setTalking] = useState(false);
   const [audioNote, setAudioNote] = useState('');
   const [mediaNote, setMediaNote] = useState('');
   const fileRef = useRef<HTMLInputElement>(null);
@@ -184,6 +188,7 @@ export default function VideoNotesClient({
     setError('');
     setFindings(null);
     setCoaching(false);
+    setTalking(false);
     setAudioNote('');
     setMediaNote('');
 
@@ -367,6 +372,26 @@ export default function VideoNotesClient({
         </button>
       )}
       {findings && coaching && <CoachMode findings={findings} />}
+
+      {/* Contribute to the playbook with nothing to upload. Same conversation and
+          the same wrap-up into lessons — it just isn't about a specific property. */}
+      {!findings && !talking && (
+        <div className="bt-card space-y-2">
+          <h2 className="font-semibold">Got thoughts? Talk them through</h2>
+          <p className="text-sm text-neutral-600">
+            No video needed. Talk through anything you want the analyzer to know —
+            how we price work, what to look for on a property, something you noticed
+            in the field — and it becomes Playbook guidance the whole team gets.
+          </p>
+          <button
+            onClick={() => setTalking(true)}
+            className="rounded bg-lime px-4 py-2 text-sm font-semibold text-black"
+          >
+            🎙 Start talking
+          </button>
+        </div>
+      )}
+      {!findings && talking && <CoachMode findings={null} />}
 
       {isAdmin && (
         <div className="bt-card space-y-1">
