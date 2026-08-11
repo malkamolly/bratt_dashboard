@@ -10,6 +10,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import type { RefineMessage } from '@/lib/playbook-refine';
+import { fmtDateTime } from '@/lib/format';
 import { useCoachVoice, VoiceControls, LiveDictation, type CoachVoice } from '../useCoachVoice';
 import { streamReply } from '../streamReply';
 
@@ -520,6 +521,11 @@ function PlaybookRow({
                   title={entry.created_by ?? 'Unknown'}
                 >
                   {entry.author}
+                </span>
+                {/* When this entry was committed. Entries are already ordered
+                    newest-first, so this makes that ordering legible. */}
+                <span className="text-[10px] text-neutral-500" title={entry.created_at}>
+                  {fmtDateTime(entry.created_at)}
                 </span>
               </div>
               <p className="font-medium text-sm">{entry.title}</p>

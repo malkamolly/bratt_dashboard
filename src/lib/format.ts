@@ -2,6 +2,21 @@
 // Display formatters
 // ============================================================================
 
+import { BUSINESS_TZ } from './dates';
+
+// Pinned to the business timezone rather than the viewer's. Two reasons: a
+// timestamp then means the same thing to everyone on the team wherever they're
+// standing, and server and client render identical text — formatting in local
+// time inside a client component hydrates with a mismatch.
+const dateTime = new Intl.DateTimeFormat('en-US', {
+  timeZone: BUSINESS_TZ,
+  month: 'short',
+  day: 'numeric',
+  year: 'numeric',
+  hour: 'numeric',
+  minute: '2-digit',
+});
+
 const usdWhole = new Intl.NumberFormat('en-US', {
   style: 'currency',
   currency: 'USD',
@@ -19,6 +34,14 @@ const pctWhole = new Intl.NumberFormat('en-US', {
   style: 'percent',
   maximumFractionDigits: 0,
 });
+
+/** A timestamp as "Aug 10, 2026, 3:42 PM" in the business timezone. */
+export function fmtDateTime(iso: string | null | undefined): string {
+  if (!iso) return '—';
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return '—';
+  return dateTime.format(d);
+}
 
 export function fmtUsd(n: number | null | undefined): string {
   if (n == null || !Number.isFinite(n)) return '—';
