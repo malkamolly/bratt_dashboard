@@ -15,6 +15,7 @@ import { useEffect, useRef, useState } from 'react';
 import type { Findings } from '@/lib/video-notes';
 import type { CoachMessage, ProposedLesson } from '@/lib/coach';
 import { useCoachVoice, VoiceControls, LiveDictation } from './useCoachVoice';
+import { streamReply } from './streamReply';
 
 export default function CoachMode({ findings }: { findings: Findings }) {
   const v = useCoachVoice();
@@ -44,151 +45,32 @@ export default function CoachMode({ findings }: { findings: Findings }) {
   useEffect(() => void (phaseRef.current = phase), [phase]);
   useEffect(() => void (messagesRef.current = messages), [messages]);
 
-  // Streaming is the fast path, but it only pays off if every hop forwards bytes
-  // unbuffered. If the first byte doesn't arrive quickly, we abandon it for the
-  // plain request that has always worked — the arborist must never be left
-  // watching "Coach is thinking…" because an optimisation didn't take.
-  const FIRST_BYTE_TIMEOUT_MS = 4000;
-
-  // Returns false when the stream produced nothing usable and the caller should
-  // fall back. Throws only on a real error worth showing.
-  async function streamReply(history: CoachMessage[], startedAt: number): Promise<boolean> {
-    const controller = new AbortController();
-    const watchdog = setTimeout(() => controller.abort(), FIRST_BYTE_TIMEOUT_MS);
-    let reply = '';
-    try {
-      const res = await fetch('/api/video-notes/coach', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ findings, history, mode: 'chat', stream: true }),
-        signal: controller.signal,
-      });
-      if (!res.ok) {
-        clearTimeout(watchdog);
-        const json = (await res.json().catch(() => ({}))) as { error?: string };
-        throw new Error(json.error || 'The coach hit an error.');
-      }
-      if (!res.body) {
-        clearTimeout(watchdog);
-        return false;
-      }
-      setCoachModel(res.headers.get('x-coach-model') || '');
-
-      const token = v.beginUtterance();
-      const reader = res.body.getReader();
-      const decoder = new TextDecoder();
-      let spokenUpTo = 0;
-
-      // Hand every completed sentence to the voice. `spokenUpTo` is an index into
-      // `reply`; matches are found in the unspoken remainder and the offset added
-      // back, so the two never get confused.
-      const flushSentences = (final: boolean) => {
-        for (;;) {
-          const rest = reply.slice(spokenUpTo);
-          if (!rest.trim()) return;
-          const match = rest.match(/[.!?]["')\]]?\s/);
-          if (match?.index !== undefined) {
-            const end = match.index + match[0].length;
-            v.enqueueSpeech(rest.slice(0, end));
-            spokenUpTo += end;
-            continue;
-          }
-          // No sentence end yet — wait for more text, unless this is the tail.
-          if (final) {
-            v.enqueueSpeech(rest);
-            spokenUpTo = reply.length;
-          }
-          return;
-        }
-      };
-
-      // The route opens with an SSE comment, so any byte proves the transport
-      // works. The watchdog guards that — not how long the model takes to start
-      // writing, which would make it fire spuriously and land us on the slower
-      // path for no reason.
-      let frameBuffer = '';
-      for (;;) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        clearTimeout(watchdog);
-        frameBuffer += decoder.decode(value, { stream: true });
-
-        // Frames are separated by a blank line; keep any partial tail for later.
-        const frames = frameBuffer.split('\n\n');
-        frameBuffer = frames.pop() ?? '';
-        for (const frame of frames) {
-          for (const line of frame.split('\n')) {
-            if (!line.startsWith('data:')) continue;
-            const payload = line.slice(5).trim();
-            if (!payload) continue;
-            let text = '';
-            try {
-              text = JSON.parse(payload) as string;
-            } catch {
-              continue;
-            }
-            if (!text) continue;
-            if (!reply) {
-              setReplyMs(Date.now() - startedAt);
-              setCoachThinking(false);
-            }
-            reply += text;
-          }
-        }
-        if (reply) {
-          setMessages([...history, { role: 'assistant', text: reply }]);
-          flushSentences(false);
-        }
-      }
-      clearTimeout(watchdog);
-      flushSentences(true);
-      if (!reply.trim()) return false;
-
-      const next: CoachMessage[] = [...history, { role: 'assistant', text: reply }];
-      setMessages(next);
-      messagesRef.current = next;
-      setCoachThinking(false);
-      await v.waitForSpeech(token);
-      return true;
-    } catch (err) {
-      clearTimeout(watchdog);
-      // Watchdog fired, or the connection died before any text: fall back quietly.
-      if (controller.signal.aborted || !reply.trim()) {
-        setStreamFellBack(true);
-        return false;
-      }
-      throw err;
-    }
-  }
-
-  // The original single-request path. Slower, but proven.
-  async function plainReply(history: CoachMessage[], startedAt: number) {
-    v.stopSpeaking();
-    const res = await fetch('/api/video-notes/coach', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ findings, history, mode: 'chat' }),
-    });
-    const json = (await res.json()) as { reply?: string; error?: string };
-    setReplyMs(Date.now() - startedAt);
-    if (!res.ok) throw new Error(json.error || 'The coach hit an error.');
-    const reply = json.reply || '';
-    const next: CoachMessage[] = [...history, { role: 'assistant', text: reply }];
-    setMessages(next);
-    messagesRef.current = next;
-    setCoachThinking(false);
-    await v.speak(reply);
-  }
-
   // Ask the coach for its next message, then speak it and (if hands-free) listen.
+  // The streaming flow lives in ../streamReply and is shared with the Playbook
+  // refine chat — they previously had separate copies, and only this one received
+  // the speed work, which is why the other screen stayed slow.
   async function askCoach(history: CoachMessage[]) {
     setCoachThinking(true);
     setError('');
     setStreamFellBack(false);
-    const startedAt = Date.now();
     try {
-      const streamed = await streamReply(history, startedAt);
-      if (!streamed) await plainReply(history, startedAt);
+      const result = await streamReply({
+        url: '/api/video-notes/coach',
+        payload: { findings, history, mode: 'chat' },
+        voice: v,
+        onPartial: (text) => setMessages([...history, { role: 'assistant', text }]),
+        onFirstText: (ms) => {
+          setReplyMs(ms);
+          setCoachThinking(false);
+        },
+      });
+      const next: CoachMessage[] = [...history, { role: 'assistant', text: result.reply }];
+      setMessages(next);
+      messagesRef.current = next;
+      setReplyMs(result.replyMs);
+      setStreamFellBack(result.fellBack);
+      setCoachModel(result.model);
+      setCoachThinking(false);
       if (v.handsFree && phaseRef.current === 'chat') void handsFreeListen();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'The coach hit an error.');

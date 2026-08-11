@@ -11,6 +11,7 @@
 import { useEffect, useRef, useState } from 'react';
 import type { RefineMessage } from '@/lib/playbook-refine';
 import { useCoachVoice, VoiceControls, LiveDictation, type CoachVoice } from '../useCoachVoice';
+import { streamReply } from '../streamReply';
 
 export type AdminPlaybookEntry = {
   id: string;
@@ -221,6 +222,11 @@ function PlaybookRow({
   const [refineBusy, setRefineBusy] = useState(false);
   const [refineNote, setRefineNote] = useState('');
   const [refineError, setRefineError] = useState('');
+  // Lag breakdown, same as Coach Mode — this screen had no visibility at all,
+  // which is why several rounds of "nothing changed" had nothing to read.
+  const [replyMs, setReplyMs] = useState(0);
+  const [streamFellBack, setStreamFellBack] = useState(false);
+  const [coachModel, setCoachModel] = useState('');
 
   const messagesRef = useRef<RefineMessage[]>([]);
   const refineOpenRef = useRef(false);
@@ -246,13 +252,27 @@ function PlaybookRow({
     setRefineBusy(true);
     setRefineError('');
     setRefineNote('');
+    setStreamFellBack(false);
     try {
-      const { reply } = await refinePost('chat', history);
-      const next: RefineMessage[] = [...history, { role: 'assistant', text: reply || '' }];
+      // Same streaming flow Coach Mode uses — shared so the two can't drift and
+      // leave one of them on the slow path again.
+      const result = await streamReply({
+        url: '/api/video-notes/playbook/refine',
+        payload: { entry: fieldsRef.current, history, mode: 'chat' },
+        voice,
+        onPartial: (text) => setMessages([...history, { role: 'assistant', text }]),
+        onFirstText: (ms) => {
+          setReplyMs(ms);
+          setRefineBusy(false);
+        },
+      });
+      const next: RefineMessage[] = [...history, { role: 'assistant', text: result.reply }];
       setMessages(next);
       messagesRef.current = next;
+      setReplyMs(result.replyMs);
+      setStreamFellBack(result.fellBack);
+      setCoachModel(result.model);
       setRefineBusy(false);
-      await voice.speak(reply || '');
       if (voice.handsFree && refineOpenRef.current) void refineListen();
     } catch (err) {
       setRefineError(err instanceof Error ? err.message : 'Something went wrong.');
@@ -433,6 +453,19 @@ function PlaybookRow({
               )}
 
               <LiveDictation v={voice} />
+
+              {(voice.timings.transcribeMs > 0 || replyMs > 0) && (
+                <div className="rounded border border-neutral-300 bg-white/70 px-2 py-1 font-mono text-xs text-neutral-700">
+                  <span className="font-semibold">Timing:</span>{' '}
+                  {voice.timings.transcribeMs > 0 &&
+                    `heard ${(voice.timings.transcribeMs / 1000).toFixed(1)}s`}
+                  {replyMs > 0 && ` · reply ${(replyMs / 1000).toFixed(1)}s`}
+                  {voice.timings.firstAudioMs > 0 &&
+                    ` · voice ${(voice.timings.firstAudioMs / 1000).toFixed(1)}s`}
+                  {streamFellBack && ' · STREAM FELL BACK'}
+                  {coachModel && ` · ${coachModel}`}
+                </div>
+              )}
 
               <div className="flex gap-2">
                 <input
