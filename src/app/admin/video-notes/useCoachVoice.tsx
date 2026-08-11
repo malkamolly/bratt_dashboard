@@ -104,6 +104,9 @@ export function useCoachVoice() {
   const browserVoicesRef = useRef<SpeechSynthesisVoice[]>([]);
   const recognitionRef = useRef<LiveRecognition | null>(null);
   const speakTokenRef = useRef(0);
+  const speechQueueRef = useRef<string[]>([]);
+  const speechActiveRef = useRef(false);
+  const utteranceStartRef = useRef(0);
   const meterRef = useRef<{ ctx: AudioContext; raf: number } | null>(null);
 
   useEffect(() => {
@@ -138,6 +141,7 @@ export function useCoachVoice() {
   function stopSpeaking() {
     // Invalidates any chunked utterance still in flight (see speak).
     speakTokenRef.current += 1;
+    speechQueueRef.current = [];
     if (typeof window !== 'undefined' && window.speechSynthesis) window.speechSynthesis.cancel();
     if (audioRef.current) {
       audioRef.current.pause();
@@ -204,6 +208,69 @@ export function useCoachVoice() {
     const blob = await res.blob();
     if (!blob.size) throw new Error('The natural voice returned no audio.');
     return blob;
+  }
+
+  // --- Speaking a streamed reply ------------------------------------------
+  // Feed sentences in as the model writes them; audio for the first one starts
+  // while the rest is still arriving. beginUtterance cancels whatever came
+  // before, so a new answer never plays over an old one.
+  function beginUtterance(): number {
+    stopSpeaking();
+    utteranceStartRef.current = Date.now();
+    return speakTokenRef.current;
+  }
+
+  function enqueueSpeech(text: string) {
+    const trimmed = text.trim();
+    if (mutedRef.current || !trimmed) return;
+    speechQueueRef.current.push(trimmed);
+    void drainSpeechQueue(speakTokenRef.current);
+  }
+
+  async function drainSpeechQueue(token: number) {
+    // One consumer at a time; a later enqueue restarts it if the queue drained
+    // while the model was mid-sentence.
+    if (speechActiveRef.current) return;
+    speechActiveRef.current = true;
+    try {
+      while (speechQueueRef.current.length > 0) {
+        if (speakTokenRef.current !== token) return;
+        const next = speechQueueRef.current.shift();
+        if (!next) continue;
+        const blob = await fetchSpeech(next);
+        if (speakTokenRef.current !== token) return;
+        if (!utteranceStartRef.current) utteranceStartRef.current = Date.now();
+        setPremiumFailed(false);
+        setTtsError('');
+        setTimings((t) =>
+          t.firstAudioMs > 0
+            ? t
+            : { ...t, firstAudioMs: Date.now() - utteranceStartRef.current },
+        );
+        await playBlob(blob);
+      }
+    } catch (err) {
+      if (speakTokenRef.current !== token) return;
+      setPremiumFailed(true);
+      setTtsError(err instanceof Error ? err.message : 'Natural voice failed.');
+      const remaining = speechQueueRef.current.join(' ');
+      speechQueueRef.current = [];
+      if (remaining) await browserSpeak(remaining);
+    } finally {
+      speechActiveRef.current = false;
+    }
+  }
+
+  // Resolves once this utterance has finished speaking, or once a newer one has
+  // superseded it — so hands-free hands the mic back when the coach stops rather
+  // than talking over itself.
+  async function waitForSpeech(token: number): Promise<void> {
+    while (
+      speakTokenRef.current === token &&
+      (speechActiveRef.current || speechQueueRef.current.length > 0)
+    ) {
+      await new Promise((resolve) => setTimeout(resolve, 120));
+    }
   }
 
   // Natural voice first; fall back to the browser voice if it errors.
@@ -518,6 +585,9 @@ export function useCoachVoice() {
     liveTranscript,
     micLevel,
     timings,
+    beginUtterance,
+    enqueueSpeech,
+    waitForSpeech,
     speak,
     stopSpeaking,
     beginRecording,

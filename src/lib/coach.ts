@@ -54,6 +54,48 @@ function client(): Anthropic {
   return new Anthropic();
 }
 
+/**
+ * Stream the coach's next message as plain text.
+ *
+ * The chat used to be requested whole: the arborist waited for the entire reply
+ * to be written, and only then did audio generation start. Streaming lets the
+ * caller speak the first sentence while the rest is still being written, so the
+ * two slow stages overlap instead of running end to end.
+ */
+export function streamCoachChat(
+  findings: Findings,
+  history: CoachMessage[],
+): ReadableStream<Uint8Array> {
+  const stream = client().messages.stream({
+    model: VIDEO_NOTES_MODEL,
+    max_tokens: 1000,
+    thinking: { type: 'disabled' },
+    system: coachSystem(findings),
+    messages: toMessages(history),
+  });
+
+  const encoder = new TextEncoder();
+  return new ReadableStream<Uint8Array>({
+    async start(controller) {
+      try {
+        for await (const event of stream) {
+          if (event.type === 'content_block_delta' && event.delta.type === 'text_delta') {
+            controller.enqueue(encoder.encode(event.delta.text));
+          }
+        }
+        controller.close();
+      } catch (err) {
+        // The client shows whatever text already arrived, so a mid-stream failure
+        // degrades to a short reply rather than an error screen.
+        controller.error(err);
+      }
+    },
+    cancel() {
+      stream.abort();
+    },
+  });
+}
+
 /** Produce the coach's next message given the conversation so far. */
 export async function runCoachChat(
   findings: Findings,

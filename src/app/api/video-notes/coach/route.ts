@@ -9,7 +9,12 @@
 
 import { NextResponse } from 'next/server';
 import { getAllowedUser, canUseVideoNotes } from '@/lib/auth';
-import { runCoachChat, runCoachSummarize, type CoachMessage } from '@/lib/coach';
+import {
+  runCoachChat,
+  runCoachSummarize,
+  streamCoachChat,
+  type CoachMessage,
+} from '@/lib/coach';
 import type { Findings } from '@/lib/video-notes';
 
 export const maxDuration = 60;
@@ -19,6 +24,9 @@ type Body = {
   findings?: Findings;
   history?: CoachMessage[];
   mode?: 'chat' | 'summarize';
+  // Chat only: stream the reply as plain text instead of returning JSON, so the
+  // client can start speaking the first sentence before the rest is written.
+  stream?: boolean;
 };
 
 export async function POST(request: Request) {
@@ -43,6 +51,16 @@ export async function POST(request: Request) {
     if (body.mode === 'summarize') {
       const lessons = await runCoachSummarize(body.findings, history);
       return NextResponse.json({ lessons });
+    }
+    if (body.stream) {
+      return new NextResponse(streamCoachChat(body.findings, history), {
+        headers: {
+          'Content-Type': 'text/plain; charset=utf-8',
+          'Cache-Control': 'no-store',
+          // Proxies that buffer would defeat the point of streaming.
+          'X-Accel-Buffering': 'no',
+        },
+      });
     }
     const reply = await runCoachChat(body.findings, history);
     return NextResponse.json({ reply });

@@ -38,6 +38,13 @@ const INSTRUCTIONS =
     ? process.env.TTS_INSTRUCTIONS.trim()
     : DEFAULT_INSTRUCTIONS;
 
+// tts-1 renders audio markedly faster than gpt-4o-mini-tts, which generates
+// speech the way a model generates text. It rejects `instructions` though, so
+// dropping it here keeps TTS_MODEL a one-variable switch: set tts-1 to trade
+// delivery steering for speed, with nothing else to remember. (tts-1 also has a
+// smaller voice list — sage and ash are on it, cedar and marin are not.)
+const SUPPORTS_INSTRUCTIONS = !/^tts-1(-hd)?$/.test(MODEL);
+
 // Comfortably inside both limits we care about (tts-1 caps at 4096 characters,
 // gpt-4o-mini-tts at 2000 tokens). The old 1000 cut long coaching replies off
 // mid-sentence.
@@ -129,7 +136,7 @@ export async function POST(request: Request) {
         input: text,
         voice,
         response_format: FORMAT,
-        ...(INSTRUCTIONS ? { instructions: INSTRUCTIONS } : {}),
+        ...(INSTRUCTIONS && SUPPORTS_INSTRUCTIONS ? { instructions: INSTRUCTIONS } : {}),
       }),
     });
     if (!res.ok) {

@@ -46,17 +46,66 @@ export default function CoachMode({ findings }: { findings: Findings }) {
       const res = await fetch('/api/video-notes/coach', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ findings, history, mode: 'chat' }),
+        body: JSON.stringify({ findings, history, mode: 'chat', stream: true }),
       });
-      const json = await res.json();
-      setReplyMs(Date.now() - startedAt);
-      if (!res.ok) throw new Error(json.error || 'The coach hit an error.');
-      const reply = (json.reply as string) || '';
+      if (!res.ok || !res.body) {
+        // Errors still come back as JSON, so read them the old way.
+        const json = (await res.json().catch(() => ({}))) as { error?: string };
+        throw new Error(json.error || 'The coach hit an error.');
+      }
+
+      // Read the reply as it's written. Each finished sentence goes straight to
+      // the voice, so speaking overlaps writing instead of waiting for it.
+      const token = v.beginUtterance();
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let reply = '';
+      let spokenUpTo = 0;
+      let firstTextAt = 0;
+
+      // Hand every completed sentence to the voice. `spokenUpTo` is an index into
+      // `reply`; matches are found in the unspoken remainder and offsets added
+      // back, so the two never get confused.
+      const flushSentences = (final: boolean) => {
+        for (;;) {
+          const rest = reply.slice(spokenUpTo);
+          if (!rest.trim()) return;
+          const match = rest.match(/[.!?]["')\]]?\s/);
+          if (match?.index !== undefined) {
+            const end = match.index + match[0].length;
+            v.enqueueSpeech(rest.slice(0, end));
+            spokenUpTo += end;
+            continue;
+          }
+          // No sentence end yet — wait for more text, unless this is the tail.
+          if (final) {
+            v.enqueueSpeech(rest);
+            spokenUpTo = reply.length;
+          }
+          return;
+        }
+      };
+
+      for (;;) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        reply += decoder.decode(value, { stream: true });
+        if (!firstTextAt) {
+          firstTextAt = Date.now();
+          setReplyMs(firstTextAt - startedAt);
+          setCoachThinking(false);
+        }
+        setMessages([...history, { role: 'assistant', text: reply }]);
+        flushSentences(false);
+      }
+      flushSentences(true);
+
       const next: CoachMessage[] = [...history, { role: 'assistant', text: reply }];
       setMessages(next);
       messagesRef.current = next;
       setCoachThinking(false);
-      await v.speak(reply);
+      // Wait for the voice to finish before handing the mic back.
+      await v.waitForSpeech(token);
       if (v.handsFree && phaseRef.current === 'chat') void handsFreeListen();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'The coach hit an error.');
