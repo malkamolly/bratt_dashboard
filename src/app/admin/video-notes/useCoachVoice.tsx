@@ -68,9 +68,25 @@ export function splitForSpeech(text: string): string[] {
   return chunks;
 }
 
+// Name the upload after what was actually recorded. Browsers disagree on format:
+// Chrome's MediaRecorder yields audio/webm, Safari's yields audio/mp4. The
+// filename is how the transcription service infers the container, so sending
+// Safari's MP4 audio as "answer.webm" — which this used to do unconditionally —
+// misdeclares it. That works on Android and can fail on iPhone, which is exactly
+// the split we have across the team.
+function audioFilename(type: string): string {
+  const t = type.toLowerCase();
+  if (t.includes('mp4') || t.includes('m4a') || t.includes('aac')) return 'answer.m4a';
+  if (t.includes('ogg')) return 'answer.ogg';
+  if (t.includes('mpeg')) return 'answer.mp3';
+  if (t.includes('wav')) return 'answer.wav';
+  if (t.includes('flac')) return 'answer.flac';
+  return 'answer.webm';
+}
+
 async function transcribeBlob(blob: Blob): Promise<string> {
   const form = new FormData();
-  form.append('audio', blob, 'answer.webm');
+  form.append('audio', blob, audioFilename(blob.type));
   const res = await fetch('/api/video-notes/transcribe', { method: 'POST', body: form });
   const json = await res.json();
   if (!res.ok) throw new Error(json.error || 'Transcription failed.');
