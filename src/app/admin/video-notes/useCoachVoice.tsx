@@ -328,6 +328,10 @@ export function useCoachVoice() {
     if (!AudioCtx) return;
     try {
       const ctx = new AudioCtx();
+      // On iOS a context created after an await starts suspended, so the analyser
+      // reads pure silence and the bars sit flat — which is why tap-to-talk showed
+      // nothing while hands-free (which already had a running analyser) worked.
+      if (ctx.state === 'suspended') void ctx.resume();
       const analyser = ctx.createAnalyser();
       analyser.fftSize = 512;
       ctx.createMediaStreamSource(stream).connect(analyser);
@@ -498,10 +502,12 @@ export function useCoachVoice() {
 
     const buf = new Uint8Array(analyser.frequencyBinCount);
     const THRESHOLD = 0.025;
-    // Dead air after the arborist stops talking, before any work begins. 1500ms
-    // was long enough to read as the tool being slow; 700ms still rides out the
-    // pause mid-sentence without stalling the turn.
-    const SILENCE_MS = 700;
+    // How long a pause has to last before we decide the arborist is done. This
+    // was briefly cut to 700ms to save time, which cut people off mid-thought —
+    // a natural pause while working out how to phrase something is longer than
+    // that. Conversation quality wins over the second it costs; find the time
+    // elsewhere.
+    const SILENCE_MS = 1500;
     const MAX_MS = 30000;
     const NO_SPEECH_MS = 7000;
     const startedAt = Date.now();
@@ -614,17 +620,21 @@ export function LiveDictation({ v }: { v: CoachVoice }) {
   return (
     <div className="space-y-1">
       {active && (
-        <div className="flex h-5 items-center gap-1" aria-hidden="true">
+        <div className="flex h-6 items-center gap-1">
           {bars.map((weight, i) => (
             <span
               key={i}
-              className="w-1 rounded-full bg-lime transition-[height] duration-75"
-              // A floor keeps the bars visible when the cab is quiet, so silence
-              // reads as "listening" rather than "broken".
-              style={{ height: `${Math.max(3, v.micLevel * weight * 40 + 3)}px` }}
+              aria-hidden="true"
+              // green.dark from the brand palette. The brand lime (#E9E71D) is a
+              // bright yellow that all but disappears on the cream card; there are
+              // no numbered shades on these custom tokens to fall back to.
+              className="w-1.5 rounded-full bg-green-dark transition-[height] duration-75"
+              // A visible floor so a quiet cab reads as "listening" rather than
+              // "broken" — but tall enough to be unmistakable on a phone screen.
+              style={{ height: `${Math.max(6, v.micLevel * weight * 44 + 6)}px` }}
             />
           ))}
-          <span className="ml-1 text-xs text-neutral-500">Listening…</span>
+          <span className="ml-1 text-xs font-medium text-neutral-600">Listening…</span>
         </div>
       )}
       {v.liveTranscript && (
