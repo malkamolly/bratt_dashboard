@@ -15,7 +15,7 @@ import {
   streamCoachChat,
   type CoachMessage,
 } from '@/lib/coach';
-import type { Findings } from '@/lib/video-notes';
+import { VIDEO_NOTES_MODEL, type Findings } from '@/lib/video-notes';
 
 export const maxDuration = 60;
 export const dynamic = 'force-dynamic';
@@ -58,6 +58,9 @@ export async function POST(request: Request) {
           'Content-Type': 'text/event-stream; charset=utf-8',
           'Cache-Control': 'no-store, no-transform',
           Connection: 'keep-alive',
+          // Surfaced in the timing readout: a slow model is a different problem
+          // from slow plumbing, and the env var is invisible from the browser.
+          'X-Coach-Model': VIDEO_NOTES_MODEL,
           // Belt and braces against intermediaries that buffer by default.
           'X-Accel-Buffering': 'no',
         },

@@ -37,6 +37,21 @@ Here is the analysis you produced:
 ${JSON.stringify(findings, null, 2)}`;
 }
 
+// The system prompt carries the whole findings JSON and is byte-identical for
+// every turn of a session, so it's worth caching: without this, each turn
+// re-processes it from scratch before the model writes a word. Cached reads are
+// both cheaper and faster. Prefixes shorter than the model's minimum simply
+// aren't cached — no error, no downside.
+function cachedSystem(findings: Findings): Anthropic.TextBlockParam[] {
+  return [
+    {
+      type: 'text',
+      text: coachSystem(findings),
+      cache_control: { type: 'ephemeral' },
+    },
+  ];
+}
+
 function toMessages(history: CoachMessage[]): Anthropic.MessageParam[] {
   // The API needs the first message to be from the user, so we always lead with
   // a kickoff user turn, then replay the real Q&A.
@@ -70,7 +85,7 @@ export function streamCoachChat(
     model: VIDEO_NOTES_MODEL,
     max_tokens: 1000,
     thinking: { type: 'disabled' },
-    system: coachSystem(findings),
+    system: cachedSystem(findings),
     messages: toMessages(history),
   });
 
@@ -113,7 +128,7 @@ export async function runCoachChat(
     model: VIDEO_NOTES_MODEL,
     max_tokens: 1000,
     thinking: { type: 'disabled' },
-    system: coachSystem(findings),
+    system: cachedSystem(findings),
     messages: toMessages(history),
   });
   if (response.stop_reason === 'refusal') {
@@ -161,7 +176,7 @@ export async function runCoachSummarize(
     model: VIDEO_NOTES_MODEL,
     max_tokens: 3000,
     thinking: { type: 'disabled' },
-    system: coachSystem(findings),
+    system: cachedSystem(findings),
     messages,
   });
   if (response.stop_reason === 'refusal') {

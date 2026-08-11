@@ -498,7 +498,10 @@ export function useCoachVoice() {
 
     const buf = new Uint8Array(analyser.frequencyBinCount);
     const THRESHOLD = 0.025;
-    const SILENCE_MS = 1500;
+    // Dead air after the arborist stops talking, before any work begins. 1500ms
+    // was long enough to read as the tool being slow; 700ms still rides out the
+    // pause mid-sentence without stalling the turn.
+    const SILENCE_MS = 700;
     const MAX_MS = 30000;
     const NO_SPEECH_MS = 7000;
     const startedAt = Date.now();

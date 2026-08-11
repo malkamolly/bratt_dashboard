@@ -26,6 +26,9 @@ export default function CoachMode({ findings }: { findings: Findings }) {
   // breakdown, because "slow" and "slow because streaming didn't work" need
   // different fixes and there's no other way to tell them apart.
   const [streamFellBack, setStreamFellBack] = useState(false);
+  // Which model is actually answering — set from a response header, since the env
+  // var behind it can't be seen from the browser.
+  const [coachModel, setCoachModel] = useState('');
   const [text, setText] = useState('');
   const [phase, setPhase] = useState<'chat' | 'lessons'>('chat');
   const [lessons, setLessons] = useState<ProposedLesson[]>([]);
@@ -69,6 +72,7 @@ export default function CoachMode({ findings }: { findings: Findings }) {
         clearTimeout(watchdog);
         return false;
       }
+      setCoachModel(res.headers.get('x-coach-model') || '');
 
       const token = v.beginUtterance();
       const reader = res.body.getReader();
@@ -346,15 +350,18 @@ export default function CoachMode({ findings }: { findings: Findings }) {
           <LiveDictation v={v} />
 
           {/* Where the wait actually goes, so it can be fixed at the slow stage
-              instead of the guessed one. Each is a separate round trip today. */}
+              instead of the guessed one. Each is a separate round trip today.
+              Deliberately high-contrast: the first version was neutral-400 on a
+              cream card, which was effectively invisible on a phone. */}
           {(v.timings.transcribeMs > 0 || replyMs > 0) && (
-            <p className="text-xs text-neutral-400">
-              {v.timings.transcribeMs > 0 && `heard in ${(v.timings.transcribeMs / 1000).toFixed(1)}s`}
-              {replyMs > 0 && ` · reply in ${(replyMs / 1000).toFixed(1)}s`}
-              {v.timings.firstAudioMs > 0 &&
-                ` · voice in ${(v.timings.firstAudioMs / 1000).toFixed(1)}s`}
-              {streamFellBack && ' · streaming unavailable'}
-            </p>
+            <div className="rounded border border-neutral-300 bg-white/70 px-2 py-1 font-mono text-xs text-neutral-700">
+              <span className="font-semibold">Timing:</span>{' '}
+              {v.timings.transcribeMs > 0 && `heard ${(v.timings.transcribeMs / 1000).toFixed(1)}s`}
+              {replyMs > 0 && ` · reply ${(replyMs / 1000).toFixed(1)}s`}
+              {v.timings.firstAudioMs > 0 && ` · voice ${(v.timings.firstAudioMs / 1000).toFixed(1)}s`}
+              {streamFellBack && ' · STREAM FELL BACK'}
+              {coachModel && ` · ${coachModel}`}
+            </div>
           )}
 
           <div className="flex gap-2">
