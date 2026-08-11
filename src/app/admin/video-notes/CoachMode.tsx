@@ -22,6 +22,10 @@ export default function CoachMode({ findings }: { findings: Findings }) {
   const [coachThinking, setCoachThinking] = useState(false);
   // How long the coach's reply took to come back, for the lag breakdown below.
   const [replyMs, setReplyMs] = useState(0);
+  // Whether streaming was abandoned for the plain request — shown in the
+  // breakdown, because "slow" and "slow because streaming didn't work" need
+  // different fixes and there's no other way to tell them apart.
+  const [streamFellBack, setStreamFellBack] = useState(false);
   const [text, setText] = useState('');
   const [phase, setPhase] = useState<'chat' | 'lessons'>('chat');
   const [lessons, setLessons] = useState<ProposedLesson[]>([]);
@@ -37,34 +41,42 @@ export default function CoachMode({ findings }: { findings: Findings }) {
   useEffect(() => void (phaseRef.current = phase), [phase]);
   useEffect(() => void (messagesRef.current = messages), [messages]);
 
-  // Ask the coach for its next message, then speak it and (if hands-free) listen.
-  async function askCoach(history: CoachMessage[]) {
-    setCoachThinking(true);
-    setError('');
-    const startedAt = Date.now();
+  // Streaming is the fast path, but it only pays off if every hop forwards bytes
+  // unbuffered. If the first byte doesn't arrive quickly, we abandon it for the
+  // plain request that has always worked — the arborist must never be left
+  // watching "Coach is thinking…" because an optimisation didn't take.
+  const FIRST_BYTE_TIMEOUT_MS = 4000;
+
+  // Returns false when the stream produced nothing usable and the caller should
+  // fall back. Throws only on a real error worth showing.
+  async function streamReply(history: CoachMessage[], startedAt: number): Promise<boolean> {
+    const controller = new AbortController();
+    const watchdog = setTimeout(() => controller.abort(), FIRST_BYTE_TIMEOUT_MS);
+    let reply = '';
     try {
       const res = await fetch('/api/video-notes/coach', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ findings, history, mode: 'chat', stream: true }),
+        signal: controller.signal,
       });
-      if (!res.ok || !res.body) {
-        // Errors still come back as JSON, so read them the old way.
+      if (!res.ok) {
+        clearTimeout(watchdog);
         const json = (await res.json().catch(() => ({}))) as { error?: string };
         throw new Error(json.error || 'The coach hit an error.');
       }
+      if (!res.body) {
+        clearTimeout(watchdog);
+        return false;
+      }
 
-      // Read the reply as it's written. Each finished sentence goes straight to
-      // the voice, so speaking overlaps writing instead of waiting for it.
       const token = v.beginUtterance();
       const reader = res.body.getReader();
       const decoder = new TextDecoder();
-      let reply = '';
       let spokenUpTo = 0;
-      let firstTextAt = 0;
 
       // Hand every completed sentence to the voice. `spokenUpTo` is an index into
-      // `reply`; matches are found in the unspoken remainder and offsets added
+      // `reply`; matches are found in the unspoken remainder and the offset added
       // back, so the two never get confused.
       const flushSentences = (final: boolean) => {
         for (;;) {
@@ -89,23 +101,65 @@ export default function CoachMode({ findings }: { findings: Findings }) {
       for (;;) {
         const { done, value } = await reader.read();
         if (done) break;
-        reply += decoder.decode(value, { stream: true });
-        if (!firstTextAt) {
-          firstTextAt = Date.now();
-          setReplyMs(firstTextAt - startedAt);
+        if (!reply) {
+          // First byte: the stream is genuinely flowing, so stand the watchdog down.
+          clearTimeout(watchdog);
+          setReplyMs(Date.now() - startedAt);
           setCoachThinking(false);
         }
+        reply += decoder.decode(value, { stream: true });
         setMessages([...history, { role: 'assistant', text: reply }]);
         flushSentences(false);
       }
+      clearTimeout(watchdog);
       flushSentences(true);
+      if (!reply.trim()) return false;
 
       const next: CoachMessage[] = [...history, { role: 'assistant', text: reply }];
       setMessages(next);
       messagesRef.current = next;
       setCoachThinking(false);
-      // Wait for the voice to finish before handing the mic back.
       await v.waitForSpeech(token);
+      return true;
+    } catch (err) {
+      clearTimeout(watchdog);
+      // Watchdog fired, or the connection died before any text: fall back quietly.
+      if (controller.signal.aborted || !reply.trim()) {
+        setStreamFellBack(true);
+        return false;
+      }
+      throw err;
+    }
+  }
+
+  // The original single-request path. Slower, but proven.
+  async function plainReply(history: CoachMessage[], startedAt: number) {
+    v.stopSpeaking();
+    const res = await fetch('/api/video-notes/coach', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ findings, history, mode: 'chat' }),
+    });
+    const json = (await res.json()) as { reply?: string; error?: string };
+    setReplyMs(Date.now() - startedAt);
+    if (!res.ok) throw new Error(json.error || 'The coach hit an error.');
+    const reply = json.reply || '';
+    const next: CoachMessage[] = [...history, { role: 'assistant', text: reply }];
+    setMessages(next);
+    messagesRef.current = next;
+    setCoachThinking(false);
+    await v.speak(reply);
+  }
+
+  // Ask the coach for its next message, then speak it and (if hands-free) listen.
+  async function askCoach(history: CoachMessage[]) {
+    setCoachThinking(true);
+    setError('');
+    setStreamFellBack(false);
+    const startedAt = Date.now();
+    try {
+      const streamed = await streamReply(history, startedAt);
+      if (!streamed) await plainReply(history, startedAt);
       if (v.handsFree && phaseRef.current === 'chat') void handsFreeListen();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'The coach hit an error.');
@@ -274,6 +328,7 @@ export default function CoachMode({ findings }: { findings: Findings }) {
               {replyMs > 0 && ` · reply in ${(replyMs / 1000).toFixed(1)}s`}
               {v.timings.firstAudioMs > 0 &&
                 ` · voice in ${(v.timings.firstAudioMs / 1000).toFixed(1)}s`}
+              {streamFellBack && ' · streaming unavailable'}
             </p>
           )}
 
