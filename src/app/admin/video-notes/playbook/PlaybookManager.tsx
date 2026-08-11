@@ -13,6 +13,7 @@ import type { RefineMessage } from '@/lib/playbook-refine';
 import { fmtDateTime } from '@/lib/format';
 import { useCoachVoice, VoiceControls, LiveDictation, type CoachVoice } from '../useCoachVoice';
 import { streamReply } from '../streamReply';
+import { useStickyScroll } from '../useStickyScroll';
 
 export type AdminPlaybookEntry = {
   id: string;
@@ -362,6 +363,12 @@ function PlaybookRow({
 
   const refineBusyAll = refineBusy || voice.transcribing;
 
+  // Follow the newest text as it streams in, without fighting a reader who has
+  // scrolled up. Same hook Coach Mode uses.
+  const thread = useStickyScroll(
+    `${messages.length}:${messages[messages.length - 1]?.text.length ?? 0}:${refineBusy}`,
+  );
+
   return (
     <div
       className={`rounded-lg border p-3 ${
@@ -415,7 +422,11 @@ function PlaybookRow({
                 you like it, apply Claude&apos;s version into the fields above, then Save.
               </p>
               <VoiceControls v={voice} />
-              <div className="space-y-2 max-h-60 overflow-y-auto">
+              <div
+                ref={thread.ref}
+                onScroll={thread.onScroll}
+                className="space-y-2 max-h-60 overflow-y-auto"
+              >
                 {messages.map((m, i) => (
                   <div key={i} className={m.role === 'assistant' ? '' : 'text-right'}>
                     <span

@@ -16,6 +16,7 @@ import type { Findings } from '@/lib/video-notes';
 import type { CoachMessage, ProposedLesson } from '@/lib/coach';
 import { useCoachVoice, VoiceControls, LiveDictation } from './useCoachVoice';
 import { streamReply } from './streamReply';
+import { useStickyScroll } from './useStickyScroll';
 
 // findings is null for a "talk it through" session: no video, the arborist just
 // has thoughts to contribute. The conversation and the wrap-up into playbook
@@ -176,6 +177,13 @@ export default function CoachMode({ findings }: { findings: Findings | null }) {
 
   const busy = coachThinking || v.transcribing;
 
+  // Follow the newest text. The signal ticks on each streamed chunk (the last
+  // message grows) as well as on each new message, and on the thinking indicator
+  // appearing, since that renders inside the thread too.
+  const thread = useStickyScroll(
+    `${messages.length}:${messages[messages.length - 1]?.text.length ?? 0}:${coachThinking}`,
+  );
+
   return (
     <div className="bt-card space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
@@ -183,7 +191,11 @@ export default function CoachMode({ findings }: { findings: Findings | null }) {
         <VoiceControls v={v} />
       </div>
 
-      <div className="space-y-3 max-h-96 overflow-y-auto">
+      <div
+        ref={thread.ref}
+        onScroll={thread.onScroll}
+        className="space-y-3 max-h-96 overflow-y-auto"
+      >
         {messages.map((m, i) => (
           <div key={i} className={m.role === 'assistant' ? '' : 'text-right'}>
             <span
