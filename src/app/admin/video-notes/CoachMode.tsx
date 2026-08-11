@@ -98,18 +98,43 @@ export default function CoachMode({ findings }: { findings: Findings }) {
         }
       };
 
+      // The route opens with an SSE comment, so any byte proves the transport
+      // works. The watchdog guards that — not how long the model takes to start
+      // writing, which would make it fire spuriously and land us on the slower
+      // path for no reason.
+      let frameBuffer = '';
       for (;;) {
         const { done, value } = await reader.read();
         if (done) break;
-        if (!reply) {
-          // First byte: the stream is genuinely flowing, so stand the watchdog down.
-          clearTimeout(watchdog);
-          setReplyMs(Date.now() - startedAt);
-          setCoachThinking(false);
+        clearTimeout(watchdog);
+        frameBuffer += decoder.decode(value, { stream: true });
+
+        // Frames are separated by a blank line; keep any partial tail for later.
+        const frames = frameBuffer.split('\n\n');
+        frameBuffer = frames.pop() ?? '';
+        for (const frame of frames) {
+          for (const line of frame.split('\n')) {
+            if (!line.startsWith('data:')) continue;
+            const payload = line.slice(5).trim();
+            if (!payload) continue;
+            let text = '';
+            try {
+              text = JSON.parse(payload) as string;
+            } catch {
+              continue;
+            }
+            if (!text) continue;
+            if (!reply) {
+              setReplyMs(Date.now() - startedAt);
+              setCoachThinking(false);
+            }
+            reply += text;
+          }
         }
-        reply += decoder.decode(value, { stream: true });
-        setMessages([...history, { role: 'assistant', text: reply }]);
-        flushSentences(false);
+        if (reply) {
+          setMessages([...history, { role: 'assistant', text: reply }]);
+          flushSentences(false);
+        }
       }
       clearTimeout(watchdog);
       flushSentences(true);

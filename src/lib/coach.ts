@@ -74,18 +74,26 @@ export function streamCoachChat(
     messages: toMessages(history),
   });
 
+  // Framed as server-sent events rather than raw text. Plain text responses are
+  // liable to be held in a buffer somewhere between here and the browser — which
+  // defeats streaming entirely and is the likeliest reason the first attempt
+  // delivered nothing — whereas text/event-stream is passed straight through.
   const encoder = new TextEncoder();
   return new ReadableStream<Uint8Array>({
     async start(controller) {
+      // Flush a comment before touching the model, so the client can tell a
+      // blocked transport from a model that's still thinking. Those look
+      // identical otherwise, and they need opposite fixes.
+      controller.enqueue(encoder.encode(': open\n\n'));
       try {
         for await (const event of stream) {
           if (event.type === 'content_block_delta' && event.delta.type === 'text_delta') {
-            controller.enqueue(encoder.encode(event.delta.text));
+            controller.enqueue(encoder.encode(`data: ${JSON.stringify(event.delta.text)}\n\n`));
           }
         }
         controller.close();
       } catch (err) {
-        // The client shows whatever text already arrived, so a mid-stream failure
+        // The client keeps whatever text already arrived, so a mid-stream failure
         // degrades to a short reply rather than an error screen.
         controller.error(err);
       }

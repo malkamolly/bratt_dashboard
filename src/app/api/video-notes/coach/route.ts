@@ -55,9 +55,10 @@ export async function POST(request: Request) {
     if (body.stream) {
       return new NextResponse(streamCoachChat(body.findings, history), {
         headers: {
-          'Content-Type': 'text/plain; charset=utf-8',
-          'Cache-Control': 'no-store',
-          // Proxies that buffer would defeat the point of streaming.
+          'Content-Type': 'text/event-stream; charset=utf-8',
+          'Cache-Control': 'no-store, no-transform',
+          Connection: 'keep-alive',
+          // Belt and braces against intermediaries that buffer by default.
           'X-Accel-Buffering': 'no',
         },
       });
