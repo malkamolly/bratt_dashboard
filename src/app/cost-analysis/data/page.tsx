@@ -189,7 +189,8 @@ function EntryList({
                 <th className="py-1.5 pr-3 font-extrabold uppercase">Invoice</th>
                 <th className="py-1.5 pr-3 font-extrabold uppercase">Date</th>
                 <th className="py-1.5 pr-3 font-extrabold uppercase">DBH</th>
-                <th className="py-1.5 pr-3 font-extrabold uppercase">H × Crown</th>
+                <th className="py-1.5 pr-3 font-extrabold uppercase">Height</th>
+                <th className="py-1.5 pr-3 font-extrabold uppercase">Crown</th>
                 <th className="py-1.5 pr-3 font-extrabold uppercase">Price</th>
                 <th className="py-1.5 pr-3 font-extrabold uppercase">Species</th>
                 <th className="py-1.5 pr-3 font-extrabold uppercase">Seller</th>
@@ -220,7 +221,10 @@ function EntryList({
                         )}
                       </td>
                       <td className="py-2 pr-3 text-fg-2">
-                        {e.height != null ? `${e.height}′` : '—'} × {e.crown != null ? `${e.crown}′` : '—'}
+                        {e.height != null ? `${e.height}′` : '—'}
+                      </td>
+                      <td className="py-2 pr-3 text-fg-2">
+                        {e.crown != null ? `${e.crown}′` : '—'}
                       </td>
                       <td className="py-2 pr-3 font-bold text-orange">
                         {e.price != null ? fmtUsd(e.price) : '—'}
@@ -252,7 +256,7 @@ function EntryList({
                         text, so you can check it against what the seller typed. */}
                     {detail && (
                       <tr className="border-b border-bark/10">
-                        <td colSpan={9} className="pb-2 pr-3 text-[11px] leading-snug text-fg-3">
+                        <td colSpan={10} className="pb-2 pr-3 text-[11px] leading-snug text-fg-3">
                           {detail}
                         </td>
                       </tr>
