@@ -244,34 +244,49 @@ export default function VideoNotesClient({
         throw new Error('Could not read any images from those files.');
       }
 
-      // Best-effort: extract the narration audio from each video and transcribe
-      // it. If anything here fails (silent video, odd codec, no Groq key, or a
-      // photos-only upload), we quietly fall back to a visual-only analysis.
+      // Best-effort: extract the narration audio from each video and transcribe it.
+      // Still falls back to a visual-only analysis when it can't, but no longer
+      // silently: "no narration" used to cover a silent video, a video too large to
+      // decode, a rate-limited transcription service and several other causes
+      // identically, which made it impossible to tell a working feature from a
+      // broken one.
       let transcript: string | undefined;
       if (videos.length > 0) {
         try {
           setPhase('transcribing-audio');
           const parts: string[] = [];
+          const problems: string[] = [];
           for (let vi = 0; vi < videos.length; vi++) {
-            const mp3 = await extractAudioMp3(videos[vi]);
-            if (mp3 && mp3.size > 0) {
-              const form = new FormData();
-              form.append('audio', mp3, 'narration.mp3');
-              const tr = await fetch('/api/video-notes/transcribe', { method: 'POST', body: form });
-              if (tr.ok) {
-                const j = await tr.json();
-                if (j.text) {
-                  parts.push(videos.length > 1 ? `[Video ${vi + 1}] ${j.text}` : (j.text as string));
-                }
-              }
+            const label = videos.length > 1 ? `Video ${vi + 1}: ` : '';
+            const { mp3, reason } = await extractAudioMp3(videos[vi]);
+            if (!mp3) {
+              problems.push(`${label}${reason ?? 'Audio could not be prepared.'}`);
+              continue;
             }
+            const form = new FormData();
+            form.append('audio', mp3, 'narration.mp3');
+            const tr = await fetch('/api/video-notes/transcribe', { method: 'POST', body: form });
+            if (!tr.ok) {
+              const j = (await tr.json().catch(() => ({}))) as { error?: string };
+              problems.push(`${label}${j.error || `Transcription failed (${tr.status}).`}`);
+              continue;
+            }
+            const j = (await tr.json()) as { text?: string };
+            if (!j.text?.trim()) {
+              problems.push(`${label}The audio came back with no words in it.`);
+              continue;
+            }
+            parts.push(videos.length > 1 ? `[Video ${vi + 1}] ${j.text}` : j.text);
           }
           transcript = parts.length ? parts.join('\n\n') : undefined;
+          if (transcript && problems.length === 0) setAudioNote('');
+          else if (transcript) setAudioNote(`Some narration was missed — ${problems.join(' ')}`);
+          else setAudioNote(`No narration — this analysis is visual-only. ${problems.join(' ')}`);
+        } catch (err) {
+          const detail = err instanceof Error && err.message ? ` (${err.message})` : '';
           setAudioNote(
-            transcript ? '' : 'No narration was picked up — this analysis is visual-only.',
+            `Couldn't process the audio${detail} — this analysis is visual-only.`,
           );
-        } catch {
-          setAudioNote("Couldn't process the audio — this analysis is visual-only.");
         }
       }
 

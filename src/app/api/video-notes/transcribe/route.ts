@@ -14,6 +14,29 @@ export const dynamic = 'force-dynamic';
 
 const GROQ_WHISPER_MODEL = process.env.GROQ_WHISPER_MODEL || 'whisper-large-v3-turbo';
 
+// Translate the provider's error into something actionable. A rate limit here is
+// a realistic cause of "no narration" — several uploads in quick succession, or a
+// few people using voice at once — and it needs to say so rather than looking
+// like a silent video.
+function describeFailure(status: number, raw: string): string {
+  let code = '';
+  let message = '';
+  try {
+    const parsed = JSON.parse(raw) as { error?: { code?: string; message?: string } };
+    code = parsed.error?.code ?? '';
+    message = parsed.error?.message ?? '';
+  } catch {
+    // Not JSON — fall through to the status-based message.
+  }
+  if (code === 'rate_limit_exceeded' || status === 429) {
+    return 'Transcription is rate limited right now — try again in a few minutes.';
+  }
+  if (status === 401 || status === 403) return 'The transcription key was rejected.';
+  if (status === 413) return 'That audio was too large to transcribe.';
+  if (status === 400 && message) return `Transcription rejected the audio: ${message}`;
+  return `Transcription failed (${status}).`;
+}
+
 export async function POST(request: Request) {
   const user = await getAllowedUser();
   if (!user) return NextResponse.json({ error: 'Not signed in.' }, { status: 401 });
@@ -48,11 +71,12 @@ export async function POST(request: Request) {
       body: groqForm,
     });
     if (!res.ok) {
-      const detail = await res.text();
-      return NextResponse.json(
-        { error: `Transcription service error (${res.status}).`, detail },
-        { status: 502 },
-      );
+      const raw = await res.text();
+      // Keep the upstream body for diagnosis, but in the server logs only — it's a
+      // nested JSON blob carrying our Groq org ID, and it used to be handed to the
+      // browser verbatim.
+      console.error(`Groq transcription failed (${res.status}): ${raw}`);
+      return NextResponse.json({ error: describeFailure(res.status, raw) }, { status: 502 });
     }
     const json = (await res.json()) as { text?: string };
     return NextResponse.json({ text: (json.text ?? '').trim() });
