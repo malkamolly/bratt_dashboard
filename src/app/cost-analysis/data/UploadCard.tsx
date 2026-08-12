@@ -28,14 +28,16 @@ export default function UploadCard() {
   const inputRef = useRef<HTMLInputElement>(null);
 
   return (
-    <section className="bt-card mt-8">
-      <h2 className="font-headline text-xl font-black uppercase text-bark-deep">
+    // Folded shut and sitting below the manual form: one person does the bulk
+    // uploads, so this doesn't need to greet everyone who opens the page.
+    <details className="bt-card group mt-4">
+      <summary className="flex cursor-pointer list-none items-center gap-2 font-headline text-lg font-black uppercase text-bark-deep hover:text-orange [&::-webkit-details-marker]:hidden">
+        <span className="text-fg-3 transition-transform group-open:rotate-90">&#9656;</span>
         Upload a spreadsheet
-      </h2>
+      </summary>
       {/* The Hub's Date Type setting is load-bearing — Creation Date silently
-          returns a fraction of the jobs — so it stays visible. Everything else
-          about how the file is read folds away. */}
-      <p className="mt-2 max-w-3xl text-sm text-fg-2">
+          returns a fraction of the jobs — so it leads once this is open. */}
+      <p className="mt-3 max-w-3xl text-sm text-fg-2">
         In the Hub, run <strong>Invoice Items</strong> with{' '}
         <strong>Date Type = Completion Date</strong> starting on or after your last upload, then
         drop the <code>.xlsx</code> here.
@@ -66,20 +68,16 @@ export default function UploadCard() {
         <SubmitButton hasFile={!!fileName} />
       </form>
 
-      <details className="group mt-4">
-        <summary className="cursor-pointer list-none text-xs font-bold uppercase tracking-wide text-fg-3 hover:text-orange [&::-webkit-details-marker]:hidden">
-          <span className="mr-1 inline-block transition-transform group-open:rotate-90">&#9656;</span>
-          How the spreadsheet is read
-        </summary>
-        <p className="mt-2 max-w-3xl text-sm text-fg-3">
-          DBH, height, crown spread, species and tree count are pulled out of each line
-          item&rsquo;s description text, since the Hub doesn&rsquo;t export them as columns.
-          Anything unreadable is left blank and noted on the row rather than guessed at, and a
-          job described as several trees or a multi-stem clump is recorded with its trunk count
-          &mdash; which keeps it out of the pricing math but still counted in the totals.
-          Re-uploading an overlapping date range is safe: jobs already in the system are skipped.
-        </p>
-      </details>
-    </section>
+      {/* Plain text rather than a nested disclosure: you've already opened one
+          to get here, and nested Tailwind `group`s would cross their arrows. */}
+      <p className="mt-4 max-w-3xl text-sm text-fg-3">
+        DBH, height, crown spread, species and tree count are pulled out of each line
+        item&rsquo;s description text, since the Hub doesn&rsquo;t export them as columns.
+        Anything unreadable is left blank and noted on the row rather than guessed at, and a
+        job described as several trees or a multi-stem clump is recorded with its trunk count
+        &mdash; which keeps it out of the pricing math but still counted in the totals.
+        Re-uploading an overlapping date range is safe: jobs already in the system are skipped.
+      </p>
+    </details>
   );
 }

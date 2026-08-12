@@ -82,12 +82,10 @@ export default async function CostAnalysisDataPage({
         </div>
       )}
 
-      {/* ---------- Bulk upload ---------- */}
-      <UploadCard />
-
       {/* ---------- Add form ----------
-          Folded away by default: uploading is the normal path now, so eleven
-          always-open fields were pushing the review queue off the screen. */}
+          Both entry paths are folded away by default so the review queue — the
+          reason anyone opens this page — starts near the top. Hand entry leads
+          because the bulk upload is one person's tool. */}
       <details className="bt-card mt-6 group">
         <summary className="flex cursor-pointer list-none items-center gap-2 font-headline text-lg font-black uppercase text-bark-deep hover:text-orange [&::-webkit-details-marker]:hidden">
           <span className="text-fg-3 transition-transform group-open:rotate-90">&#9656;</span>
@@ -133,6 +131,9 @@ export default async function CostAnalysisDataPage({
           </div>
         </form>
       </details>
+
+      {/* ---------- Bulk upload ---------- */}
+      <UploadCard />
 
       {/* ---------- Review queue ---------- */}
       <EntryList
