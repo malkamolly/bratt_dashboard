@@ -1,17 +1,16 @@
-import { Fragment } from 'react';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { getAllowedUser, canSeeCostAnalysis } from '@/lib/auth';
 import { isEntryComparable } from '@/lib/cost-analysis';
-import { loadReviewEntries, type RemovalEntry, type EntryStatus } from '@/lib/removal-entries';
-import { fmtUsd } from '@/lib/format';
-import { addEntry, setEntryStatus, includeAllPending } from './actions';
+import { loadReviewEntries, type RemovalEntry } from '@/lib/removal-entries';
+import { addEntry, includeAllPending } from './actions';
 import UploadCard from './UploadCard';
+import PendingRow, { type Badge } from './PendingRow';
 
 export const dynamic = 'force-dynamic';
 
 // How a given entry would land in the analysis, for the review badge.
-function classify(e: RemovalEntry): { label: string; tone: 'good' | 'warn' | 'muted'; reason?: string } {
+function classify(e: RemovalEntry): Badge {
   if (e.muni) return { label: 'Municipal', tone: 'muted' };
   if (isEntryComparable(e)) return { label: 'In pricing', tone: 'good' };
   // Included but not comparable — say why, mirroring the clean-set rules.
@@ -23,12 +22,6 @@ function classify(e: RemovalEntry): { label: string; tone: 'good' | 'warn' | 'mu
   if (e.price == null) reasons.push('no price');
   return { label: 'Totals only', tone: 'warn', reason: reasons.join(', ') || 'below size floor' };
 }
-
-const BADGE: Record<'good' | 'warn' | 'muted', string> = {
-  good: 'bg-lime/30 text-bark-deep',
-  warn: 'bg-status-warn/40 text-ink',
-  muted: 'bg-paper-edge/50 text-fg-2',
-};
 
 export default async function CostAnalysisDataPage({
   searchParams,
@@ -194,112 +187,24 @@ function EntryList({
               </tr>
             </thead>
             <tbody>
-              {entries.map((e) => {
-                const c = classify(e);
-                // What the spreadsheet parser had to interpret, if anything. The
-                // leading sentence is boilerplate on every uploaded row.
-                const detail = e.note?.replace(/^Uploaded from spreadsheet\.\s*/, '').trim();
-                return (
-                  <Fragment key={e.id}>
-                    <tr className="border-b border-bark/10 align-middle">
-                      <td className="py-2 pr-3 font-bold text-ink">
-                        {e.inv}
-                        {!e.haul && <span className="ml-1 text-[10px] text-fg-3">(no haul)</span>}
-                      </td>
-                      <td className="py-2 pr-3 text-fg-2">{e.date ?? '—'}</td>
-                      <td className="py-2 pr-3 text-ink">
-                        {e.dbh != null ? `${e.dbh}"` : '—'}
-                        {e.stems > 1 && (
-                          <span className="ml-1 whitespace-nowrap text-[10px] font-bold text-fg-3">
-                            ×{e.stems} trunks
-                          </span>
-                        )}
-                      </td>
-                      <td className="py-2 pr-3 text-fg-2">
-                        {e.height != null ? `${e.height}′` : '—'}
-                      </td>
-                      <td className="py-2 pr-3 text-fg-2">
-                        {e.crown != null ? `${e.crown}′` : '—'}
-                      </td>
-                      <td className="py-2 pr-3 font-bold text-orange">
-                        {e.price != null ? fmtUsd(e.price) : '—'}
-                      </td>
-                      <td className="py-2 pr-3 text-fg-2">{e.species ?? '—'}</td>
-                      <td className="py-2 pr-3 text-fg-2">{e.seller ?? '—'}</td>
-                      <td className="py-2 pr-3">
-                        <span className={`inline-block rounded px-2 py-0.5 text-[11px] font-bold ${BADGE[c.tone]}`}>
-                          {c.label}
-                        </span>
-                        {c.reason && <span className="ml-1 text-[10px] text-fg-3">{c.reason}</span>}
-                      </td>
-                      <td className="py-2">
-                        <div className="flex items-center gap-1.5">
-                          <Link
-                            href={`/cost-analysis/jobs/${e.id}/edit?returnTo=${encodeURIComponent('/cost-analysis/data')}`}
-                            className="rounded px-1.5 py-1 text-base hover:bg-lime/30"
-                            title="Edit before including"
-                            aria-label="Edit job"
-                          >
-                            ✏️
-                          </Link>
-                          <StatusButton id={e.id} status="included" current={e.status} label="Include" tone="good" />
-                          <StatusButton id={e.id} status="removed" current={e.status} label="Remove" tone="bad" />
-                        </div>
-                      </td>
-                    </tr>
-                    {/* Uploaded rows carry the parser's reading of the description
-                        text, so you can check it against what the seller typed.
-                        Held to one truncated line — at 100 rows a wrapping note
-                        doubles the length of the whole queue. Full text on hover. */}
-                    {detail && (
-                      <tr className="border-b border-bark/10">
-                        <td colSpan={10} className="max-w-0 truncate pb-2 pr-3 text-[11px] text-fg-3" title={detail}>
-                          {detail}
-                        </td>
-                      </tr>
-                    )}
-                  </Fragment>
-                );
-              })}
+              {entries.map((e) => (
+                <PendingRow
+                  key={e.id}
+                  entry={e}
+                  // Computed here rather than in the row: classify() reaches into
+                  // cost-analysis.ts, which is server-side, and the row is a client
+                  // component.
+                  badge={classify(e)}
+                  // What the parser had to interpret, if anything. The leading
+                  // sentence is boilerplate on every uploaded row.
+                  detail={e.note?.replace(/^Uploaded from spreadsheet\.\s*/, '').trim() || undefined}
+                />
+              ))}
             </tbody>
           </table>
         </div>
       )}
     </section>
-  );
-}
-
-function StatusButton({
-  id,
-  status,
-  current,
-  label,
-  tone,
-}: {
-  id: string;
-  status: EntryStatus;
-  current: EntryStatus;
-  label: string;
-  tone: 'good' | 'bad';
-}) {
-  const active = current === status;
-  const cls = active
-    ? 'cursor-default bg-bark/10 text-fg-3'
-    : tone === 'good'
-    ? 'bg-lime/30 text-bark-deep hover:bg-lime/60'
-    : 'bg-paper-edge/50 text-fg-2 hover:bg-orange/20';
-  return (
-    <form action={setEntryStatus}>
-      <input type="hidden" name="id" value={id} />
-      <input type="hidden" name="status" value={status} />
-      <button
-        type="submit"
-        disabled={active}
-        className={`rounded px-2.5 py-1 text-xs font-bold uppercase tracking-wide ${cls}`}
-      >
-        {active ? `✓ ${label}d` : label}
-      </button>
-    </form>
   );
 }
 

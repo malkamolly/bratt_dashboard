@@ -61,17 +61,23 @@ export async function editJob(formData: FormData): Promise<void> {
   const editPath = `${JOBS_PATH}/${id}/edit`;
   if (!id) back(JOBS_PATH, 'error', 'Missing job id.');
 
+  // Where a validation error lands. The full edit screen keeps you on itself, but
+  // the inline row editor passes its own page so a bad number doesn't yank you out
+  // of the review queue.
+  const rawErrorTo = String(formData.get('errorTo') ?? '').trim();
+  const errorTo = rawErrorTo.startsWith('/cost-analysis') ? rawErrorTo : editPath;
+
   const dbh = optNum(formData.get('dbh'));
-  if (dbh === undefined) back(editPath, 'error', 'DBH must be a number.');
-  if (dbh !== null && dbh <= 0) back(editPath, 'error', 'DBH must be greater than 0.');
+  if (dbh === undefined) back(errorTo, 'error', 'DBH must be a number.');
+  if (dbh !== null && dbh <= 0) back(errorTo, 'error', 'DBH must be greater than 0.');
 
   const height = optNum(formData.get('height'));
   const crown = optNum(formData.get('crown'));
   const adjusted = optNum(formData.get('adjusted_price'));
-  if (height === undefined) back(editPath, 'error', 'Height must be a number (or blank).');
-  if (crown === undefined) back(editPath, 'error', 'Crown spread must be a number (or blank).');
-  if (adjusted === undefined) back(editPath, 'error', 'Adjusted price must be a number (or blank).');
-  if (adjusted !== null && adjusted < 0) back(editPath, 'error', 'Adjusted price cannot be negative.');
+  if (height === undefined) back(errorTo, 'error', 'Height must be a number (or blank).');
+  if (crown === undefined) back(errorTo, 'error', 'Crown spread must be a number (or blank).');
+  if (adjusted === undefined) back(errorTo, 'error', 'Adjusted price must be a number (or blank).');
+  if (adjusted !== null && adjusted < 0) back(errorTo, 'error', 'Adjusted price cannot be negative.');
 
   const stemsRaw = optNum(formData.get('stems'));
   const stems = stemsRaw == null || stemsRaw < 1 ? 1 : Math.round(stemsRaw);
@@ -94,7 +100,7 @@ export async function editJob(formData: FormData): Promise<void> {
 
   const supabase = await serverClient();
   const { error } = await supabase.from('removals').update(patch).eq('id', id);
-  if (error) back(editPath, 'error', `Could not save: ${error.message}`);
+  if (error) back(errorTo, 'error', `Could not save: ${error.message}`);
 
   revalidatePath('/cost-analysis');
   revalidatePath(JOBS_PATH);
