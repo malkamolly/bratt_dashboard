@@ -13,10 +13,17 @@
 // well under serverless request-size limits and the AI cost stays low.
 // ============================================================================
 
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { Findings, VisualFinding } from '@/lib/video-notes';
 import CoachMode from './CoachMode';
 import { extractAudioMp3 } from './extractAudio';
+import {
+  clearCoachDraft,
+  draftUserTurns,
+  readCoachDraft,
+  type CoachDraft,
+} from './coachDraft';
+import { fmtDateTime } from '@/lib/format';
 
 // Tuning knobs. ~40 frames of an under-10-minute walkthrough is plenty of
 // coverage while keeping the payload small (base64 inflates size by ~33%).
@@ -173,6 +180,11 @@ export default function VideoNotesClient({
   // to review. Hidden once an analysis exists, so the two entry points don't
   // compete for attention on the same screen.
   const [talking, setTalking] = useState(false);
+  // A conversation recovered from a previous visit. Read in an effect rather
+  // than during render, since localStorage doesn't exist on the server.
+  const [draft, setDraft] = useState<CoachDraft | null>(null);
+  const [resuming, setResuming] = useState(false);
+  useEffect(() => setDraft(readCoachDraft()), []);
   const [audioNote, setAudioNote] = useState('');
   const [mediaNote, setMediaNote] = useState('');
   const fileRef = useRef<HTMLInputElement>(null);
@@ -304,6 +316,38 @@ export default function VideoNotesClient({
 
   return (
     <div className="space-y-6">
+      {/* First thing on the page, because a lost conversation is the most
+          expensive thing that can be sitting here waiting. */}
+      {draft && !resuming && (
+        <div className="bt-card space-y-2 border-orange">
+          <h2 className="font-semibold">Unfinished coaching session</h2>
+          <p className="text-sm text-neutral-700">
+            {draftUserTurns(draft)} answer{draftUserTurns(draft) === 1 ? '' : 's'} from{' '}
+            {fmtDateTime(draft.savedAt)} were never turned into Playbook entries.
+            {draft.findings?.property ? ` Property: ${draft.findings.property}.` : ''}
+          </p>
+          <div className="flex flex-wrap gap-2">
+            <button
+              onClick={() => setResuming(true)}
+              className="rounded bg-lime px-4 py-2 text-sm font-semibold text-black"
+            >
+              Resume and wrap up
+            </button>
+            <button
+              onClick={() => {
+                if (!confirm('Discard that conversation? It cannot be recovered.')) return;
+                clearCoachDraft();
+                setDraft(null);
+              }}
+              className="rounded border border-neutral-400 px-4 py-2 text-sm font-semibold"
+            >
+              Discard
+            </button>
+          </div>
+        </div>
+      )}
+      {draft && resuming && <CoachMode findings={draft.findings} resume={draft} />}
+
       <div className="bt-card space-y-4">
         <div>
           <label className="block text-sm font-medium mb-1">Video and/or photos</label>

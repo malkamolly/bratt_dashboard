@@ -17,13 +17,24 @@ import type { CoachMessage, ProposedLesson } from '@/lib/coach';
 import { useCoachVoice, VoiceControls, LiveDictation } from './useCoachVoice';
 import { streamReply } from './streamReply';
 import { useStickyScroll } from './useStickyScroll';
+import { clearCoachDraft, writeCoachDraft, type CoachDraft } from './coachDraft';
 
 // findings is null for a "talk it through" session: no video, the arborist just
 // has thoughts to contribute. The conversation and the wrap-up into playbook
 // lessons are the same either way.
-export default function CoachMode({ findings }: { findings: Findings | null }) {
+export default function CoachMode({
+  findings,
+  resume,
+}: {
+  findings: Findings | null;
+  /** A recovered conversation to continue instead of starting fresh. */
+  resume?: CoachDraft | null;
+}) {
   const v = useCoachVoice();
-  const [messages, setMessages] = useState<CoachMessage[]>([]);
+  // A resumed draft carries the findings it was recorded against, which are the
+  // ones the coach must keep reasoning about — not whatever is loaded now.
+  const activeFindings = resume ? resume.findings : findings;
+  const [messages, setMessages] = useState<CoachMessage[]>(resume?.messages ?? []);
   const [coachThinking, setCoachThinking] = useState(false);
   // How long the coach's reply took to come back, for the lag breakdown below.
   const [replyMs, setReplyMs] = useState(0);
@@ -60,7 +71,7 @@ export default function CoachMode({ findings }: { findings: Findings | null }) {
     try {
       const result = await streamReply({
         url: '/api/video-notes/coach',
-        payload: { findings, history, mode: 'chat' },
+        payload: { findings: activeFindings, history, mode: 'chat' },
         voice: v,
         onPartial: (text) => setMessages([...history, { role: 'assistant', text }]),
         onFirstText: (ms) => {
@@ -102,7 +113,9 @@ export default function CoachMode({ findings }: { findings: Findings | null }) {
   useEffect(() => {
     if (startedRef.current) return;
     startedRef.current = true;
-    askCoach([]);
+    // A resumed conversation already ends on the coach's question; asking again
+    // would talk over it.
+    if (!resume?.messages?.length) askCoach([]);
     return () => v.stopAll();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -136,7 +149,11 @@ export default function CoachMode({ findings }: { findings: Findings | null }) {
       const res = await fetch('/api/video-notes/coach', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ findings, history: messagesRef.current, mode: 'summarize' }),
+        body: JSON.stringify({
+          findings: activeFindings,
+          history: messagesRef.current,
+          mode: 'summarize',
+        }),
       });
       const json = await res.json();
       if (!res.ok) throw new Error(json.error || 'Could not summarize.');
@@ -168,12 +185,22 @@ export default function CoachMode({ findings }: { findings: Findings | null }) {
       const json = await res.json();
       if (!res.ok) throw new Error(json.error || 'Could not save.');
       setSaved(true);
+      // Safe to drop only now that the lessons are actually persisted.
+      clearCoachDraft();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not save.');
     } finally {
       setSaving(false);
     }
   }
+
+  // Mirror every change so closing the tab mid-conversation is recoverable.
+  // Written on each streamed chunk too, which is a few KB per write and far
+  // cheaper than losing a twenty-minute conversation.
+  useEffect(() => {
+    if (messages.length > 0) writeCoachDraft(activeFindings, messages);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [messages]);
 
   const busy = coachThinking || v.transcribing;
 
@@ -187,7 +214,7 @@ export default function CoachMode({ findings }: { findings: Findings | null }) {
   return (
     <div className="bt-card space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <h2 className="font-semibold">{findings ? 'Coach Mode' : 'Talk it through'}</h2>
+        <h2 className="font-semibold">{activeFindings ? 'Coach Mode' : 'Talk it through'}</h2>
         <VoiceControls v={v} />
       </div>
 
