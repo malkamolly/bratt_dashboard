@@ -83,15 +83,10 @@ export default async function CostAnalysisDataPage({
       )}
 
       {/* ---------- Add form ----------
-          Both entry paths are folded away by default so the review queue — the
-          reason anyone opens this page — starts near the top. Hand entry leads
-          because the bulk upload is one person's tool. */}
-      <details className="bt-card mt-6 group">
-        <summary className="flex cursor-pointer list-none items-center gap-2 font-headline text-lg font-black uppercase text-bark-deep hover:text-orange [&::-webkit-details-marker]:hidden">
-          <span className="text-fg-3 transition-transform group-open:rotate-90">&#9656;</span>
-          Add one job by hand
-        </summary>
-        <p className="mt-3 max-w-3xl text-sm text-fg-2">
+          The main way jobs get in, so it stays open. */}
+      <section className="bt-card mt-6">
+        <h2 className="font-headline text-2xl font-black uppercase text-bark-deep">Add a job</h2>
+        <p className="mt-2 max-w-3xl text-sm text-fg-2">
           Invoice, price and DBH are required. Height and crown spread are optional
           &mdash; but a job only moves the pricing numbers with all three
           measurements. Each invoice can be entered once.
@@ -130,7 +125,7 @@ export default async function CostAnalysisDataPage({
             </button>
           </div>
         </form>
-      </details>
+      </section>
 
       {/* ---------- Bulk upload ---------- */}
       <UploadCard />
