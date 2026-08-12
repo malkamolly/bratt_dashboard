@@ -12,8 +12,8 @@ export const dynamic = 'force-dynamic';
 
 // How a given entry would land in the analysis, for the review badge.
 function classify(e: RemovalEntry): { label: string; tone: 'good' | 'warn' | 'muted'; reason?: string } {
-  if (e.muni) return { label: 'Excluded — municipal', tone: 'muted' };
-  if (isEntryComparable(e)) return { label: 'Counts toward pricing', tone: 'good' };
+  if (e.muni) return { label: 'Municipal', tone: 'muted' };
+  if (isEntryComparable(e)) return { label: 'In pricing', tone: 'good' };
   // Included but not comparable — say why, mirroring the clean-set rules.
   const reasons: string[] = [];
   if (e.stems > 1) reasons.push('multi-trunk');
@@ -58,22 +58,17 @@ export default async function CostAnalysisDataPage({
       <h1 className="mt-2 font-display text-5xl uppercase tracking-wider text-ink sm:text-6xl">
         Add &amp; Review Jobs
       </h1>
-      <p className="mt-4 max-w-3xl text-fg-2">
-        Add completed removals here &mdash; a whole spreadsheet at once, or one at a
-        time. Every job lands in <strong>Pending</strong>{' '}
-        and is invisible to the numbers until you <strong>Include</strong> it.
-        Only included jobs feed the{' '}
+      {/* The include-before-it-counts rule is the one thing worth saying up top.
+          It used to be repeated in the upload card and the queue heading too. */}
+      <p className="mt-3 max-w-3xl text-fg-2">
+        Nothing added here reaches the{' '}
         <Link href="/cost-analysis" className="font-bold text-orange hover:underline">
           Cost Analysis
         </Link>{' '}
-        figures &mdash; the pricing calculator itself is unaffected. Remove a job
-        anytime to pull it back out.
-      </p>
-      <p className="mt-3 text-sm">
+        figures until you <strong>Include</strong> it below.{' '}
         <Link href="/cost-analysis/jobs" className="font-bold text-orange hover:underline">
           Manage all jobs &rarr;
-        </Link>{' '}
-        <span className="text-fg-3">— search, sort, edit, or remove any job already in the numbers.</span>
+        </Link>
       </p>
 
       {sp.ok && (
@@ -90,14 +85,18 @@ export default async function CostAnalysisDataPage({
       {/* ---------- Bulk upload ---------- */}
       <UploadCard />
 
-      {/* ---------- Add form ---------- */}
-      <section className="bt-card mt-8">
-        <h2 className="font-headline text-2xl font-black uppercase text-bark-deep">Add a job</h2>
-        <p className="mt-2 max-w-3xl text-sm text-fg-2">
-          Invoice number and price are required, plus trunk size (DBH). Height and
-          crown spread are optional &mdash; but a job only moves the pricing
-          numbers when it has all three measurements. Every invoice can be entered
-          once.
+      {/* ---------- Add form ----------
+          Folded away by default: uploading is the normal path now, so eleven
+          always-open fields were pushing the review queue off the screen. */}
+      <details className="bt-card mt-6 group">
+        <summary className="flex cursor-pointer list-none items-center gap-2 font-headline text-lg font-black uppercase text-bark-deep hover:text-orange [&::-webkit-details-marker]:hidden">
+          <span className="text-fg-3 transition-transform group-open:rotate-90">&#9656;</span>
+          Add one job by hand
+        </summary>
+        <p className="mt-3 max-w-3xl text-sm text-fg-2">
+          Invoice, price and DBH are required. Height and crown spread are optional
+          &mdash; but a job only moves the pricing numbers with all three
+          measurements. Each invoice can be entered once.
         </p>
         <form action={addEntry} className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           <Field label="Invoice number *" name="inv" type="text" placeholder="222427511" required />
@@ -133,12 +132,12 @@ export default async function CostAnalysisDataPage({
             </button>
           </div>
         </form>
-      </section>
+      </details>
 
       {/* ---------- Review queue ---------- */}
       <EntryList
-        title="Pending — awaiting your review"
-        subtitle="These are NOT in the numbers yet. Include the ones you want counted; remove the rest."
+        title="Pending review"
+        subtitle="Include the ones you want counted; remove the rest."
         entries={pending}
         highlight
       />
@@ -253,10 +252,12 @@ function EntryList({
                       </td>
                     </tr>
                     {/* Uploaded rows carry the parser's reading of the description
-                        text, so you can check it against what the seller typed. */}
+                        text, so you can check it against what the seller typed.
+                        Held to one truncated line — at 100 rows a wrapping note
+                        doubles the length of the whole queue. Full text on hover. */}
                     {detail && (
                       <tr className="border-b border-bark/10">
-                        <td colSpan={10} className="pb-2 pr-3 text-[11px] leading-snug text-fg-3">
+                        <td colSpan={10} className="max-w-0 truncate pb-2 pr-3 text-[11px] text-fg-3" title={detail}>
                           {detail}
                         </td>
                       </tr>
