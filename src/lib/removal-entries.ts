@@ -145,6 +145,70 @@ export async function loadReviewEntries(): Promise<RemovalEntry[]> {
   }
 }
 
+// ---------------------------------------------------------------------------
+// Duplicate detection for spreadsheet uploads
+// ---------------------------------------------------------------------------
+// A single invoice can legitimately hold several trees (328 invoices in the
+// historical set do), so "this invoice already exists" is the WRONG test for an
+// upload — it would throw away every tree but the first. Instead each row gets a
+// fingerprint of its measured values, and we import only as many copies of a
+// given fingerprint as the file has beyond what the table already holds. That
+// makes re-uploading an overlapping date range safe: real repeats survive,
+// re-imports don't pile up.
+
+/** Fingerprint of a row's identity: invoice + price + measurements + date. */
+export function rowSignature(r: {
+  inv: string | null;
+  price: number | null;
+  dbh: number | null;
+  height: number | null;
+  crown: number | null;
+  date: string | null;
+}): string {
+  // Round to cents/tenths so a float round-trip through Postgres still matches.
+  const n = (v: number | null, dp: number) => (v == null ? '' : v.toFixed(dp));
+  return [r.inv ?? '', n(r.price, 2), n(r.dbh, 1), n(r.height, 1), n(r.crown, 1), r.date ?? ''].join(
+    '|',
+  );
+}
+
+/**
+ * How many rows the table already holds for each fingerprint, limited to the
+ * given invoice numbers. Uses original_price (the real billed amount) because a
+ * leadership price adjustment must not make a row look like a different job.
+ */
+export async function countExistingSignatures(invs: string[]): Promise<Map<string, number>> {
+  const counts = new Map<string, number>();
+  const unique = [...new Set(invs.filter(Boolean))];
+  if (unique.length === 0) return counts;
+  try {
+    const sb = await serverClient();
+    // Chunked so a long invoice list can't blow past the URL length limit.
+    const CHUNK = 150;
+    for (let i = 0; i < unique.length; i += CHUNK) {
+      const { data, error } = await sb
+        .from('removals')
+        .select('inv,original_price,dbh,height,crown,date')
+        .in('inv', unique.slice(i, i + CHUNK));
+      if (error || !data) continue;
+      for (const r of data as Record<string, unknown>[]) {
+        const sig = rowSignature({
+          inv: r.inv == null ? null : String(r.inv),
+          price: num(r.original_price),
+          dbh: num(r.dbh),
+          height: num(r.height),
+          crown: num(r.crown),
+          date: r.date == null ? null : String(r.date),
+        });
+        counts.set(sig, (counts.get(sig) ?? 0) + 1);
+      }
+    }
+    return counts;
+  } catch {
+    return counts;
+  }
+}
+
 /** Does any row already use this invoice number? (Duplicate guardrail for adds.) */
 export async function invoiceExists(inv: string): Promise<boolean> {
   try {

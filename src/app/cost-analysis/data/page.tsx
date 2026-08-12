@@ -1,10 +1,12 @@
+import { Fragment } from 'react';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { getAllowedUser, canSeeCostAnalysis } from '@/lib/auth';
 import { isEntryComparable } from '@/lib/cost-analysis';
 import { loadReviewEntries, type RemovalEntry, type EntryStatus } from '@/lib/removal-entries';
 import { fmtUsd } from '@/lib/format';
-import { addEntry, setEntryStatus } from './actions';
+import { addEntry, setEntryStatus, includeAllPending } from './actions';
+import UploadCard from './UploadCard';
 
 export const dynamic = 'force-dynamic';
 
@@ -57,7 +59,8 @@ export default async function CostAnalysisDataPage({
         Add &amp; Review Jobs
       </h1>
       <p className="mt-4 max-w-3xl text-fg-2">
-        Add completed removals here. Every job lands in <strong>Pending</strong>{' '}
+        Add completed removals here &mdash; a whole spreadsheet at once, or one at a
+        time. Every job lands in <strong>Pending</strong>{' '}
         and is invisible to the numbers until you <strong>Include</strong> it.
         Only included jobs feed the{' '}
         <Link href="/cost-analysis" className="font-bold text-orange hover:underline">
@@ -83,6 +86,9 @@ export default async function CostAnalysisDataPage({
           {sp.error}
         </div>
       )}
+
+      {/* ---------- Bulk upload ---------- */}
+      <UploadCard />
 
       {/* ---------- Add form ---------- */}
       <section className="bt-card mt-8">
@@ -153,8 +159,26 @@ function EntryList({
 }) {
   return (
     <section className={`bt-card mt-8 ${highlight ? 'border-orange' : ''}`}>
-      <h2 className="font-headline text-2xl font-black uppercase text-bark-deep">{title}</h2>
-      <p className="mb-4 text-sm text-fg-2">{subtitle}</p>
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <h2 className="font-headline text-2xl font-black uppercase text-bark-deep">
+            {title}
+            {entries.length > 0 && <span className="ml-2 text-fg-3">({entries.length})</span>}
+          </h2>
+          <p className="mb-4 max-w-2xl text-sm text-fg-2">{subtitle}</p>
+        </div>
+        {/* A 100-row upload is unreviewable one button at a time. */}
+        {entries.length > 1 && (
+          <form action={includeAllPending}>
+            <button
+              type="submit"
+              className="rounded-card border-2 border-lime bg-lime/30 px-4 py-2 font-headline text-xs font-black uppercase tracking-wide text-bark-deep transition-colors hover:bg-lime/60"
+            >
+              Include all {entries.length}
+            </button>
+          </form>
+        )}
+      </div>
       {entries.length === 0 ? (
         <p className="text-sm text-fg-3">Nothing here yet.</p>
       ) : (
@@ -163,6 +187,7 @@ function EntryList({
             <thead>
               <tr className="border-b-2 border-bark/20 text-left text-fg-2">
                 <th className="py-1.5 pr-3 font-extrabold uppercase">Invoice</th>
+                <th className="py-1.5 pr-3 font-extrabold uppercase">Date</th>
                 <th className="py-1.5 pr-3 font-extrabold uppercase">DBH</th>
                 <th className="py-1.5 pr-3 font-extrabold uppercase">H × Crown</th>
                 <th className="py-1.5 pr-3 font-extrabold uppercase">Price</th>
@@ -175,42 +200,64 @@ function EntryList({
             <tbody>
               {entries.map((e) => {
                 const c = classify(e);
+                // What the spreadsheet parser had to interpret, if anything. The
+                // leading sentence is boilerplate on every uploaded row.
+                const detail = e.note?.replace(/^Uploaded from spreadsheet\.\s*/, '').trim();
                 return (
-                  <tr key={e.id} className="border-b border-bark/10 align-middle">
-                    <td className="py-2 pr-3 font-bold text-ink">
-                      {e.inv}
-                      {!e.haul && <span className="ml-1 text-[10px] text-fg-3">(no haul)</span>}
-                    </td>
-                    <td className="py-2 pr-3 text-ink">{e.dbh != null ? `${e.dbh}"` : '—'}</td>
-                    <td className="py-2 pr-3 text-fg-2">
-                      {e.height != null ? `${e.height}′` : '—'} × {e.crown != null ? `${e.crown}′` : '—'}
-                    </td>
-                    <td className="py-2 pr-3 font-bold text-orange">
-                      {e.price != null ? fmtUsd(e.price) : '—'}
-                    </td>
-                    <td className="py-2 pr-3 text-fg-2">{e.species ?? '—'}</td>
-                    <td className="py-2 pr-3 text-fg-2">{e.seller ?? '—'}</td>
-                    <td className="py-2 pr-3">
-                      <span className={`inline-block rounded px-2 py-0.5 text-[11px] font-bold ${BADGE[c.tone]}`}>
-                        {c.label}
-                      </span>
-                      {c.reason && <span className="ml-1 text-[10px] text-fg-3">{c.reason}</span>}
-                    </td>
-                    <td className="py-2">
-                      <div className="flex items-center gap-1.5">
-                        <Link
-                          href={`/cost-analysis/jobs/${e.id}/edit?returnTo=${encodeURIComponent('/cost-analysis/data')}`}
-                          className="rounded px-1.5 py-1 text-base hover:bg-lime/30"
-                          title="Edit before including"
-                          aria-label="Edit job"
-                        >
-                          ✏️
-                        </Link>
-                        <StatusButton id={e.id} status="included" current={e.status} label="Include" tone="good" />
-                        <StatusButton id={e.id} status="removed" current={e.status} label="Remove" tone="bad" />
-                      </div>
-                    </td>
-                  </tr>
+                  <Fragment key={e.id}>
+                    <tr className="border-b border-bark/10 align-middle">
+                      <td className="py-2 pr-3 font-bold text-ink">
+                        {e.inv}
+                        {!e.haul && <span className="ml-1 text-[10px] text-fg-3">(no haul)</span>}
+                      </td>
+                      <td className="py-2 pr-3 text-fg-2">{e.date ?? '—'}</td>
+                      <td className="py-2 pr-3 text-ink">
+                        {e.dbh != null ? `${e.dbh}"` : '—'}
+                        {e.stems > 1 && (
+                          <span className="ml-1 whitespace-nowrap text-[10px] font-bold text-fg-3">
+                            ×{e.stems} trunks
+                          </span>
+                        )}
+                      </td>
+                      <td className="py-2 pr-3 text-fg-2">
+                        {e.height != null ? `${e.height}′` : '—'} × {e.crown != null ? `${e.crown}′` : '—'}
+                      </td>
+                      <td className="py-2 pr-3 font-bold text-orange">
+                        {e.price != null ? fmtUsd(e.price) : '—'}
+                      </td>
+                      <td className="py-2 pr-3 text-fg-2">{e.species ?? '—'}</td>
+                      <td className="py-2 pr-3 text-fg-2">{e.seller ?? '—'}</td>
+                      <td className="py-2 pr-3">
+                        <span className={`inline-block rounded px-2 py-0.5 text-[11px] font-bold ${BADGE[c.tone]}`}>
+                          {c.label}
+                        </span>
+                        {c.reason && <span className="ml-1 text-[10px] text-fg-3">{c.reason}</span>}
+                      </td>
+                      <td className="py-2">
+                        <div className="flex items-center gap-1.5">
+                          <Link
+                            href={`/cost-analysis/jobs/${e.id}/edit?returnTo=${encodeURIComponent('/cost-analysis/data')}`}
+                            className="rounded px-1.5 py-1 text-base hover:bg-lime/30"
+                            title="Edit before including"
+                            aria-label="Edit job"
+                          >
+                            ✏️
+                          </Link>
+                          <StatusButton id={e.id} status="included" current={e.status} label="Include" tone="good" />
+                          <StatusButton id={e.id} status="removed" current={e.status} label="Remove" tone="bad" />
+                        </div>
+                      </td>
+                    </tr>
+                    {/* Uploaded rows carry the parser's reading of the description
+                        text, so you can check it against what the seller typed. */}
+                    {detail && (
+                      <tr className="border-b border-bark/10">
+                        <td colSpan={9} className="pb-2 pr-3 text-[11px] leading-snug text-fg-3">
+                          {detail}
+                        </td>
+                      </tr>
+                    )}
+                  </Fragment>
                 );
               })}
             </tbody>
