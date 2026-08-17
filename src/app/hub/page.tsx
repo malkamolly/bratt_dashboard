@@ -1,5 +1,10 @@
 import Link from 'next/link';
-import { requireHubAccess, canUseCalculator, canUseSiteMarkup } from '@/lib/auth';
+import {
+  requireHubAccess,
+  canUseCalculator,
+  canUseSiteMarkup,
+  canSeeFollowupScorecard,
+} from '@/lib/auth';
 import { HubSubNav } from '@/components/HubSubNav';
 
 export const dynamic = 'force-dynamic';
@@ -8,6 +13,7 @@ export default async function HubHomePage() {
   const user = await requireHubAccess('hub');
   const showCalculator = canUseCalculator(user.role);
   const showSiteMarkup = canUseSiteMarkup(user.role);
+  const showFollowup = canSeeFollowupScorecard(user.role);
 
   return (
     <main className="mx-auto max-w-6xl px-6 py-10">
@@ -43,6 +49,22 @@ export default async function HubHomePage() {
             View roster &rarr;
           </p>
         </Link>
+
+        {showFollowup && (
+          <Link href="/hub/followup" className="bt-card group transition-colors hover:!border-orange">
+            <h2 className="font-headline text-3xl font-black uppercase text-bark-deep">
+              Follow-Through Scorecard
+            </h2>
+            <p className="mt-3 text-sm text-fg-2">
+              What calling back is worth &mdash; one in three opportunities we
+              follow up on turns into a paying job. Where the open board stands
+              and who to call first.
+            </p>
+            <p className="mt-6 font-headline text-xs font-extrabold uppercase tracking-ribbon text-orange">
+              Open scorecard &rarr;
+            </p>
+          </Link>
+        )}
 
         <Link href="/hub/meetings" className="bt-card group transition-colors hover:!border-orange">
           <h2 className="font-headline text-3xl font-black uppercase text-bark-deep">

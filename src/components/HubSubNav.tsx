@@ -1,5 +1,10 @@
 import Link from 'next/link';
-import { getAllowedUser, canUseCalculator, canUseSiteMarkup } from '@/lib/auth';
+import {
+  getAllowedUser,
+  canUseCalculator,
+  canUseSiteMarkup,
+  canSeeFollowupScorecard,
+} from '@/lib/auth';
 
 const BASE_SECTIONS: { href: string; label: string }[] = [
   { href: '/hub', label: 'Home' },
@@ -18,6 +23,11 @@ export async function HubSubNav({ active }: { active: string }) {
   }
   if (user && canUseSiteMarkup(user.role)) {
     sections.push({ href: '/hub/site-plan', label: 'Site Markup' });
+  }
+  // The Follow-Through Scorecard is embargoed from sales arborists until its
+  // release time — see canSeeFollowupScorecard in lib/auth.
+  if (user && canSeeFollowupScorecard(user.role)) {
+    sections.push({ href: '/hub/followup', label: 'Follow-Through' });
   }
   // The Off-Season report is viewable by the whole hub (view-only for sales
   // arborists; office edits it from the Office Hub).

@@ -8,6 +8,7 @@
 import { redirect } from 'next/navigation';
 import { serverClient } from './supabase';
 import { isTagsUser } from './tags-config';
+import { businessTimeToInstant } from './dates';
 
 export type Role =
   | 'admin'
@@ -181,6 +182,42 @@ export const REVIEW_STATS_EMAILS: readonly string[] = [
 /** Can this person see Proposal Reviews? Gated by email, case-insensitive. */
 export function canSeeReviewStats(email: string | null | undefined): boolean {
   return !!email && REVIEW_STATS_EMAILS.includes(email.toLowerCase());
+}
+
+// ---------------------------------------------------------------------------
+// Follow-Through Scorecard — embargoed release
+// ---------------------------------------------------------------------------
+// The follow-up analysis (/hub/followup) compares sales arborists to each other
+// by name, so leadership reads it BEFORE the team does. Everyone else with hub
+// access — admin, office, the sales manager — sees it immediately; sales
+// arborists get it at 9:15am Central on Tue Aug 18, 2026, to be walked through
+// at the weekly meeting rather than discovered cold.
+//
+// This is a one-time embargo, not a permanent permission: once the release time
+// passes, `canSeeFollowupScorecard` returns true for everyone with hub access
+// and this whole block can be deleted along with its call sites. Nothing here
+// controls hub access itself — /hub/followup still calls requireHubAccess('hub'),
+// so field crew never see it either way.
+export const FOLLOWUP_SCORECARD_RELEASE_AT = businessTimeToInstant(
+  2026,
+  8,
+  18,
+  9,
+  15,
+);
+
+/**
+ * Can this role see the Follow-Through Scorecard yet?
+ *
+ * Pass `now` in tests; it defaults to the current time. Callers must already
+ * have cleared hub access — this only answers the embargo question.
+ */
+export function canSeeFollowupScorecard(
+  role: Role,
+  now: Date = new Date(),
+): boolean {
+  if (role !== 'sales_arborist') return true;
+  return now.getTime() >= FOLLOWUP_SCORECARD_RELEASE_AT.getTime();
 }
 
 /**

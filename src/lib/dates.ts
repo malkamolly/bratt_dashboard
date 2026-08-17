@@ -35,12 +35,13 @@ export function isWeekend(d: Date): boolean {
 /** The timezone the business operates in. */
 export const BUSINESS_TZ = 'America/Chicago';
 
-/** Wall-clock year/month/day/hour for `now` in the business timezone. */
+/** Wall-clock year/month/day/hour/minute for `now` in the business timezone. */
 function centralParts(now: Date): {
   y: number;
   m: number;
   day: number;
   hour: number;
+  minute: number;
 } {
   const parts = new Intl.DateTimeFormat('en-US', {
     timeZone: BUSINESS_TZ,
@@ -48,12 +49,52 @@ function centralParts(now: Date): {
     month: '2-digit',
     day: '2-digit',
     hour: '2-digit',
+    minute: '2-digit',
     hour12: false,
   }).formatToParts(now);
   const get = (t: string) => Number(parts.find((p) => p.type === t)?.value);
   let hour = get('hour');
   if (hour === 24) hour = 0; // some runtimes emit '24' for midnight
-  return { y: get('year'), m: get('month'), day: get('day'), hour };
+  return {
+    y: get('year'),
+    m: get('month'),
+    day: get('day'),
+    hour,
+    minute: get('minute'),
+  };
+}
+
+/**
+ * The exact instant matching a WALL-CLOCK time in the business timezone.
+ *
+ * Use this instead of hand-computing a UTC offset. `businessTimeToInstant(2026,
+ * 8, 18, 9, 15)` is 9:15am Central on Aug 18 2026 — and because it asks Intl
+ * what the zone's offset actually was on that date, it stays correct whether
+ * the date lands in CDT or CST. Hardcoding `Date.UTC(..., 14, 15)` would
+ * silently drift by an hour if the date ever moved across a DST boundary.
+ *
+ * @param month 1-12 (not the 0-based month JS Date uses)
+ */
+export function businessTimeToInstant(
+  year: number,
+  month: number,
+  day: number,
+  hour = 0,
+  minute = 0,
+): Date {
+  // Read the wall clock as if it were UTC, ask the zone what it displays at
+  // that instant, and correct by the difference. One pass is enough: the
+  // offset only changes twice a year, never within the few hours of slack here.
+  const naive = Date.UTC(year, month - 1, day, hour, minute);
+  const shown = centralParts(new Date(naive));
+  const shownAsUtc = Date.UTC(
+    shown.y,
+    shown.m - 1,
+    shown.day,
+    shown.hour,
+    shown.minute,
+  );
+  return new Date(naive + (naive - shownAsUtc));
 }
 
 /**
