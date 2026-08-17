@@ -248,7 +248,7 @@ function Th({ children }: { children: React.ReactNode }) {
 function PinnedNote() {
   return (
     <p className="mt-1 border-t-2 border-dashed border-paper-edge pt-4 font-headline text-[11px] font-extrabold uppercase tracking-wider text-teal">
-      Newest board — read separately
+      Nothing given up on — read separately
     </p>
   );
 }

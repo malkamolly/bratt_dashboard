@@ -645,20 +645,68 @@ function argMax<T>(rows: readonly T[], pick: (r: T) => number): number {
   return bestVal > 0 ? best : -1;
 }
 
+/**
+ * Where a value sits within a set, 0 (lowest) to 1 (highest). Used to find what
+ * somebody is relatively strongest at, so the fallback badge is earned rather
+ * than filler.
+ */
+function percentile(value: number, all: number[]): number {
+  if (all.length < 2) return 1;
+  const below = all.filter((v) => v < value).length;
+  const equal = all.filter((v) => v === value).length;
+  // Midpoint of the tied band, so tied people rank the same.
+  return (below + (equal - 1) / 2) / (all.length - 1);
+}
+
 export function boardReadouts(data: ScorecardData): BoardReadout[] {
   const rev = data.revenue;
   const boardOf = (name: string) => data.openBoards.find((b) => b.name === name);
 
+  const deepShare = (r: FollowupRevenue) => (r.sold > 0 ? r.deep / r.sold : 0);
+
   const topEarner = rev[argMax(rev, (r) => r.sold)]?.name;
   const mostWins = rev[argMax(rev, (r) => r.won)]?.name;
+  const mostWorked = rev[argMax(rev, (r) => r.followed)]?.name;
+  const bestRate = rev[argMax(rev, (r) => r.winRate)]?.name;
   const longestChase = rev[argMax(rev, (r) => r.maxCalls)]?.name;
   // Who earns the biggest SHARE of their money from call three onward — the
   // calls easiest to skip, so worth naming.
-  const deepest = rev[argMax(rev, (r) => (r.sold > 0 ? r.deep / r.sold : 0))]?.name;
+  const deepest = rev[argMax(rev, deepShare)]?.name;
+  const deepestCadence = data.openBoards[
+    argMax(data.openBoards, (b) => b.avgCalls)
+  ]?.name;
   const biggestUpside = data.openBoards[
     argMax(data.openBoards, (b) => b.onTheTable)
   ]?.name;
   const coldest = data.openBoards[argMax(data.openBoards, (b) => b.cold30)]?.name;
+
+  // Fallback ladder: everybody gets a pill, so no board on this page reads as
+  // having nothing worth saying about it. When somebody leads no category, we
+  // award the measure they rank RELATIVELY highest in — earned, not filler.
+  const allSold = rev.map((r) => r.sold);
+  const allWon = rev.map((r) => r.won);
+  const allWorked = rev.map((r) => r.followed);
+  const allRate = rev.map((r) => r.winRate);
+  const allDeep = rev.map(deepShare);
+  const allChase = rev.map((r) => r.maxCalls);
+  const allCadence = data.openBoards.map((b) => b.avgCalls);
+
+  const strongestTrait = (r: FollowupRevenue): string => {
+    const b = boardOf(r.name);
+    const traits: Array<{ label: string; p: number }> = [
+      { label: 'Strong follow-up earner', p: percentile(r.sold, allSold) },
+      { label: 'Steady stream of wins', p: percentile(r.won, allWon) },
+      { label: 'Works the most records', p: percentile(r.followed, allWorked) },
+      { label: 'High conversion rate', p: percentile(r.winRate, allRate) },
+      { label: 'Earns on the later calls', p: percentile(deepShare(r), allDeep) },
+      { label: 'Sticks with a chase', p: percentile(r.maxCalls, allChase) },
+    ];
+    if (b) {
+      traits.push({ label: 'Steady cadence', p: percentile(b.avgCalls, allCadence) });
+    }
+    traits.sort((x, y) => y.p - x.p);
+    return traits[0].label;
+  };
 
   return rev.map((r) => {
     const b = boardOf(r.name);
@@ -672,17 +720,29 @@ export function boardReadouts(data: ScorecardData): BoardReadout[] {
     if (r.name === mostWins && room()) {
       badges.push({ label: 'Most follow-up wins', tone: 'good' });
     }
+    if (r.name === mostWorked && room()) {
+      badges.push({ label: 'Works the most records', tone: 'good' });
+    }
+    if (r.name === bestRate && room()) {
+      badges.push({ label: 'Best conversion rate', tone: 'good' });
+    }
     if (r.name === longestChase && room()) {
       badges.push({ label: 'Longest chase', tone: 'good' });
     }
     if (r.name === deepest && room()) {
       badges.push({ label: 'Wins in the later rounds', tone: 'good' });
     }
+    if (r.name === deepestCadence && room()) {
+      badges.push({ label: 'Deepest cadence', tone: 'good' });
+    }
     if (!b && room()) {
       badges.push({ label: 'Nothing left open', tone: 'good' });
     }
+    // `pinned` means droppedAfterOne === 0 — nothing on the board was given up
+    // on. Labelled for what the rule actually checks, not "newest board": a
+    // mature board can also have given up on nothing.
     if (b?.pinned && room()) {
-      badges.push({ label: 'Newest board', tone: 'good' });
+      badges.push({ label: 'Nothing given up on', tone: 'good' });
     }
     if (r.name === biggestUpside && room() && !flagged()) {
       badges.push({ label: 'Biggest upside', tone: 'watch' });
@@ -697,11 +757,18 @@ export function boardReadouts(data: ScorecardData): BoardReadout[] {
       badges.push({ label: 'Stops before call five', tone: 'watch' });
     }
 
+    // GUARANTEE: never render a name with no pill. Leading no category is not
+    // the same as having nothing worth saying, and a bare name next to eight
+    // badged ones reads as an oversight — or worse, as a verdict.
+    if (badges.length === 0) {
+      badges.push({ label: strongestTrait(r), tone: 'good' });
+    }
+
     const sentences: string[] = [];
 
     // 1. What calling back earned them.
     if (r.won > 0) {
-      let s = `${usd(r.sold)} from ${r.won} follow-up win${r.won === 1 ? '' : 's'} — ${r.winRate}% of the ${r.followed} records ${r.name} called back.`;
+      let s = `${usd(r.sold)} from ${r.won} follow-up win${r.won === 1 ? '' : 's'} — ${r.winRate}% of the ${r.followed} record${r.followed === 1 ? '' : 's'} ${r.name} called back.`;
       if (r.deep > 0) {
         s += ` ${usd(r.deep)} of it came on call three or later, across ${r.deepJobs} job${r.deepJobs === 1 ? '' : 's'}.`;
       } else {
@@ -726,17 +793,23 @@ export function boardReadouts(data: ScorecardData): BoardReadout[] {
       );
 
       // The flags, as one readable sentence rather than a comma-spliced list.
+      // Counts of exactly one are common on a small board, so each phrase agrees
+      // in number rather than always reading "1 sit under two calls".
       const flags: string[] = [];
-      if (b.underTwo > 0) flags.push(`${b.underTwo} sit under two calls`);
+      if (b.underTwo > 0) {
+        flags.push(`${b.underTwo} ${b.underTwo === 1 ? 'sits' : 'sit'} under two calls`);
+      }
       if (b.droppedAfterOne > 0) {
         // Parenthesised, not comma'd: an internal comma would collide with the
         // list separator below and read as a fourth item.
         flags.push(
-          `${b.droppedAfterOne} were dropped after one (${usd(b.onTheTable)} on the table)`,
+          `${b.droppedAfterOne} ${b.droppedAfterOne === 1 ? 'was' : 'were'} dropped after one (${usd(b.onTheTable)} on the table)`,
         );
       }
       if (b.cold30 > 0) {
-        flags.push(`${b.cold30} have had no contact in 30+ days`);
+        flags.push(
+          `${b.cold30} ${b.cold30 === 1 ? 'has' : 'have'} had no contact in 30+ days`,
+        );
       }
       if (flags.length === 1) sentences.push(`${flags[0]}.`);
       else if (flags.length === 2) {
@@ -753,8 +826,14 @@ export function boardReadouts(data: ScorecardData): BoardReadout[] {
           `Nothing here was given up on, so the low call counts mean the work is new rather than abandoned — read this board separately from the others.`,
         );
       } else if (b.calls.fivePlus === 0) {
+        // Only cite the call-five conversion rate when records actually reached
+        // call five this window; otherwise "converts at 0%" would argue against
+        // the very point the sentence is making.
+        const c5 = data.depthOutcomes.find((d) => d.key === 'c5');
         sentences.push(
-          `No open record on this board has reached a fifth call. Call five still converts at ${data.depthOutcomes.find((d) => d.key === 'c5')?.winRate ?? 0}%, so extending the cadence is the smallest change available.`,
+          c5 && c5.records > 0
+            ? `No open record on this board has reached a fifth call. Call five still converts at ${c5.winRate}%, so extending the cadence is the smallest change available.`
+            : `No open record on this board has reached a fifth call — extending the cadence is the smallest change available.`,
         );
       }
     }
