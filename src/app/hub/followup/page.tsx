@@ -13,32 +13,76 @@
 // canSeeFollowupScorecard(), so leadership can walk them through it at the
 // weekly meeting rather than have them find it cold. See src/lib/auth.ts.
 //
-// Numbers are a point-in-time snapshot from src/lib/followup-scorecard.ts — read
-// the header comment there before quoting any figure, because the population is
-// narrower than "all our sales".
+// Numbers come from the most recent uploaded export (followup_uploads.is_active),
+// falling back to FALLBACK_SCORECARD so the page is never blank on a fresh
+// deploy. Read the header comment in src/lib/followup-scorecard.ts before
+// quoting any figure — the population is narrower than "all our sales".
+//
+// Every number in the PROSE is derived from the data, never typed in. This page
+// is re-uploaded weekly, so a hardcoded finding would quietly go stale, which is
+// the most dangerous kind of wrong here.
 // ============================================================================
 
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
-import { requireHubAccess, canSeeFollowupScorecard } from '@/lib/auth';
-import { HubSubNav } from '@/components/HubSubNav';
 import {
-  FOLLOWUP_TOTALS as T,
-  FOLLOWUP_REVENUE,
-  FOLLOWUP_OPEN_BOARDS,
+  requireHubAccess,
+  canSeeFollowupScorecard,
+  canUploadFollowupData,
+} from '@/lib/auth';
+import { serverClient } from '@/lib/supabase';
+import { HubSubNav } from '@/components/HubSubNav';
+import { uploadFollowupData } from './actions';
+import {
+  FALLBACK_SCORECARD,
   CALL_DEPTH_COLORS,
   CALL_DEPTH_LABELS,
+  CALL_DEPTH_ORDER,
   RECENCY_COLORS,
   RECENCY_LABELS,
   usd,
   usdShort,
-  type CallDepth,
+  windowLabel,
+  asOfLabel,
+  oneInN,
+  narrative,
+  listNames,
   type OpenBoard,
+  type ScorecardData,
 } from '@/lib/followup-scorecard';
 
 export const dynamic = 'force-dynamic';
 
-const CALL_ORDER: CallDepth[] = ['c1', 'c2', 'c34', 'c5'];
+type Search = Promise<{ saved?: string; error?: string }>;
+
+const CALL_ORDER = CALL_DEPTH_ORDER;
+
+/**
+ * The active uploaded report, or the baked-in Aug 2026 snapshot if nothing has
+ * been uploaded yet. The shape check guards against an older payload written by
+ * a previous version of computeScorecard — better the known-good fallback than a
+ * page of undefineds.
+ */
+async function loadScorecard(): Promise<{ data: ScorecardData; fromUpload: boolean }> {
+  try {
+    const supabase = await serverClient();
+    const { data: row } = await supabase
+      .from('followup_uploads')
+      .select('payload')
+      .eq('is_active', true)
+      .order('uploaded_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    const p = row?.payload as ScorecardData | undefined;
+    if (p?.totals && p.meta && Array.isArray(p.revenue) && Array.isArray(p.openBoards)) {
+      return { data: p, fromUpload: true };
+    }
+  } catch {
+    // Table missing (migration not run yet) or unreadable — fall back rather
+    // than 500 a report the whole team is about to open.
+  }
+  return { data: FALLBACK_SCORECARD, fromUpload: false };
+}
 
 // Open-board call buckets, fewest calls first, so every stacked bar on the page
 // runs the same direction: problem end on the left.
@@ -279,21 +323,35 @@ function RecencyRow({ b }: { b: OpenBoard }) {
 
 // ---------------------------------------------------------------------------
 
-export default async function FollowupScorecardPage() {
+export default async function FollowupScorecardPage({
+  searchParams,
+}: {
+  searchParams: Search;
+}) {
   const user = await requireHubAccess('hub');
   // Embargoed for sales arborists until the release time. Bounce rather than
   // render an empty shell, so an early link doesn't leak the headline numbers.
   if (!canSeeFollowupScorecard(user.role)) redirect('/hub');
 
+  const sp = await searchParams;
+  const canUpload = canUploadFollowupData(user.role);
+  const { data, fromUpload } = await loadScorecard();
+  const T = data.totals;
+  const N = narrative(data);
+  const boards = data.openBoards;
+  const revenue = data.revenue;
+
   const droppedMax = Math.max(
-    ...FOLLOWUP_OPEN_BOARDS.map((b) => b.droppedAfterOne / b.open),
+    ...boards.map((b) => b.droppedAfterOne / b.open),
+    // Guard against an all-zero column making every bar full width.
+    Number.EPSILON,
   );
-  const soldMax = Math.max(...FOLLOWUP_REVENUE.map((r) => r.sold));
+  const soldMax = Math.max(...revenue.map((r) => r.sold), 1);
   const droppedRanked = [
-    ...FOLLOWUP_OPEN_BOARDS.filter((b) => !b.pinned).sort(
-      (a, b) => b.droppedAfterOne / b.open - a.droppedAfterOne / a.open,
-    ),
-    ...FOLLOWUP_OPEN_BOARDS.filter((b) => b.pinned),
+    ...boards
+      .filter((b) => !b.pinned)
+      .sort((a, b) => b.droppedAfterOne / b.open - a.droppedAfterOne / a.open),
+    ...boards.filter((b) => b.pinned),
   ];
 
   return (
@@ -317,6 +375,17 @@ export default async function FollowupScorecardPage() {
         <HubSubNav active="/hub/followup" />
       </div>
 
+      {sp.saved && (
+        <div className="mb-6 rounded-2 border-2 border-green bg-green/10 px-4 py-3 text-sm font-bold text-green-dark">
+          {decodeURIComponent(sp.saved)}
+        </div>
+      )}
+      {sp.error && (
+        <div className="mb-6 rounded-2 border-2 border-orange-press bg-orange/10 px-4 py-3 text-sm font-bold text-orange-press">
+          {decodeURIComponent(sp.error)}
+        </div>
+      )}
+
       {/* Scope first. Every number below is narrower than "our sales", and a
           reader who misses that will quote these figures wrong. */}
       <section className="rounded-card border-2 border-l-[7px] border-ink border-l-fg-3 bg-bone p-4">
@@ -325,18 +394,32 @@ export default async function FollowupScorecardPage() {
             What&apos;s in here, so the numbers mean what they say.
           </strong>{' '}
           This covers opportunities whose next follow-up date landed between{' '}
-          <strong className="font-black text-ink">{T.windowLabel}</strong> — it is
-          not our whole book, and these totals are not season sales. It also
-          leaves out{' '}
+          <strong className="font-black text-ink">{windowLabel(data.meta)}</strong>{' '}
+          — it is not our whole book, and these totals are not season sales. It
+          also leaves out{' '}
           <strong className="font-black text-ink">
-            {T.excluded} records that closed with no follow-up ever logged
+            {T.excludedNoFollowup} records that closed with no follow-up ever
+            logged
           </strong>
           : those sold at the appointment and have nothing to say about following
           up. Everything here is the{' '}
           <strong className="font-black text-ink">
             {T.followed} opportunities that actually got called back
           </strong>
-          . Report run {T.runLabel}.
+          .
+        </p>
+        <p className="mt-2 text-[13px] text-fg-3">
+          Data as of <strong className="text-fg-2">{asOfLabel(data.meta)}</strong>
+          {data.meta.sourceFilename ? ` · ${data.meta.sourceFilename}` : ''}
+          {!fromUpload && ' · starting snapshot, nothing uploaded yet'}
+          {canUpload && (
+            <>
+              {' · '}
+              <a href="#refresh" className="font-bold text-orange hover:underline">
+                Upload a new export
+              </a>
+            </>
+          )}
         </p>
       </section>
 
@@ -359,7 +442,7 @@ export default async function FollowupScorecardPage() {
           <Tile
             tone="good"
             label="Records that convert"
-            value="1 in 3"
+            value={oneInN(T.winRate)}
             note={
               <>
                 <strong className="font-black text-ink">{T.winRate}%</strong> of
@@ -396,24 +479,25 @@ export default async function FollowupScorecardPage() {
 
       <section className="mt-8 rounded-card border-2 border-l-[7px] border-ink border-l-teal bg-bone p-5">
         <p className="font-headline text-base font-black text-ink">
-          One in three opportunities we call back turns into a paying job — and
-          that holds however many calls it takes.
+          {oneInN(T.winRate)} opportunities we call back turns into a paying job —
+          and that holds however many calls it takes.
         </p>
         <p className="mt-2 text-sm leading-relaxed text-fg-2">
           {T.won} wins out of {T.followed} records that got a follow-up, worth{' '}
           <strong className="font-black text-ink">{usd(T.sold)}</strong>. It
           doesn&apos;t taper off either: records on their first call convert at{' '}
-          <strong className="font-black text-ink">37%</strong>, records on their
-          fifth still convert at{' '}
-          <strong className="font-black text-ink">32%</strong>. What does change
-          is the write-off rate —{' '}
-          <strong className="font-black text-ink">32%</strong> of one-call records
-          end up Unreachable against{' '}
-          <strong className="font-black text-ink">18%</strong> of the ones we stay
-          on. The average follow-up win is{' '}
+          <strong className="font-black text-ink">{N.firstCallWinRate}%</strong>,
+          records on their fifth still convert at{' '}
+          <strong className="font-black text-ink">{N.deepCallWinRate}%</strong>.
+          What does change is the write-off rate —{' '}
+          <strong className="font-black text-ink">{N.firstCallDropRate}%</strong>{' '}
+          of one-call records end up Unreachable against{' '}
+          <strong className="font-black text-ink">{N.deepCallDropRate}%</strong>{' '}
+          of the ones we stay on. The average follow-up win is{' '}
           <strong className="font-black text-ink">{usd(T.avgWin)}</strong>, so a
-          record somebody gives up on early is about a thousand dollars of
-          expected work walking out the door.
+          record somebody gives up on early is about{' '}
+          <strong className="font-black text-ink">{usd(N.valuePerRecord)}</strong>{' '}
+          of expected work walking out the door.
         </p>
       </section>
 
@@ -433,8 +517,8 @@ export default async function FollowupScorecardPage() {
           <strong className="font-black text-ink">
             The left end is where the money is
           </strong>
-          : a record on its first call converts at 37%, so those aren&apos;t lost
-          causes, they&apos;re work nobody has gotten back to yet.
+          : a record on its first call converts at {N.firstCallWinRate}%, so those
+          aren&apos;t lost causes, they&apos;re work nobody has gotten back to yet.
         </p>
 
         <Legend
@@ -443,7 +527,7 @@ export default async function FollowupScorecardPage() {
         />
 
         <div className="flex flex-col gap-3.5">
-          {FOLLOWUP_OPEN_BOARDS.map((b) => (
+          {boards.map((b) => (
             <div key={b.name}>
               {b.pinned && <PinnedNote />}
               <div className={b.pinned ? 'mt-3.5' : ''}>
@@ -456,12 +540,17 @@ export default async function FollowupScorecardPage() {
         <p className="mt-5 border-t-2 border-paper-edge pt-3 text-xs text-fg-3">
           Bars are scaled to each board (100% width each) so the mix compares
           across different volumes.{' '}
-          <strong className="text-fg-2">
-            Clayton T, Hayden R and Jake T aren&apos;t here because they have no
-            open records at all
-          </strong>{' '}
-          — their work closes or gets cleared out, nothing sits. Shared and
-          multi-name records are also left out.
+          {N.noOpenBoard.length > 0 && (
+            <>
+              <strong className="text-fg-2">
+                {listNames(N.noOpenBoard)}{' '}
+                {N.noOpenBoard.length === 1 ? 'is' : 'are'} not here
+                because they have no open records at all
+              </strong>{' '}
+              — their work closes or gets cleared out, nothing sits.{' '}
+            </>
+          )}
+          Shared and multi-name records are left out.
         </p>
       </section>
 
@@ -481,10 +570,11 @@ export default async function FollowupScorecardPage() {
           carry exactly one call before somebody marked them unreachable, holding{' '}
           <strong className="font-black text-ink">{usd(T.onTheTable)}</strong> in
           estimate value. A second call converts at{' '}
-          <strong className="font-black text-ink">35%</strong> and a third at{' '}
-          <strong className="font-black text-ink">29%</strong>, against 37% on the
-          first — so there&apos;s no drop-off that justifies stopping. This is the
-          most winnable money on the page.
+          <strong className="font-black text-ink">{N.secondCallWinRate}%</strong>{' '}
+          and a third at{' '}
+          <strong className="font-black text-ink">{N.thirdCallWinRate}%</strong>,
+          against {N.firstCallWinRate}% on the first — so there&apos;s no drop-off
+          that justifies stopping. This is the most winnable money on the page.
         </p>
 
         <div className="flex flex-col gap-3.5">
@@ -581,7 +671,7 @@ export default async function FollowupScorecardPage() {
         />
 
         <div className="flex flex-col gap-3.5">
-          {FOLLOWUP_REVENUE.map((r) => {
+          {revenue.map((r) => {
             const segments = CALL_ORDER.flatMap((d) => {
               const value = r.byDepth[d];
               if (!value) return [];
@@ -626,11 +716,17 @@ export default async function FollowupScorecardPage() {
           <strong className="text-fg-2">
             {usd(T.sold3Plus)} of this money came from calls three and beyond
           </strong>{' '}
-          — the calls that are easiest to skip. Hayden R&apos;s longest chase ran
-          to <strong className="text-fg-2">{T.maxCalls} calls</strong> before it
-          closed. Win rate is wins as a share of the records that person followed
-          up, so it reflects the mix of work each of us gets, not just how we
-          sell.
+          — the calls that are easiest to skip.
+          {N.chaserName && N.chaserCalls > 2 && (
+            <>
+              {' '}
+              {N.chaserName}&apos;s longest chase ran to{' '}
+              <strong className="text-fg-2">{N.chaserCalls} calls</strong> before
+              it closed.
+            </>
+          )}{' '}
+          Win rate is wins as a share of the records that person followed up, so
+          it reflects the mix of work each of us gets, not just how we sell.
         </p>
       </section>
 
@@ -657,7 +753,7 @@ export default async function FollowupScorecardPage() {
         />
 
         <div className="flex flex-col gap-3.5">
-          {FOLLOWUP_OPEN_BOARDS.map((b) => (
+          {boards.map((b) => (
             <div key={b.name}>
               {b.pinned && <PinnedNote />}
               <div className={b.pinned ? 'mt-3.5' : ''}>
@@ -738,10 +834,12 @@ export default async function FollowupScorecardPage() {
             1. Give every record a second call before Unreachable.
           </strong>{' '}
           One call is where {T.droppedAfterOne} of our open records stopped. Call
-          two converts at <strong className="font-black text-ink">35%</strong> and
-          call three at <strong className="font-black text-ink">29%</strong>,
-          against 37% on call one — there&apos;s no drop-off to justify stopping.
-          It&apos;s the cheapest revenue on this page.
+          two converts at{' '}
+          <strong className="font-black text-ink">{N.secondCallWinRate}%</strong>{' '}
+          and call three at{' '}
+          <strong className="font-black text-ink">{N.thirdCallWinRate}%</strong>,
+          against {N.firstCallWinRate}% on call one — there&apos;s no drop-off to
+          justify stopping. It&apos;s the cheapest revenue on this page.
         </p>
         <p className="mt-3 text-sm leading-relaxed text-fg-2">
           <strong className="font-black text-ink">
@@ -756,10 +854,74 @@ export default async function FollowupScorecardPage() {
         </p>
       </section>
 
+      {/* Refresh — only for the people who run the sales meeting. An upload
+          REPLACES the whole report for everyone, so it is not a hub-wide tool. */}
+      {canUpload && (
+        <section
+          id="refresh"
+          className="mt-8 scroll-mt-6 rounded-card border-2 border-dashed border-wood-light bg-bone p-6"
+        >
+          <p className="font-headline text-[11px] font-extrabold uppercase tracking-ribbon text-fg-3">
+            Manager tools
+          </p>
+          <h2 className="mt-1 font-headline text-2xl font-black uppercase text-bark-deep">
+            Refresh this report
+          </h2>
+          <p className="mt-2 max-w-3xl text-sm text-fg-2">
+            Upload the{' '}
+            <strong className="font-black text-ink">Open Opportunities</strong>{' '}
+            export (.xlsx) straight from the service software &mdash; no
+            reformatting. Filter it by <strong>Next Follow Up Date</strong> to the
+            window you want to talk about, and include the{' '}
+            <em>Won</em> and <em>Dismissed</em> statuses so the wins are in there.
+          </p>
+          <p className="mt-2 max-w-3xl text-sm text-fg-2">
+            <strong className="font-black text-ink">
+              A new upload replaces this report completely
+            </strong>{' '}
+            &mdash; every chart, figure and sentence above is recalculated from the
+            file, and the previous week&apos;s numbers stop being shown. Nothing is
+            merged or added up across uploads.
+          </p>
+
+          <form
+            action={uploadFollowupData}
+            className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center"
+          >
+            <input
+              type="file"
+              name="file"
+              accept=".xlsx,.xlsm,.csv"
+              required
+              aria-label="Open Opportunities export"
+              className="block w-full text-sm text-fg-2 file:mr-4 file:rounded-2 file:border-0 file:bg-bark-deep file:px-4 file:py-2 file:font-headline file:text-xs file:font-extrabold file:uppercase file:tracking-ribbon file:text-white hover:file:bg-bark"
+            />
+            <button
+              type="submit"
+              className="bt-btn bt-btn-primary justify-center sm:w-auto"
+            >
+              Replace report
+            </button>
+          </form>
+
+          <p className="mt-4 border-t-2 border-paper-edge pt-3 text-xs text-fg-3">
+            The file needs these columns:{' '}
+            <strong className="text-fg-2">
+              Technician, Opportunity Status, Follow-Ups, Next Follow Up Date
+            </strong>
+            . It also reads Last Follow Up Date, Highest Estimate Value and Total
+            Amount of Estimate(s) Sold when they&apos;re present. Anything else in
+            the export is ignored, and if a required column is missing the upload
+            is refused rather than showing you zeroes.
+          </p>
+        </section>
+      )}
+
       <p className="mt-8 text-center text-xs leading-relaxed text-fg-3">
         Source: <strong className="text-fg-2">Open Opportunities</strong> export,
-        run {T.runLabel}, filtered to opportunities with a next follow-up date
-        between <strong className="text-fg-2">{T.windowLabel}</strong> — of which
+        read {asOfLabel(data.meta)}, filtered to opportunities with a next
+        follow-up date between{' '}
+        <strong className="text-fg-2">{windowLabel(data.meta)}</strong> — of which
         the {T.followed} with at least one logged follow-up are shown here.
         &ldquo;Calls&rdquo; is the Follow-Ups count; won value is Total Amount of
         Estimate(s) Sold; &ldquo;on the table&rdquo; is Highest Estimate Value on

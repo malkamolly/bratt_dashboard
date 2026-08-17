@@ -221,6 +221,18 @@ export function canSeeFollowupScorecard(
 }
 
 /**
+ * Can this role upload a new opportunities export to refresh the scorecard?
+ *
+ * Deliberately narrower than "can see it": an upload REPLACES the whole report
+ * for everyone, and the report names individual arborists, so it stays with the
+ * people who run the sales meeting. Mirrors the RLS write policy in migration
+ * 070_followup_uploads.sql.
+ */
+export function canUploadFollowupData(role: Role): boolean {
+  return role === 'admin' || role === 'sales_manager';
+}
+
+/**
  * Returns the current user's email + role if they are signed in AND on the
  * allowlist. Returns null otherwise.
  */
