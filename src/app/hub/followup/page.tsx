@@ -33,6 +33,7 @@ import {
 import { serverClient } from '@/lib/supabase';
 import { HubSubNav } from '@/components/HubSubNav';
 import { uploadFollowupData } from './actions';
+import { StackedBar, SingleBar, type BarSegment } from './ChartBars';
 import {
   FALLBACK_SCORECARD,
   CALL_DEPTH_COLORS,
@@ -102,8 +103,9 @@ const RECENCY_BUCKETS = [
   { key: 'd7', label: RECENCY_LABELS.d7, color: RECENCY_COLORS.d7 },
 ] as const;
 
-// A "nothing happened" fill, distinct from every step of the call ramp because
-// it isn't a quantity — the record has no history at all.
+// A "nothing happened" fill for legend swatches, distinct from every step of
+// the call ramp because it isn't a quantity — the record has no history at all.
+// The bars themselves carry their own copy of this (see ChartBars).
 const HATCH =
   'repeating-linear-gradient(135deg, #F5EDDB 0 6px, #7A6B55 6px 7px)';
 
@@ -194,59 +196,6 @@ function RowFigure({
   );
 }
 
-/**
- * A stacked bar of counts. `scale` shrinks the whole bar (used by the revenue
- * chart so bars compare in dollars); count charts leave it at 100 so each board
- * fills the track and the MIX is what compares.
- */
-function StackedBar({
-  segments,
-  scale = 100,
-  ariaLabel,
-}: {
-  segments: ReadonlyArray<{
-    key: string;
-    value: number;
-    share: number;
-    color: string | null;
-    label: string;
-    title: string;
-  }>;
-  scale?: number;
-  ariaLabel: string;
-}) {
-  return (
-    <div className="flex h-8 min-w-0 gap-[2px]" role="img" aria-label={ariaLabel}>
-      {segments.map((s) => (
-        <div
-          key={s.key}
-          title={s.title}
-          className="relative flex items-center justify-center overflow-hidden border border-ink first:rounded-l-1 last:rounded-r-1"
-          style={{
-            flex: `0 0 ${s.share * scale}%`,
-            background: s.color ?? HATCH,
-          }}
-        >
-          {/* Only label a segment wide enough to hold the text; the rest carry a
-              native tooltip so no figure is unreachable. */}
-          {s.share * scale >= 9 && (
-            <span
-              className="whitespace-nowrap px-1 font-headline text-[11px] font-black tabular-nums"
-              style={
-                s.color
-                  ? { color: s.color === CALL_DEPTH_COLORS.c1 ? '#1A0E05' : '#FFF8EC' }
-                  : { color: '#4A3826', background: '#F5EDDB', borderRadius: 3 }
-              }
-            >
-              {s.label}
-            </span>
-          )}
-        </div>
-      ))}
-    </div>
-  );
-}
-
 /** The dashed divider + note that sets Alex P's board apart. See OpenBoard.pinned. */
 function PinnedNote() {
   return (
@@ -257,17 +206,21 @@ function PinnedNote() {
 }
 
 function CallsRow({ b }: { b: OpenBoard }) {
-  const segments = CALL_BUCKETS.flatMap((bucket) => {
+  const segments: BarSegment[] = CALL_BUCKETS.flatMap((bucket) => {
     const value = b.calls[bucket.key];
     if (!value) return [];
+    const share = value / b.open;
     return [
       {
         key: bucket.key,
-        value,
-        share: value / b.open,
+        share,
         color: bucket.color,
         label: String(value),
-        title: `${b.name}: ${value} of ${b.open} open records — ${bucket.label.toLowerCase()}`,
+        tip: {
+          heading: b.name,
+          value: `${value} of ${b.open} open records`,
+          detail: `${bucket.label.toLowerCase()} · ${Math.round(share * 100)}% of the board`,
+        },
       },
     ];
   });
@@ -276,7 +229,7 @@ function CallsRow({ b }: { b: OpenBoard }) {
       <RowLabel name={b.name} sub={`${b.open} open · avg ${b.avgCalls.toFixed(1)}`} />
       <StackedBar
         segments={segments}
-        ariaLabel={`${b.name}: ${segments.map((s) => `${s.value} with ${CALL_BUCKETS.find((c) => c.key === s.key)?.label.toLowerCase()}`).join(', ')}`}
+        ariaLabel={`${b.name}: ${CALL_BUCKETS.filter((c) => b.calls[c.key] > 0).map((c) => `${b.calls[c.key]} with ${c.label.toLowerCase()}`).join(', ')}`}
       />
       <RowFigure
         value={`${b.underTwoPct}%`}
@@ -288,17 +241,21 @@ function CallsRow({ b }: { b: OpenBoard }) {
 }
 
 function RecencyRow({ b }: { b: OpenBoard }) {
-  const segments = RECENCY_BUCKETS.flatMap((bucket) => {
+  const segments: BarSegment[] = RECENCY_BUCKETS.flatMap((bucket) => {
     const value = b.recency[bucket.key];
     if (!value) return [];
+    const share = value / b.open;
     return [
       {
         key: bucket.key,
-        value,
-        share: value / b.open,
+        share,
         color: bucket.color,
         label: String(value),
-        title: `${b.name}: ${value} of ${b.open} open records — ${bucket.label.toLowerCase()}`,
+        tip: {
+          heading: b.name,
+          value: `${value} of ${b.open} open records`,
+          detail: `${bucket.label.toLowerCase()} since the last call · ${Math.round(share * 100)}% of the board`,
+        },
       },
     ];
   });
@@ -310,7 +267,7 @@ function RecencyRow({ b }: { b: OpenBoard }) {
       />
       <StackedBar
         segments={segments}
-        ariaLabel={`${b.name}: ${segments.map((s) => `${s.value} at ${RECENCY_BUCKETS.find((c) => c.key === s.key)?.label.toLowerCase()}`).join(', ')}`}
+        ariaLabel={`${b.name}: ${RECENCY_BUCKETS.filter((c) => b.recency[c.key] > 0).map((c) => `${b.recency[c.key]} at ${c.label.toLowerCase()}`).join(', ')}`}
       />
       <RowFigure
         value={String(b.cold30)}
@@ -590,32 +547,24 @@ export default async function FollowupScorecardPage({
                     name={b.name}
                     sub={`${b.droppedAfterOne} of ${b.open} open`}
                   />
-                  <div
-                    className="flex h-8 min-w-0"
-                    role="img"
-                    aria-label={`${b.name}: ${Math.round(pct)}% of the open board dropped after one call or fewer`}
-                  >
-                    {pct > 0 ? (
-                      <div
-                        title={`${b.name}: ${b.droppedAfterOne} records marked Unreachable after one call or fewer — ${usd(b.onTheTable)} in estimate value`}
-                        className="rounded-1 border border-ink bg-orange"
-                        style={{ width: `${(pct / droppedMax / 100) * 100}%` }}
-                      />
-                    ) : (
-                      <div
-                        title={`${b.name}: nothing on this board was dropped after one call.`}
-                        className="flex w-[72px] items-center justify-center rounded-1 border border-ink"
-                        style={{ background: HATCH }}
-                      >
-                        <span
-                          className="px-1 font-headline text-[11px] font-black"
-                          style={{ color: '#4A3826', background: '#F5EDDB', borderRadius: 3 }}
-                        >
-                          none
-                        </span>
-                      </div>
-                    )}
-                  </div>
+                  <SingleBar
+                    empty={pct === 0}
+                    width={(pct / droppedMax / 100) * 100}
+                    ariaLabel={`${b.name}: ${Math.round(pct)}% of the open board dropped after one call or fewer`}
+                    tip={
+                      pct > 0
+                        ? {
+                            heading: b.name,
+                            value: `${b.droppedAfterOne} of ${b.open} open records dropped after one call`,
+                            detail: `${usd(b.onTheTable)} in estimate value · ${Math.round(pct)}% of the board`,
+                          }
+                        : {
+                            heading: b.name,
+                            value: 'Nothing dropped after one call',
+                            detail: 'Every record on this board got a real chance.',
+                          }
+                    }
+                  />
                   <RowFigure
                     value={`${Math.round(pct)}%`}
                     label={b.onTheTable ? `${usdShort(b.onTheTable)} on the table` : '—'}
@@ -672,18 +621,21 @@ export default async function FollowupScorecardPage({
 
         <div className="flex flex-col gap-3.5">
           {revenue.map((r) => {
-            const segments = CALL_ORDER.flatMap((d) => {
+            const segments: BarSegment[] = CALL_ORDER.flatMap((d) => {
               const value = r.byDepth[d];
               if (!value) return [];
               const jobs = r.jobsByDepth[d];
               return [
                 {
                   key: d,
-                  value,
                   share: value / r.sold,
                   color: CALL_DEPTH_COLORS[d],
                   label: usdShort(value),
-                  title: `${r.name} — ${CALL_DEPTH_LABELS[d].toLowerCase()}: ${usd(value)} across ${jobs} job${jobs === 1 ? '' : 's'}`,
+                  tip: {
+                    heading: `${r.name} — ${CALL_DEPTH_LABELS[d].toLowerCase()}`,
+                    value: `${usd(value)} across ${jobs} job${jobs === 1 ? '' : 's'}`,
+                    detail: `${Math.round((value / r.sold) * 100)}% of what calling back earned ${r.name}`,
+                  },
                 },
               ];
             });
