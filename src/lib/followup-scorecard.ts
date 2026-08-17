@@ -612,6 +612,158 @@ export function listNames(names: string[]): string {
 }
 
 // ---------------------------------------------------------------------------
+// Board-by-board read-out
+// ---------------------------------------------------------------------------
+// One paragraph per arborist, ASSEMBLED FROM THEIR OWN FIGURES rather than
+// written by hand. The first version of this report had hand-written commentary,
+// which cannot survive a weekly re-upload: the prose would describe last week
+// while the numbers described this week, on a page about named people. Every
+// sentence and badge below is therefore earned by the data.
+//
+// Badges are superlatives within the current upload, capped at two per person so
+// the strongest thing about each board is what reads first.
+
+export type ReadoutBadge = { label: string; tone: 'good' | 'watch' };
+
+export type BoardReadout = {
+  name: string;
+  badges: ReadoutBadge[];
+  sentences: string[];
+};
+
+/** Index of the row holding the max of `pick`, or -1 when nothing qualifies. */
+function argMax<T>(rows: readonly T[], pick: (r: T) => number): number {
+  let best = -1;
+  let bestVal = -Infinity;
+  rows.forEach((r, i) => {
+    const v = pick(r);
+    if (v > bestVal) {
+      bestVal = v;
+      best = i;
+    }
+  });
+  return bestVal > 0 ? best : -1;
+}
+
+export function boardReadouts(data: ScorecardData): BoardReadout[] {
+  const rev = data.revenue;
+  const boardOf = (name: string) => data.openBoards.find((b) => b.name === name);
+
+  const topEarner = rev[argMax(rev, (r) => r.sold)]?.name;
+  const mostWins = rev[argMax(rev, (r) => r.won)]?.name;
+  const longestChase = rev[argMax(rev, (r) => r.maxCalls)]?.name;
+  // Who earns the biggest SHARE of their money from call three onward — the
+  // calls easiest to skip, so worth naming.
+  const deepest = rev[argMax(rev, (r) => (r.sold > 0 ? r.deep / r.sold : 0))]?.name;
+  const biggestUpside = data.openBoards[
+    argMax(data.openBoards, (b) => b.onTheTable)
+  ]?.name;
+  const coldest = data.openBoards[argMax(data.openBoards, (b) => b.cold30)]?.name;
+
+  return rev.map((r) => {
+    const b = boardOf(r.name);
+    const badges: ReadoutBadge[] = [];
+    const room = () => badges.length < 2;
+    // At most ONE flag per person. This page is read by the people it names, and
+    // two flags on one board reads as piling on rather than informing.
+    const flagged = () => badges.some((x) => x.tone === 'watch');
+
+    if (r.name === topEarner) badges.push({ label: 'Top follow-up earner', tone: 'good' });
+    if (r.name === mostWins && room()) {
+      badges.push({ label: 'Most follow-up wins', tone: 'good' });
+    }
+    if (r.name === longestChase && room()) {
+      badges.push({ label: 'Longest chase', tone: 'good' });
+    }
+    if (r.name === deepest && room()) {
+      badges.push({ label: 'Wins in the later rounds', tone: 'good' });
+    }
+    if (!b && room()) {
+      badges.push({ label: 'Nothing left open', tone: 'good' });
+    }
+    if (b?.pinned && room()) {
+      badges.push({ label: 'Newest board', tone: 'good' });
+    }
+    if (r.name === biggestUpside && room() && !flagged()) {
+      badges.push({ label: 'Biggest upside', tone: 'watch' });
+    }
+    if (r.name === coldest && room() && !flagged()) {
+      badges.push({ label: 'Cold records to clear', tone: 'watch' });
+    }
+    // No OPEN record has reached a fifth call — the cadence stops short. Never
+    // flagged on a pinned board: brand-new work hasn't had time to get there,
+    // so it would be a criticism of the calendar, not the person.
+    if (b && b.open > 0 && b.calls.fivePlus === 0 && !b.pinned && room() && !flagged()) {
+      badges.push({ label: 'Stops before call five', tone: 'watch' });
+    }
+
+    const sentences: string[] = [];
+
+    // 1. What calling back earned them.
+    if (r.won > 0) {
+      let s = `${usd(r.sold)} from ${r.won} follow-up win${r.won === 1 ? '' : 's'} — ${r.winRate}% of the ${r.followed} records ${r.name} called back.`;
+      if (r.deep > 0) {
+        s += ` ${usd(r.deep)} of it came on call three or later, across ${r.deepJobs} job${r.deepJobs === 1 ? '' : 's'}.`;
+      } else {
+        s += ` None of it came on call three or later — that's where the room is.`;
+      }
+      if (r.maxCalls >= 3) s += ` Longest chase that landed: ${r.maxCalls} calls.`;
+      sentences.push(s);
+    } else {
+      sentences.push(
+        `No follow-up wins yet out of ${r.followed} record${r.followed === 1 ? '' : 's'} called back.`,
+      );
+    }
+
+    // 2. The state of their open board.
+    if (!b) {
+      sentences.push(
+        `Nothing sitting open — the work closes or gets cleared out rather than waiting.`,
+      );
+    } else {
+      sentences.push(
+        `${b.open} still open, averaging ${b.avgCalls.toFixed(1)} calls.`,
+      );
+
+      // The flags, as one readable sentence rather than a comma-spliced list.
+      const flags: string[] = [];
+      if (b.underTwo > 0) flags.push(`${b.underTwo} sit under two calls`);
+      if (b.droppedAfterOne > 0) {
+        // Parenthesised, not comma'd: an internal comma would collide with the
+        // list separator below and read as a fourth item.
+        flags.push(
+          `${b.droppedAfterOne} were dropped after one (${usd(b.onTheTable)} on the table)`,
+        );
+      }
+      if (b.cold30 > 0) {
+        flags.push(`${b.cold30} have had no contact in 30+ days`);
+      }
+      if (flags.length === 1) sentences.push(`${flags[0]}.`);
+      else if (flags.length === 2) {
+        sentences.push(`${flags[0]} and ${flags[1]}.`);
+      } else if (flags.length > 2) {
+        // Oxford comma — the items are long enough that it earns its keep.
+        sentences.push(
+          `${flags.slice(0, -1).join(', ')}, and ${flags[flags.length - 1]}.`,
+        );
+      }
+
+      if (b.pinned) {
+        sentences.push(
+          `Nothing here was given up on, so the low call counts mean the work is new rather than abandoned — read this board separately from the others.`,
+        );
+      } else if (b.calls.fivePlus === 0) {
+        sentences.push(
+          `No open record on this board has reached a fifth call. Call five still converts at ${data.depthOutcomes.find((d) => d.key === 'c5')?.winRate ?? 0}%, so extending the cadence is the smallest change available.`,
+        );
+      }
+    }
+
+    return { name: r.name, badges, sentences };
+  });
+}
+
+// ---------------------------------------------------------------------------
 // Fallback snapshot
 // ---------------------------------------------------------------------------
 // Shown when nothing has been uploaded yet, so the page is never blank on a

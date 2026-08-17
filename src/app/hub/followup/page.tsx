@@ -48,6 +48,7 @@ import {
   oneInN,
   narrative,
   listNames,
+  boardReadouts,
   type OpenBoard,
   type ScorecardData,
 } from '@/lib/followup-scorecard';
@@ -196,6 +197,53 @@ function RowFigure({
   );
 }
 
+/** A computed badge on the board-by-board read-out. */
+function Badge({ label, tone }: { label: string; tone: 'good' | 'watch' }) {
+  const cls =
+    tone === 'good'
+      ? 'border-teal bg-teal/10 text-teal'
+      : 'border-wood-warm bg-wood-warm/10 text-wood-warm';
+  return (
+    <span
+      className={`inline-flex items-center rounded-full border-2 px-2 py-0.5 font-headline text-[10px] font-extrabold uppercase leading-tight tracking-wider ${cls}`}
+    >
+      {label}
+    </span>
+  );
+}
+
+/** Numeric cell. `tone` flags the figures worth a second look. */
+function Td({
+  children,
+  tone,
+}: {
+  children: React.ReactNode;
+  tone?: 'alarm' | 'good';
+}) {
+  const cls =
+    tone === 'alarm'
+      ? 'font-black text-orange'
+      : tone === 'good'
+        ? 'font-black text-teal'
+        : '';
+  return (
+    <td className={`whitespace-nowrap border-b border-paper-edge px-2 py-2 text-right text-[13px] tabular-nums ${cls}`}>
+      {children}
+    </td>
+  );
+}
+
+function Th({ children }: { children: React.ReactNode }) {
+  return (
+    <th
+      scope="col"
+      className="max-w-[76px] border-b-2 border-ink px-2 pb-2 align-bottom text-right font-headline text-[9.5px] font-extrabold uppercase leading-tight tracking-wide text-fg-3"
+    >
+      {children}
+    </th>
+  );
+}
+
 /** The dashed divider + note that sets Alex P's board apart. See OpenBoard.pinned. */
 function PinnedNote() {
   return (
@@ -297,6 +345,7 @@ export default async function FollowupScorecardPage({
   const N = narrative(data);
   const boards = data.openBoards;
   const revenue = data.revenue;
+  const readouts = boardReadouts(data);
 
   const droppedMax = Math.max(
     ...boards.map((b) => b.droppedAfterOne / b.open),
@@ -803,6 +852,161 @@ export default async function FollowupScorecardPage({
           can&apos;t tell any of us who needs a call today, so cold records only
           surface in a report like this one. If the date moves when the call
           happens, the list works by itself.
+        </p>
+      </section>
+
+      {/* ---------- board by board ---------- */}
+      <section className="mt-8 rounded-card border-2 border-ink bg-white p-6 shadow-sh-1">
+        <p className="font-headline text-[11px] font-extrabold uppercase tracking-ribbon text-fg-3">
+          Board by board
+        </p>
+        <h2 className="mt-1 font-headline text-2xl font-black uppercase text-bark-deep">
+          Where each of us stands
+        </h2>
+        <p className="mb-2 mt-2 max-w-3xl text-sm text-fg-2">
+          Everyone who called a record back this window, biggest follow-up
+          earnings first. The badges are whoever leads the board on that measure
+          in this upload.
+        </p>
+
+        <ul className="m-0 flex list-none flex-col gap-0 p-0">
+          {readouts.map((r) => (
+            <li
+              key={r.name}
+              className="flex flex-col gap-3 border-b border-paper-edge py-4 first:pt-0 last:border-b-0 last:pb-0 sm:flex-row sm:gap-4"
+            >
+              <div className="flex flex-none flex-row flex-wrap items-center gap-2 sm:w-[172px] sm:flex-col sm:items-start">
+                <p className="font-headline text-base font-black leading-tight text-ink">
+                  {r.name}
+                </p>
+                {r.badges.map((bd) => (
+                  <Badge key={bd.label} label={bd.label} tone={bd.tone} />
+                ))}
+              </div>
+              <div className="min-w-0 text-sm leading-relaxed text-fg-2">
+                {r.sentences.map((sentence, i) => (
+                  <p key={i} className={i > 0 ? 'mt-1.5' : undefined}>
+                    {sentence}
+                  </p>
+                ))}
+              </div>
+            </li>
+          ))}
+        </ul>
+
+        <p className="mt-5 border-t-2 border-paper-edge pt-3 text-xs text-fg-3">
+          Written from the figures in this upload rather than by hand, so it
+          can&apos;t describe last week while the charts describe this one.
+        </p>
+      </section>
+
+      {/* ---------- full scorecard ---------- */}
+      <section className="mt-8 rounded-card border-2 border-ink bg-white p-6 shadow-sh-1">
+        <p className="font-headline text-[11px] font-extrabold uppercase tracking-ribbon text-fg-3">
+          All figures
+        </p>
+        <h2 className="mt-1 font-headline text-2xl font-black uppercase text-bark-deep">
+          Full scorecard
+        </h2>
+        <p className="mb-5 mt-2 max-w-3xl text-sm text-fg-2">
+          Every number on this page in one table, counting only records that got
+          a follow-up. The open-board columns are blank for anyone carrying no
+          open records.
+        </p>
+
+        <div className="-mx-2 overflow-x-auto px-2">
+          <table className="w-full min-w-[760px] border-collapse tabular-nums">
+            <thead>
+              <tr>
+                <th
+                  scope="col"
+                  className="sticky left-0 border-b-2 border-ink bg-white px-2 pb-2 text-left align-bottom font-headline text-[9.5px] font-extrabold uppercase leading-tight tracking-wide text-fg-3"
+                >
+                  Arborist
+                </th>
+                <Th>Records called back</Th>
+                <Th>Won</Th>
+                <Th>Win rate</Th>
+                <Th>$ won by calling back</Th>
+                <Th>Won on call 3+</Th>
+                <Th>Most calls to a win</Th>
+                <Th>Open now</Th>
+                <Th>Dropped after 1 call</Th>
+                <Th>$ on the table</Th>
+                <Th>Cold 30+ days</Th>
+              </tr>
+            </thead>
+            <tbody>
+              {revenue.map((r) => {
+                const b = boards.find((x) => x.name === r.name);
+                return (
+                  <tr key={r.name} className="hover:bg-bone">
+                    <td className="sticky left-0 whitespace-nowrap border-b border-paper-edge bg-white px-2 py-2 text-left font-headline text-[13px] font-black text-ink">
+                      {r.name}
+                    </td>
+                    <Td>{r.followed}</Td>
+                    <Td>{r.won}</Td>
+                    <Td tone={r.winRate >= 40 ? 'good' : undefined}>{r.winRate}%</Td>
+                    <Td>{usd(r.sold)}</Td>
+                    <Td>
+                      {r.deepJobs} · {usd(r.deep)}
+                    </Td>
+                    <Td>{r.maxCalls}</Td>
+                    <Td>{b ? b.open : '—'}</Td>
+                    <Td tone={b && b.droppedAfterOne >= 20 ? 'alarm' : undefined}>
+                      {b ? b.droppedAfterOne : '—'}
+                    </Td>
+                    <Td>{b && b.onTheTable ? usd(b.onTheTable) : '—'}</Td>
+                    <Td tone={b && b.cold30 >= 5 ? 'alarm' : undefined}>
+                      {b ? b.cold30 : '—'}
+                    </Td>
+                  </tr>
+                );
+              })}
+            </tbody>
+            <tfoot>
+              <tr className="bg-bone font-black">
+                <td className="sticky left-0 whitespace-nowrap border-t-2 border-ink bg-bone px-2 py-2 text-left font-headline text-[13px] font-black text-ink">
+                  Everyone
+                </td>
+                <td className="whitespace-nowrap border-t-2 border-ink px-2 py-2 text-right text-[13px] tabular-nums">
+                  {T.followed}
+                </td>
+                <td className="whitespace-nowrap border-t-2 border-ink px-2 py-2 text-right text-[13px] tabular-nums">
+                  {T.won}
+                </td>
+                <td className="whitespace-nowrap border-t-2 border-ink px-2 py-2 text-right text-[13px] tabular-nums">
+                  {T.winRate}%
+                </td>
+                <td className="whitespace-nowrap border-t-2 border-ink px-2 py-2 text-right text-[13px] tabular-nums">
+                  {usd(T.sold)}
+                </td>
+                <td className="whitespace-nowrap border-t-2 border-ink px-2 py-2 text-right text-[13px] tabular-nums">
+                  {T.won3Plus} · {usd(T.sold3Plus)}
+                </td>
+                <td className="whitespace-nowrap border-t-2 border-ink px-2 py-2 text-right text-[13px] tabular-nums">
+                  {T.maxCalls}
+                </td>
+                <td className="whitespace-nowrap border-t-2 border-ink px-2 py-2 text-right text-[13px] tabular-nums">
+                  {T.openBoard}
+                </td>
+                <td className="whitespace-nowrap border-t-2 border-ink px-2 py-2 text-right text-[13px] tabular-nums">
+                  {T.droppedAfterOne}
+                </td>
+                <td className="whitespace-nowrap border-t-2 border-ink px-2 py-2 text-right text-[13px] tabular-nums">
+                  {usd(T.onTheTable)}
+                </td>
+                <td className="whitespace-nowrap border-t-2 border-ink px-2 py-2 text-right text-[13px] tabular-nums">
+                  {T.cold30}
+                </td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+        <p className="mt-4 text-xs text-fg-3">
+          Totals count every record in the upload, including any shared or
+          multi-name ones that are left out of the per-person rows above — so the
+          columns won&apos;t always add up to the footer.
         </p>
       </section>
 
