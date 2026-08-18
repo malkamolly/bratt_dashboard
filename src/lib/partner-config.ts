@@ -28,11 +28,15 @@ export const PARTNER = {
    * draws a styled wordmark instead, so nothing looks broken.
    */
   logoCandidates: [
-    // The name the file was actually uploaded under — kept first so their
-    // upload works without anyone renaming anything.
+    // A TRIMMED copy of their upload, and first for a reason: the original has
+    // heavy transparent padding baked in (the artwork is only 55% of the image
+    // height), so rendering it at a header size left the wordmark about 11px
+    // tall and illegible. This version crops to the mark, so a 28px box gets
+    // 28px of logo. Regenerate it if they send a new file.
+    '/brand/partners/landscapes-unlimited.png',
+    // The raw upload, kept as a fallback.
     '/brand/partners/Landscape_LogoFC.png',
     '/brand/partners/landscapes-unlimited.svg',
-    '/brand/partners/landscapes-unlimited.png',
     '/brand/partners/landscapes-unlimited.jpg',
     '/brand/partners/landscapes-unlimited.jpeg',
     '/brand/partners/landscapes-unlimited.webp',

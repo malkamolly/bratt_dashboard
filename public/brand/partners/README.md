@@ -6,6 +6,22 @@ it up automatically — no code change, no redeploy step beyond the commit itsel
 **Upload straight into this folder:**
 https://github.com/malkamolly/bratt_dashboard/upload/main/public/brand/partners
 
+**Trim transparent padding before use.** Their original upload
+(`Landscape_LogoFC.png`) has so much baked-in transparent margin that the artwork
+is only 55% of the image height — rendered at header size, the wordmark came out
+about 11px tall and unreadable. `landscapes-unlimited.png` is that file cropped
+to the mark, and it's what the app and the PDF actually use. If a new logo
+arrives, crop it the same way:
+
+```python
+from PIL import Image
+src = Image.open('THEIR_FILE.png').convert('RGBA')
+tight = src.crop(src.getchannel('A').getbbox())
+out = Image.new('RGBA', (tight.width + 12, tight.height + 12), (0, 0, 0, 0))
+out.paste(tight, (6, 6))
+out.save('landscapes-unlimited.png', optimize=True)
+```
+
 Any of these filenames works (tried in this order):
 
 1. `landscapes-unlimited.svg` ← best: crisp at any size, tiny file

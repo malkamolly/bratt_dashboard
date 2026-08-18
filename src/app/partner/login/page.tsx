@@ -49,7 +49,7 @@ export default async function PartnerLoginPage({
           <span className="font-headline text-[0.6rem] font-extrabold uppercase tracking-ribbon text-fg-3">
             Prepared for
           </span>
-          <PartnerLogo className="h-6" />
+          <PartnerLogo className="h-9" />
         </div>
 
         <form

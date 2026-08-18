@@ -177,7 +177,7 @@ export async function buildWorkOrderPdf(
   // Partner logo on a white chip — their mark is dark green on transparent and
   // would disappear against the bark panel.
   if (partnerLogo) {
-    const h = 30;
+    const h = 34;
     const w = (partnerLogo.width / partnerLogo.height) * h;
     const padX = 10;
     const padY = 8;

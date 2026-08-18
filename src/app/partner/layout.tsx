@@ -60,7 +60,7 @@ export default async function PartnerLayout({
               alt={BRATT.name}
               width={160}
               height={128}
-              className="h-11 w-auto flex-shrink-0 sm:h-14"
+              className="h-12 w-auto flex-shrink-0 sm:h-16"
               priority
             />
 
@@ -72,13 +72,15 @@ export default async function PartnerLayout({
             />
 
             {/* Their mark on a white chip: it's dark green on transparent and
-                would vanish against the bark panel. */}
-            <span className="flex min-w-0 flex-col gap-1">
-              <span className="hidden font-headline text-[0.55rem] font-extrabold uppercase tracking-ribbon text-cream/50 sm:block">
+                would vanish against the bark panel. Sized off the TRIMMED asset,
+                so this is 26-32px of actual wordmark rather than mostly padding,
+                and the chip hugs it instead of floating around it. */}
+            <span className="flex min-w-0 flex-col gap-1.5">
+              <span className="hidden font-headline text-[0.55rem] font-extrabold uppercase tracking-ribbon text-cream/45 sm:block">
                 In partnership with
               </span>
-              <span className="rounded bg-white px-2 py-1.5">
-                <PartnerLogo className="h-4 sm:h-5" />
+              <span className="inline-flex items-center rounded-2 bg-white px-2.5 py-1.5 shadow-sh-1">
+                <PartnerLogo className="h-[26px] sm:h-8" />
               </span>
             </span>
           </Link>
@@ -142,8 +144,8 @@ export default async function PartnerLayout({
             <span className="font-headline text-[0.6rem] font-extrabold uppercase tracking-ribbon text-cream/50">
               {PROGRAM.name}
             </span>
-            <span className="rounded bg-white px-2 py-1">
-              <PartnerLogo className="h-4" />
+            <span className="inline-flex items-center rounded-2 bg-white px-2.5 py-1.5">
+              <PartnerLogo className="h-6" />
             </span>
           </div>
         </div>
