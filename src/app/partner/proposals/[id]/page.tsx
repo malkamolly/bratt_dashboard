@@ -7,13 +7,13 @@ import {
   getWorkOrder,
   isLocked,
   hasLocation,
-  JOB_STATUSES,
   JOB_STATUS_LABELS,
   HANDOFF_STATUS_LABELS,
   SPRAY_HEIGHT_LIMIT_FT,
   type TreeWithTreatments,
 } from '@/lib/partner-data';
-import { setJobStatusAction, deleteProposalAction } from '@/app/partner/actions';
+import { deleteProposalAction } from '@/app/partner/actions';
+import { JobStatusControl } from '@/components/partner/JobStatusControl';
 import { formatCents } from '@/lib/php-quote';
 
 export const dynamic = 'force-dynamic';
@@ -127,25 +127,7 @@ export default async function ProposalPage({
           Your sales status. Separate from where the work order stands with{' '}
           {BRATT.name}, and you can change it any time.
         </p>
-        <form action={setJobStatusAction} className="mt-4 flex flex-wrap gap-2">
-          <input type="hidden" name="id" value={proposal.id} />
-          {JOB_STATUSES.map((s) => (
-            <button
-              key={s.value}
-              type="submit"
-              name="jobStatus"
-              value={s.value}
-              aria-pressed={s.value === proposal.jobStatus}
-              className={
-                s.value === proposal.jobStatus
-                  ? 'bt-btn bt-btn-primary !px-5 !py-2 !text-xs'
-                  : 'bt-btn bt-btn-ghost !px-5 !py-2 !text-xs'
-              }
-            >
-              {JOB_STATUS_LABELS[s.value]}
-            </button>
-          ))}
-        </form>
+        <JobStatusControl proposalId={proposal.id} current={proposal.jobStatus} />
       </section>
 
       {/* ---- Trees ---- */}

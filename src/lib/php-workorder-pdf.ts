@@ -124,7 +124,7 @@ export async function buildWorkOrderPdf(
   // partnership — a rep hands this to their customer, and the customer should see
   // both companies. Bratt leads (we do the work and stand behind it), Landscapes
   // Unlimited closes, with their green as the divider between them.
-  const HEADER_H = 118;
+  const HEADER_H = 132;
   ctx.page.drawRectangle({
     x: 0,
     y: PAGE_H - HEADER_H,
@@ -154,11 +154,11 @@ export async function buildWorkOrderPdf(
   // Bratt badge, or the name in type if the file isn't there.
   let cursorX = MARGIN;
   if (brattLogo) {
-    const h = 62;
+    const h = 60;
     const w = (brattLogo.width / brattLogo.height) * h;
     ctx.page.drawImage(brattLogo, {
       x: cursorX,
-      y: PAGE_H - 26 - h,
+      y: PAGE_H - 22 - h,
       width: w,
       height: h,
     });
@@ -183,12 +183,12 @@ export async function buildWorkOrderPdf(
     const padY = 8;
     const chipW = w + padX * 2;
     const chipX = PAGE_W - MARGIN - chipW;
-    const chipY = PAGE_H - 30 - h - padY;
+    const chipY = PAGE_H - 34 - h - padY;
 
     ctx.page.drawText('IN PARTNERSHIP WITH', {
-      x: PAGE_W - MARGIN - body.widthOfTextAtSize('IN PARTNERSHIP WITH', 6.5),
-      y: PAGE_H - 22,
-      size: 6.5,
+      x: PAGE_W - MARGIN - bold.widthOfTextAtSize('IN PARTNERSHIP WITH', 7),
+      y: PAGE_H - 20,
+      size: 7,
       font: bold,
       color: PARTNER_ACCENT,
     });
@@ -218,7 +218,7 @@ export async function buildWorkOrderPdf(
   // Program name + reference, under the marks.
   ctx.page.drawText(`${PROGRAM.name.toUpperCase()}  ·  WORK ORDER`, {
     x: MARGIN,
-    y: PAGE_H - HEADER_H + 26,
+    y: PAGE_H - HEADER_H + 22,
     size: 9,
     font: bold,
     color: LIME,
@@ -227,7 +227,7 @@ export async function buildWorkOrderPdf(
   const ref = `${proposal.reference}${proposal.revision > 1 ? ` · REV ${proposal.revision}` : ''}`;
   ctx.page.drawText(ref, {
     x: PAGE_W - MARGIN - bold.widthOfTextAtSize(ref, 12),
-    y: PAGE_H - HEADER_H + 26,
+    y: PAGE_H - HEADER_H + 34,
     size: 12,
     font: bold,
     color: CREAM,
@@ -237,7 +237,7 @@ export async function buildWorkOrderPdf(
   const dateLine = formatBusinessDate(sentAt);
   ctx.page.drawText(dateLine, {
     x: PAGE_W - MARGIN - body.widthOfTextAtSize(dateLine, 8),
-    y: PAGE_H - HEADER_H + 13,
+    y: PAGE_H - HEADER_H + 20,
     size: 8,
     font: body,
     color: rgb(0.75, 0.72, 0.68),
@@ -246,10 +246,10 @@ export async function buildWorkOrderPdf(
   ctx.y = PAGE_H - HEADER_H - 32;
 
   // ---- Job block ---------------------------------------------------------
-  text(ctx, proposal.jobName, { size: 16, bold: true });
-  ctx.y -= 18;
-  text(ctx, proposal.formattedAddress ?? proposal.siteAddress, { size: 10, color: GREY });
-  ctx.y -= 14;
+  text(ctx, proposal.jobName, { size: 17, bold: true });
+  ctx.y -= 22;
+  text(ctx, proposal.formattedAddress ?? proposal.siteAddress, { size: 10.5, color: GREY });
+  ctx.y -= 16;
   if (!proposal.formattedAddress) {
     text(ctx, 'Address not confirmed against the map — verify before dispatch.', {
       size: 8.5,
@@ -267,7 +267,7 @@ export async function buildWorkOrderPdf(
     .filter(Boolean)
     .join('   ·   ');
   text(ctx, meta, { size: 9, color: GREY });
-  ctx.y -= 22;
+  ctx.y -= 26;
 
   ctx.page.drawLine({
     start: { x: MARGIN, y: ctx.y },
@@ -281,8 +281,8 @@ export async function buildWorkOrderPdf(
   for (const [i, tree] of order.trees.entries()) {
     ensureRoom(ctx, 150);
 
-    text(ctx, `${i + 1}. ${tree.label}`, { size: 12, bold: true });
-    ctx.y -= 15;
+    text(ctx, `${i + 1}. ${tree.label}`, { size: 12.5, bold: true });
+    ctx.y -= 17;
 
     const dims = [
       tree.species ?? 'Species not noted',
@@ -293,7 +293,7 @@ export async function buildWorkOrderPdf(
       .filter(Boolean)
       .join('  ·  ');
     text(ctx, dims, { size: 9, color: GREY });
-    ctx.y -= 16;
+    ctx.y -= 20;
 
     // Treatment lines, price right-aligned.
     for (const tr of tree.treatments) {
@@ -311,26 +311,26 @@ export async function buildWorkOrderPdf(
             color: tr.needsQuote ? ORANGE : INK,
           });
         }
-        ctx.y -= 13;
+        ctx.y -= 15;
       }
       if (tr.needsQuote && tr.quoteNote) {
         for (const line of wrap(tr.quoteNote, body, 8, CONTENT_W - 24)) {
-          text(ctx, line, { size: 8, color: ORANGE, x: MARGIN + 18 });
-          ctx.y -= 10;
+          text(ctx, line, { size: 8.5, color: ORANGE, x: MARGIN + 18 });
+          ctx.y -= 12;
         }
       }
     }
 
     if (tree.treatments.length === 0) {
       text(ctx, '• No treatment selected', { size: 10, color: ORANGE, x: MARGIN + 8 });
-      ctx.y -= 13;
+      ctx.y -= 15;
     }
 
     if (tree.notes) {
       ctx.y -= 2;
       for (const line of wrap(`Notes: ${tree.notes}`, body, 9, CONTENT_W - 16)) {
         text(ctx, line, { size: 9, color: GREY, x: MARGIN + 8 });
-        ctx.y -= 11;
+        ctx.y -= 12;
       }
     }
 
@@ -366,14 +366,14 @@ export async function buildWorkOrderPdf(
       ctx.y -= thumbH + 8;
     }
 
-    ctx.y -= 10;
+    ctx.y -= 14;
     ctx.page.drawLine({
       start: { x: MARGIN, y: ctx.y },
       end: { x: PAGE_W - MARGIN, y: ctx.y },
       thickness: 0.5,
       color: RULE,
     });
-    ctx.y -= 20;
+    ctx.y -= 24;
   }
 
   // ---- Total -------------------------------------------------------------
@@ -425,8 +425,19 @@ export async function buildWorkOrderPdf(
     CONTENT_W,
   )) {
     text(ctx, line, { size: 8.5, color: GREY });
-    ctx.y -= 11;
+    ctx.y -= 12;
   }
+
+  // Partnership credit, in their green, closing the ORDER — drawn here, before
+  // the appendix. It used to be emitted after drawPhotoAppendix(), which had
+  // already moved ctx to a photo page, so the credit landed on top of a photo
+  // caption. Anything that writes to ctx must run before the appendix takes over.
+  ctx.y -= 8;
+  text(
+    ctx,
+    `${PROGRAM.name} — ${BRATT.name} in partnership with ${PARTNER.name}`,
+    { size: 8, bold: true, color: PARTNER_DARK },
+  );
 
   // ---- Photo appendix ----------------------------------------------------
   // The inline thumbnails are for orientation while reading the order; they are
@@ -435,14 +446,6 @@ export async function buildWorkOrderPdf(
   // to and its measurements. Same embedded image either way — pdf-lib reuses the
   // embed, so the large copy costs no extra bytes.
   await drawPhotoAppendix(ctx, order, photos);
-
-  // Partnership credit, in their green, closing the document.
-  ctx.y -= 6;
-  text(
-    ctx,
-    `${PROGRAM.name} — ${BRATT.name} in partnership with ${PARTNER.name}`,
-    { size: 8, bold: true, color: PARTNER_DARK },
-  );
 
   return doc.save();
 }
@@ -510,7 +513,7 @@ async function drawPhotoAppendix(
       color: rgb(0.914, 0.906, 0.114),
     },
   );
-  ctx.y = PAGE_H - 110;
+  ctx.y = PAGE_H - 128;
 
   let firstOnPage = true;
 
@@ -551,14 +554,14 @@ async function drawPhotoAppendix(
         .join('  ·  ');
       ctx.page.drawText(detail, {
         x: MARGIN,
-        y: ctx.y - 28,
+        y: ctx.y - 30,
         size: 9,
         font: ctx.body,
         color: GREY,
       });
 
       // Fit the image to the space left, preserving aspect ratio, and centre it.
-      const boxTop = ctx.y - 44;
+      const boxTop = ctx.y - 50;
       const boxH = boxTop - MARGIN;
       const boxW = CONTENT_W;
       const scale = Math.min(boxW / img.width, boxH / img.height);

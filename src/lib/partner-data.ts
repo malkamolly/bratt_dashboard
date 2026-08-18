@@ -297,11 +297,31 @@ export async function updateProposal(
  */
 export async function setJobStatus(id: string, status: JobStatus): Promise<void> {
   const db = adminClient();
-  const { error } = await db
+
+  // `.select()` so we can tell "updated nothing" from "updated fine". Without it
+  // an update matching zero rows returns no error, the action succeeds, the page
+  // re-renders unchanged — and the button looks like it does nothing at all.
+  // Clicking SOLD reportedly did exactly that, and this is the check that turns
+  // whatever the cause is into a message instead of silence.
+  const { data, error } = await db
     .from('partner_proposals')
     .update({ job_status: status })
-    .eq('id', id);
+    .eq('id', id)
+    .select('id, job_status');
+
   if (error) throw new Error(`Could not update the status: ${error.message}`);
+
+  const rows = (data ?? []) as { id: string; job_status: string }[];
+  if (rows.length === 0) {
+    throw new Error(
+      `The status was not saved — no proposal matched id ${id}. Reload the page and try again.`,
+    );
+  }
+  if (rows[0].job_status !== status) {
+    throw new Error(
+      `The status came back as "${rows[0].job_status}" instead of "${status}". Tell Bratt about this.`,
+    );
+  }
 }
 
 /** Deletes a draft. Trees, photos, and treatments cascade (migration 071). */

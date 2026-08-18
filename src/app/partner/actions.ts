@@ -69,7 +69,19 @@ function measurement(
 }
 
 function jobStatusFrom(form: FormData): JobStatus {
-  const v = String(form.get('jobStatus') ?? 'proposing');
+  const v = String(form.get('jobStatus') ?? '');
+  if (v === 'sold' || v === 'dismissed' || v === 'proposing') return v;
+  // Deliberately NOT defaulting to 'proposing'. It used to, which meant a status
+  // that failed to reach the server looked exactly like a no-op: click SOLD,
+  // nothing changes, no error. Throwing makes the next such failure visible.
+  throw new Error(
+    `No job status was submitted (got ${JSON.stringify(v)}). Try again, and tell Bratt if it keeps happening.`,
+  );
+}
+
+/** Used where a status is optional and 'proposing' is genuinely the right start. */
+function jobStatusOrDefault(form: FormData): JobStatus {
+  const v = String(form.get('jobStatus') ?? '');
   return v === 'sold' || v === 'dismissed' ? v : 'proposing';
 }
 
@@ -78,7 +90,7 @@ function proposalInputFrom(form: FormData): ProposalInput {
     salespersonName: optional(form, 'salespersonName'),
     jobName: required(form, 'jobName', 'Job name'),
     siteAddress: required(form, 'siteAddress', 'Site address'),
-    jobStatus: jobStatusFrom(form),
+    jobStatus: jobStatusOrDefault(form),
   };
 }
 
@@ -129,13 +141,30 @@ export async function updateProposalAction(
   redirect(`/partner/proposals/${id}`);
 }
 
-/** Their own sales status. Allowed even once the work order is with Bratt. */
-export async function setJobStatusAction(form: FormData): Promise<void> {
+/**
+ * Their own sales status. Allowed even once the work order is with Bratt.
+ *
+ * Returns state rather than void so a failure can be shown on the page. This
+ * button reportedly did nothing when clicked, and a void action gave the UI no
+ * way to say why — see jobStatusFrom() above for the silent default that hid it.
+ */
+export async function setJobStatusAction(
+  _prev: FormState,
+  form: FormData,
+): Promise<FormState> {
   await requirePartner();
   const id = String(form.get('id') ?? '');
-  await setJobStatus(id, jobStatusFrom(form));
+
+  try {
+    if (!id) throw new Error('Missing proposal id.');
+    await setJobStatus(id, jobStatusFrom(form));
+  } catch (e) {
+    return { error: e instanceof Error ? e.message : 'Could not update the status.' };
+  }
+
   revalidatePath('/partner');
   revalidatePath(`/partner/proposals/${id}`);
+  return { error: null };
 }
 
 export async function deleteProposalAction(form: FormData): Promise<void> {
