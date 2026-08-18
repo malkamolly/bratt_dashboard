@@ -10,15 +10,21 @@
 // Required environment variables:
 //   PHP_GMAIL_USER          the sending Gmail address
 //   PHP_GMAIL_APP_PASSWORD  a Google App Password (NOT the account password)
-//   PHP_ORDER_EMAIL         where work orders go; defaults to BRATT.contactEmail
+//   PHP_ORDER_EMAIL         where work orders go — REQUIRED, no default
 //
-// Without the first two, sendWorkOrderEmail reports a failure rather than
-// throwing: the work order is already saved and the PDF stored, so the partner
-// should be told "saved, but the email didn't go" rather than losing the send.
+// PHP_ORDER_EMAIL has no fallback on purpose. An unset destination used to
+// default to an individual's address, which meant a misconfigured deploy could
+// quietly mail a customer's work order to a person who wasn't expecting it.
+// Refusing to send is the safe failure: nothing is lost, because the work order
+// and its PDF are already stored and the rep is told to have it configured.
+//
+// Whatever is missing, sendWorkOrderEmail reports a failure rather than throwing:
+// the send itself already succeeded, so the partner should be told "saved, but
+// the email didn't go" rather than losing the work order.
 // ============================================================================
 
 import nodemailer from 'nodemailer';
-import { BRATT, PARTNER, PROGRAM } from './partner-config';
+import { PARTNER, PROGRAM } from './partner-config';
 import { formatCents } from './php-quote';
 import type { WorkOrder } from './partner-types';
 
@@ -26,9 +32,12 @@ export type MailResult =
   | { ok: true; to: string }
   | { ok: false; to: string | null; error: string };
 
-/** Where work orders go. Overridable without a deploy. */
-export function orderEmailAddress(): string {
-  return process.env.PHP_ORDER_EMAIL?.trim() || BRATT.contactEmail;
+/**
+ * Where work orders go. Null when unconfigured — never a person's address as a
+ * fallback (see the note at the top of this file).
+ */
+export function orderEmailAddress(): string | null {
+  return process.env.PHP_ORDER_EMAIL?.trim() || null;
 }
 
 function plainBody(order: WorkOrder): string {
@@ -77,7 +86,7 @@ function plainBody(order: WorkOrder): string {
   lines.push(
     `Quoted total: ${formatCents(order.totalCents)}`,
     order.needsQuoteCount > 0
-      ? `Plus ${order.needsQuoteCount} line${order.needsQuoteCount === 1 ? '' : 's'} for ${BRATT.contactName} to quote by hand.`
+      ? `Plus ${order.needsQuoteCount} line${order.needsQuoteCount === 1 ? '' : 's'} to be priced by hand.`
       : '',
     '',
     'The full work order, including tree photos, is attached as a PDF.',
@@ -101,12 +110,20 @@ export async function sendWorkOrderEmail(
   const pass = process.env.PHP_GMAIL_APP_PASSWORD?.trim();
   const to = orderEmailAddress();
 
+  if (!to) {
+    return {
+      ok: false,
+      to: null,
+      error:
+        'No delivery address is configured — set PHP_ORDER_EMAIL in Vercel. The work order and its PDF are saved.',
+    };
+  }
   if (!user || !pass) {
     return {
       ok: false,
       to,
       error:
-        'Email is not configured yet — set PHP_GMAIL_USER and PHP_GMAIL_APP_PASSWORD in Vercel. The work order and its PDF are saved.',
+        'Email sending is not configured yet — set PHP_GMAIL_USER and PHP_GMAIL_APP_PASSWORD in Vercel. The work order and its PDF are saved.',
     };
   }
 
@@ -124,8 +141,6 @@ export async function sendWorkOrderEmail(
     await transport.sendMail({
       from: `"${PARTNER.name} via ${PROGRAM.name}" <${user}>`,
       to,
-      // Replies should reach a person, not the sending mailbox.
-      replyTo: BRATT.contactEmail,
       subject,
       text: plainBody(order),
       attachments: [

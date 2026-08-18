@@ -59,7 +59,18 @@ export const PARTNER_COLORS = {
 export const BRATT = {
   /** Shown as the service provider, not as the hub's owner. */
   name: 'Bratt Tree Company',
-  /** Who the partner contacts about pricing or an unusual tree. */
-  contactName: 'Connor',
-  contactEmail: 'connor@bratttree.com',
 } as const;
+
+// NO EMAIL ADDRESS LIVES IN THIS FILE, deliberately.
+//
+// Two rules, both requested and both easy to undo by accident:
+//
+//   1. No individual's address is ever a fallback destination. Work orders go
+//      only where PHP_ORDER_EMAIL says; if it isn't set, sending refuses rather
+//      than quietly picking a person. See orderEmailAddress() in php-mail.ts.
+//   2. No email address is rendered anywhere in the partner-facing UI. Their reps
+//      contact us through their own Bratt relationship, not an inbox this tool
+//      hands out.
+//
+// If a screen needs to tell the partner to get in touch, say so in words and
+// leave the routing out of the page.

@@ -334,7 +334,7 @@ export async function buildWorkOrderPdf(
   ensureRoom(ctx, 60);
   for (const line of wrap(
     `Prices cover a full year of treatment; where a treatment includes multiple sprays, all are included. ` +
-      `Lines marked "Bratt to quote" are off the standard chart and will be priced by ${BRATT.contactName} before scheduling. ` +
+      `Lines marked "Bratt to quote" are off the standard chart and will be priced by Bratt before scheduling. ` +
       `Accepted by ${PARTNER.name} on ${dateLine}.`,
     body,
     8.5,
@@ -344,7 +344,129 @@ export async function buildWorkOrderPdf(
     ctx.y -= 11;
   }
 
+  // ---- Photo appendix ----------------------------------------------------
+  // The inline thumbnails are for orientation while reading the order; they are
+  // far too small to judge a canopy or read leaf damage. So every photo also gets
+  // rendered large on its own appendix page, captioned with the tree it belongs
+  // to and its measurements. Same embedded image either way — pdf-lib reuses the
+  // embed, so the large copy costs no extra bytes.
+  await drawPhotoAppendix(ctx, order, photos);
+
   return doc.save();
+}
+
+/** One page per photo, as large as the page allows, with a caption. */
+async function drawPhotoAppendix(
+  ctx: Ctx,
+  order: WorkOrder,
+  photos: Map<string, Uint8Array>,
+): Promise<void> {
+  const withPhotos = order.trees.filter((t) =>
+    t.photos.some((p) => photos.has(p.id)),
+  );
+  if (withPhotos.length === 0) return;
+
+  // Section divider, so the appendix doesn't look like a stray page.
+  ctx.page = ctx.doc.addPage([PAGE_W, PAGE_H]);
+  ctx.y = PAGE_H - MARGIN;
+  ctx.page.drawRectangle({
+    x: 0,
+    y: PAGE_H - 76,
+    width: PAGE_W,
+    height: 76,
+    color: BARK,
+  });
+  ctx.page.drawRectangle({ x: 0, y: PAGE_H - 82, width: PAGE_W, height: 6, color: ORANGE });
+  ctx.page.drawText('TREE PHOTOS', {
+    x: MARGIN,
+    y: PAGE_H - 44,
+    size: 18,
+    font: ctx.bold,
+    color: rgb(1, 0.973, 0.925),
+  });
+  ctx.page.drawText(
+    `${order.proposal.reference}  ·  full-size images for review`,
+    {
+      x: MARGIN,
+      y: PAGE_H - 64,
+      size: 9,
+      font: ctx.body,
+      color: rgb(0.914, 0.906, 0.114),
+    },
+  );
+  ctx.y = PAGE_H - 110;
+
+  let firstOnPage = true;
+
+  for (const [treeIndex, tree] of order.trees.entries()) {
+    const available = tree.photos
+      .map((p) => ({ id: p.id, bytes: photos.get(p.id) }))
+      .filter((p): p is { id: string; bytes: Uint8Array } => !!p.bytes);
+    if (available.length === 0) continue;
+
+    for (const [photoIndex, photo] of available.entries()) {
+      const img = await tryEmbed(ctx.doc, photo.bytes);
+      if (!img) continue;
+
+      // A fresh page per photo, except the first which shares the divider page.
+      if (!firstOnPage) {
+        ctx.page = ctx.doc.addPage([PAGE_W, PAGE_H]);
+        ctx.y = PAGE_H - MARGIN;
+      }
+      firstOnPage = false;
+
+      const caption = `${treeIndex + 1}. ${tree.label}`;
+      ctx.page.drawText(caption, {
+        x: MARGIN,
+        y: ctx.y - 12,
+        size: 13,
+        font: ctx.bold,
+        color: INK,
+      });
+
+      const detail = [
+        tree.species ?? 'Species not noted',
+        `${tree.dbh}" DBH`,
+        tree.heightFt != null ? `${tree.heightFt} ft tall` : null,
+        tree.crownSpreadFt != null ? `${tree.crownSpreadFt} ft spread` : null,
+        available.length > 1 ? `photo ${photoIndex + 1} of ${available.length}` : null,
+      ]
+        .filter(Boolean)
+        .join('  ·  ');
+      ctx.page.drawText(detail, {
+        x: MARGIN,
+        y: ctx.y - 28,
+        size: 9,
+        font: ctx.body,
+        color: GREY,
+      });
+
+      // Fit the image to the space left, preserving aspect ratio, and centre it.
+      const boxTop = ctx.y - 44;
+      const boxH = boxTop - MARGIN;
+      const boxW = CONTENT_W;
+      const scale = Math.min(boxW / img.width, boxH / img.height);
+      const w = img.width * scale;
+      const h = img.height * scale;
+
+      ctx.page.drawImage(img, {
+        x: MARGIN + (boxW - w) / 2,
+        y: boxTop - h,
+        width: w,
+        height: h,
+      });
+
+      // Hairline frame, so a pale sky doesn't bleed into the page edge.
+      ctx.page.drawRectangle({
+        x: MARGIN + (boxW - w) / 2,
+        y: boxTop - h,
+        width: w,
+        height: h,
+        borderColor: RULE,
+        borderWidth: 0.75,
+      });
+    }
+  }
 }
 
 /** JPEG first, then PNG. Returns null if neither works. */

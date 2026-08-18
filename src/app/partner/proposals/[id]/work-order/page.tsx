@@ -16,7 +16,6 @@ import {
 } from '@/lib/partner-data';
 import { SendWorkOrder } from '@/components/partner/SendWorkOrder';
 import { startRevisionAction } from '@/app/partner/actions';
-import { orderEmailAddress } from '@/lib/php-mail';
 
 export const dynamic = 'force-dynamic';
 
@@ -38,7 +37,6 @@ export default async function WorkOrderPage({
   const order = await getWorkOrder(id);
   if (!order) notFound();
   const revisions = await listRevisions(id);
-  const sendTo = orderEmailAddress();
 
   const { proposal } = order;
   const locked = isLocked(proposal);
@@ -148,8 +146,8 @@ export default async function WorkOrderPage({
           {order.needsQuoteCount > 0 && (
             <p className="max-w-xs text-xs text-cream/80">
               Plus {order.needsQuoteCount} line
-              {order.needsQuoteCount === 1 ? '' : 's'} {BRATT.contactName} will
-              price by hand &mdash; those aren&apos;t in the total above.
+              {order.needsQuoteCount === 1 ? '' : 's'} Bratt will price by hand
+              &mdash; those aren&apos;t in the total above.
             </p>
           )}
         </div>
@@ -187,7 +185,6 @@ export default async function WorkOrderPage({
             totalCents={order.totalCents}
             blocked={issues.length > 0}
             issues={issues}
-            sendTo={sendTo}
           />
         )}
       </section>
@@ -215,7 +212,6 @@ export default async function WorkOrderPage({
                   </p>
                   <p className="text-xs text-fg-3">
                     {formatBusinessDateTime(r.sentAt)}
-                    {r.sentTo && ` · ${r.sentTo}`}
                   </p>
                   {r.emailError && (
                     <p className="mt-1 max-w-md text-xs text-orange-press">{r.emailError}</p>
@@ -289,13 +285,21 @@ function TreeLines({
           {tree.photos.slice(0, 4).map((p) => (
             <li key={p.id} className="h-16 w-16">
               {p.url && (
-                // eslint-disable-next-line @next/next/no-img-element -- signed
-                // URL from a private bucket; next/image would need a loader.
-                <img
-                  src={p.url}
-                  alt=""
-                  className="h-full w-full rounded-2 border-2 border-paper-edge object-cover"
-                />
+                <a
+                  href={p.url}
+                  target="_blank"
+                  rel="noreferrer"
+                  title="Open full size"
+                  className="block h-full w-full"
+                >
+                  {/* eslint-disable-next-line @next/next/no-img-element -- signed
+                      URL from a private bucket; next/image would need a loader. */}
+                  <img
+                    src={p.url}
+                    alt=""
+                    className="h-full w-full rounded-2 border-2 border-paper-edge object-cover transition hover:border-orange"
+                  />
+                </a>
               )}
             </li>
           ))}

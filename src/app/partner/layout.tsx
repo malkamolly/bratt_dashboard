@@ -113,16 +113,13 @@ export default async function PartnerLayout({
 
       <footer className="mt-10 bg-bark text-cream/70">
         <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-4 px-6 py-6">
+          {/* No email address here on purpose — see the note in
+              partner-config.ts. Their reps reach us through their own Bratt
+              contact, not an inbox this tool advertises. */}
           <p className="max-w-md text-xs">
             Tree work performed by {BRATT.name} &mdash; licensed, insured, and
-            ISA-Certified. Questions on a treatment or an unusual tree?{' '}
-            <a
-              href={`mailto:${BRATT.contactEmail}`}
-              className="font-bold text-lime hover:underline"
-            >
-              Ask {BRATT.contactName}
-            </a>
-            .
+            ISA-Certified. Questions on a treatment or an unusual tree? Reach out
+            to your Bratt Tree contact.
           </p>
           <p className="font-headline text-[0.6rem] font-extrabold uppercase tracking-ribbon text-cream/50">
             {PROGRAM.name} &nbsp;&middot;&nbsp; for {PARTNER.name}

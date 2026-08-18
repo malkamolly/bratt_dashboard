@@ -258,13 +258,21 @@ function TreeCard({
           {tree.photos.map((p) => (
             <li key={p.id} className="h-20 w-20">
               {p.url && (
-                // eslint-disable-next-line @next/next/no-img-element -- signed
-                // URL from a private bucket; next/image would need a loader.
-                <img
-                  src={p.url}
-                  alt=""
-                  className="h-full w-full rounded-2 border-2 border-paper-edge object-cover"
-                />
+                <a
+                  href={p.url}
+                  target="_blank"
+                  rel="noreferrer"
+                  title="Open full size"
+                  className="block h-full w-full"
+                >
+                  {/* eslint-disable-next-line @next/next/no-img-element -- signed
+                      URL from a private bucket; next/image would need a loader. */}
+                  <img
+                    src={p.url}
+                    alt=""
+                    className="h-full w-full rounded-2 border-2 border-paper-edge object-cover transition hover:border-orange"
+                  />
+                </a>
               )}
             </li>
           ))}

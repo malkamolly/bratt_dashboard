@@ -36,14 +36,11 @@ export function SendWorkOrder({
   totalCents,
   blocked,
   issues,
-  sendTo,
 }: {
   proposalId: string;
   totalCents: number;
   blocked: boolean;
   issues: string[];
-  /** Named on the confirm step so nobody is surprised by where it went. */
-  sendTo: string;
 }) {
   const [state, formAction] = useActionState(sendWorkOrderAction, INITIAL);
 
@@ -91,11 +88,12 @@ export function SendWorkOrder({
           <h3 className="font-headline text-xs font-extrabold uppercase tracking-ribbon text-fg-2">
             Send this work order?
           </h3>
+          {/* Deliberately does not name the destination address — no inbox is
+              advertised in this tool (see partner-config.ts). */}
           <p className="mt-2 text-sm text-fg-2">
-            This emails the work order and its photos to{' '}
-            <strong className="font-mono text-ink">{sendTo}</strong> and locks it,
-            so what Bratt receives always matches your record. You can still start
-            a revision afterwards if something changes.
+            This sends the work order and its photos to Bratt and locks it, so
+            what Bratt receives always matches your record. You can still start a
+            revision afterwards if something changes.
           </p>
           <div className="mt-5">
             <SendButton total={totalCents} />
