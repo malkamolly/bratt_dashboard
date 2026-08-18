@@ -11,17 +11,17 @@ export default async function NewProposalPage() {
 
   return (
     <main className="mx-auto max-w-2xl px-6 py-10">
-      <p className="text-sm text-slate-500">
+      <p className="bt-eyebrow">
         <Link href="/partner" className="hover:underline">
           Proposals
         </Link>
-        <span className="mx-2">/</span>
+        <span className="mx-2 text-fg-3">/</span>
         New
       </p>
-      <h1 className="mt-2 text-3xl font-bold tracking-tight text-slate-900">
-        Start a proposal
+      <h1 className="mt-2 font-display text-4xl uppercase tracking-wider text-ink sm:text-5xl">
+        Start a Proposal
       </h1>
-      <p className="mt-2 text-slate-600">
+      <p className="mt-4 text-fg-2">
         Just the job details for now. Trees, photos, and treatments come next.
       </p>
 
@@ -29,7 +29,7 @@ export default async function NewProposalPage() {
         <ProposalForm
           action={createProposalAction}
           salespeople={salespeople}
-          submitLabel="Save and add trees"
+          submitLabel="Save and Add Trees"
         />
       </div>
     </main>

@@ -32,6 +32,11 @@ function isPublic(pathname: string) {
   if (pathname.startsWith('/_next')) return true;
   if (pathname.startsWith('/brand')) return true;
   if (pathname.startsWith('/fonts')) return true;
+  // /assets holds the Rugfish display font and the logotype. It was missing
+  // here (and from the matcher below), so middleware redirected both to /login:
+  // the brand font silently never loaded anywhere in the app, and the logo on
+  // the public login page 307'd. Static brand files, safe to serve to anyone.
+  if (pathname.startsWith('/assets')) return true;
   if (pathname === '/favicon.ico') return true;
   // The daily-report cron runs with no user session; it authenticates itself
   // with CRON_SECRET inside the route, so it must skip the session gate here.
@@ -199,5 +204,5 @@ export async function middleware(req: NextRequest) {
 
 export const config = {
   // Match everything except Next.js internals and static asset folders.
-  matcher: ['/((?!_next/static|_next/image|favicon.ico|brand|fonts).*)'],
+  matcher: ['/((?!_next/static|_next/image|favicon.ico|brand|fonts|assets).*)'],
 };

@@ -31,25 +31,25 @@ export default async function ProposalPage({
 
   return (
     <main className="mx-auto max-w-3xl px-6 py-10">
-      <p className="text-sm text-slate-500">
+      <p className="bt-eyebrow">
         <Link href="/partner" className="hover:underline">
           Proposals
         </Link>
-        <span className="mx-2">/</span>
+        <span className="mx-2 text-fg-3">/</span>
         <span className="font-mono">{proposal.reference}</span>
       </p>
 
       <div className="mt-2 flex flex-wrap items-start justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight text-slate-900">
+          <h1 className="font-display text-4xl uppercase tracking-wider text-ink sm:text-5xl">
             {proposal.jobName}
           </h1>
-          <p className="mt-1 text-slate-600">{proposal.siteAddress}</p>
+          <p className="mt-2 text-fg-2">{proposal.siteAddress}</p>
         </div>
         {!locked && (
           <Link
             href={`/partner/proposals/${proposal.id}/edit`}
-            className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:border-[color:var(--php-dark)] hover:text-[color:var(--php-dark)]"
+            className="bt-btn bt-btn-ghost !px-5 !py-2 !text-xs"
           >
             Edit details
           </Link>
@@ -57,7 +57,7 @@ export default async function ProposalPage({
       </div>
 
       {locked && (
-        <p className="mt-5 rounded-lg border border-[color:var(--php-accent)] bg-[color:var(--php-accent)]/10 px-4 py-3 text-sm text-slate-700">
+        <p className="mt-6 rounded-2 border-2 border-orange-press bg-orange/10 px-4 py-3 text-sm text-fg-1">
           <strong>
             {HANDOFF_STATUS_LABELS[proposal.handoffStatus]}
             {proposal.revision > 1 && ` · Rev ${proposal.revision}`}
@@ -68,8 +68,8 @@ export default async function ProposalPage({
       )}
 
       {/* ---- Job details ---- */}
-      <section className="mt-8 rounded-xl border border-slate-200 bg-white p-6">
-        <h2 className="text-sm font-bold uppercase tracking-wide text-slate-500">
+      <section className="bt-card mt-8">
+        <h2 className="font-headline text-xs font-extrabold uppercase tracking-ribbon text-fg-2">
           Job details
         </h2>
         <dl className="mt-4 grid gap-4 sm:grid-cols-2">
@@ -86,11 +86,11 @@ export default async function ProposalPage({
       </section>
 
       {/* ---- Their sales status: editable even once Bratt has it ---- */}
-      <section className="mt-6 rounded-xl border border-slate-200 bg-white p-6">
-        <h2 className="text-sm font-bold uppercase tracking-wide text-slate-500">
+      <section className="bt-card mt-6">
+        <h2 className="font-headline text-xs font-extrabold uppercase tracking-ribbon text-fg-2">
           Job status
         </h2>
-        <p className="mt-1 text-xs text-slate-500">
+        <p className="mt-2 text-xs text-fg-2">
           Your sales status. Separate from where the work order stands with{' '}
           {BRATT.name}, and you can change it any time.
         </p>
@@ -107,8 +107,8 @@ export default async function ProposalPage({
                 aria-pressed={active}
                 className={
                   active
-                    ? 'rounded-lg bg-[color:var(--php-dark)] px-4 py-2 text-sm font-semibold text-white'
-                    : 'rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:border-[color:var(--php-dark)] hover:text-[color:var(--php-dark)]'
+                    ? 'bt-btn bt-btn-primary !px-5 !py-2 !text-xs'
+                    : 'bt-btn bt-btn-ghost !px-5 !py-2 !text-xs'
                 }
               >
                 {JOB_STATUS_LABELS[s.value]}
@@ -119,11 +119,11 @@ export default async function ProposalPage({
       </section>
 
       {/* ---- Trees: the next build step ---- */}
-      <section className="mt-6 rounded-xl border border-dashed border-slate-300 bg-white p-6">
-        <h2 className="text-sm font-bold uppercase tracking-wide text-slate-500">
+      <section className="mt-6 rounded-card border-2 border-dashed border-paper-edge bg-white/60 p-6">
+        <h2 className="font-headline text-xs font-extrabold uppercase tracking-ribbon text-fg-2">
           Trees
         </h2>
-        <p className="mt-2 text-sm text-slate-600">
+        <p className="mt-2 text-sm text-fg-2">
           Next up: add each tree with its size and a photo, then pick treatments.
           The priced work order builds itself from those.
         </p>
@@ -134,7 +134,7 @@ export default async function ProposalPage({
           <input type="hidden" name="id" value={proposal.id} />
           <button
             type="submit"
-            className="text-sm font-semibold text-slate-400 hover:text-red-700 hover:underline"
+            className="text-xs font-bold uppercase tracking-ribbon text-fg-3 hover:text-orange-press hover:underline"
           >
             Delete this proposal
           </button>
@@ -157,11 +157,11 @@ function Detail({
 }) {
   return (
     <div className={className}>
-      <dt className="text-xs font-semibold uppercase tracking-wide text-slate-400">
+      <dt className="font-headline text-[0.65rem] font-extrabold uppercase tracking-ribbon text-fg-3">
         {label}
       </dt>
       <dd
-        className={`mt-0.5 text-sm ${value ? 'text-slate-900' : 'text-slate-400'} ${mono ? 'font-mono' : ''}`}
+        className={`mt-1 text-sm ${value ? 'font-semibold text-ink' : 'text-fg-3'} ${mono ? 'font-mono' : ''}`}
       >
         {value || 'Not set'}
       </dd>

@@ -7,12 +7,14 @@ import type { FormState } from '@/app/partner/actions';
 
 const INITIAL: FormState = { error: null };
 
+// Matches the field styling used across the app (see QuoteBuilder): heavy paper
+// edge, orange focus. text-base, not smaller — these get filled in on a phone.
 const FIELD =
-  'mt-1.5 block w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 ' +
-  'text-base text-slate-900 placeholder:text-slate-400 focus:outline-none ' +
-  'focus:ring-2 focus:ring-[color:var(--php-dark)]/25 focus:border-[color:var(--php-dark)]';
+  'mt-1.5 block w-full rounded-2 border-2 border-paper-edge bg-white px-3 py-2.5 ' +
+  'text-base text-ink placeholder:text-fg-3 focus:border-orange focus:outline-none';
 
-const LABEL = 'block text-sm font-semibold text-slate-700';
+const LABEL =
+  'block font-headline text-xs font-extrabold uppercase tracking-ribbon text-fg-2';
 
 /**
  * Submit button. Reads the pending state via useFormStatus rather than the
@@ -26,7 +28,7 @@ function SubmitButton({ label }: { label: string }) {
     <button
       type="submit"
       disabled={pending}
-      className="rounded-lg bg-[color:var(--php-dark)] px-5 py-2.5 text-base font-semibold text-white transition hover:bg-[color:var(--php-darker)] focus:outline-none focus:ring-2 focus:ring-[color:var(--php-dark)]/40 disabled:opacity-60"
+      className="bt-btn bt-btn-primary justify-center disabled:opacity-60"
     >
       {pending ? 'Saving…' : label}
     </button>
@@ -88,7 +90,7 @@ export function ProposalForm({
             <button
               type="button"
               onClick={() => setAddingName(true)}
-              className="mt-2 text-sm font-semibold text-[color:var(--php-dark)] hover:underline"
+              className="mt-2 text-sm font-bold text-orange-press hover:underline"
             >
               Not listed? Add your name
             </button>
@@ -103,7 +105,7 @@ export function ProposalForm({
               placeholder="e.g. Taylor M"
               className={FIELD}
             />
-            <p className="mt-1.5 text-xs text-slate-500">
+            <p className="mt-1.5 text-xs text-fg-3">
               First name and last initial &mdash; e.g. <strong>Taylor M</strong>.
               You&apos;ll be in the list next time.
             </p>
@@ -111,7 +113,7 @@ export function ProposalForm({
               <button
                 type="button"
                 onClick={() => setAddingName(false)}
-                className="mt-2 text-sm font-semibold text-[color:var(--php-dark)] hover:underline"
+                className="mt-2 text-sm font-bold text-orange-press hover:underline"
               >
                 Pick from the list instead
               </button>
@@ -159,7 +161,7 @@ export function ProposalForm({
           {JOB_STATUSES.map((s) => (
             <label
               key={s.value}
-              className="flex cursor-pointer flex-col gap-0.5 rounded-lg border border-slate-300 bg-white p-3 transition hover:border-[color:var(--php-dark)] has-[:checked]:border-[color:var(--php-dark)] has-[:checked]:ring-2 has-[:checked]:ring-[color:var(--php-dark)]/20"
+              className="flex cursor-pointer flex-col gap-0.5 rounded-2 border-2 border-paper-edge bg-white p-3 transition hover:border-orange has-[:checked]:border-orange has-[:checked]:bg-orange/5"
             >
               <span className="flex items-center gap-2">
                 <input
@@ -167,25 +169,24 @@ export function ProposalForm({
                   name="jobStatus"
                   value={s.value}
                   defaultChecked={(values?.jobStatus ?? 'proposing') === s.value}
-                  className="accent-[color:var(--php-dark)]"
+                  className="accent-orange"
                 />
-                <span className="text-sm font-semibold text-slate-900">
+                <span className="text-sm font-bold text-ink">
                   {s.label}
                 </span>
               </span>
-              <span className="pl-6 text-xs text-slate-500">{s.hint}</span>
+              <span className="pl-6 text-xs text-fg-3">{s.hint}</span>
             </label>
           ))}
         </div>
       </fieldset>
 
       {/* ---- Customer contact ---- */}
-      <div className="rounded-xl border border-slate-200 bg-white p-5">
-        <h2 className="text-sm font-bold text-slate-900">
-          Site contact{' '}
-          <span className="font-normal text-slate-500">(optional)</span>
+      <div className="bt-card !p-5">
+        <h2 className="font-headline text-xs font-extrabold uppercase tracking-ribbon text-fg-2">
+          Site contact <span className="text-fg-3">(optional)</span>
         </h2>
-        <p className="mt-1 text-xs text-slate-500">
+        <p className="mt-2 text-xs text-fg-2">
           Who Bratt&apos;s crew calls to get on the property. Without it, a locked
           gate means a wasted trip.
         </p>
@@ -238,7 +239,7 @@ export function ProposalForm({
       {state.error && (
         <p
           role="alert"
-          className="rounded-lg bg-red-50 px-3 py-2.5 text-sm text-red-700"
+          className="rounded-2 border-2 border-orange-press bg-orange/10 px-3 py-2.5 text-sm font-bold text-orange-press"
         >
           {state.error}
         </p>
@@ -246,7 +247,7 @@ export function ProposalForm({
 
       <div className="flex items-center gap-4">
         <SubmitButton label={submitLabel} />
-        <p className="text-xs text-slate-500">
+        <p className="text-xs text-fg-2">
           Saved right away &mdash; you add trees on the next screen.
         </p>
       </div>

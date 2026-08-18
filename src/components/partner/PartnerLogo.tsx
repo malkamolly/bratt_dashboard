@@ -6,10 +6,10 @@ import { PARTNER, PARTNER_COLORS } from '@/lib/partner-config';
 /**
  * The partner's logo, with a graceful fallback to a styled wordmark.
  *
- * Their logo file may not be in /public yet (see PARTNER.logo in
- * partner-config.ts). Rather than showing a broken-image icon, this tries the
- * SVG, then the PNG, then draws their name. Drop either file in and it appears
- * with no code change.
+ * Their logo file may not be in /public yet (see PARTNER.logoCandidates in
+ * partner-config.ts). Rather than showing a broken-image icon, this tries each
+ * candidate filename in turn and then draws their name. Upload a file under any
+ * of those names and it appears with no code change.
  *
  * Detecting the failure takes BOTH hooks below, and that's not belt-and-braces:
  *
@@ -25,8 +25,7 @@ import { PARTNER, PARTNER_COLORS } from '@/lib/partner-config';
  */
 export function PartnerLogo({ className = '' }: { className?: string }) {
   const [attempt, setAttempt] = useState(0);
-  const sources = [PARTNER.logo, PARTNER.logoFallback];
-  const src = sources[attempt];
+  const src = PARTNER.logoCandidates[attempt];
 
   const next = useCallback(() => setAttempt((a) => a + 1), []);
 

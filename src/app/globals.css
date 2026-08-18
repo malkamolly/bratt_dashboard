@@ -295,86 +295,45 @@ body {
 }
 
 /* ---------------------------------------------------------------------------
-   Partner Hub theme (/partner/*)
+   Plant Health Program (/partner/*) — Bratt-branded, with a Landscapes
+   Unlimited accent
    ---------------------------------------------------------------------------
-   The Partner Hub shows an outside landscaping company the SAME PHC calculator
-   our sales arborists use — we reuse <QuoteBuilder /> verbatim so there is only
-   ever one price book. But the partner should not see Bratt Tree's branding, so
-   these rules re-skin the shared .bt-* / brand-token classes to neutral
-   slate + emerald inside the `.partner-theme` wrapper.
+   The partner hub is deliberately BRATT-branded: their reps are selling OUR
+   tree work, so it has to read as Bratt at a glance. That means it uses the
+   normal brand classes (.bt-card, .bt-btn-primary, .bt-ribbon, font-display)
+   with no overrides — an earlier version neutralized all of that to slate and
+   emerald, which hid exactly the thing the hub is meant to communicate.
 
-   Each selector is scoped (`.partner-theme .x`), which is more specific than
-   the utility it overrides, so nothing internal is affected. If you restyle
-   QuoteBuilder, glance here to see whether a new brand class needs a neutral
-   counterpart.
+   The only additions here are the partner's own two greens, exposed as
+   variables and used as a HINT: the co-brand line, a thin accent rule, and the
+   "sent to Bratt" chip. Their values are sampled from the logo file they
+   supplied and set in src/lib/partner-config.ts.
 
-   Accent colors come from CSS variables the partner layout sets from
-   PARTNER_COLORS in src/lib/partner-config.ts — change them THERE, not here,
-   so the palette has one home. Fallbacks keep this readable in isolation.
+   Nothing in this block overrides a .bt-* class. If you find yourself wanting
+   to, the answer is almost certainly no — keep the hub looking like Bratt.
    ------------------------------------------------------------------------- */
-.partner-theme .bt-card {
-  background: #ffffff;
-  border-color: #e2e8f0;
-  border-width: 1px;
-  border-radius: 1rem;
-  box-shadow: 0 1px 2px rgb(15 23 42 / 0.06);
+.partner-theme {
+  /* --php-dark / --php-accent are injected by src/app/partner/layout.tsx. */
 }
 
-.partner-theme .bt-eyebrow {
-  color: #64748b;
-  letter-spacing: 0.12em;
+/* Their green, for the co-brand credit line and small accents only. Never for
+   a primary action — orange owns that, everywhere in the brand. */
+.php-partner-ink {
+  color: var(--php-dark, #065A2C);
 }
 
-.partner-theme .bt-btn {
-  border-radius: 0.5rem;
-  letter-spacing: 0.02em;
-  text-transform: none;
-  font-weight: 600;
-  padding: 0.625rem 1.25rem;
-}
-.partner-theme .bt-btn-primary {
-  background-color: var(--php-dark, #0B6136);
-  color: #ffffff;
-}
-.partner-theme .bt-btn-primary:hover { background-color: var(--php-darker, #084727); }
-.partner-theme .bt-btn-ghost {
-  color: #334155;
-  box-shadow: inset 0 0 0 1px #cbd5e1;
-}
-.partner-theme .bt-btn-ghost:hover {
-  background-color: #f1f5f9;
-  color: #0f172a;
-  box-shadow: inset 0 0 0 1px #94a3b8;
+.php-partner-rule {
+  background: linear-gradient(
+    90deg,
+    var(--php-dark, #065A2C) 0%,
+    var(--php-accent, #A1CB60) 100%
+  );
 }
 
-/* Neutral counterparts for the brand color tokens QuoteBuilder uses. */
-.partner-theme .text-ink   { color: #0f172a; }
-.partner-theme .text-fg-2  { color: #475569; }
-.partner-theme .text-fg-3  { color: #94a3b8; }
-
-.partner-theme .border-paper-edge    { border-color: #cbd5e1; }
-.partner-theme .border-paper-edge\/60 { border-color: rgb(203 213 225 / 0.6); }
-
-/* "Consult the manager" callout — red instead of Bratt orange. */
-.partner-theme .text-orange-press   { color: #b91c1c; }
-.partner-theme .border-orange-press { border-color: #b91c1c; }
-.partner-theme .bg-orange\/10       { background-color: rgb(185 28 28 / 0.07); }
-
-/* The quote-total pill: Bratt uses dark bark + lime; the partner gets slate. */
-.partner-theme .bg-bark      { background-color: #0f172a; }
-.partner-theme .text-cream   { color: #f8fafc; }
-.partner-theme .text-cream\/80 { color: rgb(248 250 252 / 0.8); }
-.partner-theme .text-lime    { color: var(--php-accent, #8DC63F); }
-/* Rugfish (our display face) never appears in the partner hub. */
-.partner-theme .font-display {
-  font-family: 'Nunito', 'Helvetica Neue', system-ui, sans-serif;
-  font-weight: 800;
-  letter-spacing: -0.01em;
+/* A soft chip in the partner's green, for the handoff status. Distinct from the
+   brand's orange/lime status chips so the two statuses don't read as one. */
+.php-chip {
+  @apply inline-flex items-center whitespace-nowrap rounded-full px-2.5 py-1 text-xs font-extrabold uppercase tracking-ribbon;
+  background-color: color-mix(in srgb, var(--php-accent, #A1CB60) 30%, transparent);
+  color: var(--php-dark, #065A2C);
 }
-
-/* Focus / hover accents. */
-.partner-theme .focus\:border-orange:focus       { border-color: var(--php-dark, #0B6136); }
-.partner-theme .hover\:border-orange:hover       { border-color: var(--php-dark, #0B6136); }
-.partner-theme .hover\:text-orange-press:hover   { color: var(--php-dark, #0B6136); }
-.partner-theme .hover\:border-orange-press:hover { border-color: #b91c1c; }
-.partner-theme .hover\:bg-orange-press:hover     { background-color: #b91c1c; }

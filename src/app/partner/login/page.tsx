@@ -1,4 +1,5 @@
-import { PROGRAM, PARTNER, BRATT } from '@/lib/partner-config';
+import Image from 'next/image';
+import { PROGRAM, BRATT } from '@/lib/partner-config';
 import { PartnerLogo } from '@/components/partner/PartnerLogo';
 
 export const dynamic = 'force-dynamic';
@@ -31,17 +32,30 @@ export default async function PartnerLoginPage({
 
   return (
     <main className="mx-auto flex min-h-[70vh] max-w-sm flex-col justify-center px-6 py-12">
-      <div className="rounded-2xl border border-slate-200 bg-white p-8 shadow-sm">
-        <PartnerLogo className="mb-6" />
-        <h1 className="text-2xl font-bold text-slate-900">{PROGRAM.name}</h1>
-        <p className="mt-1 text-sm text-slate-500">
-          {PARTNER.name} &middot; {PROGRAM.tagline}
-        </p>
+      <div className="bt-card text-center">
+        <Image
+          src="/brand/mascot-circle.png"
+          alt=""
+          width={84}
+          height={84}
+          className="mx-auto"
+          priority
+        />
+        <p className="bt-eyebrow mt-4">{BRATT.name}</p>
+        <h1 className="mt-1 font-display text-3xl uppercase tracking-wider text-bark-deep">
+          {PROGRAM.name}
+        </h1>
+        <div className="mt-5 flex flex-col items-center gap-2 border-t border-paper-edge pt-5">
+          <span className="font-headline text-[0.6rem] font-extrabold uppercase tracking-ribbon text-fg-3">
+            Prepared for
+          </span>
+          <PartnerLogo className="h-6" />
+        </div>
 
         <form
           method="post"
           action="/partner/session"
-          className="mt-8 flex flex-col gap-4"
+          className="mt-7 flex flex-col gap-4 text-left"
         >
           <input type="hidden" name="next" value={safeNext} />
 
@@ -58,7 +72,7 @@ export default async function PartnerLoginPage({
             tabIndex={-1}
           />
 
-          <label className="text-sm font-semibold text-slate-700">
+          <label className="font-headline text-xs font-extrabold uppercase tracking-ribbon text-fg-2">
             Password
             <input
               type="password"
@@ -66,14 +80,14 @@ export default async function PartnerLoginPage({
               required
               autoFocus
               autoComplete="current-password"
-              className="mt-1.5 block w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-base text-slate-900 focus:border-emerald-600 focus:outline-none focus:ring-2 focus:ring-emerald-600/20"
+              className="mt-1.5 block w-full rounded-2 border-2 border-paper-edge bg-white px-4 py-3 text-base text-ink focus:border-orange focus:outline-none"
             />
           </label>
 
           {message && (
             <p
               role="alert"
-              className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700"
+              className="rounded-2 border-2 border-orange-press bg-orange/10 px-3 py-2 text-sm font-bold text-orange-press"
             >
               {message}
             </p>
@@ -81,13 +95,13 @@ export default async function PartnerLoginPage({
 
           <button
             type="submit"
-            className="mt-1 rounded-lg bg-emerald-700 px-4 py-2.5 text-base font-semibold text-white transition hover:bg-emerald-800 focus:outline-none focus:ring-2 focus:ring-emerald-600/40"
+            className="bt-btn bt-btn-primary mt-1 justify-center"
           >
             Sign in
           </button>
         </form>
 
-        <p className="mt-6 text-xs text-slate-400">
+        <p className="mt-6 text-xs text-fg-3">
           Delivered by {BRATT.name}.
         </p>
       </div>

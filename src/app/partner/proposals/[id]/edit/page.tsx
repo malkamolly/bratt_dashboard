@@ -26,18 +26,18 @@ export default async function EditProposalPage({
 
   return (
     <main className="mx-auto max-w-2xl px-6 py-10">
-      <p className="text-sm text-slate-500">
+      <p className="bt-eyebrow">
         <Link href="/partner" className="hover:underline">
           Proposals
         </Link>
-        <span className="mx-2">/</span>
+        <span className="mx-2 text-fg-3">/</span>
         <Link href={`/partner/proposals/${id}`} className="hover:underline">
           {proposal.reference}
         </Link>
-        <span className="mx-2">/</span>
+        <span className="mx-2 text-fg-3">/</span>
         Edit
       </p>
-      <h1 className="mt-2 text-3xl font-bold tracking-tight text-slate-900">
+      <h1 className="mt-2 font-display text-4xl uppercase tracking-wider text-ink sm:text-5xl">
         Edit job details
       </h1>
 

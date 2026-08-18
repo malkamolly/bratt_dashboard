@@ -17,30 +17,43 @@ export const PARTNER = {
   /** The partner company, as they write it. */
   name: 'Landscapes Unlimited',
   /**
-   * Their logo, served from /public. DROP THE FILE HERE and it appears
-   * automatically; until then the header falls back to a styled wordmark, so
-   * nothing looks broken.
+   * Their logo, served from /public. Upload the file here and it appears
+   * automatically — no code change:
    *
-   * Prefer an SVG (crisp at any size, tiny) or a PNG at least 600px wide with a
-   * transparent background.
+   *   https://github.com/malkamolly/bratt_dashboard/upload/main/public/brand/partners
+   *
+   * Every name below is tried in order, so an .svg, .png, .jpg or .webp all
+   * work. Prefer SVG (crisp at any size, tiny); otherwise a PNG at least 600px
+   * wide with a transparent background. Until one of these exists the header
+   * draws a styled wordmark instead, so nothing looks broken.
    */
-  logo: '/brand/partners/landscapes-unlimited.svg',
-  /** Fallback if the SVG isn't there. Same deal — optional. */
-  logoFallback: '/brand/partners/landscapes-unlimited.png',
+  logoCandidates: [
+    // The name the file was actually uploaded under — kept first so their
+    // upload works without anyone renaming anything.
+    '/brand/partners/Landscape_LogoFC.png',
+    '/brand/partners/landscapes-unlimited.svg',
+    '/brand/partners/landscapes-unlimited.png',
+    '/brand/partners/landscapes-unlimited.jpg',
+    '/brand/partners/landscapes-unlimited.jpeg',
+    '/brand/partners/landscapes-unlimited.webp',
+    // Catch-alls, in case the file is uploaded under a generic name.
+    '/brand/partners/logo.svg',
+    '/brand/partners/logo.png',
+  ],
 } as const;
 
-// Their brand greens, read off the logo they supplied: a deep forest green for
-// type, and the bright apple green from the leaf mark for accents. These were
-// eyeballed from the image rather than taken from a brand guide — if they send
-// real hex values or a style guide, correct them here and the whole hub follows.
+// Their two greens, SAMPLED from the logo file they supplied (the two dominant
+// non-white colors in Landscape_LogoFC.png), not guessed.
+//
+// These are an ACCENT only. The hub is Bratt-branded — orange owns primary
+// actions, lime owns keylines. Their green appears on the co-brand credit line,
+// a thin rule, and the handoff-status chip, so their reps see themselves in it
+// without the page stopping looking like Bratt.
 export const PARTNER_COLORS = {
-  /** Wordmark green — headings, buttons, links. */
-  dark: '#0B6136',
-  /** Deeper still, for hover/pressed states. */
-  darker: '#084727',
-  /** The apple green from the leaf mark — accents and highlights only. Too
-   *  light for text on white (fails contrast), so never use it for body copy. */
-  accent: '#8DC63F',
+  /** The wordmark green. */
+  dark: '#065A2C',
+  /** The leaf-mark green. Too light for text on white — accents only. */
+  accent: '#A1CB60',
 } as const;
 
 export const BRATT = {
