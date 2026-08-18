@@ -135,3 +135,68 @@ export const COMMON_SPECIES = [
   'White Pine',
   'White Spruce',
 ] as const;
+
+// ---------------------------------------------------------------------------
+// Treatments and the work order
+// ---------------------------------------------------------------------------
+
+export type Treatment = {
+  id: string;
+  treeId: string;
+  /** Matches a Service.id in phc-pricing.ts. */
+  serviceId: string;
+  /** Price when it was quoted, in integer cents. Null when needsQuote. */
+  unitPriceCents: number | null;
+  /** Off the chart — Bratt prices this line by hand. */
+  needsQuote: boolean;
+  quoteNote: string | null;
+  /** Resolved from the price book for display. Null if a service id was
+   *  retired from phc-pricing.ts after being quoted. */
+  serviceName: string | null;
+  serviceCategory: string | null;
+};
+
+/** A tree with its treatments attached — what the work order is built from. */
+export type TreeWithTreatments = Tree & { treatments: Treatment[] };
+
+export type WorkOrder = {
+  proposal: Proposal;
+  trees: TreeWithTreatments[];
+  /** Sum of every priced line. Unpriced lines are excluded, never guessed. */
+  totalCents: number;
+  /** Lines Bratt has to price by hand. */
+  needsQuoteCount: number;
+  /** Trees with no treatment picked yet — blocks sending. */
+  treesWithoutTreatment: number;
+  /** Trees with no photo — blocks sending. */
+  treesWithoutPhoto: number;
+};
+
+/**
+ * Can this work order go to Bratt yet?
+ *
+ * Deliberately strict about the two things Bratt cannot work without: a
+ * treatment to perform, and a photo to verify it against. A total of $0 is fine
+ * — every line may legitimately be "Bratt to quote".
+ */
+export function blockingIssues(order: WorkOrder): string[] {
+  const issues: string[] = [];
+  if (order.trees.length === 0) {
+    issues.push('Add at least one tree.');
+  }
+  if (order.treesWithoutTreatment > 0) {
+    issues.push(
+      `${order.treesWithoutTreatment} ${
+        order.treesWithoutTreatment === 1 ? 'tree has' : 'trees have'
+      } no treatment picked.`,
+    );
+  }
+  if (order.treesWithoutPhoto > 0) {
+    issues.push(
+      `${order.treesWithoutPhoto} ${
+        order.treesWithoutPhoto === 1 ? 'tree has' : 'trees have'
+      } no photo.`,
+    );
+  }
+  return issues;
+}

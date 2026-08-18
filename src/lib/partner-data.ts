@@ -23,13 +23,20 @@ import { adminClient } from './supabase';
 import { PARTNER_COOKIE, isValidPartnerCookie } from './partner-auth';
 import { geocodeAddress } from './geocode';
 import {
+  blockingIssues,
   isLocked,
   MAX_PHOTOS_PER_TREE,
   type JobStatus,
   type Proposal,
   type Tree,
   type TreePhoto,
+  type Treatment,
+  type TreeWithTreatments,
+  type WorkOrder,
 } from './partner-types';
+import { quoteTreatment, serviceById } from './php-quote';
+import { buildWorkOrderPdf } from './php-workorder-pdf';
+import { orderEmailAddress, sendWorkOrderEmail, type MailResult } from './php-mail';
 
 // Re-exported so server-side callers can keep importing everything from one
 // place. Client components must import these from partner-types.ts instead —
@@ -44,6 +51,7 @@ export {
   MAX_PHOTOS_PER_TREE,
   isLocked,
   hasLocation,
+  blockingIssues,
 } from './partner-types';
 export type {
   JobStatus,
@@ -51,6 +59,9 @@ export type {
   Proposal,
   Tree,
   TreePhoto,
+  Treatment,
+  TreeWithTreatments,
+  WorkOrder,
 } from './partner-types';
 
 export const PHOTO_BUCKET = 'partner-photos';
@@ -591,4 +602,368 @@ export async function deleteTreePhoto(photoId: string): Promise<string> {
   const { error } = await db.from('partner_tree_photos').delete().eq('id', photoId);
   if (error) throw new Error(`Could not delete the photo: ${error.message}`);
   return row.tree_id;
+}
+
+// ---------------------------------------------------------------------------
+// Treatments
+// ---------------------------------------------------------------------------
+
+type TreatmentRow = {
+  id: string;
+  tree_id: string;
+  service_id: string;
+  unit_price_cents: number | null;
+  needs_quote: boolean;
+  quote_note: string | null;
+};
+
+function toTreatment(row: TreatmentRow): Treatment {
+  // The service name is resolved from the price book rather than stored, so a
+  // renamed service shows its current name. The PRICE is stored, though — see
+  // addTreatment — because a work order must not silently change after sending.
+  const service = serviceById(row.service_id);
+  return {
+    id: row.id,
+    treeId: row.tree_id,
+    serviceId: row.service_id,
+    unitPriceCents: row.unit_price_cents,
+    needsQuote: row.needs_quote,
+    quoteNote: row.quote_note,
+    serviceName: service?.name ?? null,
+    serviceCategory: service?.category ?? null,
+  };
+}
+
+/**
+ * Adds a treatment to a tree, pricing it at the moment of choosing.
+ *
+ * The price is SNAPSHOT into the row rather than computed on every read. If
+ * Connor updates the price book next week, a work order already sent must still
+ * show what the customer was quoted — otherwise the PDF in Bratt's inbox and the
+ * record in the hub disagree, and nobody can tell which one the customer saw.
+ */
+export async function addTreatment(
+  treeId: string,
+  serviceId: string,
+): Promise<void> {
+  const tree = await getTree(treeId);
+  if (!tree) throw new Error('That tree no longer exists.');
+  await assertProposalEditable(tree.proposalId);
+
+  const service = serviceById(serviceId);
+  if (!service) throw new Error('That treatment is no longer in the price book.');
+
+  const quote = quoteTreatment(service, { dbh: tree.dbh, heightFt: tree.heightFt });
+
+  const db = adminClient();
+  const { error } = await db.from('partner_tree_treatments').insert({
+    tree_id: treeId,
+    service_id: serviceId,
+    unit_price_cents: quote.priced ? quote.unitPriceCents : null,
+    needs_quote: !quote.priced,
+    quote_note: quote.priced ? null : quote.note,
+  });
+
+  // A unique index covers (tree_id, service_id): picking the same treatment
+  // twice is a no-op, not an error the rep has to understand.
+  if (error && !error.message.includes('duplicate key')) {
+    throw new Error(`Could not add that treatment: ${error.message}`);
+  }
+}
+
+export async function removeTreatment(treatmentId: string): Promise<string> {
+  const db = adminClient();
+  const { data } = await db
+    .from('partner_tree_treatments')
+    .select('id, tree_id')
+    .eq('id', treatmentId)
+    .maybeSingle();
+  if (!data) throw new Error('That treatment no longer exists.');
+
+  const row = data as { id: string; tree_id: string };
+  const tree = await getTree(row.tree_id);
+  if (tree) await assertProposalEditable(tree.proposalId);
+
+  const { error } = await db
+    .from('partner_tree_treatments')
+    .delete()
+    .eq('id', treatmentId);
+  if (error) throw new Error(`Could not remove that treatment: ${error.message}`);
+  return row.tree_id;
+}
+
+/**
+ * Re-prices every treatment on a tree against the current measurements.
+ *
+ * Called after a tree is edited: changing DBH from 12" to 30" must change what
+ * the customer is quoted. Without this, an edit would silently leave stale
+ * prices attached to the new measurements.
+ */
+export async function repriceTree(treeId: string): Promise<void> {
+  const tree = await getTree(treeId);
+  if (!tree) return;
+
+  const db = adminClient();
+  const { data } = await db
+    .from('partner_tree_treatments')
+    .select('id, tree_id, service_id, unit_price_cents, needs_quote, quote_note')
+    .eq('tree_id', treeId);
+
+  for (const row of ((data ?? []) as unknown as TreatmentRow[])) {
+    const service = serviceById(row.service_id);
+    if (!service) continue;
+    const quote = quoteTreatment(service, { dbh: tree.dbh, heightFt: tree.heightFt });
+    await db
+      .from('partner_tree_treatments')
+      .update({
+        unit_price_cents: quote.priced ? quote.unitPriceCents : null,
+        needs_quote: !quote.priced,
+        quote_note: quote.priced ? null : quote.note,
+      })
+      .eq('id', row.id);
+  }
+}
+
+// ---------------------------------------------------------------------------
+// The work order
+// ---------------------------------------------------------------------------
+
+/**
+ * Assembles the whole priced work order: the job, its trees, their photos, and
+ * their treatments, plus the totals.
+ *
+ * The total EXCLUDES lines Bratt has to quote by hand. A partial total that says
+ * so is honest; adding a guess for an off-chart tree would put a number in front
+ * of a customer that nobody at Bratt has agreed to.
+ */
+export async function getWorkOrder(proposalId: string): Promise<WorkOrder | null> {
+  const proposal = await getProposal(proposalId);
+  if (!proposal) return null;
+
+  const trees = await listTrees(proposalId);
+
+  const db = adminClient();
+  const { data } = trees.length
+    ? await db
+        .from('partner_tree_treatments')
+        .select('id, tree_id, service_id, unit_price_cents, needs_quote, quote_note')
+        .in('tree_id', trees.map((t) => t.id))
+    : { data: [] };
+
+  const byTree = new Map<string, Treatment[]>();
+  for (const row of ((data ?? []) as unknown as TreatmentRow[])) {
+    const t = toTreatment(row);
+    byTree.set(t.treeId, [...(byTree.get(t.treeId) ?? []), t]);
+  }
+
+  const withTreatments: TreeWithTreatments[] = trees.map((t) => ({
+    ...t,
+    treatments: (byTree.get(t.id) ?? []).sort((a, b) =>
+      (a.serviceName ?? '').localeCompare(b.serviceName ?? ''),
+    ),
+  }));
+
+  let totalCents = 0;
+  let needsQuoteCount = 0;
+  for (const tree of withTreatments) {
+    for (const tr of tree.treatments) {
+      if (tr.needsQuote) needsQuoteCount += 1;
+      else totalCents += tr.unitPriceCents ?? 0;
+    }
+  }
+
+  return {
+    proposal,
+    trees: withTreatments,
+    totalCents,
+    needsQuoteCount,
+    treesWithoutTreatment: withTreatments.filter((t) => t.treatments.length === 0).length,
+    treesWithoutPhoto: withTreatments.filter((t) => t.photos.length === 0).length,
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Sending to Bratt
+// ---------------------------------------------------------------------------
+
+/**
+ * Accepts a work order and sends it to Bratt.
+ *
+ * Order of operations matters, and it is chosen so nothing is ever half-done in
+ * a way the partner can't see:
+ *
+ *   1. Check it's sendable (every tree has a treatment and a photo).
+ *   2. Freeze it — write the revision row with a full JSON snapshot, and flip the
+ *      proposal to 'sent'. Locking BEFORE the email means the record can never
+ *      drift from the PDF that went out.
+ *   3. Build the PDF and store it in the private bucket.
+ *   4. Email it, and record on the revision row whether that worked.
+ *
+ * A mail failure leaves the work order sent and the PDF stored, with
+ * email_status 'failed' — so it can be retried without re-freezing anything, and
+ * "did they actually get it?" has an answer.
+ */
+export async function sendWorkOrder(
+  proposalId: string,
+): Promise<{ sent: true; mail: MailResult } | { sent: false; issues: string[] }> {
+  const order = await getWorkOrder(proposalId);
+  if (!order) return { sent: false, issues: ['That proposal no longer exists.'] };
+
+  if (isLocked(order.proposal)) {
+    return { sent: false, issues: ['This work order has already been sent.'] };
+  }
+
+  const issues = blockingIssues(order);
+  if (issues.length) return { sent: false, issues };
+
+  const db = adminClient();
+  const sentAt = new Date();
+
+  // --- 2. Freeze -----------------------------------------------------------
+  const { data: revisionRow, error: revErr } = await db
+    .from('partner_proposal_revisions')
+    .insert({
+      proposal_id: proposalId,
+      revision: order.proposal.revision,
+      // The whole order as sent. Photo URLs are deliberately NOT included — they
+      // expire — but paths and ids are, so the exact images can be re-fetched.
+      snapshot: {
+        proposal: order.proposal,
+        trees: order.trees.map((t) => ({
+          ...t,
+          photos: t.photos.map((p) => ({ id: p.id, storagePath: p.storagePath })),
+        })),
+        totalCents: order.totalCents,
+        needsQuoteCount: order.needsQuoteCount,
+      },
+      sent_to: orderEmailAddress(),
+      sent_at: sentAt.toISOString(),
+      email_status: 'pending',
+    })
+    .select('id')
+    .single();
+
+  if (revErr) {
+    return { sent: false, issues: [`Could not record the send: ${revErr.message}`] };
+  }
+  const revisionId = (revisionRow as { id: string }).id;
+
+  const { error: lockErr } = await db
+    .from('partner_proposals')
+    .update({ handoff_status: 'sent', sent_at: sentAt.toISOString() })
+    .eq('id', proposalId);
+  if (lockErr) {
+    return { sent: false, issues: [`Could not lock the work order: ${lockErr.message}`] };
+  }
+
+  // --- 3. PDF --------------------------------------------------------------
+  // Fetch the photo bytes for embedding. A photo that won't download is skipped
+  // rather than failing the send — the record in the hub still has it.
+  const photoBytes = new Map<string, Uint8Array>();
+  for (const tree of order.trees) {
+    for (const photo of tree.photos) {
+      const { data } = await db.storage.from(PHOTO_BUCKET).download(photo.storagePath);
+      if (data) photoBytes.set(photo.id, new Uint8Array(await data.arrayBuffer()));
+    }
+  }
+
+  const freshOrder = { ...order, proposal: { ...order.proposal, handoffStatus: 'sent' as const } };
+  const pdf = await buildWorkOrderPdf(freshOrder, photoBytes, sentAt);
+
+  const pdfPath = `work-orders/${proposalId}/${order.proposal.reference}-rev${order.proposal.revision}.pdf`;
+  await db.storage
+    .from(PHOTO_BUCKET)
+    .upload(pdfPath, pdf, { contentType: 'application/pdf', upsert: true });
+  await db
+    .from('partner_proposal_revisions')
+    .update({ pdf_path: pdfPath })
+    .eq('id', revisionId);
+
+  // --- 4. Email ------------------------------------------------------------
+  const mail = await sendWorkOrderEmail(freshOrder, pdf);
+  await db
+    .from('partner_proposal_revisions')
+    .update({
+      email_status: mail.ok ? 'sent' : 'failed',
+      email_error: mail.ok ? null : mail.error,
+    })
+    .eq('id', revisionId);
+
+  return { sent: true, mail };
+}
+
+/**
+ * Reopens a sent work order for editing as the next revision.
+ *
+ * Without this the tool is a dead end: a rep who sends and then spots a wrong
+ * DBH has no way forward. The already-sent revision row stays exactly as it was,
+ * so the PDF Bratt holds always matches a stored snapshot; this just starts a new
+ * revision number on the live record.
+ */
+export async function startRevision(proposalId: string): Promise<void> {
+  const proposal = await getProposal(proposalId);
+  if (!proposal) throw new Error('That proposal no longer exists.');
+  if (!isLocked(proposal)) return;
+
+  const db = adminClient();
+  const { error } = await db
+    .from('partner_proposals')
+    .update({
+      handoff_status: 'draft',
+      revision: proposal.revision + 1,
+      sent_at: null,
+    })
+    .eq('id', proposalId);
+  if (error) throw new Error(`Could not start a revision: ${error.message}`);
+}
+
+/** Past sends, newest first, for the history strip on the work order. */
+export async function listRevisions(proposalId: string): Promise<
+  {
+    id: string;
+    revision: number;
+    sentAt: string;
+    sentTo: string | null;
+    emailStatus: 'pending' | 'sent' | 'failed';
+    emailError: string | null;
+    pdfUrl: string | null;
+  }[]
+> {
+  const db = adminClient();
+  const { data } = await db
+    .from('partner_proposal_revisions')
+    .select('id, revision, sent_at, sent_to, email_status, email_error, pdf_path')
+    .eq('proposal_id', proposalId)
+    .order('sent_at', { ascending: false });
+
+  const rows = (data ?? []) as unknown as {
+    id: string;
+    revision: number;
+    sent_at: string;
+    sent_to: string | null;
+    email_status: 'pending' | 'sent' | 'failed';
+    email_error: string | null;
+    pdf_path: string | null;
+  }[];
+
+  return Promise.all(
+    rows.map(async (r) => {
+      let pdfUrl: string | null = null;
+      if (r.pdf_path) {
+        const { data: signed } = await db.storage
+          .from(PHOTO_BUCKET)
+          .createSignedUrl(r.pdf_path, SIGNED_URL_TTL_SECONDS);
+        pdfUrl = signed?.signedUrl ?? null;
+      }
+      return {
+        id: r.id,
+        revision: r.revision,
+        sentAt: r.sent_at,
+        sentTo: r.sent_to,
+        emailStatus: r.email_status,
+        emailError: r.email_error,
+        pdfUrl,
+      };
+    }),
+  );
 }

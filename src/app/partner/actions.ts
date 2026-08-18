@@ -3,14 +3,19 @@
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import {
+  addTreatment,
   createProposal,
   createTree,
   deleteProposal,
   deleteTree,
   deleteTreePhoto,
   getTree,
+  removeTreatment,
+  repriceTree,
   requirePartner,
+  sendWorkOrder,
   setJobStatus,
+  startRevision,
   updateProposal,
   updateTree,
   type JobStatus,
@@ -191,7 +196,11 @@ export async function updateTreeAction(
 
   try {
     const proposalId = await updateTree(id, treeInputFrom(form));
+    // Changing DBH or height changes the price. Without this, an edit would
+    // leave stale prices attached to the new measurements.
+    await repriceTree(id);
     revalidatePath(`/partner/proposals/${proposalId}`);
+    revalidatePath(`/partner/proposals/${proposalId}/work-order`);
     return { error: null, treeId: id };
   } catch (e) {
     return { error: e instanceof Error ? e.message : 'Something went wrong.' };
@@ -212,4 +221,82 @@ export async function deleteTreePhotoAction(form: FormData): Promise<void> {
   const treeId = await deleteTreePhoto(photoId);
   const tree = await getTree(treeId);
   if (tree) revalidatePath(`/partner/proposals/${tree.proposalId}`);
+}
+
+// ---------------------------------------------------------------------------
+// Treatments
+// ---------------------------------------------------------------------------
+
+export async function addTreatmentAction(form: FormData): Promise<void> {
+  await requirePartner();
+  const treeId = String(form.get('treeId') ?? '');
+  const serviceId = String(form.get('serviceId') ?? '');
+  await addTreatment(treeId, serviceId);
+
+  const tree = await getTree(treeId);
+  if (tree) {
+    revalidatePath(`/partner/proposals/${tree.proposalId}`);
+    revalidatePath(`/partner/proposals/${tree.proposalId}/trees/${treeId}/treatments`);
+    revalidatePath(`/partner/proposals/${tree.proposalId}/work-order`);
+  }
+}
+
+export async function removeTreatmentAction(form: FormData): Promise<void> {
+  await requirePartner();
+  const treeId = await removeTreatment(String(form.get('id') ?? ''));
+  const tree = await getTree(treeId);
+  if (tree) {
+    revalidatePath(`/partner/proposals/${tree.proposalId}`);
+    revalidatePath(`/partner/proposals/${tree.proposalId}/trees/${treeId}/treatments`);
+    revalidatePath(`/partner/proposals/${tree.proposalId}/work-order`);
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Sending
+// ---------------------------------------------------------------------------
+
+export type SendState = { error: string | null; issues?: string[]; warning?: string };
+
+/**
+ * Accepts the work order and sends it to Bratt.
+ *
+ * A mail failure is a WARNING, not an error: the work order is saved, locked, and
+ * its PDF stored, so telling the rep "nothing happened" would be false. They see
+ * that it went through but the email didn't, and it can be retried.
+ */
+export async function sendWorkOrderAction(
+  _prev: SendState,
+  form: FormData,
+): Promise<SendState> {
+  await requirePartner();
+  const id = String(form.get('id') ?? '');
+
+  let result: Awaited<ReturnType<typeof sendWorkOrder>>;
+  try {
+    result = await sendWorkOrder(id);
+  } catch (e) {
+    return { error: e instanceof Error ? e.message : 'Could not send the work order.' };
+  }
+
+  revalidatePath('/partner');
+  revalidatePath(`/partner/proposals/${id}`);
+  revalidatePath(`/partner/proposals/${id}/work-order`);
+
+  if (!result.sent) {
+    return { error: 'This work order is not ready to send yet.', issues: result.issues };
+  }
+  if (!result.mail.ok) {
+    return { error: null, warning: result.mail.error };
+  }
+  return { error: null };
+}
+
+export async function startRevisionAction(form: FormData): Promise<void> {
+  await requirePartner();
+  const id = String(form.get('id') ?? '');
+  await startRevision(id);
+  revalidatePath('/partner');
+  revalidatePath(`/partner/proposals/${id}`);
+  redirect(`/partner/proposals/${id}`);
 }

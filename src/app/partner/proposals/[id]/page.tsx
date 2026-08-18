@@ -4,16 +4,17 @@ import { BRATT } from '@/lib/partner-config';
 import {
   requirePartner,
   getProposal,
-  listTrees,
+  getWorkOrder,
   isLocked,
   hasLocation,
   JOB_STATUSES,
   JOB_STATUS_LABELS,
   HANDOFF_STATUS_LABELS,
   SPRAY_HEIGHT_LIMIT_FT,
-  type Tree,
+  type TreeWithTreatments,
 } from '@/lib/partner-data';
 import { setJobStatusAction, deleteProposalAction } from '@/app/partner/actions';
+import { formatCents } from '@/lib/php-quote';
 
 export const dynamic = 'force-dynamic';
 
@@ -25,9 +26,9 @@ export default async function ProposalPage({
   await requirePartner();
   const { id } = await params;
 
-  const proposal = await getProposal(id);
-  if (!proposal) notFound();
-  const trees = await listTrees(id);
+  const order = await getWorkOrder(id);
+  if (!order) notFound();
+  const { proposal, trees } = order;
 
   const locked = isLocked(proposal);
 
@@ -177,6 +178,33 @@ export default async function ProposalPage({
         )}
       </section>
 
+      {trees.length > 0 && (
+        <section className="mt-8 rounded-card bg-bark px-6 py-5 text-cream">
+          <div className="flex flex-wrap items-center justify-between gap-4">
+            <div>
+              <p className="font-headline text-[11px] font-extrabold uppercase tracking-ribbon text-lime">
+                Running Total
+              </p>
+              <p className="mt-1 font-display text-3xl tracking-wider">
+                {formatCents(order.totalCents)}
+              </p>
+              {order.needsQuoteCount > 0 && (
+                <p className="mt-1 text-xs text-cream/80">
+                  + {order.needsQuoteCount} line
+                  {order.needsQuoteCount === 1 ? '' : 's'} for Bratt to quote
+                </p>
+              )}
+            </div>
+            <Link
+              href={`/partner/proposals/${proposal.id}/work-order`}
+              className="bt-btn bt-btn-primary"
+            >
+              {locked ? 'View Work Order' : 'Review & Send'}
+            </Link>
+          </div>
+        </section>
+      )}
+
       {!locked && (
         <form action={deleteProposalAction} className="mt-10 border-t border-paper-edge pt-6">
           <input type="hidden" name="id" value={proposal.id} />
@@ -197,7 +225,7 @@ function TreeCard({
   proposalId,
   locked,
 }: {
-  tree: Tree;
+  tree: TreeWithTreatments;
   proposalId: string;
   locked: boolean;
 }) {
@@ -245,9 +273,30 @@ function TreeCard({
 
       {tree.notes && <p className="mt-3 text-sm text-fg-2">{tree.notes}</p>}
 
-      <p className="mt-3 border-t border-paper-edge/60 pt-3 text-xs text-fg-3">
-        No treatment picked yet
-      </p>
+      {tree.treatments.length === 0 ? (
+        <p className="mt-3 border-t border-paper-edge/60 pt-3 text-xs font-bold text-orange-press">
+          No treatment picked yet &mdash; tap to choose
+        </p>
+      ) : (
+        <ul className="mt-3 space-y-1 border-t border-paper-edge/60 pt-3">
+          {tree.treatments.map((t) => (
+            <li key={t.id} className="flex justify-between gap-3 text-xs">
+              <span className="min-w-0 truncate text-fg-2">
+                {t.serviceName ?? t.serviceId}
+              </span>
+              <span
+                className={
+                  t.needsQuote
+                    ? 'flex-shrink-0 font-bold text-orange-press'
+                    : 'flex-shrink-0 font-bold text-ink'
+                }
+              >
+                {t.needsQuote ? 'Bratt to quote' : formatCents(t.unitPriceCents ?? 0)}
+              </span>
+            </li>
+          ))}
+        </ul>
+      )}
     </>
   );
 
@@ -255,12 +304,23 @@ function TreeCard({
   return locked ? (
     <div className="bt-card !p-5">{body}</div>
   ) : (
-    <Link
-      href={`/partner/proposals/${proposalId}/trees/${tree.id}`}
-      className="bt-card block !p-5 transition-shadow hover:shadow-sh-2"
-    >
+    <div className="bt-card !p-5">
       {body}
-    </Link>
+      <div className="mt-4 flex flex-wrap gap-4 border-t border-paper-edge pt-3">
+        <Link
+          href={`/partner/proposals/${proposalId}/trees/${tree.id}/treatments`}
+          className="text-xs font-bold uppercase tracking-ribbon text-orange-press hover:underline"
+        >
+          {tree.treatments.length === 0 ? 'Pick treatments' : 'Change treatments'}
+        </Link>
+        <Link
+          href={`/partner/proposals/${proposalId}/trees/${tree.id}`}
+          className="text-xs font-bold uppercase tracking-ribbon text-fg-3 hover:text-orange-press hover:underline"
+        >
+          Edit tree
+        </Link>
+      </div>
+    </div>
   );
 }
 

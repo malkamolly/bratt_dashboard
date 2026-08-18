@@ -3,9 +3,10 @@
 A hub for an outside **landscaping partner** (Landscapes Unlimited) whose sales
 team quotes our Plant Health Care (PHC) work to their own customers.
 
-> **In progress.** Built so far: sign-in, the proposal list, job details with a
-> geocoded address and site map, and trees with photos. Next: the treatment
-> picker, then the priced work order, then the PDF + email handoff to Bratt.
+> **Complete end to end.** Sign-in → proposal → geocoded address + site map →
+> trees with photos → card-based treatment picker → priced work order → accept &
+> send, which emails a branded PDF to Bratt and locks the order. Revisions reopen
+> a sent order without disturbing what Bratt already received.
 >
 > The hub is **Bratt-branded** — their reps sell our tree work, so it has to read
 > as Bratt. Landscapes Unlimited is an accent (a "prepared for" credit, their
@@ -35,7 +36,25 @@ team quotes our Plant Health Care (PHC) work to their own customers.
   failed lookup is not fatal — the proposal saves and the screen says the address
   is unconfirmed.
 - **Salesperson is free text.** An earlier version had a managed roster; that was
-  upkeep for someone else's staff with no payoff. It lives in this repo and
+  upkeep for someone else's staff with no payoff.
+- **Treatment prices are SNAPSHOT into the row when chosen**, not computed on
+  read. If the price book changes next week, an order already sent must still
+  show what the customer was quoted, or the PDF in Bratt's inbox and the record
+  in the hub disagree. Editing a tree re-prices its treatments (`repriceTree`),
+  because changing DBH must change the quote.
+- **The total EXCLUDES "Bratt to quote" lines.** Off-chart trees and sprays over
+  25 ft have no chart price; putting a guess in front of a customer that nobody
+  at Bratt agreed to would be worse than a partial total that says so.
+- **Sending locks BEFORE emailing.** The revision row (with a full JSON snapshot)
+  and the lock are written first, so the stored record can never drift from the
+  PDF that went out. A mail failure leaves the order sent with
+  `email_status='failed'` — retryable, and "did they get it?" has an answer.
+- **Email is Gmail SMTP** (`PHP_GMAIL_USER`, `PHP_GMAIL_APP_PASSWORD`), matching
+  how magic links already leave this project. A transactional ESP would need DNS
+  on brattree.com, which we don't control. Destination is `PHP_ORDER_EMAIL`,
+  defaulting to `BRATT.contactEmail`.
+- **The PDF embeds tree photos** (pdf-lib, no headless browser). Requiring a photo
+  per tree only pays off if Connor can see it without logging in. It lives in this repo and
 ships with the same Vercel deploy as the internal dashboard, but it is walled off
 from it.
 
