@@ -1,7 +1,13 @@
-# Partner Hub (`/partner`)
+# Plant Health Program (`/partner`)
 
-A pricing hub for an outside **landscaping partner** whose sales team quotes our
-Plant Health Care (PHC) work to their own customers. It lives in this repo and
+A hub for an outside **landscaping partner** (Landscapes Unlimited) whose sales
+team quotes our Plant Health Care (PHC) work to their own customers.
+
+> **In progress.** The hub started as a bare calculator. It is becoming a
+> proposal builder: their rep enters a job, adds trees with photos, picks
+> treatments, and the tool produces a priced work order that gets sent to Bratt.
+> The calculator now runs behind the scenes rather than being the interface.
+> Data model: `supabase/migrations/071_partner_php_proposals.sql`. It lives in this repo and
 ships with the same Vercel deploy as the internal dashboard, but it is walled off
 from it.
 
