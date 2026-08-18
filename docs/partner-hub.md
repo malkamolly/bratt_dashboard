@@ -35,6 +35,20 @@ team quotes our Plant Health Care (PHC) work to their own customers.
   typed address is never overwritten; Google's version is kept alongside it. A
   failed lookup is not fatal — the proposal saves and the screen says the address
   is unconfirmed.
+- **Addresses must verify, and must be in Minnesota.** Geocoding restricts the
+  search to MN (`components=administrative_area:MN|country:US`) AND re-checks the
+  state on the result. A failure BLOCKS the save — this used to save anyway and
+  flag the address, which let "1375 Park Drive" store with a White Lake,
+  *Michigan* map attached. The internal Site Markup tool passes
+  `restrictToServiceArea: false` and keeps its old behaviour.
+- **Branding is a partnership, not a Bratt tool with a credit.** Both logos appear
+  at every viewport (the partner logo used to be `hidden sm:flex`, so phones —
+  where their reps work — showed only Bratt) and both appear in the PDF header and
+  the photo appendix. The partner's green is the divider between the marks and a
+  hairline under the orange rule. Logo bytes for the PDF are read from /public via
+  `src/lib/brand-assets.ts`, which needs the `/partner/**` entry in
+  `outputFileTracingIncludes` (next.config.js) to exist in the deployed bundle;
+  without it the PDF quietly falls back to text.
 - **Salesperson is free text.** An earlier version had a managed roster; that was
   upkeep for someone else's staff with no payoff.
 - **Treatment prices are SNAPSHOT into the row when chosen**, not computed on

@@ -52,10 +52,11 @@ export default async function ProposalPage({
           <p className="mt-2 text-fg-2">
             {proposal.formattedAddress ?? proposal.siteAddress}
           </p>
+          {/* New proposals can't save without a verified address. This only
+              shows on rows created before that rule. */}
           {!hasLocation(proposal) && (
             <p className="mt-2 inline-block rounded-2 border-2 border-status-warn bg-status-warn/10 px-3 py-1.5 text-xs font-bold text-fg-1">
-              Address not confirmed &mdash; we couldn&apos;t find it on the map.
-              Editing it with the city and state usually fixes this.
+              Address not verified &mdash; open Edit details and re-save to check it.
             </p>
           )}
         </div>
@@ -106,10 +107,13 @@ export default async function ProposalPage({
         <dl className="mt-4 grid gap-4 sm:grid-cols-2">
           <Detail label="Salesperson" value={proposal.salespersonName} />
           <Detail label="Reference" value={proposal.reference} mono />
-          <Detail label="Address as entered" value={proposal.siteAddress} />
+          {/* Only the verified address is shown. What the rep typed is still
+              stored (site_address) for reference, but showing both invited the
+              question of which one is real. */}
           <Detail
-            label="Confirmed address"
-            value={proposal.formattedAddress}
+            label="Verified address"
+            value={proposal.formattedAddress ?? proposal.siteAddress}
+            className="sm:col-span-2"
           />
         </dl>
       </section>

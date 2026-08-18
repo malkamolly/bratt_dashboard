@@ -103,8 +103,8 @@ export function ProposalForm({
           autoComplete="street-address"
         />
         <p className="mt-1.5 text-xs text-fg-3">
-          We look this up and show the site on a map. Include the city and state
-          so it lands in the right place.
+          Checked against the map when you save &mdash; include the city so it
+          lands in the right place. Minnesota addresses only.
         </p>
       </div>
 

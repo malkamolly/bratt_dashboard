@@ -25,6 +25,7 @@ const STATUS: Record<string, number> = {
   no_address: 400,
   not_configured: 503,
   not_found: 404,
+  outside_service_area: 404,
   fetch_failed: 502,
 };
 
@@ -37,8 +38,12 @@ export async function GET(req: NextRequest) {
 
   // The actual Google call lives in lib/geocode.ts, shared with the Plant
   // Health Program hub so there is one implementation to keep correct.
+  // `false` = don't restrict to Minnesota. This tool predates that rule and its
+  // users can see the map they're working on; the Plant Health Program hub does
+  // restrict, because a partner rep never sees the map until after it saves.
   const result = await geocodeAddress(
     req.nextUrl.searchParams.get('address') ?? '',
+    false,
   );
 
   if (!result.ok) {

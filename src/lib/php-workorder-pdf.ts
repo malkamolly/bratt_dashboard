@@ -21,6 +21,8 @@ import { HANDOFF_STATUS_LABELS, JOB_STATUS_LABELS } from './partner-types';
 import type { WorkOrder } from './partner-types';
 import { BRATT, PARTNER, PROGRAM } from './partner-config';
 import { formatBusinessDate } from './dates';
+import { loadBrattLogo, loadPartnerLogo } from './brand-assets';
+import { PARTNER_COLORS } from './partner-config';
 
 // Bratt brand colors, as pdf-lib rgb (0–1 floats).
 const ORANGE = rgb(0.922, 0.298, 0.106); // #EB4C1B
@@ -28,6 +30,16 @@ const BARK = rgb(0.149, 0.098, 0.055); // #26190E
 const INK = rgb(0.102, 0.055, 0.02); // #1A0E05
 const GREY = rgb(0.42, 0.38, 0.33);
 const RULE = rgb(0.91, 0.86, 0.75);
+const CREAM = rgb(1, 0.973, 0.925);
+const LIME = rgb(0.914, 0.906, 0.114);
+
+/** The partner's greens, parsed from PARTNER_COLORS so there is one source. */
+function hexToRgb(hex: string) {
+  const n = parseInt(hex.replace('#', ''), 16);
+  return rgb(((n >> 16) & 255) / 255, ((n >> 8) & 255) / 255, (n & 255) / 255);
+}
+const PARTNER_DARK = hexToRgb(PARTNER_COLORS.dark);
+const PARTNER_ACCENT = hexToRgb(PARTNER_COLORS.accent);
 
 const PAGE_W = 612; // US Letter, points
 const PAGE_H = 792;
@@ -107,59 +119,131 @@ export async function buildWorkOrderPdf(
 
   const { proposal } = order;
 
-  // ---- Header band -------------------------------------------------------
+  // ---- Header band: a real two-brand lockup -----------------------------
+  // Both marks sit on the bark band at the same visual weight, because this IS a
+  // partnership — a rep hands this to their customer, and the customer should see
+  // both companies. Bratt leads (we do the work and stand behind it), Landscapes
+  // Unlimited closes, with their green as the divider between them.
+  const HEADER_H = 118;
   ctx.page.drawRectangle({
     x: 0,
-    y: PAGE_H - 96,
+    y: PAGE_H - HEADER_H,
     width: PAGE_W,
-    height: 96,
+    height: HEADER_H,
     color: BARK,
   });
-  ctx.page.drawRectangle({ x: 0, y: PAGE_H - 102, width: PAGE_W, height: 6, color: ORANGE });
-
-  ctx.page.drawText(BRATT.name.toUpperCase(), {
-    x: MARGIN,
-    y: PAGE_H - 46,
-    size: 20,
-    font: bold,
-    color: rgb(1, 0.973, 0.925),
+  ctx.page.drawRectangle({
+    x: 0,
+    y: PAGE_H - HEADER_H - 6,
+    width: PAGE_W,
+    height: 6,
+    color: ORANGE,
   });
+  // Their green, as a hairline under the orange — the same accent the hub uses.
+  ctx.page.drawRectangle({
+    x: 0,
+    y: PAGE_H - HEADER_H - 9,
+    width: PAGE_W,
+    height: 3,
+    color: PARTNER_ACCENT,
+  });
+
+  const brattLogo = await tryEmbed(doc, (await loadBrattLogo()) ?? new Uint8Array());
+  const partnerLogo = await tryEmbed(doc, (await loadPartnerLogo()) ?? new Uint8Array());
+
+  // Bratt badge, or the name in type if the file isn't there.
+  let cursorX = MARGIN;
+  if (brattLogo) {
+    const h = 62;
+    const w = (brattLogo.width / brattLogo.height) * h;
+    ctx.page.drawImage(brattLogo, {
+      x: cursorX,
+      y: PAGE_H - 26 - h,
+      width: w,
+      height: h,
+    });
+    cursorX += w + 16;
+  } else {
+    ctx.page.drawText(BRATT.name.toUpperCase(), {
+      x: cursorX,
+      y: PAGE_H - 52,
+      size: 17,
+      font: bold,
+      color: CREAM,
+    });
+    cursorX += bold.widthOfTextAtSize(BRATT.name.toUpperCase(), 17) + 16;
+  }
+
+  // Partner logo on a white chip — their mark is dark green on transparent and
+  // would disappear against the bark panel.
+  if (partnerLogo) {
+    const h = 30;
+    const w = (partnerLogo.width / partnerLogo.height) * h;
+    const padX = 10;
+    const padY = 8;
+    const chipW = w + padX * 2;
+    const chipX = PAGE_W - MARGIN - chipW;
+    const chipY = PAGE_H - 30 - h - padY;
+
+    ctx.page.drawText('IN PARTNERSHIP WITH', {
+      x: PAGE_W - MARGIN - body.widthOfTextAtSize('IN PARTNERSHIP WITH', 6.5),
+      y: PAGE_H - 22,
+      size: 6.5,
+      font: bold,
+      color: PARTNER_ACCENT,
+    });
+    ctx.page.drawRectangle({
+      x: chipX,
+      y: chipY,
+      width: chipW,
+      height: h + padY * 2,
+      color: rgb(1, 1, 1),
+    });
+    ctx.page.drawImage(partnerLogo, {
+      x: chipX + padX,
+      y: chipY + padY,
+      width: w,
+      height: h,
+    });
+  } else {
+    ctx.page.drawText(PARTNER.name.toUpperCase(), {
+      x: PAGE_W - MARGIN - bold.widthOfTextAtSize(PARTNER.name.toUpperCase(), 11),
+      y: PAGE_H - 40,
+      size: 11,
+      font: bold,
+      color: CREAM,
+    });
+  }
+
+  // Program name + reference, under the marks.
   ctx.page.drawText(`${PROGRAM.name.toUpperCase()}  ·  WORK ORDER`, {
     x: MARGIN,
-    y: PAGE_H - 66,
+    y: PAGE_H - HEADER_H + 26,
     size: 9,
     font: bold,
-    color: rgb(0.914, 0.906, 0.114),
-  });
-  ctx.page.drawText(`PREPARED FOR ${PARTNER.name.toUpperCase()}`, {
-    x: MARGIN,
-    y: PAGE_H - 82,
-    size: 7.5,
-    font: body,
-    color: rgb(1, 0.973, 0.925),
+    color: LIME,
   });
 
-  // Reference + revision, right-aligned.
   const ref = `${proposal.reference}${proposal.revision > 1 ? ` · REV ${proposal.revision}` : ''}`;
   ctx.page.drawText(ref, {
-    x: PAGE_W - MARGIN - bold.widthOfTextAtSize(ref, 13),
-    y: PAGE_H - 46,
-    size: 13,
+    x: PAGE_W - MARGIN - bold.widthOfTextAtSize(ref, 12),
+    y: PAGE_H - HEADER_H + 26,
+    size: 12,
     font: bold,
-    color: rgb(1, 0.973, 0.925),
+    color: CREAM,
   });
   // Central, not UTC: a work order sent after 7 PM Minneapolis time would
   // otherwise be dated tomorrow on the copy in Bratt's inbox.
   const dateLine = formatBusinessDate(sentAt);
   ctx.page.drawText(dateLine, {
-    x: PAGE_W - MARGIN - body.widthOfTextAtSize(dateLine, 9),
-    y: PAGE_H - 64,
-    size: 9,
+    x: PAGE_W - MARGIN - body.widthOfTextAtSize(dateLine, 8),
+    y: PAGE_H - HEADER_H + 13,
+    size: 8,
     font: body,
-    color: rgb(1, 0.973, 0.925),
+    color: rgb(0.75, 0.72, 0.68),
   });
 
-  ctx.y = PAGE_H - 130;
+  ctx.y = PAGE_H - HEADER_H - 32;
 
   // ---- Job block ---------------------------------------------------------
   text(ctx, proposal.jobName, { size: 16, bold: true });
@@ -352,6 +436,14 @@ export async function buildWorkOrderPdf(
   // embed, so the large copy costs no extra bytes.
   await drawPhotoAppendix(ctx, order, photos);
 
+  // Partnership credit, in their green, closing the document.
+  ctx.y -= 6;
+  text(
+    ctx,
+    `${PROGRAM.name} — ${BRATT.name} in partnership with ${PARTNER.name}`,
+    { size: 8, bold: true, color: PARTNER_DARK },
+  );
+
   return doc.save();
 }
 
@@ -377,13 +469,37 @@ async function drawPhotoAppendix(
     color: BARK,
   });
   ctx.page.drawRectangle({ x: 0, y: PAGE_H - 82, width: PAGE_W, height: 6, color: ORANGE });
+  ctx.page.drawRectangle({ x: 0, y: PAGE_H - 85, width: PAGE_W, height: 3, color: PARTNER_ACCENT });
   ctx.page.drawText('TREE PHOTOS', {
     x: MARGIN,
     y: PAGE_H - 44,
     size: 18,
     font: ctx.bold,
-    color: rgb(1, 0.973, 0.925),
+    color: CREAM,
   });
+  // Partner mark here too, so a page torn out of the middle still reads as
+  // coming from the partnership rather than from nowhere.
+  const appendixLogo = await tryEmbed(
+    ctx.doc,
+    (await loadPartnerLogo()) ?? new Uint8Array(),
+  );
+  if (appendixLogo) {
+    const h = 22;
+    const w = (appendixLogo.width / appendixLogo.height) * h;
+    ctx.page.drawRectangle({
+      x: PAGE_W - MARGIN - w - 14,
+      y: PAGE_H - 30 - h - 6,
+      width: w + 14,
+      height: h + 12,
+      color: rgb(1, 1, 1),
+    });
+    ctx.page.drawImage(appendixLogo, {
+      x: PAGE_W - MARGIN - w - 7,
+      y: PAGE_H - 30 - h,
+      width: w,
+      height: h,
+    });
+  }
   ctx.page.drawText(
     `${order.proposal.reference}  ·  full-size images for review`,
     {

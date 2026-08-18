@@ -206,16 +206,23 @@ export type ProposalInput = {
 /**
  * Geocoding result folded into the columns we store.
  *
- * A failure is NOT fatal: an address Google can't resolve is still worth saving
- * — the rep may know the site better than the map does, and refusing to save
- * would be worse than saving without coordinates. The screens show whether an
- * address was confirmed, so an unverified one is visible rather than silent.
+ * A failure is FATAL, on purpose. This used to save the proposal anyway and flag
+ * the address as unconfirmed — which meant "1375 Park Drive" quietly saved with a
+ * White Lake, MICHIGAN map attached to it. An address nobody has verified is not
+ * something to build a work order on, so the rep is stopped here, while they are
+ * still standing at the property and can fix it.
+ *
+ * Throws with Google's own wording (wrong state, not found, unreachable) so the
+ * form can tell the rep what to do about it.
  */
 async function locationColumns(address: string) {
   const geo = await geocodeAddress(address);
-  return geo.ok
-    ? { formatted_address: geo.formatted, latitude: geo.lat, longitude: geo.lng }
-    : { formatted_address: null, latitude: null, longitude: null };
+  if (!geo.ok) throw new Error(geo.message);
+  return {
+    formatted_address: geo.formatted,
+    latitude: geo.lat,
+    longitude: geo.lng,
+  };
 }
 
 /**

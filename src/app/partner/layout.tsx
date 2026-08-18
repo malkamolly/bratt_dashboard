@@ -46,50 +46,67 @@ export default async function PartnerLayout({
         } as React.CSSProperties
       }
     >
-      {/* Bratt header — mascot + logotype, same furniture as the main site. */}
+      {/* Header: a two-brand lockup, both marks visible at every width.
+          The partner logo used to be `hidden sm:flex`, which meant the phone —
+          where their reps actually work — showed only Bratt. Now both show
+          always; the program name is what drops on the narrowest screens. */}
       <header className="bt-nav">
-        <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-6 py-3">
-          {/* The badge logo carries its own dark panel and lime halo, so it
-              sits on the bark header unmodified. No filters — inverting it
-              flattens the artwork to a white blob. */}
-          <Link href="/partner" className="flex items-center gap-4">
+        <div className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-3 sm:px-6">
+          <Link href="/partner" className="flex min-w-0 items-center gap-3 sm:gap-4">
+            {/* The badge carries its own dark panel and lime halo, so it sits on
+                the bark header unmodified — no filters. */}
             <Image
               src="/brand/logotype.png"
               alt={BRATT.name}
               width={160}
               height={128}
-              className="h-14 w-auto"
+              className="h-11 w-auto flex-shrink-0 sm:h-14"
               priority
             />
-            <span className="h-9 w-px bg-cream/25" aria-hidden="true" />
-            <span className="font-headline text-sm font-extrabold uppercase tracking-ribbon text-lime">
-              {PROGRAM.name}
+
+            {/* Their green as the divider — the join between the two brands. */}
+            <span
+              className="h-9 w-[3px] flex-shrink-0 rounded-full sm:h-11"
+              style={{ backgroundColor: PARTNER_COLORS.accent }}
+              aria-hidden="true"
+            />
+
+            {/* Their mark on a white chip: it's dark green on transparent and
+                would vanish against the bark panel. */}
+            <span className="flex min-w-0 flex-col gap-1">
+              <span className="hidden font-headline text-[0.55rem] font-extrabold uppercase tracking-ribbon text-cream/50 sm:block">
+                In partnership with
+              </span>
+              <span className="rounded bg-white px-2 py-1.5">
+                <PartnerLogo className="h-4 sm:h-5" />
+              </span>
             </span>
           </Link>
 
-          <div className="flex items-center gap-5">
-            {/* The Landscapes Unlimited hint. */}
-            <div className="hidden flex-col items-end gap-1 sm:flex">
-              <span className="font-headline text-[0.6rem] font-extrabold uppercase tracking-ribbon text-cream/60">
-                Prepared for
-              </span>
-              <span className="rounded bg-white px-2 py-1">
-                <PartnerLogo className="h-4" />
-              </span>
-            </div>
-
+          <div className="flex flex-shrink-0 items-center gap-4">
+            <span className="hidden font-headline text-xs font-extrabold uppercase tracking-ribbon text-lime lg:block">
+              {PROGRAM.name}
+            </span>
             {signedIn && (
               <form method="post" action="/partner/session">
                 <input type="hidden" name="intent" value="signout" />
                 <button
                   type="submit"
-                  className="font-headline text-xs font-extrabold uppercase tracking-ribbon text-cream/70 hover:text-lime"
+                  className="font-headline text-[0.65rem] font-extrabold uppercase tracking-ribbon text-cream/70 hover:text-lime sm:text-xs"
                 >
                   Sign out
                 </button>
               </form>
             )}
           </div>
+        </div>
+
+        {/* On phones and tablets the program name moves to its own line rather
+            than being dropped, so the tool still says what it is. */}
+        <div className="border-t border-cream/10 px-4 pb-2 pt-1.5 lg:hidden">
+          <p className="mx-auto max-w-6xl font-headline text-[0.6rem] font-extrabold uppercase tracking-ribbon text-lime">
+            {PROGRAM.name}
+          </p>
         </div>
       </header>
 
@@ -121,9 +138,14 @@ export default async function PartnerLayout({
             ISA-Certified. Questions on a treatment or an unusual tree? Reach out
             to your Bratt Tree contact.
           </p>
-          <p className="font-headline text-[0.6rem] font-extrabold uppercase tracking-ribbon text-cream/50">
-            {PROGRAM.name} &nbsp;&middot;&nbsp; for {PARTNER.name}
-          </p>
+          <div className="flex items-center gap-3">
+            <span className="font-headline text-[0.6rem] font-extrabold uppercase tracking-ribbon text-cream/50">
+              {PROGRAM.name}
+            </span>
+            <span className="rounded bg-white px-2 py-1">
+              <PartnerLogo className="h-4" />
+            </span>
+          </div>
         </div>
       </footer>
     </div>
