@@ -307,6 +307,10 @@ body {
    the utility it overrides, so nothing internal is affected. If you restyle
    QuoteBuilder, glance here to see whether a new brand class needs a neutral
    counterpart.
+
+   Accent colors come from CSS variables the partner layout sets from
+   PARTNER_COLORS in src/lib/partner-config.ts — change them THERE, not here,
+   so the palette has one home. Fallbacks keep this readable in isolation.
    ------------------------------------------------------------------------- */
 .partner-theme .bt-card {
   background: #ffffff;
@@ -329,10 +333,10 @@ body {
   padding: 0.625rem 1.25rem;
 }
 .partner-theme .bt-btn-primary {
-  background-color: #047857;
+  background-color: var(--php-dark, #0B6136);
   color: #ffffff;
 }
-.partner-theme .bt-btn-primary:hover { background-color: #065f46; }
+.partner-theme .bt-btn-primary:hover { background-color: var(--php-darker, #084727); }
 .partner-theme .bt-btn-ghost {
   color: #334155;
   box-shadow: inset 0 0 0 1px #cbd5e1;
@@ -360,7 +364,7 @@ body {
 .partner-theme .bg-bark      { background-color: #0f172a; }
 .partner-theme .text-cream   { color: #f8fafc; }
 .partner-theme .text-cream\/80 { color: rgb(248 250 252 / 0.8); }
-.partner-theme .text-lime    { color: #6ee7b7; }
+.partner-theme .text-lime    { color: var(--php-accent, #8DC63F); }
 /* Rugfish (our display face) never appears in the partner hub. */
 .partner-theme .font-display {
   font-family: 'Nunito', 'Helvetica Neue', system-ui, sans-serif;
@@ -369,8 +373,8 @@ body {
 }
 
 /* Focus / hover accents. */
-.partner-theme .focus\:border-orange:focus       { border-color: #047857; }
-.partner-theme .hover\:border-orange:hover       { border-color: #047857; }
-.partner-theme .hover\:text-orange-press:hover   { color: #047857; }
+.partner-theme .focus\:border-orange:focus       { border-color: var(--php-dark, #0B6136); }
+.partner-theme .hover\:border-orange:hover       { border-color: var(--php-dark, #0B6136); }
+.partner-theme .hover\:text-orange-press:hover   { color: var(--php-dark, #0B6136); }
 .partner-theme .hover\:border-orange-press:hover { border-color: #b91c1c; }
 .partner-theme .hover\:bg-orange-press:hover     { background-color: #b91c1c; }
