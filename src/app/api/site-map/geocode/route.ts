@@ -16,8 +16,17 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { getAllowedUser, canUseSiteMarkup } from '@/lib/auth';
+import { geocodeAddress } from '@/lib/geocode';
 
 export const dynamic = 'force-dynamic';
+
+// HTTP status per failure reason, so the client sees the same codes as before.
+const STATUS: Record<string, number> = {
+  no_address: 400,
+  not_configured: 503,
+  not_found: 404,
+  fetch_failed: 502,
+};
 
 export async function GET(req: NextRequest) {
   // Managers + admin only (matches the Site Markup page gating).
@@ -26,58 +35,22 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
   }
 
-  const key = process.env.GOOGLE_MAPS_API_KEY;
-  if (!key) {
+  // The actual Google call lives in lib/geocode.ts, shared with the Plant
+  // Health Program hub so there is one implementation to keep correct.
+  const result = await geocodeAddress(
+    req.nextUrl.searchParams.get('address') ?? '',
+  );
+
+  if (!result.ok) {
     return NextResponse.json(
-      {
-        error: 'not_configured',
-        message:
-          'The live map is not switched on yet. Add GOOGLE_MAPS_API_KEY in Vercel to enable it.',
-      },
-      { status: 503 },
+      { error: result.reason, message: result.message },
+      { status: STATUS[result.reason] ?? 500 },
     );
   }
 
-  const address = req.nextUrl.searchParams.get('address')?.trim();
-  if (!address) {
-    return NextResponse.json({ error: 'Missing address.' }, { status: 400 });
-  }
-
-  const url = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(
-    address,
-  )}&key=${key}`;
-
-  let data: {
-    status: string;
-    results?: {
-      geometry: { location: { lat: number; lng: number } };
-      formatted_address: string;
-    }[];
-  };
-  try {
-    const res = await fetch(url);
-    data = await res.json();
-  } catch {
-    return NextResponse.json(
-      { error: 'fetch_failed', message: 'Could not reach Google. Try again.' },
-      { status: 502 },
-    );
-  }
-
-  if (data.status !== 'OK' || !data.results?.length) {
-    return NextResponse.json(
-      {
-        error: 'not_found',
-        message: `Couldn't find that address (${data.status}). Try adding the city and state.`,
-      },
-      { status: 404 },
-    );
-  }
-
-  const top = data.results[0];
   return NextResponse.json({
-    lat: top.geometry.location.lat,
-    lng: top.geometry.location.lng,
-    formatted: top.formatted_address,
+    lat: result.lat,
+    lng: result.lng,
+    formatted: result.formatted,
   });
 }

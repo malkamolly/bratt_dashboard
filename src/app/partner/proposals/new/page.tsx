@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { requirePartner, listSalespeople } from '@/lib/partner-data';
+import { requirePartner } from '@/lib/partner-data';
 import { ProposalForm } from '@/components/partner/ProposalForm';
 import { createProposalAction } from '@/app/partner/actions';
 
@@ -7,7 +7,6 @@ export const dynamic = 'force-dynamic';
 
 export default async function NewProposalPage() {
   await requirePartner();
-  const salespeople = await listSalespeople();
 
   return (
     <main className="mx-auto max-w-2xl px-6 py-10">
@@ -28,7 +27,6 @@ export default async function NewProposalPage() {
       <div className="mt-8">
         <ProposalForm
           action={createProposalAction}
-          salespeople={salespeople}
           submitLabel="Save and Add Trees"
         />
       </div>

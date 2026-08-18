@@ -1,24 +1,19 @@
 import Link from 'next/link';
 import { notFound, redirect } from 'next/navigation';
 import { requirePartner, getProposal, isLocked } from '@/lib/partner-data';
-import { ProposalForm } from '@/components/partner/ProposalForm';
-import { updateProposalAction } from '@/app/partner/actions';
+import { TreeForm } from '@/components/partner/TreeForm';
 
 export const dynamic = 'force-dynamic';
 
-export default async function EditProposalPage({
+export default async function NewTreePage({
   params,
 }: {
   params: Promise<{ id: string }>;
 }) {
   await requirePartner();
   const { id } = await params;
-
   const proposal = await getProposal(id);
   if (!proposal) notFound();
-
-  // A sent work order is frozen. Bounce rather than render a form that would
-  // only fail on save.
   if (isLocked(proposal)) redirect(`/partner/proposals/${id}`);
 
   return (
@@ -32,24 +27,17 @@ export default async function EditProposalPage({
           {proposal.reference}
         </Link>
         <span className="mx-2 text-fg-3">/</span>
-        Edit
+        Add Tree
       </p>
       <h1 className="mt-2 font-display text-4xl uppercase tracking-wider text-ink sm:text-5xl">
-        Edit job details
+        Add a Tree
       </h1>
+      <p className="mt-4 text-fg-2">
+        {proposal.jobName} &mdash; {proposal.formattedAddress ?? proposal.siteAddress}
+      </p>
 
       <div className="mt-8">
-        <ProposalForm
-          action={updateProposalAction}
-          values={{
-            id: proposal.id,
-            salespersonName: proposal.salespersonName,
-            jobName: proposal.jobName,
-            siteAddress: proposal.siteAddress,
-            jobStatus: proposal.jobStatus,
-          }}
-          submitLabel="Save Changes"
-        />
+        <TreeForm proposalId={id} />
       </div>
     </main>
   );

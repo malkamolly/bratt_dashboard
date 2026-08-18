@@ -58,8 +58,15 @@ async function partnerGate(req: NextRequest, path: string) {
   const res = NextResponse.next({ request: { headers } });
 
   // The sign-in screen and the endpoint its form posts to have to be reachable
-  // without a session. Everything else under /partner needs the cookie.
+  // without a session.
   if (path === '/partner/login' || path === '/partner/session') return res;
+
+  // API endpoints under /partner check the cookie themselves and answer with a
+  // status code. They must NOT be redirected: a 307 on a fetch() is followed
+  // automatically, so an expired session would hand the browser the login page
+  // with status 200 — and a photo upload would look like it succeeded while
+  // storing nothing. Let them through; the handlers return 401.
+  if (path === '/partner/photos' || path === '/partner/map') return res;
 
   const ok = await isValidPartnerCookie(req.cookies.get(PARTNER_COOKIE)?.value);
   if (!ok) {

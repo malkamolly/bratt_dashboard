@@ -18,9 +18,9 @@ export type JobStatus = 'proposing' | 'sold' | 'dismissed';
 export type HandoffStatus = 'draft' | 'sent' | 'received' | 'scheduled';
 
 export const JOB_STATUSES: { value: JobStatus; label: string; hint: string }[] = [
-  { value: 'proposing', label: 'Proposing', hint: "Quoted, waiting on the customer" },
+  { value: 'proposing', label: 'Proposing', hint: 'Quoted, waiting on the customer' },
   { value: 'sold', label: 'Sold', hint: 'Customer said yes' },
-  { value: 'dismissed', label: 'Dismissed', hint: "Not moving forward" },
+  { value: 'dismissed', label: 'Dismissed', hint: 'Not moving forward' },
 ];
 
 export const JOB_STATUS_LABELS: Record<JobStatus, string> = {
@@ -36,22 +36,18 @@ export const HANDOFF_STATUS_LABELS: Record<HandoffStatus, string> = {
   scheduled: 'Scheduled',
 };
 
-export type Salesperson = {
-  id: string;
-  name: string;
-  active: boolean;
-};
-
 export type Proposal = {
   id: string;
   reference: string;
-  salespersonId: string | null;
+  /** Free text — their rep's name as typed. No managed roster (migration 073). */
   salespersonName: string | null;
   jobName: string;
+  /** Exactly as the rep typed it. Never silently rewritten. */
   siteAddress: string;
-  customerName: string | null;
-  customerPhone: string | null;
-  accessNotes: string | null;
+  /** Google's canonical version, when the address resolved. */
+  formattedAddress: string | null;
+  latitude: number | null;
+  longitude: number | null;
   jobStatus: JobStatus;
   handoffStatus: HandoffStatus;
   revision: number;
@@ -62,8 +58,80 @@ export type Proposal = {
   treeCount?: number;
 };
 
+/** Did the address resolve to a real place? Drives the map and the badge. */
+export function hasLocation(p: Proposal): boolean {
+  return p.latitude != null && p.longitude != null;
+}
+
 /** A proposal that has been sent to Bratt is frozen — edits need a new
  *  revision. One helper so every screen agrees on what "locked" means. */
 export function isLocked(p: Proposal): boolean {
   return p.handoffStatus !== 'draft';
 }
+
+// ---------------------------------------------------------------------------
+// Trees
+// ---------------------------------------------------------------------------
+
+export type TreePhoto = {
+  id: string;
+  storagePath: string;
+  /** Short-lived signed URL. The bucket is private — these are photos of
+   *  someone's home — so there is no permanent public link. */
+  url: string | null;
+};
+
+export type Tree = {
+  id: string;
+  proposalId: string;
+  label: string;
+  species: string | null;
+  /** Diameter at breast height, inches. The only input current pricing uses. */
+  dbh: number;
+  heightFt: number | null;
+  crownSpreadFt: number | null;
+  notes: string | null;
+  sortOrder: number;
+  photos: TreePhoto[];
+};
+
+/**
+ * Single-spray chart prices are void above this height — the tree becomes a
+ * "consult the PHC manager" job. Collected here so the tree form can warn the
+ * rep at entry rather than surprising them at pricing.
+ */
+export const SPRAY_HEIGHT_LIMIT_FT = 25;
+
+/** Every tree needs at least one photo, so Connor can verify the call. */
+export const MIN_PHOTOS_PER_TREE = 1;
+
+/** Keeps a phone camera roll from being uploaded wholesale. */
+export const MAX_PHOTOS_PER_TREE = 6;
+
+/**
+ * Common Twin Cities species, offered as suggestions rather than a closed list —
+ * species drives which treatments are relevant, but a rep who finds something
+ * unusual must still be able to type it.
+ */
+export const COMMON_SPECIES = [
+  'Ash',
+  'American Elm',
+  'Basswood',
+  'Birch',
+  'Black Walnut',
+  'Bur Oak',
+  'Colorado Spruce',
+  'Crabapple',
+  'Hackberry',
+  'Honeylocust',
+  'Linden',
+  'Norway Maple',
+  'Pin Oak',
+  'Red Maple',
+  'Red Oak',
+  'River Birch',
+  'Silver Maple',
+  'Sugar Maple',
+  'White Pine',
+  'White Spruce',
+] as const;

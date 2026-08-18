@@ -4,19 +4,19 @@ import { BRATT } from '@/lib/partner-config';
 import {
   requirePartner,
   getProposal,
+  listTrees,
   isLocked,
+  hasLocation,
   JOB_STATUSES,
   JOB_STATUS_LABELS,
   HANDOFF_STATUS_LABELS,
+  SPRAY_HEIGHT_LIMIT_FT,
+  type Tree,
 } from '@/lib/partner-data';
 import { setJobStatusAction, deleteProposalAction } from '@/app/partner/actions';
 
 export const dynamic = 'force-dynamic';
 
-/**
- * One proposal. Job details today; trees, treatments, and the priced work order
- * are the next build steps.
- */
 export default async function ProposalPage({
   params,
 }: {
@@ -24,8 +24,10 @@ export default async function ProposalPage({
 }) {
   await requirePartner();
   const { id } = await params;
+
   const proposal = await getProposal(id);
   if (!proposal) notFound();
+  const trees = await listTrees(id);
 
   const locked = isLocked(proposal);
 
@@ -44,7 +46,17 @@ export default async function ProposalPage({
           <h1 className="font-display text-4xl uppercase tracking-wider text-ink sm:text-5xl">
             {proposal.jobName}
           </h1>
-          <p className="mt-2 text-fg-2">{proposal.siteAddress}</p>
+          {/* Google's canonical address when it resolved, otherwise what was
+              typed. The typed version is never overwritten in the database. */}
+          <p className="mt-2 text-fg-2">
+            {proposal.formattedAddress ?? proposal.siteAddress}
+          </p>
+          {!hasLocation(proposal) && (
+            <p className="mt-2 inline-block rounded-2 border-2 border-status-warn bg-status-warn/10 px-3 py-1.5 text-xs font-bold text-fg-1">
+              Address not confirmed &mdash; we couldn&apos;t find it on the map.
+              Editing it with the city and state usually fixes this.
+            </p>
+          )}
         </div>
         {!locked && (
           <Link
@@ -67,20 +79,36 @@ export default async function ProposalPage({
         </p>
       )}
 
+      {/* ---- Site map ---- */}
+      {hasLocation(proposal) && (
+        <section className="mt-8 overflow-hidden rounded-card border-[3px] border-lime">
+          {/* A server-proxied static map: the Google key stays server-side, and
+              the coordinates come from the row, not the query string, so this
+              can't be used as an open map proxy on our key. */}
+          {/* eslint-disable-next-line @next/next/no-img-element -- proxied image,
+              not a static asset next/image can optimize. */}
+          <img
+            src={`/partner/map?proposal=${proposal.id}`}
+            alt={`Map of ${proposal.formattedAddress ?? proposal.siteAddress}`}
+            width={1280}
+            height={640}
+            className="block h-auto w-full"
+          />
+        </section>
+      )}
+
       {/* ---- Job details ---- */}
-      <section className="bt-card mt-8">
+      <section className="bt-card mt-6">
         <h2 className="font-headline text-xs font-extrabold uppercase tracking-ribbon text-fg-2">
           Job details
         </h2>
         <dl className="mt-4 grid gap-4 sm:grid-cols-2">
           <Detail label="Salesperson" value={proposal.salespersonName} />
           <Detail label="Reference" value={proposal.reference} mono />
-          <Detail label="Site contact" value={proposal.customerName} />
-          <Detail label="Phone" value={proposal.customerPhone} />
+          <Detail label="Address as entered" value={proposal.siteAddress} />
           <Detail
-            label="Access notes"
-            value={proposal.accessNotes}
-            className="sm:col-span-2"
+            label="Confirmed address"
+            value={proposal.formattedAddress}
           />
         </dl>
       </section>
@@ -96,41 +124,61 @@ export default async function ProposalPage({
         </p>
         <form action={setJobStatusAction} className="mt-4 flex flex-wrap gap-2">
           <input type="hidden" name="id" value={proposal.id} />
-          {JOB_STATUSES.map((s) => {
-            const active = s.value === proposal.jobStatus;
-            return (
-              <button
-                key={s.value}
-                type="submit"
-                name="jobStatus"
-                value={s.value}
-                aria-pressed={active}
-                className={
-                  active
-                    ? 'bt-btn bt-btn-primary !px-5 !py-2 !text-xs'
-                    : 'bt-btn bt-btn-ghost !px-5 !py-2 !text-xs'
-                }
-              >
-                {JOB_STATUS_LABELS[s.value]}
-              </button>
-            );
-          })}
+          {JOB_STATUSES.map((s) => (
+            <button
+              key={s.value}
+              type="submit"
+              name="jobStatus"
+              value={s.value}
+              aria-pressed={s.value === proposal.jobStatus}
+              className={
+                s.value === proposal.jobStatus
+                  ? 'bt-btn bt-btn-primary !px-5 !py-2 !text-xs'
+                  : 'bt-btn bt-btn-ghost !px-5 !py-2 !text-xs'
+              }
+            >
+              {JOB_STATUS_LABELS[s.value]}
+            </button>
+          ))}
         </form>
       </section>
 
-      {/* ---- Trees: the next build step ---- */}
-      <section className="mt-6 rounded-card border-2 border-dashed border-paper-edge bg-white/60 p-6">
-        <h2 className="font-headline text-xs font-extrabold uppercase tracking-ribbon text-fg-2">
-          Trees
-        </h2>
-        <p className="mt-2 text-sm text-fg-2">
-          Next up: add each tree with its size and a photo, then pick treatments.
-          The priced work order builds itself from those.
-        </p>
+      {/* ---- Trees ---- */}
+      <section className="mt-6">
+        <div className="flex flex-wrap items-end justify-between gap-3">
+          <h2 className="font-display text-2xl uppercase tracking-wide text-ink">
+            Trees{trees.length > 0 && ` (${trees.length})`}
+          </h2>
+          {!locked && (
+            <Link
+              href={`/partner/proposals/${proposal.id}/trees/new`}
+              className="bt-btn bt-btn-primary !px-5 !py-2 !text-xs"
+            >
+              Add a Tree
+            </Link>
+          )}
+        </div>
+
+        {trees.length === 0 ? (
+          <div className="mt-4 rounded-card border-2 border-dashed border-paper-edge bg-white/60 p-8 text-center">
+            <p className="text-sm text-fg-2">
+              No trees yet. Add each tree with its size and a photo &mdash; then
+              you&apos;ll pick treatments and the price adds up.
+            </p>
+          </div>
+        ) : (
+          <ul className="mt-4 space-y-3">
+            {trees.map((t) => (
+              <li key={t.id}>
+                <TreeCard tree={t} proposalId={proposal.id} locked={locked} />
+              </li>
+            ))}
+          </ul>
+        )}
       </section>
 
       {!locked && (
-        <form action={deleteProposalAction} className="mt-8">
+        <form action={deleteProposalAction} className="mt-10 border-t border-paper-edge pt-6">
           <input type="hidden" name="id" value={proposal.id} />
           <button
             type="submit"
@@ -141,6 +189,78 @@ export default async function ProposalPage({
         </form>
       )}
     </main>
+  );
+}
+
+function TreeCard({
+  tree,
+  proposalId,
+  locked,
+}: {
+  tree: Tree;
+  proposalId: string;
+  locked: boolean;
+}) {
+  const tall = tree.heightFt != null && tree.heightFt > SPRAY_HEIGHT_LIMIT_FT;
+
+  const measurements = [
+    `${tree.dbh}" DBH`,
+    tree.heightFt != null ? `${tree.heightFt} ft tall` : null,
+    tree.crownSpreadFt != null ? `${tree.crownSpreadFt} ft spread` : null,
+  ].filter(Boolean);
+
+  const body = (
+    <>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="min-w-0">
+          <h3 className="font-headline text-lg font-extrabold text-ink">
+            {tree.label}
+          </h3>
+          <p className="text-sm text-fg-2">
+            {tree.species ?? 'Species not noted'} &middot; {measurements.join(' · ')}
+          </p>
+        </div>
+        {tall && (
+          <span className="bt-status-warn">Over {SPRAY_HEIGHT_LIMIT_FT} ft</span>
+        )}
+      </div>
+
+      {tree.photos.length > 0 && (
+        <ul className="mt-3 flex flex-wrap gap-2">
+          {tree.photos.map((p) => (
+            <li key={p.id} className="h-20 w-20">
+              {p.url && (
+                // eslint-disable-next-line @next/next/no-img-element -- signed
+                // URL from a private bucket; next/image would need a loader.
+                <img
+                  src={p.url}
+                  alt=""
+                  className="h-full w-full rounded-2 border-2 border-paper-edge object-cover"
+                />
+              )}
+            </li>
+          ))}
+        </ul>
+      )}
+
+      {tree.notes && <p className="mt-3 text-sm text-fg-2">{tree.notes}</p>}
+
+      <p className="mt-3 border-t border-paper-edge/60 pt-3 text-xs text-fg-3">
+        No treatment picked yet
+      </p>
+    </>
+  );
+
+  // A locked work order's trees aren't editable, so don't dangle a link.
+  return locked ? (
+    <div className="bt-card !p-5">{body}</div>
+  ) : (
+    <Link
+      href={`/partner/proposals/${proposalId}/trees/${tree.id}`}
+      className="bt-card block !p-5 transition-shadow hover:shadow-sh-2"
+    >
+      {body}
+    </Link>
   );
 }
 

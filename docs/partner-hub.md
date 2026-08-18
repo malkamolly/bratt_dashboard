@@ -3,11 +3,39 @@
 A hub for an outside **landscaping partner** (Landscapes Unlimited) whose sales
 team quotes our Plant Health Care (PHC) work to their own customers.
 
-> **In progress.** The hub started as a bare calculator. It is becoming a
-> proposal builder: their rep enters a job, adds trees with photos, picks
-> treatments, and the tool produces a priced work order that gets sent to Bratt.
-> The calculator now runs behind the scenes rather than being the interface.
-> Data model: `supabase/migrations/071_partner_php_proposals.sql`. It lives in this repo and
+> **In progress.** Built so far: sign-in, the proposal list, job details with a
+> geocoded address and site map, and trees with photos. Next: the treatment
+> picker, then the priced work order, then the PDF + email handoff to Bratt.
+>
+> The hub is **Bratt-branded** — their reps sell our tree work, so it has to read
+> as Bratt. Landscapes Unlimited is an accent (a "prepared for" credit, their
+> green on a hairline rule and the handoff chip). Do not neutralize the brand
+> classes; an earlier version did and it hid the whole point.
+>
+> Migrations: `071_partner_php_proposals.sql`,
+> `072_partner_proposal_defaults.sql`,
+> `073_partner_proposal_revisions_to_spec.sql`.
+
+## Things worth knowing before changing this
+
+- **Photos are downscaled in the browser** (`TreeForm.tsx`), to 1600px on the
+  long edge as JPEG. A 12MP phone photo is ~11 MB; Vercel rejects request bodies
+  over ~4.5 MB before our code runs. Measured: 10.93 MB in, 0.79 MB out.
+- **Uploads go through our server**, not straight to Supabase Storage: a partner
+  holds no Supabase session, so the browser has no credential a storage policy
+  would accept.
+- **The photo bucket is private.** Browsers get short-lived signed URLs minted
+  server-side, batched per page so a proposal isn't dozens of round trips.
+- **`/partner/photos` and `/partner/map` are exempt from the middleware
+  redirect** and return 401 themselves. A 307 on a `fetch()` is followed
+  automatically, which would hand the browser the login page with status 200 —
+  making a failed photo upload look like a success.
+- **The address is geocoded once, on save**, and the coordinates are stored. The
+  typed address is never overwritten; Google's version is kept alongside it. A
+  failed lookup is not fatal — the proposal saves and the screen says the address
+  is unconfirmed.
+- **Salesperson is free text.** An earlier version had a managed roster; that was
+  upkeep for someone else's staff with no payoff. It lives in this repo and
 ships with the same Vercel deploy as the internal dashboard, but it is walled off
 from it.
 
