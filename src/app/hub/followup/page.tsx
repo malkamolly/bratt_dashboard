@@ -1,5 +1,5 @@
 // ============================================================================
-// /hub/followup — The Follow-Through Scorecard
+// /hub/followup — The Follow-Up Scorecard
 // ============================================================================
 // What calling back is worth: the open board, the money sitting in records that
 // got one call, what following up earned each arborist, and who to call first.
@@ -367,7 +367,7 @@ export default async function FollowupScorecardPage({
           Sales Arborist Hub
         </Link>
         <span className="mx-2 text-fg-3">/</span>
-        Follow-Through Scorecard
+        Follow-Up Scorecard
       </p>
       <h1 className="mt-2 font-display text-5xl uppercase tracking-wider text-ink sm:text-6xl">
         What Calling Back Is Worth

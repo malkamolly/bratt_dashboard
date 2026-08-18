@@ -24,10 +24,10 @@ export async function HubSubNav({ active }: { active: string }) {
   if (user && canUseSiteMarkup(user.role)) {
     sections.push({ href: '/hub/site-plan', label: 'Site Markup' });
   }
-  // The Follow-Through Scorecard is embargoed from sales arborists until its
+  // The Follow-Up Scorecard is embargoed from sales arborists until its
   // release time — see canSeeFollowupScorecard in lib/auth.
   if (user && canSeeFollowupScorecard(user.role)) {
-    sections.push({ href: '/hub/followup', label: 'Follow-Through' });
+    sections.push({ href: '/hub/followup', label: 'Follow-Up' });
   }
   // The Off-Season report is viewable by the whole hub (view-only for sales
   // arborists; office edits it from the Office Hub).

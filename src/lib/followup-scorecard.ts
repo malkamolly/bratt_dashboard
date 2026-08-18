@@ -1,5 +1,5 @@
 // ============================================================================
-// Follow-Through Scorecard — types, aggregation, and presentation helpers
+// Follow-Up Scorecard — types, aggregation, and presentation helpers
 // ============================================================================
 // Pure logic only: no database, no xlsx imports. The upload action parses a
 // spreadsheet into RawOpportunity rows and hands them to computeScorecard();

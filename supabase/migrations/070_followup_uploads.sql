@@ -1,6 +1,6 @@
 -- ============================================================================
 -- 070_followup_uploads.sql
--- Weekly spreadsheet uploads behind the Follow-Through Scorecard (/hub/followup).
+-- Weekly spreadsheet uploads behind the Follow-Up Scorecard (/hub/followup).
 --
 -- Each upload REPLACES the report rather than adding to it: the newest row is
 -- marked is_active and the previous one is retired. Old rows are kept (they cost

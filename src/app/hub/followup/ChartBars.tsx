@@ -1,7 +1,7 @@
 'use client';
 
 // ============================================================================
-// ChartBars — the interactive bars on the Follow-Through Scorecard
+// ChartBars — the interactive bars on the Follow-Up Scorecard
 // ============================================================================
 // The page itself is a server component; these are the only parts that need
 // browser events, so they live here behind a client boundary.

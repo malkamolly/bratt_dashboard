@@ -185,7 +185,7 @@ export function canSeeReviewStats(email: string | null | undefined): boolean {
 }
 
 // ---------------------------------------------------------------------------
-// Follow-Through Scorecard — embargoed release
+// Follow-Up Scorecard — embargoed release
 // ---------------------------------------------------------------------------
 // The follow-up analysis (/hub/followup) compares sales arborists to each other
 // by name, so leadership reads it BEFORE the team does. Everyone else with hub
@@ -207,7 +207,7 @@ export const FOLLOWUP_SCORECARD_RELEASE_AT = businessTimeToInstant(
 );
 
 /**
- * Can this role see the Follow-Through Scorecard yet?
+ * Can this role see the Follow-Up Scorecard yet?
  *
  * Pass `now` in tests; it defaults to the current time. Callers must already
  * have cleared hub access — this only answers the embargo question.

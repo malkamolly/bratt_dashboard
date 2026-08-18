@@ -53,7 +53,7 @@ export default async function HubHomePage() {
         {showFollowup && (
           <Link href="/hub/followup" className="bt-card group transition-colors hover:!border-orange">
             <h2 className="font-headline text-3xl font-black uppercase text-bark-deep">
-              Follow-Through Scorecard
+              Follow-Up Scorecard
             </h2>
             <p className="mt-3 text-sm text-fg-2">
               What calling back is worth &mdash; one in three opportunities we

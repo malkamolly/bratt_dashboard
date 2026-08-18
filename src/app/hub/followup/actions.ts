@@ -1,7 +1,7 @@
 'use server';
 
 // ============================================================================
-// Follow-Through Scorecard — upload action
+// Follow-Up Scorecard — upload action
 // ============================================================================
 // Parse an "Open Opportunities" export into a fresh scorecard. The new upload
 // REPLACES the report: the previous active row is retired, the new one becomes
