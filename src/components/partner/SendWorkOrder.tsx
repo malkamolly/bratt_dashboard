@@ -36,11 +36,14 @@ export function SendWorkOrder({
   totalCents,
   blocked,
   issues,
+  sendTo,
 }: {
   proposalId: string;
   totalCents: number;
   blocked: boolean;
   issues: string[];
+  /** Named on the confirm step so nobody is surprised by where it went. */
+  sendTo: string;
 }) {
   const [state, formAction] = useActionState(sendWorkOrderAction, INITIAL);
 
@@ -89,9 +92,10 @@ export function SendWorkOrder({
             Send this work order?
           </h3>
           <p className="mt-2 text-sm text-fg-2">
-            This emails the work order and its photos to Bratt and locks it, so
-            what we receive always matches your record. You can still start a
-            revision afterwards if something changes.
+            This emails the work order and its photos to{' '}
+            <strong className="font-mono text-ink">{sendTo}</strong> and locks it,
+            so what Bratt receives always matches your record. You can still start
+            a revision afterwards if something changes.
           </p>
           <div className="mt-5">
             <SendButton total={totalCents} />

@@ -266,3 +266,35 @@ export function workingWeeksInMonth(
   }
   return weeks;
 }
+
+// ---------------------------------------------------------------------------
+// Display formatting
+// ---------------------------------------------------------------------------
+// Same trap as the pace math above, one step further on: Vercel runs in UTC, so
+// `date.toLocaleString('en-US')` on the SERVER formats in UTC. A work order sent
+// at 2:43 PM in Minneapolis rendered as "7:43 PM", and anything sent after 7 PM
+// Central would show tomorrow's date. Always pass the timezone.
+
+/** "Aug 18, 2026" in Central. */
+export function formatBusinessDate(value: Date | string): string {
+  const d = typeof value === 'string' ? new Date(value) : value;
+  return d.toLocaleDateString('en-US', {
+    timeZone: BUSINESS_TZ,
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+  });
+}
+
+/** "Aug 18, 2026, 2:43 PM" in Central. */
+export function formatBusinessDateTime(value: Date | string): string {
+  const d = typeof value === 'string' ? new Date(value) : value;
+  return d.toLocaleString('en-US', {
+    timeZone: BUSINESS_TZ,
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+  });
+}

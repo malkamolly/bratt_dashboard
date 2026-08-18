@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { BRATT } from '@/lib/partner-config';
 import { formatCents } from '@/lib/php-quote';
+import { formatBusinessDate, formatBusinessDateTime } from '@/lib/dates';
 import {
   requirePartner,
   getWorkOrder,
@@ -15,6 +16,7 @@ import {
 } from '@/lib/partner-data';
 import { SendWorkOrder } from '@/components/partner/SendWorkOrder';
 import { startRevisionAction } from '@/app/partner/actions';
+import { orderEmailAddress } from '@/lib/php-mail';
 
 export const dynamic = 'force-dynamic';
 
@@ -36,6 +38,7 @@ export default async function WorkOrderPage({
   const order = await getWorkOrder(id);
   if (!order) notFound();
   const revisions = await listRevisions(id);
+  const sendTo = orderEmailAddress();
 
   const { proposal } = order;
   const locked = isLocked(proposal);
@@ -162,12 +165,7 @@ export default async function WorkOrderPage({
               </h3>
               <p className="mt-2 text-sm text-fg-1">
                 Sent to {BRATT.name}
-                {proposal.sentAt &&
-                  ` on ${new Date(proposal.sentAt).toLocaleDateString('en-US', {
-                    month: 'short',
-                    day: 'numeric',
-                    year: 'numeric',
-                  })}`}
+                {proposal.sentAt && ` on ${formatBusinessDate(proposal.sentAt)}`}
                 . It&apos;s locked so our copy always matches yours.
               </p>
             </div>
@@ -189,6 +187,7 @@ export default async function WorkOrderPage({
             totalCents={order.totalCents}
             blocked={issues.length > 0}
             issues={issues}
+            sendTo={sendTo}
           />
         )}
       </section>
@@ -215,13 +214,7 @@ export default async function WorkOrderPage({
                     )}
                   </p>
                   <p className="text-xs text-fg-3">
-                    {new Date(r.sentAt).toLocaleString('en-US', {
-                      month: 'short',
-                      day: 'numeric',
-                      year: 'numeric',
-                      hour: 'numeric',
-                      minute: '2-digit',
-                    })}
+                    {formatBusinessDateTime(r.sentAt)}
                     {r.sentTo && ` · ${r.sentTo}`}
                   </p>
                   {r.emailError && (

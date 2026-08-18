@@ -20,6 +20,7 @@ import { formatCents } from './php-quote';
 import { HANDOFF_STATUS_LABELS, JOB_STATUS_LABELS } from './partner-types';
 import type { WorkOrder } from './partner-types';
 import { BRATT, PARTNER, PROGRAM } from './partner-config';
+import { formatBusinessDate } from './dates';
 
 // Bratt brand colors, as pdf-lib rgb (0–1 floats).
 const ORANGE = rgb(0.922, 0.298, 0.106); // #EB4C1B
@@ -147,11 +148,9 @@ export async function buildWorkOrderPdf(
     font: bold,
     color: rgb(1, 0.973, 0.925),
   });
-  const dateLine = sentAt.toLocaleDateString('en-US', {
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric',
-  });
+  // Central, not UTC: a work order sent after 7 PM Minneapolis time would
+  // otherwise be dated tomorrow on the copy in Bratt's inbox.
+  const dateLine = formatBusinessDate(sentAt);
   ctx.page.drawText(dateLine, {
     x: PAGE_W - MARGIN - body.widthOfTextAtSize(dateLine, 9),
     y: PAGE_H - 64,
