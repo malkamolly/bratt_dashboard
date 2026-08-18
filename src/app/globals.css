@@ -293,3 +293,84 @@ body {
   .bt-status-warn    { @apply bt-status bg-status-warn text-ink; }
   .bt-status-neutral { @apply bt-status bg-paper-edge text-fg-2; }
 }
+
+/* ---------------------------------------------------------------------------
+   Partner Hub theme (/partner/*)
+   ---------------------------------------------------------------------------
+   The Partner Hub shows an outside landscaping company the SAME PHC calculator
+   our sales arborists use — we reuse <QuoteBuilder /> verbatim so there is only
+   ever one price book. But the partner should not see Bratt Tree's branding, so
+   these rules re-skin the shared .bt-* / brand-token classes to neutral
+   slate + emerald inside the `.partner-theme` wrapper.
+
+   Each selector is scoped (`.partner-theme .x`), which is more specific than
+   the utility it overrides, so nothing internal is affected. If you restyle
+   QuoteBuilder, glance here to see whether a new brand class needs a neutral
+   counterpart.
+   ------------------------------------------------------------------------- */
+.partner-theme .bt-card {
+  background: #ffffff;
+  border-color: #e2e8f0;
+  border-width: 1px;
+  border-radius: 1rem;
+  box-shadow: 0 1px 2px rgb(15 23 42 / 0.06);
+}
+
+.partner-theme .bt-eyebrow {
+  color: #64748b;
+  letter-spacing: 0.12em;
+}
+
+.partner-theme .bt-btn {
+  border-radius: 0.5rem;
+  letter-spacing: 0.02em;
+  text-transform: none;
+  font-weight: 600;
+  padding: 0.625rem 1.25rem;
+}
+.partner-theme .bt-btn-primary {
+  background-color: #047857;
+  color: #ffffff;
+}
+.partner-theme .bt-btn-primary:hover { background-color: #065f46; }
+.partner-theme .bt-btn-ghost {
+  color: #334155;
+  box-shadow: inset 0 0 0 1px #cbd5e1;
+}
+.partner-theme .bt-btn-ghost:hover {
+  background-color: #f1f5f9;
+  color: #0f172a;
+  box-shadow: inset 0 0 0 1px #94a3b8;
+}
+
+/* Neutral counterparts for the brand color tokens QuoteBuilder uses. */
+.partner-theme .text-ink   { color: #0f172a; }
+.partner-theme .text-fg-2  { color: #475569; }
+.partner-theme .text-fg-3  { color: #94a3b8; }
+
+.partner-theme .border-paper-edge    { border-color: #cbd5e1; }
+.partner-theme .border-paper-edge\/60 { border-color: rgb(203 213 225 / 0.6); }
+
+/* "Consult the manager" callout — red instead of Bratt orange. */
+.partner-theme .text-orange-press   { color: #b91c1c; }
+.partner-theme .border-orange-press { border-color: #b91c1c; }
+.partner-theme .bg-orange\/10       { background-color: rgb(185 28 28 / 0.07); }
+
+/* The quote-total pill: Bratt uses dark bark + lime; the partner gets slate. */
+.partner-theme .bg-bark      { background-color: #0f172a; }
+.partner-theme .text-cream   { color: #f8fafc; }
+.partner-theme .text-cream\/80 { color: rgb(248 250 252 / 0.8); }
+.partner-theme .text-lime    { color: #6ee7b7; }
+/* Rugfish (our display face) never appears in the partner hub. */
+.partner-theme .font-display {
+  font-family: 'Nunito', 'Helvetica Neue', system-ui, sans-serif;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+}
+
+/* Focus / hover accents. */
+.partner-theme .focus\:border-orange:focus       { border-color: #047857; }
+.partner-theme .hover\:border-orange:hover       { border-color: #047857; }
+.partner-theme .hover\:text-orange-press:hover   { color: #047857; }
+.partner-theme .hover\:border-orange-press:hover { border-color: #b91c1c; }
+.partner-theme .hover\:bg-orange-press:hover     { background-color: #b91c1c; }

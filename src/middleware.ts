@@ -10,11 +10,15 @@
 //      /crew/*) by role. The hub-access matrix is duplicated here from
 //      lib/auth.ts because middleware runs at the edge and the import would
 //      pull in too much.
+//   5. Gate the external Partner Hub (/partner/*) with its own shared password,
+//      handled FIRST and returned early so partner traffic never touches our
+//      Supabase session, allowlist, or roles at all. See lib/partner-auth.ts.
 // ============================================================================
 
 import { NextResponse, type NextRequest } from 'next/server';
 import { createServerClient, type CookieOptions } from '@supabase/ssr';
 import { isTagsUser } from '@/lib/tags-config';
+import { PARTNER_COOKIE, isValidPartnerCookie } from '@/lib/partner-auth';
 
 const PUBLIC_PATHS = [
   '/login',
@@ -35,8 +39,47 @@ function isPublic(pathname: string) {
   return PUBLIC_PATHS.some((p) => pathname === p || pathname.startsWith(p + '/'));
 }
 
+/**
+ * The external Partner Hub. Completely separate from our internal auth: the only
+ * key is the shared password cookie, and this branch returns early so no
+ * Supabase session is created or read for partner traffic.
+ *
+ * It also stamps `x-bt-area: partner` on the request so the root layout knows to
+ * hide the internal Bratt header + trust ribbon for this area.
+ */
+async function partnerGate(req: NextRequest, path: string) {
+  const headers = new Headers(req.headers);
+  headers.set('x-bt-area', 'partner');
+  const res = NextResponse.next({ request: { headers } });
+
+  // The sign-in screen and the endpoint its form posts to have to be reachable
+  // without a session. Everything else under /partner needs the cookie.
+  if (path === '/partner/login' || path === '/partner/session') return res;
+
+  const ok = await isValidPartnerCookie(req.cookies.get(PARTNER_COOKIE)?.value);
+  if (!ok) {
+    const url = req.nextUrl.clone();
+    url.pathname = '/partner/login';
+    url.search = '';
+    url.searchParams.set('next', path);
+    return NextResponse.redirect(url);
+  }
+
+  return res;
+}
+
 export async function middleware(req: NextRequest) {
-  const res = NextResponse.next({ request: { headers: req.headers } });
+  const path = req.nextUrl.pathname;
+
+  if (path === '/partner' || path.startsWith('/partner/')) {
+    return partnerGate(req, path);
+  }
+
+  // Everything below is the INTERNAL app. Strip any spoofed area header so a
+  // visitor can't hide our own chrome by sending it themselves.
+  const internalHeaders = new Headers(req.headers);
+  internalHeaders.delete('x-bt-area');
+  const res = NextResponse.next({ request: { headers: internalHeaders } });
 
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -57,7 +100,6 @@ export async function middleware(req: NextRequest) {
   // Refresh session - this is the side effect we want.
   const { data: { user } } = await supabase.auth.getUser();
 
-  const path = req.nextUrl.pathname;
   if (isPublic(path)) return res;
 
   if (!user) {
