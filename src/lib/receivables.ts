@@ -16,6 +16,9 @@
 // relabel these as days past due without a real due date to back it up.
 // ============================================================================
 
+// Pure formatting helper only — keeps this module free of data-layer imports.
+import { fmtUsdCents } from '@/lib/format';
+
 /** One row of the "Job Completed Detail" export, already coerced to JS types. */
 export type RawInvoice = {
   invoiceNumber: string;
@@ -502,7 +505,7 @@ export function buildCallListText(book: ArboristBook): string {
   const lines = callable.map((i) => {
     const age = i.daysOld < 0 ? 'no completion date' : `${i.daysOld} days`;
     const parts = [
-      `${i.customer} — $${i.balance.toFixed(2)} (${age})`,
+      `${i.customer} — ${fmtUsdCents(i.balance)} (${age})`,
       `  invoice ${i.invoiceNumber || '—'}${i.completedOn ? `, completed ${i.completedOn}` : ''}`,
     ];
     if (i.phone) parts.push(`  ${i.phone}`);
@@ -512,8 +515,11 @@ export function buildCallListText(book: ArboristBook): string {
   const callableTotal = callable.reduce((s, i) => s + i.balance, 0);
   return [
     `Open balances — ${book.name}`,
-    `${callable.length} invoices, $${callableTotal.toFixed(2)} outstanding`,
+    `${callable.length} invoices, ${fmtUsdCents(callableTotal)} outstanding`,
     '',
-    ...lines,
+    // Blank line between records. Pasted into a text or an email, a solid block
+    // of names and phone numbers is unreadable; the gap is what makes each
+    // customer scannable as its own entry.
+    lines.join('\n\n'),
   ].join('\n');
 }
