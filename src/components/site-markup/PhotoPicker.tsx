@@ -3,16 +3,21 @@
 // ============================================================================
 // PhotoPicker
 // ============================================================================
-// The "photo" half of the Site Markup tool. The arborist picks a photo from
-// their device (or snaps one on a phone), and it flows into an AnnotationCanvas
-// to mark up the tree, drop zone, no-park area, etc.
+// One photo slot in the Site Markup tool. The arborist picks a photo from their
+// device (or snaps one on a phone), and it flows into an AnnotationCanvas to
+// mark up the tree, drop zone, no-park area, etc.
+//
+// The file input allows MULTIPLE photos: this slot keeps the first one and
+// hands the rest up via `onExtraFiles`, so the parent can spawn a slot for
+// each. That way an arborist standing in the yard can select four photos in one
+// tap and get four markup cards, instead of adding them one at a time.
 //
 // The photo never leaves the browser until the final download/print — we just
 // turn the chosen file into a temporary in-memory URL. Nothing is uploaded to
 // Supabase, which keeps this simple and private.
 // ============================================================================
 
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import type { RefObject } from 'react';
 import {
   AnnotationCanvas,
@@ -21,6 +26,14 @@ import {
 
 type Props = {
   canvasRef: RefObject<AnnotationCanvasHandle | null>;
+  /** A photo handed down by the parent (from another slot's multi-select). */
+  pendingFile?: File | null;
+  /** Extra photos picked here in one go, for the parent to spread into new
+   *  slots. Already trimmed to what the parent said it can accept. */
+  onExtraFiles?: (files: File[]) => void;
+  /** How many more photos the parent has room for, so we never hand up more
+   *  than it can hold. */
+  extraSlots?: number;
 };
 
 /** iPhones save photos as HEIC/HEIF, which most desktop browsers can't show.
@@ -36,7 +49,12 @@ function isHeic(file: File): boolean {
   );
 }
 
-export function PhotoPicker({ canvasRef }: Props) {
+export function PhotoPicker({
+  canvasRef,
+  pendingFile = null,
+  onExtraFiles,
+  extraSlots = 0,
+}: Props) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [src, setSrc] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -49,12 +67,8 @@ export function PhotoPicker({ canvasRef }: Props) {
     };
   }, [src]);
 
-  async function onFile(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    e.target.value = '';
-    if (!file) return;
+  const loadFile = useCallback(async (file: File) => {
     setError(null);
-
     try {
       let blob: Blob = file;
       if (isHeic(file)) {
@@ -79,6 +93,29 @@ export function PhotoPicker({ canvasRef }: Props) {
     } finally {
       setBusy(false);
     }
+  }, []);
+
+  // Consume a photo handed down from a sibling slot's multi-select. The ref
+  // guard means a re-render never re-loads (or re-converts) the same file.
+  const consumedRef = useRef<File | null>(null);
+  useEffect(() => {
+    if (!pendingFile || consumedRef.current === pendingFile) return;
+    consumedRef.current = pendingFile;
+    void loadFile(pendingFile);
+  }, [pendingFile, loadFile]);
+
+  async function onFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const files = Array.from(e.target.files ?? []);
+    e.target.value = '';
+    if (files.length === 0) return;
+
+    // This slot takes the first photo; the rest go up to the parent (capped at
+    // the room it told us it has).
+    const [first, ...rest] = files;
+    if (rest.length > 0 && extraSlots > 0) {
+      onExtraFiles?.(rest.slice(0, extraSlots));
+    }
+    await loadFile(first);
   }
 
   return (
@@ -107,6 +144,8 @@ export function PhotoPicker({ canvasRef }: Props) {
           type="file"
           // Allow HEIC/HEIF explicitly so desktop file dialogs don't hide them.
           accept="image/*,.heic,.heif"
+          // Pick several at once; extras become their own markup cards.
+          multiple
           // No `capture` attribute: phones then show the full menu (Photo
           // Library / Take Photo / Choose File) instead of forcing the camera.
           className="hidden"

@@ -6,7 +6,7 @@
 // The full Site Markup workflow on one page:
 //   • Job details (customer, purpose, address, notes) -> printed on the header
 //   • A marked-up MAP of the location (lane closures, safety zone, etc.)
-//   • A marked-up PHOTO of the actual trees / work area
+//   • One or more marked-up PHOTOS of the actual trees / work area
 //   • Download each as a .jpg, or "Print / Save as PDF" to get one clean
 //     document to attach to a city permit or email to the power company.
 //
@@ -25,6 +25,45 @@ const PURPOSES = [
   'Power Line Clearance (Safety Zone)',
   'Other',
 ] as const;
+
+// Upper bound on photo slots. Every slot holds a full drawing canvas in memory
+// and they all land in ONE print document, so an unbounded list is a reliable
+// way to crash Safari on an iPad mid-print. Six covers real jobs with room to
+// spare; raise it if the crews start bumping into it.
+const MAX_PHOTOS = 6;
+
+/** One photo slot: its markup canvas plus the optional caption that becomes
+ *  that page's heading in the PDF. */
+type PhotoSlot = {
+  /** Stable key for React (and for finding the slot again on edit/remove). */
+  key: string;
+  caption: string;
+  /** Handle to this slot's markup canvas, for exporting the flattened image. */
+  canvas: { current: AnnotationCanvasHandle | null };
+  /** A photo handed over from another slot's multi-select, if any. */
+  pendingFile: File | null;
+};
+
+let photoKeyCounter = 0;
+function newPhotoSlot(pendingFile: File | null = null): PhotoSlot {
+  photoKeyCounter += 1;
+  return {
+    key: `photo-${photoKeyCounter}`,
+    caption: '',
+    canvas: { current: null },
+    pendingFile,
+  };
+}
+
+/** Heading for a photo — the arborist's caption when they wrote one, otherwise
+ *  a generic label (numbered only when there's more than one photo). */
+function photoLabel(slot: PhotoSlot, index: number, total: number): string {
+  const caption = slot.caption.trim();
+  if (caption) return caption;
+  return total > 1
+    ? `Tree / Work Location ${index + 1}`
+    : 'Tree / Work Location';
+}
 
 /** Convert a data: URL (e.g. from canvas.toDataURL) into a Blob. */
 function dataUrlToBlob(dataUrl: string): Blob {
@@ -104,9 +143,9 @@ function buildPrintHtml(opts: {
   notes: string;
   date: string;
   map: string | null;
-  photo: string | null;
+  photos: { url: string; label: string }[];
 }): string {
-  const { logoUrl, customer, purpose, address, notes, date, map, photo } = opts;
+  const { logoUrl, customer, purpose, address, notes, date, map, photos } = opts;
 
   const row = (k: string, v: string) =>
     v
@@ -135,19 +174,23 @@ function buildPrintHtml(opts: {
   const mapBlock = map
     ? `<h2 class="section">Site Map</h2><div class="imgwrap"><img class="markup map" src="${map}" alt="Marked-up site map"></div>`
     : '';
-  const photoBlock = photo
-    ? `<h2 class="section">Tree / Work Location</h2><div class="imgwrap"><img class="markup photo" src="${photo}" alt="Marked-up job-site photo"></div>`
-    : '';
+  const photoBlocks = photos.map(
+    (p) =>
+      `<h2 class="section">${escapeHtml(p.label)}</h2><div class="imgwrap"><img class="markup photo" src="${p.url}" alt="Marked-up job-site photo"></div>`,
+  );
 
-  // Keep page count tight: header sits with the map; the photo gets its own
-  // page. If there's no map, the photo rides on the header page instead — so
-  // we never emit a near-empty page.
+  // Keep page count tight: header sits with the map, then each photo gets a
+  // page of its own. If there's no map, the first photo rides on the header
+  // page instead — so we never emit a near-empty page.
   const pages: string[] = [];
   if (map) {
     pages.push(header + mapBlock + foot);
-    if (photo) pages.push(brandbar + photoBlock + foot);
-  } else if (photo) {
-    pages.push(header + photoBlock + foot);
+    for (const block of photoBlocks) pages.push(brandbar + block + foot);
+  } else if (photoBlocks.length > 0) {
+    pages.push(header + photoBlocks[0] + foot);
+    for (const block of photoBlocks.slice(1)) {
+      pages.push(brandbar + block + foot);
+    }
   } else {
     pages.push(header + foot);
   }
@@ -495,13 +538,39 @@ async function brandImage(
 
 export function SiteMarkupTool() {
   const mapCanvas = useRef<AnnotationCanvasHandle | null>(null);
-  const photoCanvas = useRef<AnnotationCanvasHandle | null>(null);
   const addressInputRef = useRef<HTMLInputElement | null>(null);
 
   const [customer, setCustomer] = useState('');
   const [purpose, setPurpose] = useState<string>(PURPOSES[0]);
   const [address, setAddress] = useState('');
   const [notes, setNotes] = useState('');
+  const [photos, setPhotos] = useState<PhotoSlot[]>(() => [newPhotoSlot()]);
+
+  function addPhoto() {
+    setPhotos((ps) => (ps.length >= MAX_PHOTOS ? ps : [...ps, newPhotoSlot()]));
+  }
+
+  /** Photos picked several-at-once in one slot become slots of their own. */
+  function addPhotosFromFiles(files: File[]) {
+    setPhotos((ps) => {
+      const room = MAX_PHOTOS - ps.length;
+      if (room <= 0) return ps;
+      return [...ps, ...files.slice(0, room).map((f) => newPhotoSlot(f))];
+    });
+  }
+
+  function removePhoto(key: string) {
+    // Never drop to zero slots — the last remove just resets to a blank one.
+    setPhotos((ps) =>
+      ps.length === 1 ? [newPhotoSlot()] : ps.filter((p) => p.key !== key),
+    );
+  }
+
+  function setCaption(key: string, caption: string) {
+    setPhotos((ps) =>
+      ps.map((p) => (p.key === key ? { ...p, caption } : p)),
+    );
+  }
 
   function ensureAddress(): boolean {
     if (address.trim()) return true;
@@ -546,14 +615,15 @@ export function SiteMarkupTool() {
     }
   }
 
-  async function handleDownloadPhoto() {
-    const url = photoCanvas.current?.getDataUrl();
+  async function handleDownloadPhoto(slot: PhotoSlot, index: number) {
+    const url = slot.canvas.current?.getDataUrl();
     if (!url) {
       alert('Choose a photo first.');
       return;
     }
     if (!ensureAddress()) return;
-    const name = `${addressSlug(address)}-photo.jpg`;
+    const suffix = photos.length > 1 ? `-photo-${index + 1}` : '-photo';
+    const name = `${addressSlug(address)}${suffix}.jpg`;
     try {
       const branded = await brandImage(url, {
         logoUrl: logoUrl(),
@@ -562,7 +632,7 @@ export function SiteMarkupTool() {
         purpose,
         notes,
         date: format(new Date(), 'PP'),
-        label: 'Tree / Work Location',
+        label: photoLabel(slot, index, photos.length),
       });
       await saveImage(branded, name);
     } catch {
@@ -573,8 +643,12 @@ export function SiteMarkupTool() {
   function handlePrint() {
     if (!ensureAddress()) return;
     const map = mapCanvas.current?.getDataUrl() ?? null;
-    const photo = photoCanvas.current?.getDataUrl() ?? null;
-    if (!map && !photo) {
+    // Empty slots (added but never filled) simply drop out here.
+    const printPhotos = photos.flatMap((slot, i) => {
+      const url = slot.canvas.current?.getDataUrl();
+      return url ? [{ url, label: photoLabel(slot, i, photos.length) }] : [];
+    });
+    if (!map && printPhotos.length === 0) {
       alert('Add a map and/or a photo before printing.');
       return;
     }
@@ -586,7 +660,7 @@ export function SiteMarkupTool() {
       notes,
       date: format(new Date(), 'PP'),
       map,
-      photo,
+      photos: printPhotos,
     });
     // The job address becomes the default Save-as-PDF file name.
     printDocument(html, address.trim() || 'Bratt Tree Site Work Plan');
@@ -693,22 +767,93 @@ export function SiteMarkupTool() {
       {/* ---- Photo markup ---- */}
       <section className="bt-card mt-8">
         <h2 className="font-headline text-xl font-black uppercase text-bark-deep">
-          2 · Mark up the photo
+          2 · Mark up the photos
         </h2>
         <p className="mt-1 mb-4 text-sm text-fg-2">
-          Add a job-site photo and mark the tree(s), drop zone, and any
-          no-park areas.
+          Add a job-site photo and mark the tree(s), drop zone, and any no-park
+          areas. Got more than one? Select several photos at once when you tap{' '}
+          <strong>Choose / take photo</strong>, or use{' '}
+          <strong>Add another photo</strong> below &mdash; each photo gets its
+          own page in the final document.
         </p>
-        <PhotoPicker canvasRef={photoCanvas} />
-        <div className="mt-3">
+
+        <div className="space-y-6">
+          {photos.map((slot, idx) => (
+            <div
+              key={slot.key}
+              className="rounded-card border-2 border-paper-edge p-4"
+            >
+              <div className="flex items-start justify-between gap-3">
+                <span className="bt-eyebrow">Photo {idx + 1}</span>
+                <button
+                  type="button"
+                  onClick={() => removePhoto(slot.key)}
+                  title="Remove this photo"
+                  aria-label={`Remove photo ${idx + 1}`}
+                  className="-mr-1 -mt-1 inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full border-2 border-paper-edge text-fg-3 transition-colors hover:border-orange-press hover:bg-orange-press hover:text-white"
+                >
+                  &times;
+                </button>
+              </div>
+
+              <label className="mt-3 block">
+                <span className="font-headline text-[11px] font-extrabold uppercase tracking-ribbon text-fg-3">
+                  Photo label (optional)
+                </span>
+                <input
+                  type="text"
+                  value={slot.caption}
+                  onChange={(e) => setCaption(slot.key, e.target.value)}
+                  placeholder="e.g. Front yard oak"
+                  className="mt-1 w-full rounded-md border-2 border-paper-edge bg-white px-3 py-2 text-sm text-ink focus:border-orange focus:outline-none"
+                />
+                <span className="mt-1 block text-xs text-fg-3">
+                  Prints as the heading on that photo&apos;s page, so the city
+                  can tell them apart. Leave it blank for
+                  &ldquo;Tree / Work Location&rdquo;.
+                </span>
+              </label>
+
+              <div className="mt-4">
+                <PhotoPicker
+                  canvasRef={slot.canvas}
+                  pendingFile={slot.pendingFile}
+                  extraSlots={MAX_PHOTOS - photos.length}
+                  onExtraFiles={addPhotosFromFiles}
+                />
+              </div>
+
+              <div className="mt-3">
+                <button
+                  type="button"
+                  onClick={() => handleDownloadPhoto(slot, idx)}
+                  className="bt-btn bt-btn-ghost"
+                >
+                  Download photo (.jpg)
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {photos.length < MAX_PHOTOS ? (
           <button
             type="button"
-            onClick={handleDownloadPhoto}
-            className="bt-btn bt-btn-ghost"
+            onClick={addPhoto}
+            className="mt-6 flex w-full flex-col items-center justify-center gap-1 rounded-card border-2 border-dashed border-paper-edge py-6 text-fg-3 transition-colors hover:border-orange hover:text-orange-press"
           >
-            Download photo (.jpg)
+            <span className="text-2xl leading-none">+</span>
+            <span className="font-headline text-xs font-extrabold uppercase tracking-ribbon">
+              Add another photo
+            </span>
           </button>
-        </div>
+        ) : (
+          <p className="mt-6 rounded-2 border-2 border-paper-edge bg-paper px-3 py-2 text-xs text-fg-2">
+            That&apos;s the {MAX_PHOTOS}-photo limit, which keeps the PDF
+            printing reliably on an iPad. Need more? Save this document, then
+            start a second one for the rest.
+          </p>
+        )}
       </section>
 
       {/* ---- Output ---- */}
@@ -717,8 +862,8 @@ export function SiteMarkupTool() {
           3 · Print or save the document
         </h2>
         <p className="mt-1 mb-4 text-sm text-fg-2">
-          Combines the job details, the map, and the photo into one document
-          (the map on the first page, the photo on the second). In the print
+          Combines the job details, the map, and every photo into one document
+          &mdash; the map on the first page, then one page per photo. In the print
           window, pick <strong>&ldquo;Save as PDF&rdquo;</strong> as the
           destination to email it, or print it to paper. The file is named after
           the job address automatically.
