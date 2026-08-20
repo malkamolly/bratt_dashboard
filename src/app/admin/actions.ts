@@ -249,6 +249,12 @@ export async function updateSalesperson(formData: FormData): Promise<void> {
   const title = String(formData.get('title') ?? '').trim() || 'Sales Arborist';
   const isaNumber = String(formData.get('isa_number') ?? '').trim() || null;
   const certified = formData.get('certified') === 'on';
+  // The address they sign in with. This is what lets an arborist be recognised
+  // on their own page (see getRosterMemberByWorkEmail) — without it they can't
+  // be shown their own collections list. Lowercased so the unique index in
+  // migration 074 and the lookup agree.
+  const workEmail =
+    String(formData.get('work_email') ?? '').trim().toLowerCase() || null;
 
   const supabase = await serverClient();
   const { error } = await supabase
@@ -261,6 +267,7 @@ export async function updateSalesperson(formData: FormData): Promise<void> {
       title,
       isa_number: isaNumber,
       certified,
+      work_email: workEmail,
     })
     .eq('id', id);
   if (error) redirect(`/admin/sales?error=${encodeURIComponent(error.message)}`);
@@ -268,6 +275,7 @@ export async function updateSalesperson(formData: FormData): Promise<void> {
   refreshAffectedPages();
   revalidatePath('/hub/arborists');
   revalidatePath('/hub/arborists/[slug]', 'page');
+  revalidatePath('/hub/receivables');
   redirect('/admin/sales?saved=salesperson_updated');
 }
 

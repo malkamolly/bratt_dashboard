@@ -4,6 +4,7 @@ import { requireHubAccess, canAccessHub } from '@/lib/auth';
 import { SalespersonDetail } from '@/components/SalespersonDetail';
 import { HubSubNav } from '@/components/HubSubNav';
 import { PhcAssignedRenewals } from '@/components/PhcAssignedRenewals';
+import { ArboristBalancesDue } from '@/components/ArboristBalancesDue';
 import { getRosterMemberBySlug } from '@/lib/roster-data';
 
 export const dynamic = 'force-dynamic';
@@ -83,7 +84,16 @@ export default async function ArboristDetailPage({
         manager: !!a.manager,
       }}
       footer={
-        <PhcAssignedRenewals salespersonId={a.id} salespersonName={a.name} />
+        <>
+          <PhcAssignedRenewals salespersonId={a.id} salespersonName={a.name} />
+          {/* Collections sits below the PHC renewals: both are "what to do
+              next" lists, and this one decides for itself whether the viewer is
+              allowed to see it (see ArboristBalancesDue). */}
+          <ArboristBalancesDue
+            salespersonName={a.salesperson_name}
+            displayName={a.name}
+          />
+        </>
       }
     />
   );

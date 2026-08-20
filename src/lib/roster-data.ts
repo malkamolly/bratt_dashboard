@@ -24,6 +24,7 @@ export type RosterMember = {
   manager: boolean;
   photo: string | null;
   salesperson_name: string; // raw first name, used to match sales data
+  work_email: string | null; // sign-in address, for "is this me?" checks
 };
 
 type Row = {
@@ -38,10 +39,11 @@ type Row = {
   on_roster: boolean | null;
   is_active: boolean | null;
   display_order: number | null;
+  work_email: string | null;
 };
 
 const COLS =
-  'id, name, last_initial, title, certified, isa_number, is_manager, photo_url, on_roster, is_active, display_order';
+  'id, name, last_initial, title, certified, isa_number, is_manager, photo_url, on_roster, is_active, display_order, work_email';
 
 /** Build the URL slug the same way the old markdown filenames were named. */
 export function rosterSlug(name: string, lastInitial: string | null): string {
@@ -64,6 +66,7 @@ function toMember(r: Row): RosterMember {
     manager: !!r.is_manager,
     photo: r.photo_url ?? null,
     salesperson_name: r.name,
+    work_email: r.work_email ?? null,
   };
 }
 
@@ -111,6 +114,30 @@ export async function getRosterMemberBySalespersonName(
     .from('salespeople')
     .select(COLS)
     .ilike('name', name)
+    .maybeSingle();
+  return data ? toMember(data as Row) : null;
+}
+
+/**
+ * Look up a roster member by the work email they sign in with. This is how a
+ * page answers "is the person reading this the arborist whose page it is?",
+ * which is what keeps one arborist's open balances from showing to another.
+ *
+ * Returns null when no roster row carries that address — the safe answer, since
+ * every caller uses it to decide whether to reveal something personal. An
+ * arborist with no work_email set simply sees nothing until an admin fills it
+ * in on /admin/sales.
+ */
+export async function getRosterMemberByWorkEmail(
+  email: string | null | undefined,
+): Promise<RosterMember | null> {
+  const addr = (email ?? '').trim().toLowerCase();
+  if (!addr) return null;
+  const supabase = await serverClient();
+  const { data } = await supabase
+    .from('salespeople')
+    .select(COLS)
+    .ilike('work_email', addr)
     .maybeSingle();
   return data ? toMember(data as Row) : null;
 }
