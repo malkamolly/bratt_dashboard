@@ -1,19 +1,14 @@
 // ============================================================================
 // Collections roll-up — /hub/receivables
 // ============================================================================
-// The manager's view of the same data each arborist sees on their own roster
-// page: what's outstanding, how old it is, and whose book it sits in. Arborists
-// don't come here (they get their own list on their page); this is for the
-// people who run collections, so it's gated to canSeeAllReceivables.
+// The whole-company view of the same data each arborist sees on their own
+// roster page: what's outstanding, how old it is, and whose book it sits in.
+// Open to everyone with Sales Arborist Hub access, like the rest of the hub —
+// only the upload is restricted, since it replaces the report for everyone.
 // ============================================================================
 
 import Link from 'next/link';
-import { redirect } from 'next/navigation';
-import {
-  requireHubAccess,
-  canSeeAllReceivables,
-  canUploadReceivables,
-} from '@/lib/auth';
+import { requireHubAccess, canUploadReceivables } from '@/lib/auth';
 import { HubSubNav } from '@/components/HubSubNav';
 import { listRoster } from '@/lib/roster-data';
 import { loadActiveReceivables } from '@/lib/receivables-data';
@@ -173,10 +168,6 @@ export default async function ReceivablesPage({
   searchParams: Search;
 }) {
   const user = await requireHubAccess('hub');
-  // A sales arborist's collections list lives on their own roster page, not
-  // here — this page shows everyone's. Bounce rather than render a blank shell.
-  if (!canSeeAllReceivables(user.role)) redirect('/hub/arborists');
-
   const sp = await searchParams;
   const canUpload = canUploadReceivables(user.role);
   const [active, roster] = await Promise.all([
@@ -189,9 +180,6 @@ export default async function ReceivablesPage({
   const slugByKey = new Map(
     roster.map((m) => [m.salesperson_name.toLowerCase(), m.slug]),
   );
-  // Anyone on the roster without a work email can't be shown their own list —
-  // worth naming here, since the failure is silent on their page by design.
-  const unmapped = roster.filter((m) => !m.work_email);
 
   const header = (
     <>
@@ -273,20 +261,6 @@ export default async function ReceivablesPage({
         required column is missing the upload is refused rather than showing you
         zeroes.
       </p>
-      {unmapped.length > 0 && (
-        <p className="mt-3 rounded-2 border-2 border-status-warn bg-status-warn/10 px-3 py-2 text-xs text-bark-deep">
-          <strong className="font-black">
-            {unmapped.length} {unmapped.length === 1 ? 'arborist has' : 'arborists have'}{' '}
-            no work email set
-          </strong>{' '}
-          ({unmapped.map((m) => m.name).join(', ')}), so they can&apos;t see
-          their own list yet. Add it under{' '}
-          <Link href="/admin/sales" className="font-bold underline">
-            Admin → Sales → Roster
-          </Link>
-          .
-        </p>
-      )}
     </section>
   ) : null;
 

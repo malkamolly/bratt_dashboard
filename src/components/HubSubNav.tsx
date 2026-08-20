@@ -4,7 +4,6 @@ import {
   canUseCalculator,
   canUseSiteMarkup,
   canSeeFollowupScorecard,
-  canSeeAllReceivables,
 } from '@/lib/auth';
 
 const BASE_SECTIONS: { href: string; label: string }[] = [
@@ -30,12 +29,8 @@ export async function HubSubNav({ active }: { active: string }) {
   if (user && canSeeFollowupScorecard(user.role)) {
     sections.push({ href: '/hub/followup', label: 'Follow-Up' });
   }
-  // Collections is the everyone's-balances roll-up, so it's only a tab for the
-  // people who can see everyone. An arborist reaches their own list from their
-  // roster page instead.
-  if (user && canSeeAllReceivables(user.role)) {
-    sections.push({ href: '/hub/receivables', label: 'Collections' });
-  }
+  // Collections is open to the whole hub, like the roster it draws from.
+  sections.push({ href: '/hub/receivables', label: 'Collections' });
   // The Off-Season report is viewable by the whole hub (view-only for sales
   // arborists; office edits it from the Office Hub).
   sections.push({ href: '/off-season', label: 'Off-Season' });

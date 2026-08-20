@@ -70,6 +70,7 @@ export async function SalespersonDetail({
     goalsRes,
     monthHistoricalRes,
     yearHistoricalsRes,
+    yearEntriesRes,
   ] = await Promise.all([
     supabase
       .from('salespeople')
@@ -106,6 +107,16 @@ export async function SalespersonDetail({
       .eq('salesperson_id', salespersonId)
       .eq('year', year)
       .order('month', { ascending: true }),
+    // Every daily entry in the year, not just this month. Needed because a
+    // month can be tracked EITHER as a stored monthly total (a "closed month")
+    // OR as daily entries, and the year view has to account for both — see
+    // monthlyTotals below.
+    supabase
+      .from('sales_entries')
+      .select('entry_date, amount')
+      .eq('salesperson_id', salespersonId)
+      .gte('entry_date', `${year}-01-01`)
+      .lte('entry_date', `${year}-12-31`),
   ]);
 
   if (!personRes.data) notFound();
@@ -142,11 +153,56 @@ export async function SalespersonDetail({
   const goal = goalRaw != null ? Number(goalRaw) : null;
   const pctToGoal = goal && goal > 0 ? mtd / goal : null;
 
-  const priorMonths = (yearHistoricalsRes.data ?? []).map((h) => ({
-    month: h.month as number,
-    total: Number(h.amount),
-  }));
-  const ytdFromHistoricals = priorMonths.reduce((s, h) => s + h.total, 0);
+  // --------------------------------------------------------------------------
+  // The year, month by month.
+  //
+  // A month reaches this page by one of two routes, and BOTH have to be counted:
+  //   * a "closed month" — one stored total in sales_monthly_historicals, which
+  //     is how months are recorded once they're finalized (or imported from
+  //     before daily entry existed);
+  //   * an open month — individual daily rows in sales_entries.
+  // Reading only the historicals silently valued every daily-entered month at
+  // zero, which understated YTD and left those months off the Prior Months
+  // strip entirely. The stored total wins where both exist: closing a month is
+  // the deliberate act of saying "this figure is final".
+  // --------------------------------------------------------------------------
+  type MonthTotal = { month: number; total: number; closed: boolean; hasData: boolean };
+
+  const dailyByMonth = new Map<number, number>();
+  for (const e of yearEntriesRes.data ?? []) {
+    const m = Number(String(e.entry_date).slice(5, 7));
+    dailyByMonth.set(m, (dailyByMonth.get(m) ?? 0) + Number(e.amount));
+  }
+  const historicalByMonth = new Map<number, number>(
+    (yearHistoricalsRes.data ?? []).map((h) => [
+      h.month as number,
+      Number(h.amount),
+    ]),
+  );
+
+  const monthlyTotals: MonthTotal[] = Array.from({ length: 12 }, (_, i) => {
+    const m = i + 1;
+    const closedTotal = historicalByMonth.get(m);
+    const dailyTotal = dailyByMonth.get(m);
+    return {
+      month: m,
+      total: closedTotal ?? dailyTotal ?? 0,
+      closed: closedTotal != null,
+      hasData: closedTotal != null || dailyTotal != null,
+    };
+  });
+
+  // Every month before the one being viewed — that's what "prior months" means,
+  // whichever way each of them happens to be recorded.
+  const priorMonths = monthlyTotals.filter((m) => m.month < month);
+
+  // Year to date across all twelve months. The month being viewed is taken from
+  // the figures already computed above rather than from the map, so the card
+  // agrees with the Month-to-Date card right next to it.
+  const ytdTotal =
+    monthlyTotals
+      .filter((m) => m.month !== month)
+      .reduce((s, m) => s + m.total, 0) + mtd;
 
   return (
     <main className="mx-auto max-w-6xl px-4 py-6 sm:px-6 sm:py-10">
@@ -220,7 +276,7 @@ export async function SalespersonDetail({
       <section className="mt-8 grid grid-cols-2 gap-3 md:grid-cols-5">
         <SummaryCard
           label={`${year} YTD`}
-          value={fmtUsd(ytdFromHistoricals + (isHistoricalMonth ? 0 : dailySum))}
+          value={fmtUsd(ytdTotal)}
         />
         <SummaryCard
           label={isHistoricalMonth ? 'Month Total' : 'Month-To-Date'}
@@ -299,14 +355,37 @@ export async function SalespersonDetail({
               <Link
                 key={p.month}
                 href={`${basePath}?year=${year}&month=${p.month}`}
-                className="block rounded-2 border-[3px] border-lime bg-white px-3 py-2.5 transition-colors hover:!border-orange"
+                className={`block rounded-2 border-[3px] px-3 py-2.5 transition-colors hover:!border-orange ${
+                  p.hasData
+                    ? 'border-lime bg-white'
+                    : 'border-paper-edge bg-bone'
+                }`}
               >
                 <p className="font-headline text-[11px] font-extrabold uppercase tracking-ribbon text-fg-2">
                   {monthLabel(year, p.month)}
                 </p>
-                <p className="mt-0.5 font-headline text-lg font-black text-ink lg:text-xl">
-                  {fmtUsd(p.total)}
-                </p>
+                {/* A month with nothing recorded says so rather than showing a
+                    confident $0 — an empty month and a genuinely zero month are
+                    different facts, and the gap is the one worth chasing. */}
+                {p.hasData ? (
+                  <p className="mt-0.5 font-headline text-lg font-black text-ink lg:text-xl">
+                    {fmtUsd(p.total)}
+                  </p>
+                ) : (
+                  <p className="mt-0.5 font-headline text-lg font-black text-fg-3 lg:text-xl">
+                    &mdash;
+                  </p>
+                )}
+                {p.hasData && !p.closed && (
+                  <p className="font-headline text-[10px] font-bold uppercase tracking-ribbon text-fg-3">
+                    From daily entries
+                  </p>
+                )}
+                {!p.hasData && (
+                  <p className="font-headline text-[10px] font-bold uppercase tracking-ribbon text-fg-3">
+                    Nothing recorded
+                  </p>
+                )}
               </Link>
             ))}
           </div>

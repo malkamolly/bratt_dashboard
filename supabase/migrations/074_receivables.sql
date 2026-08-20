@@ -3,11 +3,6 @@
 -- Collections list: open balances per sales arborist (/hub/receivables and the
 -- "Money Still Out There" panel on each arborist's roster page).
 --
--- Two things here:
---   1. receivables_uploads — the parsed Job Completed Detail export.
---   2. salespeople.work_email — so a signed-in arborist can be matched to their
---      own roster row, which is what makes "you only see your own list" work.
---
 -- Each upload REPLACES the report rather than adding to it: the newest row is
 -- marked is_active and the previous one is retired. Old rows are kept (they
 -- cost nothing and make a bad upload recoverable — flip is_active back), but
@@ -20,34 +15,13 @@
 -- re-uploading the export is the way to pick up a change to the analysis.
 --
 -- ACCESS
---   read   — everyone with Sales Arborist Hub access. An arborist must be able
---            to read the active row to see their own slice of it; WHICH rows
---            they are shown is decided in the app (an arborist gets only their
---            own invoices — see canSeeAllReceivables in src/lib/auth.ts), not
---            here. RLS answers "may this person read hub data at all".
+--   read   — everyone with Sales Arborist Hub access. The whole hub is behind a
+--            login and the team sees each other's numbers throughout it, so
+--            open balances are no exception; each arborist's own list is on
+--            their roster page and the roll-up is at /hub/receivables.
 --   write  — admin + sales_manager only, matching canUploadReceivables().
 -- ============================================================================
 
--- ---------------------------------------------------------------------------
--- 1. Work email on the roster row.
---    Needed to answer "which arborist is the person looking at this page?".
---    Nullable on purpose: until an email is filled in, that arborist simply
---    doesn't see a personal list (a safe default — we'd rather show nothing
---    than show them someone else's collections). The Receivables page flags
---    anyone still unmapped so it's obvious what's missing.
--- ---------------------------------------------------------------------------
-alter table salespeople
-  add column if not exists work_email text;
-
--- One arborist per address. Case-insensitive, because sign-in emails arrive in
--- whatever case the person typed and we compare them lowercased.
-create unique index if not exists salespeople_work_email_key
-  on salespeople (lower(work_email))
-  where work_email is not null;
-
--- ---------------------------------------------------------------------------
--- 2. The uploaded report.
--- ---------------------------------------------------------------------------
 create table if not exists receivables_uploads (
   id              uuid primary key default gen_random_uuid(),
   uploaded_at     timestamptz not null default now(),

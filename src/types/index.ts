@@ -15,9 +15,6 @@ export type Salesperson = {
   isa_number?: string | null;
   is_manager?: boolean | null;
   on_roster?: boolean | null;
-  // The address they sign in with (migration 074). Used to recognise an
-  // arborist on their own page so they can be shown their own collections list.
-  work_email?: string | null;
 };
 
 export type CrewKind = 'production' | 'phc' | 'stump' | 'unassigned' | 'clam';

@@ -52,7 +52,7 @@ export default async function SalesAdminPage({
       supabase
         .from('salespeople')
         .select(
-          'id, name, display_order, is_active, photo_url, last_initial, title, certified, isa_number, is_manager, on_roster, work_email',
+          'id, name, display_order, is_active, photo_url, last_initial, title, certified, isa_number, is_manager, on_roster',
         )
         .order('display_order'),
       supabase
@@ -359,7 +359,7 @@ function RosterSection({ salespeople }: { salespeople: Salesperson[] }) {
     <SectionCard
       eyebrow="4 — Roster"
       title="Salespeople"
-      description="Add a salesperson here and they automatically appear on the Arborist Hub Team Roster too. First name is what sales attribution matches on; Last Initial, Title, Certified and ISA # are what show on the roster card. Work Email is the address they sign in with — it's what lets them see their own collections list on their page, so fill it in. Flipping 'Active' off hides them from new entries while keeping their history. 'Other' and 'Add-Ons' are attribution buckets, not people, so they stay off the roster."
+      description="Add a salesperson here and they automatically appear on the Arborist Hub Team Roster too. First name is what sales attribution matches on; Last Initial, Title, Certified and ISA # are what show on the roster card. Flipping 'Active' off hides them from new entries while keeping their history. 'Other' and 'Add-Ons' are attribution buckets, not people, so they stay off the roster."
     >
       <div className="space-y-3">
         {salespeople.map((sp) => {
@@ -407,15 +407,6 @@ function RosterSection({ salespeople }: { salespeople: Salesperson[] }) {
                     defaultValue={sp.isa_number ?? ''}
                     placeholder="optional"
                     className="w-32"
-                  />
-                </Field>
-                <Field label="Work Email">
-                  <TextInput
-                    name="work_email"
-                    type="email"
-                    defaultValue={sp.work_email ?? ''}
-                    placeholder="they@bratttree.com"
-                    className="w-52"
                   />
                 </Field>
                 <Field label="Order">

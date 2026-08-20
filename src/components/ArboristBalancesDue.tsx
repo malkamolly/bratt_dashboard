@@ -5,25 +5,17 @@
 // renewals panel uses. Oldest invoice first: the top of this list is the call
 // they should make today.
 //
-// WHO SEES IT. This panel is gated harder than the page around it, because the
-// page itself is open to the whole hub:
-//   * admin / sales_manager / office  → any arborist's list (they run collections)
-//   * a sales arborist               → only their OWN list, matched on the work
-//                                      email they signed in with
-//   * everyone else                  → nothing at all
-// Renders null rather than an empty shell when someone shouldn't see it, so a
-// shared link never hints at what it's hiding. An arborist whose work_email
-// isn't filled in yet also gets null — the safe default; /hub/receivables tells
-// an admin who's still unmapped.
+// Visibility follows the page it sits on — anyone with Sales Arborist Hub access
+// sees it, the same as the sales figures already on this page. The whole hub is
+// behind a login and the team sees each other's numbers throughout it, so open
+// balances are not treated as a secret.
+//
+// The arborist is matched to the export's "Sold By" column on their roster FIRST
+// NAME, which is the same key the rest of the sales attribution uses.
 // ============================================================================
 
 import Link from 'next/link';
-import {
-  getAllowedUser,
-  canSeeAllReceivables,
-  canUploadReceivables,
-} from '@/lib/auth';
-import { getRosterMemberByWorkEmail } from '@/lib/roster-data';
+import { getAllowedUser, canUploadReceivables } from '@/lib/auth';
 import { loadActiveReceivables } from '@/lib/receivables-data';
 import {
   bookForKey,
@@ -74,15 +66,6 @@ export async function ArboristBalancesDue({
 }) {
   const user = await getAllowedUser();
   if (!user) return null;
-
-  // Is this the arborist's own page? Matched on the work email they signed in
-  // with, never on a name — two people can share a first name, and getting this
-  // wrong means showing one person another's collections.
-  const me = await getRosterMemberByWorkEmail(user.email);
-  const isOwnPage =
-    !!me && me.salesperson_name.toLowerCase() === salespersonName.trim().toLowerCase();
-
-  if (!canSeeAllReceivables(user.role) && !isOwnPage) return null;
 
   const active = await loadActiveReceivables();
   if (!active) return null;

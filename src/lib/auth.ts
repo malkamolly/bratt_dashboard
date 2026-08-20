@@ -245,18 +245,6 @@ export function canUploadReceivables(role: Role): boolean {
 }
 
 /**
- * Can this role see EVERY arborist's open balances, or only their own?
- *
- * A sales arborist sees just their own book — what they owe the company in
- * collections is theirs to work, and a roster where anyone can open anyone's
- * page and read their outstanding total turns a work list into a scoreboard.
- * Office staff are included because they do the actual invoicing and dunning.
- */
-export function canSeeAllReceivables(role: Role): boolean {
-  return role === 'admin' || role === 'sales_manager' || role === 'user';
-}
-
-/**
  * Returns the current user's email + role if they are signed in AND on the
  * allowlist. Returns null otherwise.
  */
