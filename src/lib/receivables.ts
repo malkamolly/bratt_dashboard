@@ -658,6 +658,20 @@ export function compareReceivables(
   const before = index(prev);
   const after = index(next);
 
+  // Who the EXPORT named, not who ended up holding it.
+  //
+  // UNASSIGNED_OWNER routes an unattributed invoice into Brent's book, so
+  // comparing the final owner reports a reassignment for every orphan the first
+  // time that rule is applied to a report predating it — 27 phantom moves on
+  // the upload after it shipped, when the export had said the same thing both
+  // times. Comparing the source attribution asks the only question that
+  // matters: did the service software change its mind about who sold this job?
+  //
+  // Older payloads have no unassignedInSource flag, but they carried the empty
+  // key for the Unassigned pile, so both eras collapse to '' here.
+  const sourceOwner = (i: OpenInvoice) =>
+    i.unassignedInSource ? '' : i.soldByKey;
+
   const paid: OpenInvoice[] = [];
   const partials: { inv: OpenInvoice; paid: number }[] = [];
   const increased: { inv: OpenInvoice; added: number }[] = [];
@@ -669,7 +683,7 @@ export function compareReceivables(
       paid.push(was);
       continue;
     }
-    if (now.soldByKey !== was.soldByKey) reassignedCount++;
+    if (sourceOwner(now) !== sourceOwner(was)) reassignedCount++;
     const delta = was.balance - now.balance;
     if (delta > 0.005) partials.push({ inv: was, paid: delta });
     else if (delta < -0.005) increased.push({ inv: now, added: -delta });

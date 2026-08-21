@@ -561,9 +561,11 @@ function SinceLastPanel({ c }: { c: SinceLastUpload }) {
           {c.increasedCount > 0 && c.reassignedCount > 0 && ' '}
           {c.reassignedCount > 0 && (
             <>
+              The export now credits a different salesperson on{' '}
               {c.reassignedCount} invoice
-              {c.reassignedCount === 1 ? '' : 's'} changed salesperson; the
-              collection is credited to whoever held it when it was paid.
+              {c.reassignedCount === 1 ? '' : 's'} than it did last time — a
+              Sold By that was edited or filled in. Any payment on those is
+              credited to whoever held the invoice when it was paid.
             </>
           )}
         </p>
