@@ -7,7 +7,7 @@
 // ============================================================================
 
 import { serverClient } from '@/lib/supabase';
-import type { ReceivablesData } from '@/lib/receivables';
+import { hydrateReceivables, type ReceivablesData } from '@/lib/receivables';
 
 export type ActiveReceivables = {
   data: ReceivablesData;
@@ -33,7 +33,9 @@ export async function loadActiveReceivables(): Promise<ActiveReceivables> {
 
   if (!data?.payload) return null;
   return {
-    data: data.payload as ReceivablesData,
+    // Every read is hydrated: a payload written before a field existed is
+    // missing it permanently, and reading it raw throws.
+    data: hydrateReceivables(data.payload as ReceivablesData),
     uploadedAt: String(data.uploaded_at),
   };
 }

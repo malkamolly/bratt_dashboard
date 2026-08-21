@@ -17,9 +17,14 @@ export function SegmentSplitBar({
   split,
   className = '',
 }: {
-  split: SegmentSplit;
+  // Optional on purpose: reads go through hydrateReceivables, but this renders
+  // a stored payload and must not be the thing that takes the page down if a
+  // field is ever missing. A absent split means "nothing to show", not a crash.
+  split: SegmentSplit | null | undefined;
   className?: string;
 }) {
+  if (!split?.residential || !split.commercial || !split.unknown) return null;
+
   const total =
     split.residential.balance + split.commercial.balance + split.unknown.balance;
   if (total <= 0) return null;

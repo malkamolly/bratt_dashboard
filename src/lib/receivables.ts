@@ -737,6 +737,44 @@ export function compareReceivables(
   };
 }
 
+/**
+ * Fill in fields a stored payload predates.
+ *
+ * Payloads are written once at upload time and read back for as long as they
+ * stay active, so a report uploaded before a field existed will be missing that
+ * field forever — until someone re-uploads. Reading it then throws, which is
+ * exactly what happened when bySegment shipped: the parser handled a missing
+ * Customer Type column fine, but nothing handled a stored payload that had no
+ * bySegment key at all.
+ *
+ * So every read goes through here. Adding a field to ReceivablesData means
+ * adding its fallback here too — that is the price of storing computed JSON,
+ * and it is cheaper than a migration over every historical row.
+ */
+export function hydrateReceivables(data: ReceivablesData): ReceivablesData {
+  const fixInvoice = (i: OpenInvoice): OpenInvoice => ({
+    ...i,
+    segment: i.segment ?? null,
+    unassignedInSource: i.unassignedInSource ?? false,
+  });
+
+  const books = (data.books ?? []).map((b) => {
+    const invoices = (b.invoices ?? []).map(fixInvoice);
+    return {
+      ...b,
+      invoices,
+      bySegment: b.bySegment ?? segmentSplit(invoices),
+    };
+  });
+
+  return {
+    ...data,
+    books,
+    bySegment: data.bySegment ?? segmentSplit(books.flatMap((b) => b.invoices)),
+    sinceLast: data.sinceLast ?? null,
+  };
+}
+
 /** The invoices worth a call, oldest first. */
 export function callableInvoices(book: ArboristBook): OpenInvoice[] {
   return book.invoices.filter((i) => !i.trivial);
