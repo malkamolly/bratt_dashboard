@@ -48,6 +48,9 @@ type Props = {
   /** Optional extra content rendered at the bottom of the page (e.g. the PHC
    *  renewals assigned to this arborist). */
   footer?: React.ReactNode;
+  /** Optional pill rendered under the month picker — an on-page jump to
+   *  something further down worth knowing about before scrolling. */
+  jumpLink?: React.ReactNode;
 };
 
 export async function SalespersonDetail({
@@ -59,6 +62,7 @@ export async function SalespersonDetail({
   arborist,
   canEdit = false,
   footer,
+  jumpLink,
 }: Props) {
   const supabase = await serverClient();
   const { start, end } = monthRange(year, month);
@@ -269,6 +273,7 @@ export async function SalespersonDetail({
               </>
             )}
           </p>
+          {jumpLink}
         </div>
       </section>
 

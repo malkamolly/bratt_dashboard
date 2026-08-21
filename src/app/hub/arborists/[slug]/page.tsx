@@ -4,7 +4,10 @@ import { requireHubAccess, canAccessHub } from '@/lib/auth';
 import { SalespersonDetail } from '@/components/SalespersonDetail';
 import { HubSubNav } from '@/components/HubSubNav';
 import { PhcAssignedRenewals } from '@/components/PhcAssignedRenewals';
-import { ArboristBalancesDue } from '@/components/ArboristBalancesDue';
+import {
+  ArboristBalancesDue,
+  CollectionsJumpLink,
+} from '@/components/ArboristBalancesDue';
 import { getRosterMemberBySlug } from '@/lib/roster-data';
 
 export const dynamic = 'force-dynamic';
@@ -83,16 +86,17 @@ export default async function ArboristDetailPage({
         isa_number: a.isa_number ?? null,
         manager: !!a.manager,
       }}
+      jumpLink={<CollectionsJumpLink salespersonName={a.salesperson_name} />}
       footer={
         <>
-          <PhcAssignedRenewals salespersonId={a.id} salespersonName={a.name} />
-          {/* Collections sits below the PHC renewals: both are "what to do
-              next" lists, and this one decides for itself whether the viewer is
-              allowed to see it (see ArboristBalancesDue). */}
+          {/* Collections first. Both are "what to do next" lists, but unpaid
+              work is money already earned and ages every day it waits, so it
+              gets read before the renewals pipeline. */}
           <ArboristBalancesDue
             salespersonName={a.salesperson_name}
             displayName={a.name}
           />
+          <PhcAssignedRenewals salespersonId={a.id} salespersonName={a.name} />
         </>
       }
     />

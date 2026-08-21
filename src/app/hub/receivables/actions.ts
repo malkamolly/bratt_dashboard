@@ -21,7 +21,12 @@ import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { serverClient } from '@/lib/supabase';
 import { getAllowedUser, canUploadReceivables } from '@/lib/auth';
-import { computeReceivables, parseInvoiceGrid } from '@/lib/receivables';
+import {
+  computeReceivables,
+  parseInvoiceGrid,
+  compareReceivables,
+  type ReceivablesData,
+} from '@/lib/receivables';
 import { fmtUsd } from '@/lib/format';
 
 const MAX_BYTES = 15 * 1024 * 1024;
@@ -72,7 +77,7 @@ export async function uploadReceivablesData(formData: FormData): Promise<void> {
   }
   if (rows.length === 0) fail('No invoice rows found in that file.');
 
-  const data = computeReceivables(rows, new Date(), {
+  const data: ReceivablesData = computeReceivables(rows, new Date(), {
     sourceFilename: f.name,
     uploadedBy: user.email,
   });
@@ -88,7 +93,22 @@ export async function uploadReceivablesData(formData: FormData): Promise<void> {
 
   const supabase = await serverClient();
 
-  // Retire the current report first: the newest upload is the only active one.
+  // Read the outgoing report BEFORE retiring it, and diff the new one against
+  // it. Doing this at upload time (rather than on every page render) pins the
+  // comparison to exactly these two files: a later upload can't retroactively
+  // change what this one reported, and the page has no work to do.
+  const { data: prevRow } = await supabase
+    .from('receivables_uploads')
+    .select('payload')
+    .eq('is_active', true)
+    .order('uploaded_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  const prevPayload = (prevRow?.payload ?? null) as ReceivablesData | null;
+  data.sinceLast = prevPayload ? compareReceivables(prevPayload, data) : null;
+
+  // Retire the current report: the newest upload is the only active one.
   const { error: retireErr } = await supabase
     .from('receivables_uploads')
     .update({ is_active: false })

@@ -32,7 +32,25 @@ export type RawInvoice = {
   email: string;
   /** The "Sold By" column — a full name, e.g. "Dave Anderson". */
   soldBy: string;
+  /**
+   * The "Customer Type" column: 'Residential' or 'Commercial'. Older exports
+   * didn't carry this column at all, so it can be null — every consumer has to
+   * cope with not knowing, rather than guessing a default. Commercial AP runs
+   * on its own 60-90 day cycle, so mixing the two hides which balances are
+   * genuinely late and which are just how that customer pays.
+   */
+  segment: Segment | null;
 };
+
+/** Residential vs commercial, straight from the export's Customer Type. */
+export type Segment = 'residential' | 'commercial';
+
+/** Split of a balance by customer type. `unknown` covers exports taken before
+ *  the Customer Type column existed, so the three always sum to the total. */
+export type SegmentSplit = Record<
+  'residential' | 'commercial' | 'unknown',
+  { count: number; balance: number }
+>;
 
 /**
  * A balance at or below this isn't worth an arborist's phone call — it's a
@@ -122,6 +140,8 @@ export type OpenInvoice = {
   trivial: boolean;
   /** The export named no salesperson, so UNASSIGNED_OWNER took it on. */
   unassignedInSource: boolean;
+  /** Residential or commercial; null when the export omitted Customer Type. */
+  segment: Segment | null;
 };
 
 /** Everything owed to one arborist. */
@@ -148,6 +168,60 @@ export type ArboristBook = {
   trivialCount: number;
   trivialBalance: number;
   byBucket: Record<AgeBucket, { count: number; balance: number }>;
+  /** Residential vs commercial within this book. */
+  bySegment: SegmentSplit;
+};
+
+/**
+ * What changed between the previous upload and this one.
+ *
+ * Computed once, at upload time, against whichever report was active when the
+ * new one landed — so it describes exactly those two files and never shifts
+ * afterwards. An invoice is matched by invoice number: gone from the list means
+ * paid off, a smaller balance means a partial payment, and a number that wasn't
+ * there before is newly completed work.
+ *
+ * `null` on the very first upload, when there is nothing to compare against.
+ */
+export type SinceLastUpload = {
+  /** When the report this is measured against was uploaded. */
+  prevUploadedAt: string;
+  prevSourceFilename: string | null;
+  /** Days between the two uploads, for the "since Tuesday" style label. */
+  daysBetween: number;
+
+  /** Invoices that were owing and are now gone from the report entirely. */
+  paidInFullCount: number;
+  paidInFullAmount: number;
+  /** Invoices still listed, but for less than before. */
+  partialCount: number;
+  /** Only the amount that came IN on those partials, not their balances. */
+  partialAmount: number;
+  /** paidInFullAmount + partialAmount — the money actually collected. */
+  collected: number;
+
+  /** Invoices in the new report that weren't in the old one. */
+  newlyBilledCount: number;
+  newlyBilledAmount: number;
+
+  /** Invoices whose balance went UP without being new — a correction or an
+   *  added charge. Rare, and worth surfacing rather than hiding in the net. */
+  increasedCount: number;
+  increasedAmount: number;
+
+  /** Invoices that changed hands between arborists. */
+  reassignedCount: number;
+
+  /** Total outstanding then and now, and the difference. */
+  previousBalance: number;
+  currentBalance: number;
+  netChange: number;
+
+  /** Who collected what, biggest first. Empty when nothing was collected. */
+  byArborist: { name: string; key: string; collected: number; count: number }[];
+
+  /** The individual wins, biggest first, capped for display. */
+  topPaid: { customer: string; invoiceNumber: string; amount: number; name: string }[];
 };
 
 export type ReceivablesData = {
@@ -176,8 +250,12 @@ export type ReceivablesData = {
     trivialBalance: number;
   };
   byBucket: Record<AgeBucket, { count: number; balance: number }>;
+  /** Residential vs commercial across everything owed. */
+  bySegment: SegmentSplit;
   /** One book per arborist, biggest 61+ balance first. */
   books: ArboristBook[];
+  /** Movement since the previous upload; null on the first one. */
+  sinceLast?: SinceLastUpload | null;
 };
 
 // ---------------------------------------------------------------------------
@@ -192,6 +270,19 @@ function toNumber(v: unknown): number {
   const paren = /^\((.*)\)$/.exec(s);
   const n = Number(paren ? `-${paren[1]}` : s);
   return Number.isFinite(n) ? n : 0;
+}
+
+/**
+ * Read the Customer Type cell. Anything not clearly one of the two known values
+ * becomes null: an unrecognised segment shown as a confident "Residential" is
+ * worse than showing nothing, because someone would act on it.
+ */
+function toSegment(v: unknown): Segment | null {
+  const s = String(v ?? '').trim().toLowerCase();
+  if (!s) return null;
+  if (s.startsWith('resid')) return 'residential';
+  if (s.startsWith('comm')) return 'commercial';
+  return null;
 }
 
 function toDate(v: unknown): Date | null {
@@ -253,6 +344,23 @@ export function soldByKeyOf(raw: string): string {
  * it doesn't pretend the upstream data is right.
  */
 export const UNASSIGNED_OWNER = { display: 'Brent B', key: 'brent' } as const;
+
+function segmentSplit(list: OpenInvoice[]): SegmentSplit {
+  const out: SegmentSplit = {
+    residential: { count: 0, balance: 0 },
+    commercial: { count: 0, balance: 0 },
+    unknown: { count: 0, balance: 0 },
+  };
+  for (const i of list) {
+    const k = i.segment ?? 'unknown';
+    out[k].count += 1;
+    out[k].balance += i.balance;
+  }
+  for (const k of Object.keys(out) as (keyof SegmentSplit)[]) {
+    out[k].balance = round2(out[k].balance);
+  }
+  return out;
+}
 
 function emptyBuckets(): Record<AgeBucket, { count: number; balance: number }> {
   return {
@@ -323,6 +431,9 @@ export function parseInvoiceGrid(grid: unknown[][]): {
       phone: String(at(row, 'Customer Phone') ?? '').trim(),
       email: String(at(row, 'Customer Email') ?? '').trim(),
       soldBy: String(at(row, 'Sold By') ?? '').trim(),
+      // Optional column: absent in exports taken before it was added, so a
+      // missing header reads as null rather than failing the whole upload.
+      segment: toSegment(at(row, 'Customer Type')),
     });
   }
   return { rows, missingColumns: [] };
@@ -369,6 +480,7 @@ export function computeReceivables(
       total: r.total,
       balance: r.balance,
       completedOn: r.completedOn ? isoDay(r.completedOn) : null,
+      segment: r.segment,
       daysOld,
       bucket,
       urgency: daysOld < 0 ? 'critical' : urgencyOf(daysOld),
@@ -441,6 +553,7 @@ export function computeReceivables(
         list.filter((i) => i.trivial).reduce((s, i) => s + i.balance, 0),
       ),
       byBucket: roundBuckets(bucketed),
+      bySegment: segmentSplit(list),
     };
   });
 
@@ -478,6 +591,7 @@ export function computeReceivables(
       ),
     },
     byBucket: roundBuckets(byBucket),
+    bySegment: segmentSplit(invoices),
     books,
   };
 }
@@ -513,6 +627,114 @@ export function bookForKey(
   const k = key.trim().toLowerCase();
   if (!k) return null;
   return data.books.find((b) => b.key === k) ?? null;
+}
+
+/**
+ * Compare two reports and describe what moved.
+ *
+ * Matching is by invoice number, which is the only stable identifier in the
+ * export — customer names get edited and re-typed. An invoice with no number
+ * can't be matched at all, so it's ignored here rather than guessed at; those
+ * are rare and would otherwise show up as a phantom payment plus a phantom new
+ * charge every single upload.
+ *
+ * Both sides only ever contain invoices that were OWING, since that's what
+ * computeReceivables keeps. So "missing from the new report" genuinely means
+ * paid off (or voided) — not merely absent.
+ */
+export function compareReceivables(
+  prev: ReceivablesData,
+  next: ReceivablesData,
+): SinceLastUpload {
+  const index = (d: ReceivablesData) => {
+    const m = new Map<string, OpenInvoice>();
+    for (const b of d.books) {
+      for (const i of b.invoices) {
+        if (i.invoiceNumber) m.set(i.invoiceNumber, i);
+      }
+    }
+    return m;
+  };
+  const before = index(prev);
+  const after = index(next);
+
+  const paid: OpenInvoice[] = [];
+  const partials: { inv: OpenInvoice; paid: number }[] = [];
+  const increased: { inv: OpenInvoice; added: number }[] = [];
+  let reassignedCount = 0;
+
+  for (const [num, was] of before) {
+    const now = after.get(num);
+    if (!now) {
+      paid.push(was);
+      continue;
+    }
+    if (now.soldByKey !== was.soldByKey) reassignedCount++;
+    const delta = was.balance - now.balance;
+    if (delta > 0.005) partials.push({ inv: was, paid: delta });
+    else if (delta < -0.005) increased.push({ inv: now, added: -delta });
+  }
+
+  const newly = [...after.entries()]
+    .filter(([num]) => !before.has(num))
+    .map(([, inv]) => inv);
+
+  const paidInFullAmount = paid.reduce((s, i) => s + i.balance, 0);
+  const partialAmount = partials.reduce((s, p) => s + p.paid, 0);
+
+  // Credit each collection to whoever held the invoice BEFORE it was paid —
+  // crediting the new holder would hand a reassigned invoice's win to the wrong
+  // person on the one day it changed hands.
+  const perArborist = new Map<string, { name: string; key: string; collected: number; count: number }>();
+  const credit = (inv: OpenInvoice, amount: number) => {
+    const row = perArborist.get(inv.soldByKey) ?? {
+      name: inv.soldBy,
+      key: inv.soldByKey,
+      collected: 0,
+      count: 0,
+    };
+    row.collected += amount;
+    row.count += 1;
+    perArborist.set(inv.soldByKey, row);
+  };
+  for (const i of paid) credit(i, i.balance);
+  for (const p of partials) credit(p.inv, p.paid);
+
+  const prevBalance = prev.totals.balance;
+  const currBalance = next.totals.balance;
+  const prevAt = prev.meta.asOf;
+
+  return {
+    prevUploadedAt: prevAt,
+    prevSourceFilename: prev.meta.sourceFilename,
+    daysBetween: Math.max(
+      0,
+      daysBetween(new Date(prevAt), new Date(next.meta.asOf)),
+    ),
+    paidInFullCount: paid.length,
+    paidInFullAmount,
+    partialCount: partials.length,
+    partialAmount,
+    collected: paidInFullAmount + partialAmount,
+    newlyBilledCount: newly.length,
+    newlyBilledAmount: newly.reduce((s, i) => s + i.balance, 0),
+    increasedCount: increased.length,
+    increasedAmount: increased.reduce((s, i) => s + i.added, 0),
+    reassignedCount,
+    previousBalance: prevBalance,
+    currentBalance: currBalance,
+    netChange: currBalance - prevBalance,
+    byArborist: [...perArborist.values()].sort((a, b) => b.collected - a.collected),
+    topPaid: paid
+      .sort((a, b) => b.balance - a.balance)
+      .slice(0, 5)
+      .map((i) => ({
+        customer: i.customer,
+        invoiceNumber: i.invoiceNumber,
+        amount: i.balance,
+        name: i.soldBy,
+      })),
+  };
 }
 
 /** The invoices worth a call, oldest first. */

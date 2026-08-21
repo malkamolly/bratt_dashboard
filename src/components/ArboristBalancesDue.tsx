@@ -24,6 +24,7 @@ import {
   trivialInvoices,
 } from '@/lib/receivables';
 import { ReceivablesTable, ageLabel } from '@/components/ReceivablesTable';
+import { SegmentSplitBar } from '@/components/SegmentSplitBar';
 import { CopyButton } from '@/components/CopyButton';
 import { fmtUsd, fmtUsdCents, fmtDateTime } from '@/lib/format';
 
@@ -78,7 +79,7 @@ export async function ArboristBalancesDue({
   // panel would read as "not built yet" instead of "you're clear".
   if (!book || callable.length === 0) {
     return (
-      <section className="mt-12">
+      <section id={COLLECTIONS_ANCHOR} className="mt-12 scroll-mt-6">
         <p className="bt-eyebrow">Collections</p>
         <h2 className="mt-1 font-headline text-2xl font-black uppercase text-bark-deep">
           Money still out there
@@ -108,7 +109,7 @@ export async function ArboristBalancesDue({
   const oldest = callable[0];
 
   return (
-    <section className="mt-12">
+    <section id={COLLECTIONS_ANCHOR} className="mt-12 scroll-mt-6">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <p className="bt-eyebrow">Collections</p>
@@ -138,6 +139,8 @@ export async function ArboristBalancesDue({
         <Stat label="Oldest" value={ageLabel(book.oldestDays)} />
         <Stat label="Customers" value={String(book.customerCount)} />
       </div>
+
+      <SegmentSplitBar split={book.bySegment} className="mt-4 max-w-2xl" />
 
       {/* Name the single oldest one in a sentence. A list of 30 invoices is easy
           to put off; one named customer is a task. */}
@@ -177,5 +180,58 @@ export async function ArboristBalancesDue({
         )}
       </p>
     </section>
+  );
+}
+
+/** The id the on-page jump link targets. One constant, so the link and the
+ *  section can't drift apart. */
+export const COLLECTIONS_ANCHOR = 'collections';
+
+/**
+ * The pill under the month picker that jumps to the collections list.
+ *
+ * It carries the amount, not just a label — the whole reason to put it at the
+ * top is so an arborist knows there's money waiting without scrolling to find
+ * out. Renders nothing when they're clear: an empty prompt to go look at an
+ * empty list is just noise.
+ *
+ * This loads the report a second time (ArboristBalancesDue loads it too). At
+ * ten users that's a cheap query, and the alternative — threading the data
+ * through SalespersonDetail, which otherwise knows nothing about collections —
+ * costs more in coupling than it saves.
+ */
+export async function CollectionsJumpLink({
+  salespersonName,
+}: {
+  salespersonName: string;
+}) {
+  const user = await getAllowedUser();
+  if (!user) return null;
+
+  const active = await loadActiveReceivables();
+  if (!active) return null;
+
+  const book = bookForKey(active.data, salespersonName);
+  if (!book) return null;
+  const callable = callableInvoices(book);
+  if (callable.length === 0) return null;
+
+  const total = callable.reduce((s, i) => s + i.balance, 0);
+
+  return (
+    <a
+      href={`#${COLLECTIONS_ANCHOR}`}
+      className="mt-3 inline-flex items-center gap-2 rounded-full border-[3px] border-orange bg-orange/10 px-3.5 py-1.5 transition-colors hover:!border-orange-press"
+    >
+      <span className="font-headline text-xs font-extrabold uppercase tracking-ribbon text-orange-press">
+        Money still out there
+      </span>
+      <span className="font-headline text-sm font-black text-ink">
+        {fmtUsd(total)}
+      </span>
+      <span className="font-headline text-xs font-bold text-fg-2">
+        {callable.length} invoice{callable.length === 1 ? '' : 's'} &darr;
+      </span>
+    </a>
   );
 }

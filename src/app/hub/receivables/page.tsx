@@ -18,10 +18,12 @@ import {
   AGE_BUCKET_COLORS,
   callableInvoices,
   UNASSIGNED_OWNER,
+  type SinceLastUpload,
   type ArboristBook,
   type ReceivablesData,
 } from '@/lib/receivables';
 import { ReceivablesTable, ageLabel } from '@/components/ReceivablesTable';
+import { SegmentSplitBar } from '@/components/SegmentSplitBar';
 import { fmtUsd, fmtUsdCents, fmtDateTime } from '@/lib/format';
 import { uploadReceivablesData } from './actions';
 
@@ -328,6 +330,20 @@ export default async function ReceivablesPage({
         <Tile label="Oldest" value={ageLabel(T.oldestDays)} note="Since completion" />
       </div>
 
+      {data.sinceLast && <SinceLastPanel c={data.sinceLast} />}
+
+      <section className="mt-10">
+        <h2 className="font-headline text-2xl font-black uppercase text-bark-deep">
+          Residential vs commercial
+        </h2>
+        <p className="mt-1 max-w-2xl text-sm text-fg-2">
+          From the export&apos;s Customer Type column. Commercial accounts pay
+          on their own AP cycle, so 60&ndash;90 days out there often isn&apos;t
+          late in the way the same age is for a homeowner.
+        </p>
+        <SegmentSplitBar split={data.bySegment} className="mt-4 max-w-3xl" />
+      </section>
+
       <section className="mt-10">
         <h2 className="font-headline text-2xl font-black uppercase text-bark-deep">
           How old the money is
@@ -413,4 +429,145 @@ export default async function ReceivablesPage({
 function fmtPctOf(part: number, whole: number): string {
   if (!whole) return '0%';
   return `${Math.round((part / whole) * 100)}%`;
+}
+
+/**
+ * What moved since the previous upload.
+ *
+ * Collected is the headline and gets the biggest type, because it's the only
+ * number here that reflects work the team actually did. Newly billed is shown
+ * beside it rather than folded into a single "net" figure: a list that grew
+ * because the crews finished more jobs is a completely different story from one
+ * that grew because nobody made their calls, and one net number can't tell them
+ * apart.
+ */
+function SinceLastPanel({ c }: { c: SinceLastUpload }) {
+  const when =
+    c.daysBetween === 0
+      ? 'since the last upload today'
+      : c.daysBetween === 1
+        ? 'since yesterday'
+        : `over the last ${c.daysBetween} days`;
+
+  return (
+    <section className="mt-6 rounded-card border-[3px] border-lime bg-white p-5">
+      <div className="flex flex-wrap items-baseline justify-between gap-2">
+        <h2 className="font-headline text-xl font-black uppercase tracking-ribbon text-bark-deep">
+          Since the last upload
+        </h2>
+        <p className="text-xs text-fg-3">
+          vs. {fmtDateTime(c.prevUploadedAt)}
+          {c.prevSourceFilename ? ` · ${c.prevSourceFilename}` : ''}
+        </p>
+      </div>
+
+      <div className="mt-4 flex flex-wrap items-end gap-x-10 gap-y-4">
+        <div>
+          <p className="bt-eyebrow">Collected {when}</p>
+          <p className="font-headline text-4xl font-black text-green-dark">
+            {fmtUsd(c.collected)}
+          </p>
+          <p className="mt-0.5 text-xs text-fg-2">
+            <strong className="text-ink">{c.paidInFullCount}</strong> paid in
+            full
+            {c.partialCount > 0 && (
+              <>
+                {' '}&middot; <strong className="text-ink">{c.partialCount}</strong>{' '}
+                partial ({fmtUsd(c.partialAmount)})
+              </>
+            )}
+          </p>
+        </div>
+
+        <div>
+          <p className="bt-eyebrow">Newly billed</p>
+          <p className="font-headline text-2xl font-black text-ink">
+            {fmtUsd(c.newlyBilledAmount)}
+          </p>
+          <p className="mt-0.5 text-xs text-fg-2">
+            {c.newlyBilledCount} completed job
+            {c.newlyBilledCount === 1 ? '' : 's'}
+          </p>
+        </div>
+
+        <div>
+          <p className="bt-eyebrow">Outstanding now</p>
+          <p className="font-headline text-2xl font-black text-ink">
+            {fmtUsd(c.currentBalance)}
+          </p>
+          <p
+            className={`mt-0.5 text-xs font-bold ${
+              c.netChange > 0 ? 'text-orange-press' : 'text-green-dark'
+            }`}
+          >
+            {c.netChange >= 0 ? '+' : '\u2212'}
+            {fmtUsd(Math.abs(c.netChange))} from {fmtUsd(c.previousBalance)}
+          </p>
+        </div>
+      </div>
+
+      {/* The whole point of the panel: whose calls landed. */}
+      {c.byArborist.length > 0 && (
+        <div className="mt-5 border-t border-paper-edge pt-4">
+          <p className="bt-eyebrow">Who collected it</p>
+          <ul className="mt-2 flex flex-wrap gap-2">
+            {c.byArborist.map((a) => (
+              <li
+                key={a.key || a.name}
+                className="rounded-full border-2 border-lime bg-bone px-3 py-1"
+              >
+                <span className="font-headline text-xs font-extrabold uppercase tracking-ribbon text-ink">
+                  {a.name}
+                </span>
+                <span className="ml-2 font-headline text-xs font-black text-green-dark">
+                  {fmtUsd(a.collected)}
+                </span>
+                <span className="ml-1 text-[11px] text-fg-3">
+                  ({a.count})
+                </span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {c.topPaid.length > 0 && (
+        <div className="mt-4">
+          <p className="bt-eyebrow">Biggest wins</p>
+          <ul className="mt-1.5 space-y-1">
+            {c.topPaid.map((t) => (
+              <li key={t.invoiceNumber} className="text-xs text-fg-2">
+                <strong className="font-headline font-black text-green-dark">
+                  {fmtUsdCents(t.amount)}
+                </strong>{' '}
+                &middot; {t.customer}{' '}
+                <span className="text-fg-3">[{t.name}]</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {/* Both are rare. Unexplained, either one reads as a bug in the page. */}
+      {(c.increasedCount > 0 || c.reassignedCount > 0) && (
+        <p className="mt-4 border-t border-paper-edge pt-3 text-xs text-fg-3">
+          {c.increasedCount > 0 && (
+            <>
+              {c.increasedCount} invoice
+              {c.increasedCount === 1 ? '' : 's'} went UP by{' '}
+              {fmtUsd(c.increasedAmount)} — an added charge or a correction.
+            </>
+          )}
+          {c.increasedCount > 0 && c.reassignedCount > 0 && ' '}
+          {c.reassignedCount > 0 && (
+            <>
+              {c.reassignedCount} invoice
+              {c.reassignedCount === 1 ? '' : 's'} changed salesperson; the
+              collection is credited to whoever held it when it was paid.
+            </>
+          )}
+        </p>
+      )}
+    </section>
+  );
 }
