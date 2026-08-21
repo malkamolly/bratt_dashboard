@@ -17,6 +17,7 @@ import {
   AGE_BUCKET_LABELS,
   AGE_BUCKET_COLORS,
   callableInvoices,
+  UNASSIGNED_OWNER,
   type ArboristBook,
   type ReceivablesData,
 } from '@/lib/receivables';
@@ -286,6 +287,15 @@ export default async function ReceivablesPage({
   const { data, uploadedAt } = active;
   const T = data.totals;
   const maxOver60 = Math.max(...data.books.map((b) => b.over60Balance), 1);
+
+  // Invoices the export left without a salesperson. They're being chased from
+  // UNASSIGNED_OWNER's book, but the count is worth naming: it's a data problem
+  // with a fix upstream, and left unsaid it just quietly grows.
+  const orphans = data.books.flatMap((b) =>
+    b.invoices.filter((i) => i.unassignedInSource),
+  );
+  const orphanCount = orphans.length;
+  const orphanBalance = orphans.reduce((s, i) => s + i.balance, 0);
   // The single worst invoices across everyone — the shortlist a manager would
   // actually work down in a collections push.
   const worst = data.books
@@ -351,11 +361,15 @@ export default async function ReceivablesPage({
             />
           ))}
         </ul>
-        {data.books.some((b) => !b.key) && (
+        {orphanCount > 0 && (
           <p className="mt-3 text-xs text-fg-3">
-            <strong className="text-fg-2">Unassigned</strong> is work the export
-            didn&apos;t attribute to a salesperson — nobody sees it on a personal
-            page, so it needs an owner before it gets chased.
+            <strong className="text-fg-2">{orphanCount}</strong>{' '}
+            {orphanCount === 1 ? 'invoice' : 'invoices'} (
+            {fmtUsd(orphanBalance)}) named no salesperson in the export, so
+            they sit in{' '}
+            <strong className="text-fg-2">{UNASSIGNED_OWNER.display}</strong>
+            &apos;s book by default and are tagged there. Filling in Sold By in
+            the service software moves them to whoever actually sold the job.
           </p>
         )}
       </section>

@@ -65,6 +65,13 @@ function InvoiceCard({ inv, rank }: { inv: OpenInvoice; rank: number }) {
               {inv.completedOn ? `Completed ${inv.completedOn}` : 'No completion date'}
               {inv.invoiceNumber && <> &middot; inv {inv.invoiceNumber}</>}
             </p>
+            {/* Named so it can be fixed upstream. This invoice is being chased
+                either way — the tag says why it landed in this book. */}
+            {inv.unassignedInSource && (
+              <p className="mt-1 inline-block rounded-full bg-orange/15 px-2 py-0.5 font-headline text-[10px] font-extrabold uppercase tracking-ribbon text-orange-press">
+                No salesperson on the invoice
+              </p>
+            )}
             {/* tel: and mailto: so this is one tap from the list, which is the
                 whole point of putting it on their phone. */}
             {(inv.phone || inv.email) && (

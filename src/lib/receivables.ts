@@ -120,6 +120,8 @@ export type OpenInvoice = {
   soldByKey: string;
   /** Balance at or under TRIVIAL_BALANCE — real, but not worth a call. */
   trivial: boolean;
+  /** The export named no salesperson, so UNASSIGNED_OWNER took it on. */
+  unassignedInSource: boolean;
 };
 
 /** Everything owed to one arborist. */
@@ -233,6 +235,24 @@ export function soldByKeyOf(raw: string): string {
   if (display === 'Unassigned') return '';
   return display.split(/\s+/)[0].toLowerCase();
 }
+
+/**
+ * Where an invoice with no salesperson goes.
+ *
+ * The service software leaves "Sold By" blank on some jobs, and writes
+ * "1_Unassigned Sales" on others. Those invoices used to collect in an
+ * "Unassigned" pile that appeared on nobody's personal page — so nobody called
+ * them and they simply aged. They go to Brent's book instead: he runs sales, so
+ * an orphan account is his by default until someone says otherwise.
+ *
+ * Expressed as First + Last initial and a roster key rather than a full name,
+ * per the house naming rule — the key is what matches salespeople.name.
+ *
+ * The invoice still carries `unassignedInSource`, so the roll-up can point at
+ * the rows the export failed to attribute. Routing them here gets them called;
+ * it doesn't pretend the upstream data is right.
+ */
+export const UNASSIGNED_OWNER = { display: 'Brent B', key: 'brent' } as const;
 
 function emptyBuckets(): Record<AgeBucket, { count: number; balance: number }> {
   return {
@@ -354,8 +374,18 @@ export function computeReceivables(
       urgency: daysOld < 0 ? 'critical' : urgencyOf(daysOld),
       phone: r.phone,
       email: r.email,
-      soldBy: displayNameOf(r.soldBy),
-      soldByKey: soldByKeyOf(r.soldBy),
+      // An empty key is soldByKeyOf's signal that the export named nobody.
+      ...(soldByKeyOf(r.soldBy) === ''
+        ? {
+            soldBy: UNASSIGNED_OWNER.display,
+            soldByKey: UNASSIGNED_OWNER.key,
+            unassignedInSource: true,
+          }
+        : {
+            soldBy: displayNameOf(r.soldBy),
+            soldByKey: soldByKeyOf(r.soldBy),
+            unassignedInSource: false,
+          }),
       trivial: r.balance <= TRIVIAL_BALANCE,
     };
   });
@@ -508,6 +538,7 @@ export function buildCallListText(book: ArboristBook): string {
       `${i.customer} — ${fmtUsdCents(i.balance)} (${age})`,
       `  invoice ${i.invoiceNumber || '—'}${i.completedOn ? `, completed ${i.completedOn}` : ''}`,
     ];
+    if (i.unassignedInSource) parts.push('  (no salesperson on the invoice)');
     if (i.phone) parts.push(`  ${i.phone}`);
     if (i.email) parts.push(`  ${i.email}`);
     return parts.join('\n');
