@@ -15,8 +15,10 @@ import type { NextRequest } from 'next/server';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import {
   AGE_BUCKET_ORDER,
+  UNASSIGNED_OWNER,
   type ReceivablesData,
   type AgeBucket,
+  type OpenInvoice,
 } from '@/lib/receivables';
 
 /** Requests per hour, per caller IP, across both endpoints. A daily job needs
@@ -147,6 +149,53 @@ export async function isRateLimited(
   }
 }
 
+/**
+ * The age at which a balance is treated as "past due" in these responses.
+ *
+ * IMPORTANT, and stated in the response itself: the export carries a job
+ * COMPLETION date and no invoice due date or payment terms, so this is days
+ * since the work was finished, not days past a due date. On net-30 terms a
+ * customer 40 days from completion is 10 days late, not 40. The field is named
+ * pastDue30 because that is the contract the caller asked for; `basis` says
+ * what the number actually measures so nobody posts it as something it isn't.
+ */
+const PAST_DUE_DAYS = 30;
+
+function allInvoices(data: ReceivablesData): OpenInvoice[] {
+  return (data.books ?? []).flatMap((b) => b.invoices ?? []);
+}
+
+/** Invoices older than PAST_DUE_DAYS. An invoice with no completion date has
+ *  daysOld -1 and is NOT counted — it cannot be aged, and guessing would put a
+ *  number in a channel that isn't defensible. They're reported separately. */
+function pastDue(list: OpenInvoice[]) {
+  const aged = list.filter((i) => i.daysOld > PAST_DUE_DAYS);
+  return {
+    count: aged.length,
+    total: round2(aged.reduce((s, i) => s + i.balance, 0)),
+  };
+}
+
+function round2(n: number): number {
+  return Math.round(n * 100) / 100;
+}
+
+export type RepRow = {
+  /**
+   * Our roster key (lowercased first name), NOT a ServiceTitan user id — the
+   * export has no id column, only a "Sold By" name. 'unassigned' is defined
+   * here for completeness but is not currently emitted; see byRep below.
+   */
+  repId: string;
+  /** First name + last initial, per the house naming rule. Deliberately not
+   *  the full ServiceTitan name — see the note in the API docs. */
+  repName: string;
+  collectedCount: number;
+  collectedTotal: number;
+  openPastDue30Count: number;
+  openPastDue30Total: number;
+};
+
 export type SummaryBody = {
   ok: true;
   sourceDate: string | null;
@@ -155,6 +204,31 @@ export type SummaryBody = {
   totalOutstanding: number;
   /** Keyed by the hub's own aging brackets — see AGE_BUCKET_ORDER. */
   buckets: Record<AgeBucket, { count: number; balance: number }>;
+  /** The headline figure for the Slack post. See PAST_DUE_DAYS on what
+   *  "past due" means given the export has no due dates. */
+  pastDue30: { count: number; total: number };
+  /** What "past due" is measured from, so the caller can't misreport it. */
+  basis: 'days-since-job-completion';
+  /** Invoices with no completion date at all — excluded from pastDue30 because
+   *  they can't be aged. Surfaced rather than dropped so totals reconcile. */
+  undated: { count: number; total: number };
+  /**
+   * Invoices the export left without a salesperson. They are NOT bucketed under
+   * a synthetic "unassigned" rep: the dashboard routes them into one book so
+   * they actually get called, and the Slack post has to agree with what that
+   * person sees on their own page. Reported here so the count is never hidden.
+   */
+  unassignedInSource: { count: number; total: number; routedTo: string };
+  collectedSinceLast: {
+    count: number;
+    total: number;
+    comparedTo: string | null;
+    /** The count above includes partial payments. These split it, because
+     *  "closed" and "paid something" are different claims. */
+    paidInFullCount: number;
+    partialCount: number;
+  } | null;
+  byRep: RepRow[];
   delta: {
     comparedTo: string | null;
     openInvoices: number;
@@ -187,6 +261,41 @@ export function buildSummaryBody(
   }
 
   const s = data.sinceLast ?? null;
+  const invoices = allInvoices(data);
+  const undatedList = invoices.filter((i) => i.daysOld < 0);
+  const orphans = invoices.filter((i) => i.unassignedInSource);
+
+  // Per-rep rows are the union of "collected something" and "still holds aged
+  // money" — a rep who collected but has nothing open still deserves the
+  // shout-out, and one holding aged money with no collections still needs to
+  // appear. Keyed on the roster key, which is the same key bookForKey uses to
+  // put a book on that person's roster page, so the two cannot disagree.
+  const byRepMap = new Map<string, RepRow>();
+  for (const b of data.books ?? []) {
+    const aged = pastDue(b.invoices ?? []);
+    byRepMap.set(b.key || UNASSIGNED_OWNER.key, {
+      repId: b.key || UNASSIGNED_OWNER.key,
+      repName: b.name,
+      collectedCount: 0,
+      collectedTotal: 0,
+      openPastDue30Count: aged.count,
+      openPastDue30Total: aged.total,
+    });
+  }
+  for (const a of s?.byArborist ?? []) {
+    const id = a.key || UNASSIGNED_OWNER.key;
+    const row = byRepMap.get(id) ?? {
+      repId: id,
+      repName: a.name,
+      collectedCount: 0,
+      collectedTotal: 0,
+      openPastDue30Count: 0,
+      openPastDue30Total: 0,
+    };
+    row.collectedCount = a.count;
+    row.collectedTotal = a.collected;
+    byRepMap.set(id, row);
+  }
 
   return {
     ok: true,
@@ -195,6 +304,27 @@ export function buildSummaryBody(
     openInvoices: data.totals.invoiceCount,
     totalOutstanding: data.totals.balance,
     buckets,
+    pastDue30: pastDue(invoices),
+    basis: 'days-since-job-completion',
+    undated: {
+      count: undatedList.length,
+      total: round2(undatedList.reduce((acc, i) => acc + i.balance, 0)),
+    },
+    unassignedInSource: {
+      count: orphans.length,
+      total: round2(orphans.reduce((acc, i) => acc + i.balance, 0)),
+      routedTo: UNASSIGNED_OWNER.display,
+    },
+    collectedSinceLast: s
+      ? {
+          count: s.paidInFullCount + s.partialCount,
+          total: s.collected,
+          comparedTo: s.prevUploadedAt ? s.prevUploadedAt.slice(0, 10) : null,
+          paidInFullCount: s.paidInFullCount,
+          partialCount: s.partialCount,
+        }
+      : null,
+    byRep: [...byRepMap.values()],
     delta: s
       ? {
           // The day the report we're comparing against was for; its upload
