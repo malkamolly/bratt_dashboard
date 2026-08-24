@@ -7,13 +7,16 @@
 // the numbers can be reasoned about without a file or a session.
 //
 // WHAT "AGE" MEANS HERE, because it decides the whole sort order:
-// the Job Completed Detail export carries a COMPLETION DATE, not an invoice
-// date and not a due date, and it carries no payment terms. So age is measured
-// as days since the job was completed. For a tree service that invoices on
-// completion the two are usually the same day, but they are not the same field,
-// and a customer 40 days past completion on net-30 terms is only 10 days past
-// due. Every label in the UI says "since completion" for that reason — don't
-// relabel these as days past due without a real due date to back it up.
+// the Job Completed Detail export carries a COMPLETION DATE and no separate due
+// date. That is not a gap: Bratt Tree's terms are DUE ON COMPLETION, so the
+// completion date IS the due date and days since completion IS days past due.
+// An invoice 40 days out is 40 days late, full stop.
+//
+// The labels say "past due" for that reason. Don't soften them back to "since
+// completion" — that reads as a hedge and understates every figure on the page.
+// If the business ever offers real terms (net-30 to a commercial account, say),
+// this is the assumption that has to change first, and the export would need to
+// carry those terms before the aging could reflect them.
 // ============================================================================
 
 // Pure formatting helper only — keeps this module free of data-layer imports.
@@ -155,7 +158,7 @@ export type ArboristBook = {
   invoiceCount: number;
   customerCount: number;
   /**
-   * Days since completion on their oldest invoice WORTH CALLING ABOUT —
+   * Days past due on their oldest invoice WORTH CALLING ABOUT —
    * trivial balances are ignored here on purpose. A stray 15-cent remainder
    * from a partial payment would otherwise crown someone the worst collector on
    * the team, which is both wrong and the kind of thing that makes people stop
@@ -830,7 +833,10 @@ export function trivialInvoices(book: ArboristBook): OpenInvoice[] {
 export function buildCallListText(book: ArboristBook): string {
   const callable = callableInvoices(book);
   const lines = callable.map((i) => {
-    const age = i.daysOld < 0 ? 'no completion date' : `${i.daysOld} days`;
+    // Terms are due-on-completion, so the age is lateness — say so, because
+    // "149 days" and "149 days past due" land very differently on a call.
+    const age =
+      i.daysOld < 0 ? 'no completion date' : `${i.daysOld} days past due`;
     const parts = [
       `${i.customer} — ${fmtUsdCents(i.balance)} (${age})`,
       `  invoice ${i.invoiceNumber || '—'}${i.completedOn ? `, completed ${i.completedOn}` : ''}`,

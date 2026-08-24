@@ -147,7 +147,11 @@ export async function ArboristBalancesDue({
       <p className="mt-4 rounded-2 border-2 border-l-[7px] border-ink border-l-status-behind bg-bone px-4 py-3 text-[13px] leading-relaxed text-fg-2">
         <strong className="font-black text-ink">Oldest on the list:</strong>{' '}
         {oldest.customer} — {fmtUsdCents(oldest.balance)}, completed{' '}
-        {oldest.completedOn ?? 'date unknown'} ({ageLabel(oldest.daysOld)} ago).
+        {oldest.completedOn ?? 'date unknown'} and{' '}
+        {oldest.daysOld < 0
+          ? 'not ageable'
+          : `${ageLabel(oldest.daysOld)} past due`}
+        .
       </p>
 
       <div className="mt-4">
@@ -166,9 +170,8 @@ export async function ArboristBalancesDue({
 
       <p className="mt-4 border-t-2 border-paper-edge pt-3 text-xs text-fg-3">
         From the Job Completed Detail report uploaded{' '}
-        {fmtDateTime(active.uploadedAt)}. Ages are counted from the job&apos;s
-        completion date, not from an invoice due date — the export doesn&apos;t
-        carry payment terms.
+        {fmtDateTime(active.uploadedAt)}. Bills are due the day the job is
+        completed, so the ages shown are days past due.
         {canUploadReceivables(user.role) && (
           <>
             {' '}

@@ -327,7 +327,7 @@ export default async function ReceivablesPage({
           tone="alarm"
           note="Hardest to collect"
         />
-        <Tile label="Oldest" value={ageLabel(T.oldestDays)} note="Since completion" />
+        <Tile label="Oldest" value={ageLabel(T.oldestDays)} note="Past due" />
       </div>
 
       {data.sinceLast && <SinceLastPanel c={data.sinceLast} />}
@@ -337,21 +337,20 @@ export default async function ReceivablesPage({
           Residential vs commercial
         </h2>
         <p className="mt-1 max-w-2xl text-sm text-fg-2">
-          From the export&apos;s Customer Type column. Commercial accounts pay
-          on their own AP cycle, so 60&ndash;90 days out there often isn&apos;t
-          late in the way the same age is for a homeowner.
+          From the export&apos;s Customer Type column. Commercial accounts run
+          their own AP cycles, so they tend to sit longer — worth knowing when
+          reading the aging, though it&apos;s still past due either way.
         </p>
         <SegmentSplitBar split={data.bySegment} className="mt-4 max-w-3xl" />
       </section>
 
       <section className="mt-10">
         <h2 className="font-headline text-2xl font-black uppercase text-bark-deep">
-          How old the money is
+          How overdue the money is
         </h2>
         <p className="mt-1 max-w-2xl text-sm text-fg-2">
-          Counted from each job&apos;s completion date. The export carries no
-          payment terms, so this is age since the work was finished — not days
-          past an invoice due date.
+          Bills are due the day the job is completed, so every day counted here
+          is a day past due.
         </p>
         <div className="mt-4">
           <AgingBar data={data} />

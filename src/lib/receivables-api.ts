@@ -150,14 +150,13 @@ export async function isRateLimited(
 }
 
 /**
- * The age at which a balance is treated as "past due" in these responses.
+ * The age at which a balance is treated as past due in these responses.
  *
- * IMPORTANT, and stated in the response itself: the export carries a job
- * COMPLETION date and no invoice due date or payment terms, so this is days
- * since the work was finished, not days past a due date. On net-30 terms a
- * customer 40 days from completion is 10 days late, not 40. The field is named
- * pastDue30 because that is the contract the caller asked for; `basis` says
- * what the number actually measures so nobody posts it as something it isn't.
+ * Bratt Tree's terms are DUE ON COMPLETION, so the export's completion date is
+ * the due date and this really is days past due — no hedge needed. The response
+ * still states its basis and terms explicitly, because a figure that lands in a
+ * public channel should carry its own definition rather than rely on whoever
+ * reads it remembering the terms.
  */
 const PAST_DUE_DAYS = 30;
 
@@ -165,9 +164,9 @@ function allInvoices(data: ReceivablesData): OpenInvoice[] {
   return (data.books ?? []).flatMap((b) => b.invoices ?? []);
 }
 
-/** Invoices older than PAST_DUE_DAYS. An invoice with no completion date has
- *  daysOld -1 and is NOT counted — it cannot be aged, and guessing would put a
- *  number in a channel that isn't defensible. They're reported separately. */
+/** Invoices more than PAST_DUE_DAYS past due. An invoice with no completion
+ *  date has daysOld -1 and is NOT counted — with no completion date there is no
+ *  due date either, so it can't be aged. Reported separately, not dropped. */
 function pastDue(list: OpenInvoice[]) {
   const aged = list.filter((i) => i.daysOld > PAST_DUE_DAYS);
   return {
@@ -204,11 +203,13 @@ export type SummaryBody = {
   totalOutstanding: number;
   /** Keyed by the hub's own aging brackets — see AGE_BUCKET_ORDER. */
   buckets: Record<AgeBucket, { count: number; balance: number }>;
-  /** The headline figure for the Slack post. See PAST_DUE_DAYS on what
-   *  "past due" means given the export has no due dates. */
+  /** The headline figure for the Slack post: balances more than 30 days past
+   *  due. Terms are due-on-completion, so this is genuine lateness. */
   pastDue30: { count: number; total: number };
-  /** What "past due" is measured from, so the caller can't misreport it. */
-  basis: 'days-since-job-completion';
+  /** What the ages measure, and the terms that make it so. Stated in the
+   *  response so the figure carries its own definition. */
+  basis: 'days-past-due';
+  terms: 'due-on-completion';
   /** Invoices with no completion date at all — excluded from pastDue30 because
    *  they can't be aged. Surfaced rather than dropped so totals reconcile. */
   undated: { count: number; total: number };
@@ -305,7 +306,8 @@ export function buildSummaryBody(
     totalOutstanding: data.totals.balance,
     buckets,
     pastDue30: pastDue(invoices),
-    basis: 'days-since-job-completion',
+    basis: 'days-past-due',
+    terms: 'due-on-completion',
     undated: {
       count: undatedList.length,
       total: round2(undatedList.reduce((acc, i) => acc + i.balance, 0)),
