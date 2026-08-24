@@ -41,6 +41,10 @@ function isPublic(pathname: string) {
   // The daily-report cron runs with no user session; it authenticates itself
   // with CRON_SECRET inside the route, so it must skip the session gate here.
   if (pathname.startsWith('/api/tags/daily-report')) return true;
+  // Token-authed collections import/summary. No session is involved, so the
+  // middleware must not redirect these to /login — the bearer-token check in
+  // the route handlers is the entire gate. See lib/receivables-api.ts.
+  if (pathname.startsWith('/api/receivables/')) return true;
   return PUBLIC_PATHS.some((p) => pathname === p || pathname.startsWith(p + '/'));
 }
 

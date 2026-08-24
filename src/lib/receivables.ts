@@ -212,6 +212,9 @@ export type SinceLastUpload = {
   /** Invoices that changed hands between arborists. */
   reassignedCount: number;
 
+  /** Invoice count in the previous report, so a caller can state the change in
+   *  count as well as in money. */
+  previousInvoiceCount: number;
   /** Total outstanding then and now, and the difference. */
   previousBalance: number;
   currentBalance: number;
@@ -231,6 +234,13 @@ export type ReceivablesData = {
     uploadedBy: string | null;
     windowStart: string | null;
     windowEnd: string | null;
+    /**
+     * Which day's report this is, 'YYYY-MM-DD' — supplied by the caller, not
+     * read from the file. The export carries no "run date", so an automated job
+     * re-pulling yesterday's report needs a way to say so. Null on uploads made
+     * before this existed.
+     */
+    sourceDate?: string | null;
     /** Rows read from the file, including the fully-paid ones we dropped. */
     rowsRead: number;
     /** Rows dropped because nothing was owed on them. */
@@ -462,7 +472,11 @@ function daysBetween(from: Date, to: Date): number {
 export function computeReceivables(
   rows: RawInvoice[],
   asOf: Date,
-  opts: { sourceFilename?: string | null; uploadedBy?: string | null } = {},
+  opts: {
+    sourceFilename?: string | null;
+    uploadedBy?: string | null;
+    sourceDate?: string | null;
+  } = {},
 ): ReceivablesData {
   const owing = rows.filter((r) => r.balance > 0.005);
   const excludedPaid = rows.length - owing.length;
@@ -568,6 +582,7 @@ export function computeReceivables(
       asOf: asOf.toISOString(),
       sourceFilename: opts.sourceFilename ?? null,
       uploadedBy: opts.uploadedBy ?? null,
+      sourceDate: opts.sourceDate ?? null,
       windowStart: dated.length ? dated.reduce((a, b) => (a < b ? a : b)) : null,
       windowEnd: dated.length ? dated.reduce((a, b) => (a > b ? a : b)) : null,
       rowsRead: rows.length,
@@ -718,6 +733,10 @@ export function compareReceivables(
   const currBalance = next.totals.balance;
   const prevAt = prev.meta.asOf;
 
+  // Every money figure is rounded to cents before it leaves here. Summing
+  // floats leaves values like -1746.350000000035, which fmtUsd hides in the UI
+  // but the API returns verbatim — and a caller posting that to Slack shows the
+  // noise. Round once, at the boundary.
   return {
     prevUploadedAt: prevAt,
     prevSourceFilename: prev.meta.sourceFilename,
@@ -726,26 +745,29 @@ export function compareReceivables(
       daysBetween(new Date(prevAt), new Date(next.meta.asOf)),
     ),
     paidInFullCount: paid.length,
-    paidInFullAmount,
+    paidInFullAmount: round2(paidInFullAmount),
     partialCount: partials.length,
-    partialAmount,
-    collected: paidInFullAmount + partialAmount,
+    partialAmount: round2(partialAmount),
+    collected: round2(paidInFullAmount + partialAmount),
     newlyBilledCount: newly.length,
-    newlyBilledAmount: newly.reduce((s, i) => s + i.balance, 0),
+    newlyBilledAmount: round2(newly.reduce((s, i) => s + i.balance, 0)),
     increasedCount: increased.length,
-    increasedAmount: increased.reduce((s, i) => s + i.added, 0),
+    increasedAmount: round2(increased.reduce((s, i) => s + i.added, 0)),
     reassignedCount,
-    previousBalance: prevBalance,
-    currentBalance: currBalance,
-    netChange: currBalance - prevBalance,
-    byArborist: [...perArborist.values()].sort((a, b) => b.collected - a.collected),
+    previousInvoiceCount: prev.totals.invoiceCount,
+    previousBalance: round2(prevBalance),
+    currentBalance: round2(currBalance),
+    netChange: round2(currBalance - prevBalance),
+    byArborist: [...perArborist.values()]
+      .map((a) => ({ ...a, collected: round2(a.collected) }))
+      .sort((a, b) => b.collected - a.collected),
     topPaid: paid
       .sort((a, b) => b.balance - a.balance)
       .slice(0, 5)
       .map((i) => ({
         customer: i.customer,
         invoiceNumber: i.invoiceNumber,
-        amount: i.balance,
+        amount: round2(i.balance),
         name: i.soldBy,
       })),
   };
@@ -786,6 +808,7 @@ export function hydrateReceivables(data: ReceivablesData): ReceivablesData {
     books,
     bySegment: data.bySegment ?? segmentSplit(books.flatMap((b) => b.invoices)),
     sinceLast: data.sinceLast ?? null,
+    meta: { ...data.meta, sourceDate: data.meta?.sourceDate ?? null },
   };
 }
 

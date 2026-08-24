@@ -1,35 +1,30 @@
 'use server';
 
 // ============================================================================
-// Collections list — upload action
+// Collections list — upload action (the UI path)
 // ============================================================================
-// Parse a "Job Completed Detail" export into a fresh collections report. The
-// new upload REPLACES the report: the previous active row is retired, the new
-// one becomes the only thing the pages read. Old rows stay in the table, so a
-// mistaken upload is recoverable by flipping is_active back.
+// The browser uploader on /hub/receivables. All it does is auth the person,
+// pull the file off the FormData, and hand it to importReceivablesReport() —
+// the same function POST /api/receivables/import calls, so the two paths
+// cannot produce different results.
 //
-// The parsing and the maths both live in lib/receivables.ts (pure, and checked
-// against the real export). This file is only the I/O: read the file, hand over
-// a grid, store the result.
+// What stays here is what only the UI needs: role gating and turning the
+// outcome into a redirect with a message.
 //
 // Gated to admin + sales_manager (canUploadReceivables); the RLS policy in
 // migration 074 is the backstop.
 // ============================================================================
 
-import * as XLSX from 'xlsx';
-import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { serverClient } from '@/lib/supabase';
 import { getAllowedUser, canUploadReceivables } from '@/lib/auth';
 import {
-  computeReceivables,
-  parseInvoiceGrid,
-  compareReceivables,
-  type ReceivablesData,
-} from '@/lib/receivables';
+  importReceivablesReport,
+  revalidateReceivables,
+  centralToday,
+  UI_MAX_BYTES,
+} from '@/lib/receivables-import';
 import { fmtUsd } from '@/lib/format';
-
-const MAX_BYTES = 15 * 1024 * 1024;
 
 function fail(message: string): never {
   redirect(`/hub/receivables?error=${encodeURIComponent(message)}`);
@@ -46,93 +41,23 @@ export async function uploadReceivablesData(formData: FormData): Promise<void> {
     fail('Choose a spreadsheet file to upload.');
   }
   const f = file as File;
-  if (f.size > MAX_BYTES) fail('File is larger than 15 MB.');
 
-  // SheetJS rather than exceljs: the service software's export is slightly
-  // non-standard and exceljs refuses it (same reason as the PHC and Follow-Up
-  // uploads). cellDates gives us a real Date for Completion Date, which the
-  // whole aging calculation rests on.
-  let wb: XLSX.WorkBook;
-  try {
-    wb = XLSX.read(Buffer.from(await f.arrayBuffer()), {
-      type: 'buffer',
-      cellDates: true,
-    });
-  } catch {
-    fail('Could not read that file — is it the .xlsx export?');
-  }
-
-  // The export's data is on the first sheet; a second "Filters" sheet carries
-  // the report parameters and is not what we want.
-  const ws = wb!.Sheets[wb!.SheetNames[0]];
-  if (!ws) fail('That workbook has no sheets.');
-
-  const grid = XLSX.utils.sheet_to_json<unknown[]>(ws!, { header: 1, defval: '' });
-  const { rows, missingColumns } = parseInvoiceGrid(grid);
-
-  if (missingColumns.length) {
-    fail(
-      `This doesn't look like the Job Completed Detail export — missing columns: ${missingColumns.join(', ')}.`,
-    );
-  }
-  if (rows.length === 0) fail('No invoice rows found in that file.');
-
-  const data: ReceivablesData = computeReceivables(rows, new Date(), {
-    sourceFilename: f.name,
+  const result = await importReceivablesReport({
+    bytes: Buffer.from(await f.arrayBuffer()),
+    filename: f.name,
     uploadedBy: user.email,
+    // A person uploading in the browser means "this is today's report".
+    sourceDate: centralToday(),
+    maxBytes: UI_MAX_BYTES,
+    supabase: await serverClient(),
   });
 
-  // A valid file where nothing is owed. Technically possible, overwhelmingly
-  // likely to be the wrong export (or one filtered down to paid jobs), so say
-  // so instead of publishing an empty collections list to the whole team.
-  if (data.totals.invoiceCount === 0) {
-    fail(
-      `Read ${rows.length} invoices, but none had a balance owing — there'd be nothing to chase. Is this the right export?`,
-    );
-  }
+  if (!result.ok) fail(result.reason);
 
-  const supabase = await serverClient();
-
-  // Read the outgoing report BEFORE retiring it, and diff the new one against
-  // it. Doing this at upload time (rather than on every page render) pins the
-  // comparison to exactly these two files: a later upload can't retroactively
-  // change what this one reported, and the page has no work to do.
-  const { data: prevRow } = await supabase
-    .from('receivables_uploads')
-    .select('payload')
-    .eq('is_active', true)
-    .order('uploaded_at', { ascending: false })
-    .limit(1)
-    .maybeSingle();
-
-  const prevPayload = (prevRow?.payload ?? null) as ReceivablesData | null;
-  data.sinceLast = prevPayload ? compareReceivables(prevPayload, data) : null;
-
-  // Retire the current report: the newest upload is the only active one.
-  const { error: retireErr } = await supabase
-    .from('receivables_uploads')
-    .update({ is_active: false })
-    .eq('is_active', true);
-  if (retireErr) fail(retireErr.message);
-
-  const { error: insertErr } = await supabase.from('receivables_uploads').insert({
-    uploaded_by: user.email,
-    source_filename: f.name,
-    is_active: true,
-    invoice_count: data.totals.invoiceCount,
-    total_balance: data.totals.balance,
-    window_start: data.meta.windowStart,
-    window_end: data.meta.windowEnd,
-    payload: data,
-  });
-  if (insertErr) fail(insertErr.message);
-
-  revalidatePath('/hub/receivables');
-  revalidatePath('/hub/arborists');
-  revalidatePath('/hub/arborists/[slug]', 'page');
+  revalidateReceivables();
   redirect(
     `/hub/receivables?saved=${encodeURIComponent(
-      `Collections list updated — ${data.totals.invoiceCount} open invoices, ${fmtUsd(data.totals.balance)} outstanding.`,
+      `Collections list updated — ${result.data.totals.invoiceCount} open invoices, ${fmtUsd(result.data.totals.balance)} outstanding.`,
     )}`,
   );
 }
