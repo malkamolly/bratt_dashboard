@@ -201,8 +201,15 @@ export type SummaryBody = {
   importedAt: string;
   openInvoices: number;
   totalOutstanding: number;
-  /** Keyed by the hub's own aging brackets — see AGE_BUCKET_ORDER. */
-  buckets: Record<AgeBucket, { count: number; balance: number }>;
+  /**
+   * Keyed by the hub's own aging brackets — see AGE_BUCKET_ORDER.
+   *
+   * `balance` and `total` are the same number under two names. The dashboard
+   * calls it balance; callers of this API asked for total. Emitting both costs
+   * nothing and removes a whole class of downstream mistake, which is worth
+   * more here than avoiding one redundant key.
+   */
+  buckets: Record<AgeBucket, { count: number; balance: number; total: number }>;
   /** The headline figure for the Slack post: balances more than 30 days past
    *  due. Terms are due-on-completion, so this is genuine lateness. */
   pastDue30: { count: number; total: number };
@@ -253,11 +260,16 @@ export function buildSummaryBody(
   data: ReceivablesData,
   importedAt: string,
 ): SummaryBody {
-  const buckets = {} as Record<AgeBucket, { count: number; balance: number }>;
+  const buckets = {} as Record<
+    AgeBucket,
+    { count: number; balance: number; total: number }
+  >;
   for (const k of AGE_BUCKET_ORDER) {
+    const bal = data.byBucket[k]?.balance ?? 0;
     buckets[k] = {
       count: data.byBucket[k]?.count ?? 0,
-      balance: data.byBucket[k]?.balance ?? 0,
+      balance: bal,
+      total: bal,
     };
   }
 
@@ -321,7 +333,11 @@ export function buildSummaryBody(
       ? {
           count: s.paidInFullCount + s.partialCount,
           total: s.collected,
-          comparedTo: s.prevUploadedAt ? s.prevUploadedAt.slice(0, 10) : null,
+          // The day the previous snapshot was FOR, falling back to when it was
+          // uploaded for reports predating sourceDate.
+          comparedTo:
+            s.prevSourceDate ??
+            (s.prevUploadedAt ? s.prevUploadedAt.slice(0, 10) : null),
           paidInFullCount: s.paidInFullCount,
           partialCount: s.partialCount,
         }
@@ -329,9 +345,9 @@ export function buildSummaryBody(
     byRep: [...byRepMap.values()],
     delta: s
       ? {
-          // The day the report we're comparing against was for; its upload
-          // timestamp is the fallback for reports predating sourceDate.
-          comparedTo: s.prevUploadedAt ? s.prevUploadedAt.slice(0, 10) : null,
+          comparedTo:
+            s.prevSourceDate ??
+            (s.prevUploadedAt ? s.prevUploadedAt.slice(0, 10) : null),
           openInvoices: data.totals.invoiceCount - s.previousInvoiceCount,
           totalOutstanding: s.netChange,
           collected: s.collected,

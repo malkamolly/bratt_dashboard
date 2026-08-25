@@ -6,8 +6,16 @@
 // this file existing — two callers that "should behave the same" drift the
 // moment they hold their own copy of the logic.
 //
-// It stays I/O-shaped: read bytes, hand a grid to the pure maths in
+// It stays I/O-shaped: get rows, hand them to the pure maths in
 // lib/receivables.ts, write one row. The maths is not duplicated here.
+//
+// Two stages, because there are now two ways rows arrive:
+//   rowsFromSpreadsheet()      bytes  -> RawInvoice[]   (file upload, UI + API)
+//   rowsFromJsonBody()         JSON   -> RawInvoice[]   (see receivables-json.ts)
+//   persistReceivablesReport() rows   -> the active report
+// Everything that decides a NUMBER — aging, the prior-snapshot comparison, rep
+// attribution — lives in the second stage, which both intakes share. That is
+// what makes it impossible for the two routes to disagree.
 //
 // The Supabase client is passed IN rather than created here, because the two
 // callers legitimately differ: the UI runs as a signed-in user and should be
@@ -24,6 +32,7 @@ import {
   compareReceivables,
   hydrateReceivables,
   type ReceivablesData,
+  type RawInvoice,
 } from '@/lib/receivables';
 
 /**
@@ -95,27 +104,23 @@ export function isIsoDate(s: string): boolean {
   return !Number.isNaN(d.getTime()) && d.toISOString().slice(0, 10) === s;
 }
 
+export type RowsOutcome =
+  | { ok: true; rows: RawInvoice[] }
+  | { ok: false; status: 415 | 413 | 422; reason: string };
+
 /**
- * Parse a Job Completed Detail export and make it the active report.
+ * Spreadsheet bytes to rows. Stage one of the file path.
  *
- * Nothing is written until the file has parsed and passed every check, so a bad
- * upload leaves the previous report exactly where it was — there is no partial
- * commit to recover from.
- *
- * Replacement, not accumulation: invoices live inside one JSON payload rather
- * than as rows, and each import writes a whole new payload and retires the
- * previous one. Running the same file twice therefore cannot double-count
- * anything; the second run simply becomes the active report.
+ * Reads nothing from the database and writes nothing, so every rejection here
+ * is inherently safe: the previous report is untouched because no write is
+ * reachable from this function.
  */
-export async function importReceivablesReport(opts: {
+export function rowsFromSpreadsheet(opts: {
   bytes: Buffer;
   filename: string;
-  uploadedBy: string;
-  sourceDate: string;
   maxBytes: number;
-  supabase: SupabaseClient;
-}): Promise<ImportOutcome> {
-  const { bytes, filename, uploadedBy, sourceDate, maxBytes, supabase } = opts;
+}): RowsOutcome {
+  const { bytes, filename, maxBytes } = opts;
 
   if (bytes.byteLength === 0) {
     return { ok: false, status: 422, reason: 'The file is empty.' };
@@ -171,6 +176,43 @@ export async function importReceivablesReport(opts: {
     return { ok: false, status: 422, reason: 'No invoice rows found in that file.' };
   }
 
+  return { ok: true, rows };
+}
+
+/**
+ * Rows to the active report. Stage two, shared by EVERY intake.
+ *
+ * Nothing is written until the rows have passed every check, so a rejected
+ * import leaves the previous snapshot exactly where it was.
+ *
+ * SNAPSHOTS AND WHY sourceDate DECIDES THE COMPARISON.
+ *
+ * Each import writes a whole new payload and retires the previous active row —
+ * invoices are a snapshot inside one JSON blob, never appended rows — so
+ * re-running the same data cannot double-count anything.
+ *
+ * The subtler failure is the comparison. It used to pick whichever report was
+ * active before this one, so a second upload on the same day compared today
+ * against THIS MORNING: collected read as roughly nothing, and the next day
+ * then compared against the wrong baseline. It happened on 2026-08-24. The
+ * previous snapshot is now the most recent one for a DIFFERENT sourceDate, and
+ * any existing snapshot for the same date is retired, so exactly one is active
+ * per day and re-importing a day is idempotent in the way that matters.
+ *
+ * Retired rows are kept rather than deleted: a mistaken import stays
+ * recoverable by flipping is_active back, and nothing reads them meanwhile.
+ */
+export async function persistReceivablesReport(opts: {
+  rows: RawInvoice[];
+  sourceDate: string;
+  uploadedBy: string;
+  /** Filename for a file upload, or a label like 'json:ar-email' for JSON.
+   *  Recorded so the log says where a report came from. */
+  sourceLabel: string;
+  supabase: SupabaseClient;
+}): Promise<ImportOutcome> {
+  const { rows, sourceDate, uploadedBy, sourceLabel, supabase } = opts;
+  const filename = sourceLabel;
   const importedAtDate = new Date();
   const data: ReceivablesData = computeReceivables(rows, importedAtDate, {
     sourceFilename: filename,
@@ -195,10 +237,14 @@ export async function importReceivablesReport(opts: {
   // it. Doing this at import time (rather than on every page render) pins the
   // comparison to exactly these two files: a later import can't retroactively
   // change what this one reported, and the pages have no work to do.
+  // The most recent snapshot for a DIFFERENT day. A NULL source_date (a row
+  // uploaded before that column existed) counts as a different day, which is
+  // the honest reading — we genuinely don't know what day it was for.
   const { data: prevRow } = await supabase
     .from('receivables_uploads')
     .select('payload')
-    .eq('is_active', true)
+    .or(`source_date.is.null,source_date.neq.${sourceDate}`)
+    .order('source_date', { ascending: false, nullsFirst: false })
     .order('uploaded_at', { ascending: false })
     .limit(1)
     .maybeSingle();
@@ -210,10 +256,12 @@ export async function importReceivablesReport(opts: {
     : null;
   data.sinceLast = prevPayload ? compareReceivables(prevPayload, data) : null;
 
+  // Retire the active row, and any other row already claiming this sourceDate,
+  // so exactly one snapshot is active and exactly one is active for this day.
   const { error: retireErr } = await supabase
     .from('receivables_uploads')
     .update({ is_active: false })
-    .eq('is_active', true);
+    .or(`is_active.eq.true,source_date.eq.${sourceDate}`);
   if (retireErr) return { ok: false, status: 500, reason: retireErr.message };
 
   const { error: insertErr } = await supabase.from('receivables_uploads').insert({
@@ -224,6 +272,7 @@ export async function importReceivablesReport(opts: {
     total_balance: data.totals.balance,
     window_start: data.meta.windowStart,
     window_end: data.meta.windowEnd,
+    source_date: sourceDate,
     payload: data,
   });
   if (insertErr) return { ok: false, status: 500, reason: insertErr.message };
@@ -235,4 +284,35 @@ export async function importReceivablesReport(opts: {
     sourceDate,
     importedAt: importedAtDate.toISOString(),
   };
+}
+
+/**
+ * The file path end to end: bytes in, active report out.
+ *
+ * Kept as a single call because both the UI action and the multipart branch of
+ * the API route want exactly this. It is a two-line composition of the stages
+ * above — no logic of its own, so the JSON path skipping it changes nothing.
+ */
+export async function importReceivablesReport(opts: {
+  bytes: Buffer;
+  filename: string;
+  uploadedBy: string;
+  sourceDate: string;
+  maxBytes: number;
+  supabase: SupabaseClient;
+}): Promise<ImportOutcome> {
+  const parsed = rowsFromSpreadsheet({
+    bytes: opts.bytes,
+    filename: opts.filename,
+    maxBytes: opts.maxBytes,
+  });
+  if (!parsed.ok) return parsed;
+
+  return persistReceivablesReport({
+    rows: parsed.rows,
+    sourceDate: opts.sourceDate,
+    uploadedBy: opts.uploadedBy,
+    sourceLabel: opts.filename,
+    supabase: opts.supabase,
+  });
 }

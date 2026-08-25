@@ -189,6 +189,11 @@ export type ArboristBook = {
 export type SinceLastUpload = {
   /** When the report this is measured against was uploaded. */
   prevUploadedAt: string;
+  /** The DAY that report was for. This is what `comparedTo` should say — the
+   *  upload timestamp is when someone happened to press the button, which for a
+   *  re-pull of an older report is a different thing entirely. Null on reports
+   *  predating sourceDate. */
+  prevSourceDate: string | null;
   prevSourceFilename: string | null;
   /** Days between the two uploads, for the "since Tuesday" style label. */
   daysBetween: number;
@@ -742,6 +747,7 @@ export function compareReceivables(
   // noise. Round once, at the boundary.
   return {
     prevUploadedAt: prevAt,
+    prevSourceDate: prev.meta.sourceDate ?? null,
     prevSourceFilename: prev.meta.sourceFilename,
     daysBetween: Math.max(
       0,
