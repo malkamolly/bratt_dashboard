@@ -96,12 +96,27 @@ export type Totals = {
   discountPct: number;
 };
 
+// Year-over-year comparison of total scheduled ("sold") work: where the viewed
+// season stands right now vs. where the prior season stood on the same calendar
+// date one year earlier.
+export type LastYearComparison = {
+  priorLabel: string; // e.g. "2025 / 2026"
+  currentDate: string; // viewed season's latest entry date (YYYY-MM-DD)
+  priorAsOf: string; // currentDate minus one year (YYYY-MM-DD)
+  currentTotal: number; // scheduled total now
+  priorTotal: number; // prior season's scheduled total as of priorAsOf
+  deltaAbs: number; // currentTotal − priorTotal
+  deltaPct: number | null; // deltaAbs / priorTotal (null when prior is $0)
+  priorHadData: boolean; // did the prior season have any entries by priorAsOf?
+};
+
 export type DashboardData = {
   season: Season;
   seasons: Season[];
   windows: WindowSummary[];
   grand: Totals;
   lastUpdated: string | null; // most recent entry date (YYYY-MM-DD), or null
+  lastYear: LastYearComparison | null; // vs. same date one year ago, if available
 };
 
 // ----------------------------------------------------------------------------
@@ -140,6 +155,70 @@ function latest(rows: Snapshot[]): Snapshot {
   return rows.length > 0
     ? rows[rows.length - 1]
     : { date: '', scheduled: 0, discount: 0 };
+}
+
+// Shift a YYYY-MM-DD date by whole years, clamping Feb 29 to Feb 28 on
+// non-leap targets. Used to line up "this time last year."
+function shiftYears(iso: string, delta: number): string {
+  const [y, m, d] = iso.split('-').map(Number);
+  const year = y + delta;
+  let day = d;
+  if (m === 2 && d === 29) {
+    const leap = (year % 4 === 0 && year % 100 !== 0) || year % 400 === 0;
+    if (!leap) day = 28;
+  }
+  return `${year}-${String(m).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+}
+
+// Compare the viewed season's total scheduled work to the prior season's total
+// as of the same calendar date one year earlier. Returns null when there's no
+// prior season or the viewed season has no entries yet.
+async function loadLastYearComparison(
+  supabase: Awaited<ReturnType<typeof serverClient>>,
+  season: Season,
+  seasons: Season[],
+  currentTotal: number,
+  lastUpdated: string | null,
+): Promise<LastYearComparison | null> {
+  if (!lastUpdated) return null;
+
+  // Seasons are labelled by their start year, e.g. "2026 / 2027". The prior
+  // season is the one whose start year is exactly one less.
+  const startYear = Number.parseInt(season.label.slice(0, 4), 10);
+  if (!Number.isFinite(startYear)) return null;
+  const prior = seasons.find(
+    (s) => Number.parseInt(s.label.slice(0, 4), 10) === startYear - 1,
+  );
+  if (!prior) return null;
+
+  const priorAsOf = shiftYears(lastUpdated, -1);
+  const { data } = await supabase
+    .from('off_season_entries')
+    .select('work_type, os_window, entry_date, scheduled_revenue')
+    .eq('season_id', prior.id)
+    .lte('entry_date', priorAsOf)
+    .order('entry_date', { ascending: true });
+
+  // scheduled_revenue is cumulative, so the latest row per track (rows arrive
+  // ascending) is that track's running total as of priorAsOf. Sum across all
+  // four tracks for the prior season's total sold at that point.
+  const byTrack = new Map<string, number>();
+  for (const r of data ?? []) {
+    byTrack.set(`${r.work_type}__${r.os_window}`, Number(r.scheduled_revenue));
+  }
+  const priorTotal = [...byTrack.values()].reduce((a, b) => a + b, 0);
+  const deltaAbs = currentTotal - priorTotal;
+
+  return {
+    priorLabel: prior.label,
+    currentDate: lastUpdated,
+    priorAsOf,
+    currentTotal,
+    priorTotal,
+    deltaAbs,
+    deltaPct: priorTotal > 0 ? deltaAbs / priorTotal : null,
+    priorHadData: (data ?? []).length > 0,
+  };
 }
 
 export async function loadDashboard(
@@ -231,7 +310,15 @@ export async function loadDashboard(
   const lastUpdated =
     allEntries.length > 0 ? (allEntries[allEntries.length - 1].entry_date as string) : null;
 
-  return { season, seasons, windows, grand, lastUpdated };
+  const lastYear = await loadLastYearComparison(
+    supabase,
+    season,
+    seasons,
+    grand.scheduled,
+    lastUpdated,
+  );
+
+  return { season, seasons, windows, grand, lastUpdated, lastYear };
 }
 
 // ----------------------------------------------------------------------------

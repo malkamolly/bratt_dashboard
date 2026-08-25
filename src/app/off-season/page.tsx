@@ -6,6 +6,7 @@ import {
   WINDOW_LABELS,
   type WindowSummary,
   type TrackBreakdown,
+  type LastYearComparison,
 } from '@/lib/off-season-data';
 import { OffSeasonTotals } from './OffSeasonTotals';
 import { CopyAsImageButton } from '@/components/CopyAsImageButton';
@@ -175,6 +176,9 @@ export default async function OffSeasonPage({
             </div>
           </section>
 
+          {/* ---- Year-over-year: total sold vs. this time last year ---- */}
+          {data.lastYear && <YearOverYearCard c={data.lastYear} />}
+
           {/* ---- Per-window detail with milestone ladders ---- */}
           <section className="grid grid-cols-1 gap-6 lg:grid-cols-2">
             {data.windows.map((w) => (
@@ -185,6 +189,57 @@ export default async function OffSeasonPage({
         </>
       )}
     </main>
+  );
+}
+
+// Total scheduled ("sold") work now vs. where the prior season stood on the
+// same calendar date a year earlier.
+function YearOverYearCard({ c }: { c: LastYearComparison }) {
+  const ahead = c.deltaAbs >= 0;
+  const absDelta = Math.abs(c.deltaAbs);
+
+  // When the prior season had no work booked yet by this date, an "ahead"
+  // badge would overstate things — show a neutral note instead.
+  let badgeClass = 'bt-status-neutral';
+  let badgeText = 'No comparison yet';
+  if (c.priorHadData) {
+    badgeClass = ahead ? 'bt-status-ahead' : 'bt-status-behind';
+    const sign = ahead ? '+' : '−';
+    const pct = c.deltaPct != null ? ` · ${sign}${fmtPct(Math.abs(c.deltaPct))}` : '';
+    badgeText = `${ahead ? '▲' : '▼'} ${sign}${fmtUsd(absDelta)}${pct}`;
+  }
+
+  return (
+    <section className="bt-card">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <p className="bt-eyebrow">Total Sold vs. Last Year</p>
+          <h2 className="mt-1 font-headline text-4xl font-black uppercase text-bark-deep">
+            {fmtUsd(c.currentTotal)}
+          </h2>
+          <p className="mt-1 text-sm text-fg-2">
+            scheduled this season, as of {niceDate(c.currentDate)}
+          </p>
+        </div>
+        <div className="sm:text-right">
+          <span className={badgeClass}>{badgeText}</span>
+          <p className="mt-2 text-sm text-fg-2">
+            {c.priorHadData ? (
+              <>
+                {c.priorLabel} had{' '}
+                <strong className="text-ink">{fmtUsd(c.priorTotal)}</strong> booked
+                by {niceDate(c.priorAsOf)}
+              </>
+            ) : (
+              <>
+                {c.priorLabel} hadn&rsquo;t booked off-season work yet by{' '}
+                {niceDate(c.priorAsOf)}
+              </>
+            )}
+          </p>
+        </div>
+      </div>
+    </section>
   );
 }
 
