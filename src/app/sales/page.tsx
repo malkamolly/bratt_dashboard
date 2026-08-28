@@ -141,7 +141,12 @@ function LiveMonthView({
     c.budgeted_days,
   );
 
-  const weeks = workingWeeksInMonth(year, month, data.holidays);
+  // includeWeekendOnlyWeeks: when a month opens on a Saturday or Sunday (Aug 1-2
+  // 2026), those days belong to the previous Monday's week. Without this they
+  // would show up in no row at all and there'd be no way to enter them.
+  const weeks = workingWeeksInMonth(year, month, data.holidays, {
+    includeWeekendOnlyWeeks: true,
+  });
 
   type WeekRow = {
     weekKey: IsoDate;
@@ -286,7 +291,9 @@ function LiveMonthView({
                     </Td>
                     <Td align="right" hideOnMobile>
                       <Link href={weekHref} className="block">
-                        {w.workingDaysComplete}/{w.workingDaysTotal}
+                        {w.workingDaysTotal > 0
+                          ? `${w.workingDaysComplete}/${w.workingDaysTotal}`
+                          : '—'}
                       </Link>
                     </Td>
                     <Td align="right">
@@ -296,12 +303,12 @@ function LiveMonthView({
                     </Td>
                     <Td align="right">
                       <Link href={weekHref} className="block">
-                        {fmtUsd(w.dailyAvg)}
+                        {w.workingDaysTotal > 0 ? fmtUsd(w.dailyAvg) : '—'}
                       </Link>
                     </Td>
                     <Td align="right" hideOnMobile>
                       <Link href={weekHref} className="block">
-                        {fmtUsd(w.expected)}
+                        {w.workingDaysTotal > 0 ? fmtUsd(w.expected) : '—'}
                       </Link>
                     </Td>
                     <Td align="right">
@@ -319,6 +326,8 @@ function LiveMonthView({
         </div>
         <p className="mt-3 text-xs text-fg-3">
           Click a week to see and edit the daily entries that make up its total.
+          A row with no working days (a month that opens on a weekend) is there
+          so you can still enter sales booked on those days.
         </p>
       </section>
       </div>{/* /#sales-pace-snapshot */}

@@ -203,22 +203,32 @@ export type WorkingWeek = {
 };
 
 /**
- * Group all working days in (year, month) into Mon-Sun calendar weeks.
- * Returns one entry per week that has at least one working day in the month.
+ * Group the calendar days of (year, month) into Mon-Sun weeks.
+ *
+ * By default this returns only the weeks that contain at least one working day
+ * in the month. Set `includeWeekendOnlyWeeks` to also get back a week whose
+ * only days in this month are weekend or holiday days — which happens whenever
+ * a month opens on a Saturday or Sunday (Aug 1-2 2026, for example, belong to
+ * the week that starts Mon Jul 27). Without it those opening days appear in no
+ * week at all, so there is nowhere on the dashboard to click in and enter them
+ * and their sales go missing from every week total.
  */
 export function workingWeeksInMonth(
   year: number,
   month: number,
   holidays: Set<IsoDate>,
+  options: { includeWeekendOnlyWeeks?: boolean } = {},
 ): WorkingWeek[] {
   const last = new Date(year, month, 0).getDate();
   const groups = new Map<string, WorkingWeek>();
 
+  // Walk every calendar day in the month in order, so `daysInMonth` comes out
+  // sorted and no day can fall through the cracks. Weekends and holidays are
+  // kept in `daysInMonth` (sales can be booked off-hours) but excluded from
+  // `workingDays`, which is what the pace math counts.
   for (let day = 1; day <= last; day++) {
     const d = new Date(year, month - 1, day);
-    if (isWeekend(d)) continue;
     const iso = toIsoDate(d);
-    if (holidays.has(iso)) continue;
 
     // Monday of this calendar week (treating Sunday=0 as end of prior week).
     const dow = d.getDay(); // 0=Sun ... 6=Sat
@@ -227,42 +237,38 @@ export function workingWeeksInMonth(
     monday.setDate(d.getDate() - daysSinceMonday);
     const weekKey = toIsoDate(monday);
 
-    if (!groups.has(weekKey)) {
-      groups.set(weekKey, {
-        weekKey,
-        label: '',
-        workingDays: [],
-        daysInMonth: [],
-      });
+    let week = groups.get(weekKey);
+    if (!week) {
+      week = { weekKey, label: '', workingDays: [], daysInMonth: [] };
+      groups.set(weekKey, week);
     }
-    groups.get(weekKey)!.workingDays.push(iso);
+    week.daysInMonth.push(iso);
+    if (!isWeekend(d) && !holidays.has(iso)) {
+      week.workingDays.push(iso);
+    }
   }
 
-  const weeks = Array.from(groups.values()).sort((a, b) =>
+  const all = Array.from(groups.values()).sort((a, b) =>
     a.weekKey.localeCompare(b.weekKey),
   );
-  for (const w of weeks) {
-    // Expand the calendar week (Mon..Sun) from weekKey and keep every day
-    // that falls inside the target month. Weekends and holidays are kept
-    // so sales booked on those dates roll up into the right week.
-    const mondayParts = w.weekKey.split('-').map(Number);
-    const monday = new Date(mondayParts[0], mondayParts[1] - 1, mondayParts[2]);
-    for (let i = 0; i < 7; i++) {
-      const d = new Date(monday);
-      d.setDate(monday.getDate() + i);
-      if (d.getFullYear() === year && d.getMonth() === month - 1) {
-        w.daysInMonth.push(toIsoDate(d));
-      }
-    }
+  const weeks = options.includeWeekendOnlyWeeks
+    ? all
+    : all.filter((w) => w.workingDays.length > 0);
 
-    const first = fromIsoDate(w.workingDays[0]);
-    const lastDay = fromIsoDate(w.workingDays[w.workingDays.length - 1]);
+  for (const w of weeks) {
+    // Label the working span when there is one; for a weekend-only week label
+    // the calendar days instead (e.g. "Aug 1–2") so the row still reads right.
+    const span = w.workingDays.length > 0 ? w.workingDays : w.daysInMonth;
+    const first = fromIsoDate(span[0]);
+    const lastDay = fromIsoDate(span[span.length - 1]);
     const fmt = (d: Date) =>
       d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
     w.label =
-      first.getMonth() === lastDay.getMonth()
-        ? `${fmt(first)}–${lastDay.getDate()}`
-        : `${fmt(first)} – ${fmt(lastDay)}`;
+      span.length === 1
+        ? fmt(first) // a one-day week reads "Aug 31", not "Aug 31–31"
+        : first.getMonth() === lastDay.getMonth()
+          ? `${fmt(first)}–${lastDay.getDate()}`
+          : `${fmt(first)} – ${fmt(lastDay)}`;
   }
   return weeks;
 }

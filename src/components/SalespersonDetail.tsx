@@ -137,7 +137,11 @@ export async function SalespersonDetail({
     (holidayRes.data ?? []).map((h) => h.holiday_date as IsoDate),
   );
   const totalWorkingDays = workingDaysInMonth(year, month, holidays);
-  const weeks = workingWeeksInMonth(year, month, holidays);
+  // includeWeekendOnlyWeeks so days at the start of a month that opens on a
+  // weekend (Aug 1-2 2026) still get a card here.
+  const weeks = workingWeeksInMonth(year, month, holidays, {
+    includeWeekendOnlyWeeks: true,
+  });
 
   const monthHistorical = monthHistoricalRes.data
     ? Number(monthHistoricalRes.data.amount)

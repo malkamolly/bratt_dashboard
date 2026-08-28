@@ -59,7 +59,9 @@ function adjacentWeekHref(
   const ordered = Array.from(counts.entries()).sort((a, b) => b[1] - a[1]);
   for (const [k] of ordered) {
     const [y, m] = k.split('__').map(Number);
-    const weeks = workingWeeksInMonth(y, m, holidays);
+    const weeks = workingWeeksInMonth(y, m, holidays, {
+      includeWeekendOnlyWeeks: true,
+    });
     if (weeks.some((w) => w.weekKey === targetMondayIso)) {
       return `/sales/week/${targetMondayIso}?year=${y}&month=${m}`;
     }
@@ -108,7 +110,11 @@ export default async function SalesWeekEditPage({
     (holidayRes.data ?? []).map((h) => h.holiday_date as IsoDate),
   );
 
-  const weeks = workingWeeksInMonth(year, month, holidays);
+  // includeWeekendOnlyWeeks so a month that opens on a weekend (Aug 1-2 2026)
+  // still has an editable week here — otherwise this page 404s for those days.
+  const weeks = workingWeeksInMonth(year, month, holidays, {
+    includeWeekendOnlyWeeks: true,
+  });
   const week = weeks.find((w) => w.weekKey === weekKey);
   if (!week) notFound();
 
@@ -158,9 +164,19 @@ export default async function SalesWeekEditPage({
         </div>
       </div>
       <p className="mt-3 text-fg-2">
-        {monthLabel(year, month)} &mdash; {week.workingDays.length} working day
-        {week.workingDays.length === 1 ? '' : 's'}. Weekend rows are shown too —
-        enter any off-hours sales there.{' '}
+        {monthLabel(year, month)} &mdash;{' '}
+        {week.workingDays.length === 0 ? (
+          <>
+            no working days in {monthLabel(year, month)}. These are the days this
+            month opened on — enter any sales booked on them here.
+          </>
+        ) : (
+          <>
+            {week.workingDays.length} working day
+            {week.workingDays.length === 1 ? '' : 's'}. Weekend rows are shown
+            too — enter any off-hours sales there.
+          </>
+        )}{' '}
         <Link
           href={`/sales?year=${year}&month=${month}`}
           className="text-orange underline decoration-orange/40 underline-offset-2 hover:decoration-orange"
