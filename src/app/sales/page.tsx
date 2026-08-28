@@ -201,26 +201,46 @@ function LiveMonthView({
 
       <YtdStrip ytd={ytd} />
 
-      {/* Company hero */}
+      {/* Company hero.
+
+          Company MTD gets a row of its own rather than one of four equal
+          columns. Once monthly sales passed $1M the number outgrew a
+          quarter-width column and ran straight into "Pacing to finish"; the
+          three pacing stats sit underneath on their own row instead. This is
+          the same shape as the closed-month hero below. */}
       <section className="mt-3 rounded-card bg-bark p-6 text-cream sm:p-8">
-        <div className="grid grid-cols-1 gap-6 sm:grid-cols-4 sm:items-stretch">
-          <div className="border-b border-bark-deep pb-4 sm:border-b-0 sm:border-r sm:pb-0 sm:pr-6">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between sm:gap-6">
+          <div className="min-w-0">
             <p className="font-headline text-xs font-extrabold uppercase tracking-ribbon text-lime">
               Company MTD
             </p>
-            <p className="mt-2 font-display text-5xl tracking-wider">
+            <p className="mt-2 font-display text-5xl tracking-wider sm:text-6xl">
               {fmtUsd(c.mtd_total)}
             </p>
             <p className="mt-1 text-sm text-cream/80">
-              of {fmtUsd(c.goal)} &middot; {fmtPct(c.pct_to_goal)} of plan
+              {c.goal > 0 ? (
+                <>
+                  of {fmtUsd(c.goal)} &middot; {fmtPct(c.pct_to_goal)} of plan
+                </>
+              ) : (
+                <>
+                  no monthly goal set for {monthLabel(year, month)} &mdash;{' '}
+                  <Link
+                    href="/admin/sales"
+                    className="underline decoration-lime/50 underline-offset-2 hover:decoration-lime"
+                  >
+                    set one
+                  </Link>
+                </>
+              )}
             </p>
-            <div className="mt-3">
-              <span className={statusChipClass(companyStatus)}>
-                {statusLabel(companyStatus)}
-              </span>
-            </div>
           </div>
+          <span className={statusChipClass(companyStatus)}>
+            {statusLabel(companyStatus)}
+          </span>
+        </div>
 
+        <div className="mt-6 grid grid-cols-1 gap-6 border-t border-bark-deep pt-6 md:grid-cols-3">
           <Stat
             label="Pacing to finish"
             value={fmtUsd(c.mtd_pace)}
@@ -233,10 +253,15 @@ function LiveMonthView({
           />
           <Stat
             label="Daily needed for goal"
-            value={fmtUsd(c.daily_needed_to_achieve_budget)}
-            hint={`Across ${c.budgeted_days_remaining} day${
-              c.budgeted_days_remaining === 1 ? '' : 's'
-            } left`}
+            // With no goal set there is no figure to need, so don't print $0.
+            value={c.goal > 0 ? fmtUsd(c.daily_needed_to_achieve_budget) : '—'}
+            hint={
+              c.goal > 0
+                ? `Across ${c.budgeted_days_remaining} day${
+                    c.budgeted_days_remaining === 1 ? '' : 's'
+                  } left`
+                : 'Needs a monthly goal'
+            }
           />
         </div>
       </section>
@@ -607,6 +632,10 @@ function YtdStrip({ ytd }: { ytd: YearToDateData }) {
   );
 }
 
+// The breakpoints here track the hero's stats row (grid-cols-1 md:grid-cols-3):
+// divider borders flip from horizontal to vertical at the same width the row
+// goes three-across, and the value only grows to text-3xl at lg, where a
+// column is finally wide enough for a seven-figure number.
 function Stat({
   label,
   value,
@@ -617,11 +646,11 @@ function Stat({
   hint?: string;
 }) {
   return (
-    <div className="border-b border-bark-deep pb-4 last:border-b-0 last:pb-0 sm:border-b-0 sm:border-r sm:pb-0 sm:pr-6 sm:last:border-r-0 sm:last:pr-0">
+    <div className="border-b border-bark-deep pb-4 last:border-b-0 last:pb-0 md:border-b-0 md:border-r md:pb-0 md:pr-6 md:last:border-r-0 md:last:pr-0">
       <p className="font-headline text-[11px] font-extrabold uppercase tracking-ribbon text-lime">
         {label}
       </p>
-      <p className="mt-2 font-headline text-2xl font-black sm:text-3xl">
+      <p className="mt-2 font-headline text-2xl font-black lg:text-3xl">
         {value}
       </p>
       {hint && <p className="mt-1 text-xs text-cream/70">{hint}</p>}
