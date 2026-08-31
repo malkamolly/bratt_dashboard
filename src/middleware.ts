@@ -20,6 +20,16 @@ import { createServerClient, type CookieOptions } from '@supabase/ssr';
 import { isTagsUser } from '@/lib/tags-config';
 import { PARTNER_COOKIE, isValidPartnerCookie } from '@/lib/partner-auth';
 
+// Forced onto every Supabase auth cookie we set. Duplicated from
+// lib/supabase.ts (rather than imported) for the same reason the hub-access
+// matrix below is: that module pulls in next/headers and the service-role
+// client, which must not enter the edge runtime. Keep the two in sync.
+//
+// httpOnly is not the @supabase/ssr default; we can set it because no browser
+// code reads the session. It stops Safari from wiping the session after 24
+// hours following a magic-link arrival. See lib/supabase.ts for the full note.
+const AUTH_COOKIE_OPTIONS = { httpOnly: true } as const;
+
 const PUBLIC_PATHS = [
   '/login',
   '/easy-login',
@@ -106,7 +116,11 @@ export async function middleware(req: NextRequest) {
         setAll(toSet: { name: string; value: string; options: CookieOptions }[]) {
           toSet.forEach(({ name, value, options }) => {
             req.cookies.set(name, value);
-            res.cookies.set(name, value, options);
+            // AUTH_COOKIE_OPTIONS forces httpOnly. Without it Safari treats the
+            // session as script-writable storage and wipes it after 24 hours
+            // when the user arrived via a magic link, which is why phones were
+            // asking for a new login every morning. See lib/supabase.ts.
+            res.cookies.set(name, value, { ...options, ...AUTH_COOKIE_OPTIONS });
           });
         },
       },

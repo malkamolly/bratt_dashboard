@@ -1,22 +1,42 @@
 // ============================================================================
 // Supabase client factories
 // ============================================================================
-// Two clients are exported:
-//   - browserClient(): for code that runs in the user's browser
-//   - serverClient():  for code that runs on the Vercel server (route handlers,
-//                      server components). Uses cookies for the session.
+// One client is exported for normal use:
+//   - serverClient(): for code that runs on the Vercel server (route handlers,
+//                     server components, server actions). Uses cookies for the
+//                     session.
+//
+// There is deliberately NO browser client. Every sign-in path in this app runs
+// server-side (login/actions.ts, easy-login/actions.ts, auth/callback), so the
+// browser's JavaScript never needs to read the session. That lets us mark the
+// session cookies httpOnly - see AUTH_COOKIE_OPTIONS below, which is the whole
+// reason mobile logins survive more than a day.
 // ============================================================================
 
-import { createBrowserClient, createServerClient, type CookieOptions } from '@supabase/ssr';
+import { createServerClient, type CookieOptions } from '@supabase/ssr';
 import { createClient } from '@supabase/supabase-js';
 import { cookies } from 'next/headers';
 
-export function browserClient() {
-  return createBrowserClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-  );
-}
+/**
+ * Cookie options forced onto every Supabase auth cookie we set.
+ *
+ * `httpOnly: true` is the important one, and it is NOT the library default
+ * (@supabase/ssr ships `httpOnly: false` so its browser client can read the
+ * session from JavaScript). We don't use a browser client, so we can lock the
+ * cookies down - and locking them down is what fixes the "I have to log in
+ * again every morning on my phone" bug:
+ *
+ * Safari's Intelligent Tracking Prevention caps *script-readable* cookies at
+ * 24 hours when you arrive at a site via a cross-site link carrying query
+ * parameters. Our magic-link flow is exactly that shape - tap a link in the
+ * Gmail app, land on /auth/callback?token_hash=...&type=... - so Safari was
+ * expiring a 400-day session cookie overnight. httpOnly cookies are exempt
+ * from that cap, because JavaScript can't touch them in the first place.
+ *
+ * Keep this in sync with the identical block in src/middleware.ts, which
+ * refreshes the same cookies on every request.
+ */
+export const AUTH_COOKIE_OPTIONS = { httpOnly: true } as const;
 
 export async function serverClient() {
   const cookieStore = await cookies();
@@ -31,7 +51,7 @@ export async function serverClient() {
         setAll(toSet: { name: string; value: string; options: CookieOptions }[]) {
           try {
             toSet.forEach(({ name, value, options }) =>
-              cookieStore.set(name, value, options),
+              cookieStore.set(name, value, { ...options, ...AUTH_COOKIE_OPTIONS }),
             );
           } catch {
             // setAll can fail in server components; ignore - middleware
