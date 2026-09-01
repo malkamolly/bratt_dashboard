@@ -12,14 +12,18 @@
 // /api/scheduled-revenue/import twice a day.
 //
 // THE THREE PILES, because the whole page rests on them:
-//   FIRM   — on the calendar, split into tree work and PHC.
-//   HOLD   — its own view, never in a daily figure. Mostly jobs waiting on a
-//            customer's approval, so it is kept deliberately quiet on the
-//            calendar: the number is there to be looked up, not to be the
-//            first thing anyone sees and asks about.
-//   PARKED — sold work sitting on ServiceTitan's far-future placeholder date.
-//            Real money, no real date, so it gets a view rather than a square.
-// See lib/scheduled-revenue.ts for the full reasoning.
+//   SCHEDULED    — on the calendar, split into tree work and PHC.
+//   WAITING ON    ServiceTitan calls this status Hold; nobody here does. Mostly
+//   APPROVAL      jobs sitting on a customer's go-ahead. Never in a daily
+//                 figure, and kept deliberately quiet on the page: the number is
+//                 there to be looked up, not to be the first thing anyone sees
+//                 and asks about.
+//   UNSCHEDULED — sold work sitting on ServiceTitan's far-future placeholder
+//                 date. Real money, no real date, so it gets a list rather than
+//                 a square.
+// The code still says `hold` and `parked` where it's reading ServiceTitan's own
+// data — renaming the field would only hide where the words came from. Every
+// string a person reads uses ours. See lib/scheduled-revenue.ts.
 //
 // No client JavaScript. The view, month, unit filter, open day and the sort all
 // live in the URL, so any of it can be pasted into Slack and land someone on
@@ -56,10 +60,22 @@ import { uploadScheduledRevenue } from './actions';
 
 export const dynamic = 'force-dynamic';
 
-type View = 'calendar' | 'hold' | 'parked';
+/**
+ * Which of the two side lists is expanded, if either.
+ *
+ * They open in place under their card, the same way tapping a day opens its job
+ * list under the calendar — not as separate tabs. Tabs put these one level away
+ * from everything else on the page, and you lost your month and your place
+ * getting back.
+ *
+ * The names here are the SERVICETITAN ones ('hold', 'parked') because that's
+ * what the data says; the page calls them "Waiting on approval" and
+ * "Unscheduled", which is what people here call them.
+ */
+type OpenList = 'hold' | 'parked';
 
 type Search = Promise<{
-  view?: string;
+  list?: string;
   year?: string;
   month?: string;
   unit?: string;
@@ -72,7 +88,7 @@ type Search = Promise<{
 
 /** Everything the page needs to rebuild its own URL. */
 type Nav = {
-  view: View;
+  list: OpenList | null;
   year: number;
   month: number;
   unit: BusinessUnit | null;
@@ -89,7 +105,7 @@ type Nav = {
 function linkTo(nav: Nav, over: Partial<Nav>): string {
   const n = { ...nav, ...over };
   const q = new URLSearchParams();
-  if (n.view !== 'calendar') q.set('view', n.view);
+  if (n.list) q.set('list', n.list);
   q.set('year', String(n.year));
   q.set('month', String(n.month));
   if (n.unit) q.set('unit', n.unit);
@@ -328,8 +344,7 @@ export default async function RevenueCalendarPage({
   const [todayYear, todayMonth] = today.split('-').map(Number);
 
   const nav: Nav = {
-    view:
-      sp.view === 'hold' ? 'hold' : sp.view === 'parked' ? 'parked' : 'calendar',
+    list: sp.list === 'hold' ? 'hold' : sp.list === 'parked' ? 'parked' : null,
     year: clampInt(sp.year, todayYear, 2020, 2099),
     month: clampInt(sp.month, todayMonth, 1, 12),
     unit: isBusinessUnit(sp.unit) ? sp.unit : null,
@@ -406,8 +421,8 @@ function EmptyState({ canUpload }: { canUpload: boolean }) {
         The calendar fills in from the <strong>Scheduled Revenue</strong> reports
         in ServiceTitan &mdash; jobs with an appointment date, with their
         subtotals. It takes two: one for the next 365 days, and one for the
-        far-future parked work, because ServiceTitan won&apos;t schedule a report
-        that looks out further than a year.
+        unscheduled work parked out in 2030, because ServiceTitan won&apos;t
+        schedule a report that looks out further than a year.
       </p>
       {canUpload && <UploadForm />}
     </div>
@@ -426,7 +441,7 @@ function UploadForm() {
       <p className="mt-1 text-xs text-fg-2">
         Export the Scheduled Revenue reports from ServiceTitan and drop them here
         &mdash; <strong>pick both files at once</strong> (the 365-day one and the
-        parked one). This replaces the calendar for everyone.
+        unscheduled one). This replaces the calendar for everyone.
       </p>
       <div className="mt-3 flex flex-wrap items-center gap-3">
         <input
@@ -452,101 +467,13 @@ function UploadForm() {
 // The report
 // ---------------------------------------------------------------------------
 
-function Report({
-  data,
-  uploadedAt,
-  today,
-  nav,
-  canUpload,
-}: {
-  data: ScheduledRevenueData;
-  uploadedAt: string;
-  today: string;
-  nav: Nav;
-  canUpload: boolean;
-}) {
-  // The three piles stay mutually exclusive — parked wins over hold, which is
-  // what makes firm + hold + parked reconcile with the export's grand total. A
-  // held job with no real date belongs in Parked, where someone looking for it
-  // would go; the hold view says how many of those there are.
-  const heldJobs = data.jobs
-    .filter((j) => j.status === 'hold' && !j.parked)
-    .sort((a, b) => (a.date ?? '').localeCompare(b.date ?? ''));
-  const heldAndParked = data.jobs.filter(
-    (j) => j.status === 'hold' && j.parked,
-  ).length;
-  const parkedJobs = data.jobs
-    .filter((j) => j.parked)
-    .sort((a, b) => b.subtotal - a.subtotal);
-
-  return (
-    <>
-      <nav className="mt-8 mb-6 flex flex-wrap gap-x-3 gap-y-2 border-b-2 border-paper-edge pb-4 sm:gap-x-6">
-        <ViewTab nav={nav} to="calendar" label="Calendar" />
-        <ViewTab nav={nav} to="hold" label={`On hold (${heldJobs.length})`} />
-        <ViewTab nav={nav} to="parked" label={`Parked (${parkedJobs.length})`} />
-      </nav>
-
-      {nav.view === 'hold' && (
-        <ListView
-          nav={nav}
-          jobs={heldJobs}
-          title="On hold"
-          blurb={`Jobs sitting at status Hold — most of them waiting on a customer’s approval. None of this is in any calendar figure. Sorted by the day each one is currently sitting on.${
-            heldAndParked > 0
-              ? ` A further ${heldAndParked} held ${heldAndParked === 1 ? 'job has' : 'jobs have'} no date at all — those are in Parked.`
-              : ''
-          }`}
-          showDate
-          defaultSort={{ key: 'date', dir: 'asc' }}
-        />
-      )}
-
-      {nav.view === 'parked' && (
-        <ListView
-          nav={nav}
-          jobs={parkedJobs}
-          title="Parked"
-          blurb={`Sold work parked on ${shortDate(PARKED_FROM)} because it has no real date yet. Biggest first — every one of these is a day on the calendar waiting to happen.`}
-          defaultSort={{ key: 'subtotal', dir: 'desc' }}
-        />
-      )}
-
-      {nav.view === 'calendar' && (
-        <CalendarView
-          data={data}
-          uploadedAt={uploadedAt}
-          today={today}
-          nav={nav}
-          canUpload={canUpload}
-          heldCount={heldJobs.length}
-          parkedCount={parkedJobs.length}
-        />
-      )}
-    </>
-  );
-}
-
-function ViewTab({ nav, to, label }: { nav: Nav; to: View; label: string }) {
-  const isActive = nav.view === to;
-  return (
-    <Link
-      // Switching views resets the sort and closes the open day: both belong to
-      // the list you were looking at. Carrying a "sort by Sched. date" onto the
-      // Parked list, where every row has the same date, would look broken.
-      href={linkTo(nav, { view: to, sort: null, dir: null, day: null })}
-      className={`font-headline text-[10px] font-extrabold uppercase tracking-wider transition-colors sm:text-xs sm:tracking-ribbon ${
-        isActive ? 'text-orange' : 'text-fg-2 hover:text-orange-press'
-      }`}
-      aria-current={isActive ? 'page' : undefined}
-    >
-      {label}
-    </Link>
-  );
-}
-
-/** The hold and parked views: one heading, one sortable table. */
-function ListView({
+/**
+ * One of the two side lists, expanded in place under its card.
+ *
+ * Same shape as the open-day panel below the calendar, deliberately: there is
+ * one way this page shows you a list of jobs, and it's this.
+ */
+function ListPanel({
   nav,
   jobs,
   title,
@@ -565,11 +492,20 @@ function ListView({
   const sort = nav.sort ?? defaultSort.key;
   const dir = nav.dir ?? (nav.sort ? DEFAULT_DIR[sort] : defaultSort.dir);
   return (
-    <section className="rounded-card border-[3px] border-paper-edge bg-white p-4 sm:p-6">
-      <h2 className="font-headline text-xl font-black uppercase text-bark-deep">
-        {title} &mdash; {jobs.length} {jobs.length === 1 ? 'job' : 'jobs'},{' '}
-        {fmtUsd(sumOf(jobs))}
-      </h2>
+    <section className="mt-3 rounded-card border-[3px] border-orange bg-white p-4 sm:p-6">
+      <div className="flex flex-wrap items-baseline justify-between gap-3">
+        <h2 className="font-headline text-xl font-black uppercase text-bark-deep">
+          {title} &mdash; {jobs.length} {jobs.length === 1 ? 'job' : 'jobs'},{' '}
+          {fmtUsd(sumOf(jobs))}
+        </h2>
+        <Link
+          href={linkTo(nav, { list: null, sort: null, dir: null })}
+          scroll={false}
+          className="font-headline text-[10px] font-extrabold uppercase tracking-ribbon text-fg-3 hover:text-orange"
+        >
+          Close ✕
+        </Link>
+      </div>
       <p className="mt-2 max-w-2xl text-sm text-fg-2">{blurb}</p>
       <p className="mt-2 text-xs text-fg-3">
         Click any column heading to reorder the list; click it again to flip it.
@@ -579,24 +515,31 @@ function ListView({
   );
 }
 
-function CalendarView({
+function Report({
   data,
   uploadedAt,
   today,
   nav,
   canUpload,
-  heldCount,
-  parkedCount,
 }: {
   data: ScheduledRevenueData;
   uploadedAt: string;
   today: string;
   nav: Nav;
   canUpload: boolean;
-  heldCount: number;
-  parkedCount: number;
 }) {
   const { year, month, unit, day: selectedDay } = nav;
+
+  // The three piles stay mutually exclusive — unscheduled wins over waiting,
+  // which is what makes scheduled + waiting + unscheduled reconcile with the
+  // export's grand total. A job waiting on approval that ALSO has no real date
+  // belongs under Unscheduled, where someone looking for it would go; the
+  // waiting list says how many of those there are.
+  const waitingJobs = data.jobs.filter((j) => j.status === 'hold' && !j.parked);
+  const waitingAndUnscheduled = data.jobs.filter(
+    (j) => j.status === 'hold' && j.parked,
+  ).length;
+  const unscheduledJobs = data.jobs.filter((j) => j.parked);
   const dayMap = new Map(data.days.map((d) => [d.date, d]));
   const monthKey = `${year}-${String(month).padStart(2, '0')}`;
   const thisMonth = data.months.find((m) => m.month === monthKey);
@@ -653,55 +596,60 @@ function CalendarView({
         />
       </section>
 
-      {/* ---- parked, then hold ------------------------------------------
-          Parked leads because it's the one that turns into schedulable work.
-          Hold is deliberately the quiet one: it's mostly jobs waiting on a
-          customer's approval, and a loud number invites a question the number
-          can't answer on its own. It's here to be looked up, not noticed. */}
+      {/* ---- unscheduled, then waiting ----------------------------------
+          Unscheduled leads because it's the one that turns into schedulable
+          work. Waiting is deliberately the quiet one: it's mostly jobs sitting
+          on a customer's go-ahead, and a loud number invites a question the
+          number can't answer on its own. It's here to be looked up, not
+          noticed.
+
+          Both cards are the whole click target, and both open their list in
+          place below rather than navigating anywhere. */}
       <section className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
-        <div className="rounded-2 border-2 border-paper-edge bg-white p-4">
-          <p className="font-headline text-[10px] font-extrabold uppercase tracking-ribbon text-fg-3">
-            Parked &mdash; sold, no real date
-          </p>
-          <p className="mt-1 font-headline text-2xl font-black text-ink">
-            {fmtUsd(data.totals.parkedRevenue)}{' '}
-            <span className="text-sm font-extrabold text-fg-2">
-              · {parkedCount} jobs
-            </span>
-          </p>
-          <p className="mt-1 text-xs text-fg-2">
-            Sitting on ServiceTitan&apos;s {shortDate(PARKED_FROM)} placeholder.
-            Real money, nowhere to put it on a calendar yet.{' '}
-            <Link
-              href={linkTo(nav, { view: 'parked', sort: null, dir: null, day: null })}
-              className="font-headline text-[10px] font-extrabold uppercase tracking-ribbon text-orange hover:underline"
-            >
-              See the list &rarr;
-            </Link>
-          </p>
-        </div>
-        <div className="rounded-2 border border-paper-edge bg-paper/60 p-4">
-          <p className="font-headline text-[10px] font-extrabold uppercase tracking-ribbon text-fg-3">
-            On hold &mdash; not counted anywhere
-          </p>
-          <p className="mt-1 font-headline text-lg font-extrabold text-fg-2">
-            {fmtUsd(data.totals.holdRevenue)}{' '}
-            <span className="text-xs font-extrabold text-fg-3">
-              · {heldCount} jobs
-            </span>
-          </p>
-          <p className="mt-1 text-xs text-fg-3">
-            Mostly waiting on a customer&apos;s approval. Kept out of every figure
-            on this page on purpose.{' '}
-            <Link
-              href={linkTo(nav, { view: 'hold', sort: null, dir: null, day: null })}
-              className="font-headline text-[10px] font-extrabold uppercase tracking-ribbon text-fg-2 hover:text-orange hover:underline"
-            >
-              See the list &rarr;
-            </Link>
-          </p>
-        </div>
+        <PileCard
+          nav={nav}
+          list="parked"
+          label="Unscheduled — sold, no date yet"
+          amount={fmtUsd(data.totals.parkedRevenue)}
+          jobs={unscheduledJobs.length}
+          blurb={`Sitting on ServiceTitan's ${shortDate(PARKED_FROM)} placeholder. Real money, nowhere to put it on a calendar yet.`}
+          tone="lead"
+        />
+        <PileCard
+          nav={nav}
+          list="hold"
+          label="Waiting on approval — not counted anywhere"
+          amount={fmtUsd(data.totals.holdRevenue)}
+          jobs={waitingJobs.length}
+          blurb="Jobs ServiceTitan has at Hold — mostly waiting on a customer's go-ahead. Kept out of every figure on this page on purpose."
+          tone="quiet"
+        />
       </section>
+
+      {nav.list === 'parked' && (
+        <ListPanel
+          nav={nav}
+          jobs={unscheduledJobs}
+          title="Unscheduled"
+          blurb={`Sold work with no real date yet — ServiceTitan parks it on ${shortDate(PARKED_FROM)}. Biggest first: every one of these is a day on the calendar waiting to happen.`}
+          defaultSort={{ key: 'subtotal', dir: 'desc' }}
+        />
+      )}
+
+      {nav.list === 'hold' && (
+        <ListPanel
+          nav={nav}
+          jobs={waitingJobs}
+          title="Waiting on approval"
+          blurb={`Jobs ServiceTitan has at Hold — mostly waiting on a customer's go-ahead. None of it is in any calendar figure. Opens by the day each one is currently sitting on.${
+            waitingAndUnscheduled > 0
+              ? ` A further ${waitingAndUnscheduled} ${waitingAndUnscheduled === 1 ? 'job has' : 'jobs have'} no date at all — those are under Unscheduled.`
+              : ''
+          }`}
+          showDate
+          defaultSort={{ key: 'date', dir: 'asc' }}
+        />
+      )}
 
       {/* ---- day-over-day ------------------------------------------------ */}
       {s && (
@@ -787,14 +735,16 @@ function CalendarView({
             unit={unit}
             today={today}
             selectedDay={selectedDay}
-            hrefForDay={(d) => linkTo(nav, { day: d, sort: null, dir: null })}
+            hrefForDay={(d) =>
+              linkTo(nav, { day: d, list: null, sort: null, dir: null })
+            }
           />
         </div>
 
         <p className="mt-4 text-xs text-fg-3">
           Each square: tree work on top, PHC underneath, both added up below the
-          rule. Held work is a footnote, never part of the figure. Tap a day for
-          the job list.
+          rule. Work waiting on approval is a footnote, never part of the
+          figure. Tap a day for the job list.
         </p>
       </section>
 
@@ -806,7 +756,7 @@ function CalendarView({
               {longDate(selectedDay)}
             </h2>
             <Link
-              href={linkTo(nav, { day: null, sort: null, dir: null })}
+              href={linkTo(nav, { day: null, list: null, sort: null, dir: null })}
               className="font-headline text-[10px] font-extrabold uppercase tracking-ribbon text-fg-3 hover:text-orange"
             >
               Close ✕
@@ -824,7 +774,8 @@ function CalendarView({
             {dayTotals && dayTotals.holdRevenue > 0 && (
               <span className="text-fg-3">
                 {' '}
-                · {fmtUsdCents(dayTotals.holdRevenue)} held, not counted
+                · {fmtUsdCents(dayTotals.holdRevenue)} waiting on approval, not
+                counted
               </span>
             )}
           </p>
@@ -866,8 +817,8 @@ function CalendarView({
           {data.meta.uploadedBy && <> · by {data.meta.uploadedBy}</>}.{' '}
           {data.totals.allJobs} jobs read, worth {fmtUsd(data.totals.allRevenue)} in
           total &mdash; {compactUsd(data.totals.firmRevenue)} scheduled,{' '}
-          {compactUsd(data.totals.holdRevenue)} held,{' '}
-          {compactUsd(data.totals.parkedRevenue)} parked.
+          {compactUsd(data.totals.holdRevenue)} waiting on approval,{' '}
+          {compactUsd(data.totals.parkedRevenue)} unscheduled.
           {data.totals.zeroDollarJobs > 0 && (
             <>
               {' '}
@@ -909,11 +860,91 @@ function SourceList({ data }: { data: ScheduledRevenueData }) {
       {sources.length === 1 && (
         <span className="text-status-warn">
           {' '}
-          — only one. If the parked work looks light, the second report
+          — only one. If the unscheduled list looks light, the second report
           didn&apos;t arrive.
         </span>
       )}
     </p>
+  );
+}
+
+/**
+ * One of the two side piles, as a card that opens its own list.
+ *
+ * The whole card is the link — a big target on a phone, and it means the
+ * "show the list" affordance isn't a second small thing to aim at.
+ */
+function PileCard({
+  nav,
+  list,
+  label,
+  amount,
+  jobs,
+  blurb,
+  tone,
+}: {
+  nav: Nav;
+  list: OpenList;
+  label: string;
+  amount: string;
+  jobs: number;
+  blurb: string;
+  /** 'lead' is the one worth acting on; 'quiet' is there to be looked up. */
+  tone: 'lead' | 'quiet';
+}) {
+  const isOpen = nav.list === list;
+  const lead = tone === 'lead';
+  return (
+    <Link
+      // Opening a pile closes the open day, and vice versa: they share the sort
+      // in the URL, and two lists disagreeing about which column they're sorted
+      // by is worse than only ever having one open.
+      href={linkTo(nav, {
+        list: isOpen ? null : list,
+        day: null,
+        sort: null,
+        dir: null,
+      })}
+      scroll={false}
+      aria-expanded={isOpen}
+      className={`block rounded-2 p-4 transition-colors ${
+        lead
+          ? 'border-2 border-paper-edge bg-white hover:border-orange'
+          : 'border border-paper-edge bg-paper/60 hover:border-fg-3'
+      } ${isOpen ? '!border-orange' : ''}`}
+    >
+      <p className="font-headline text-[10px] font-extrabold uppercase tracking-ribbon text-fg-3">
+        {label}
+      </p>
+      <p
+        className={
+          lead
+            ? 'mt-1 font-headline text-2xl font-black text-ink'
+            : 'mt-1 font-headline text-lg font-extrabold text-fg-2'
+        }
+      >
+        {amount}{' '}
+        <span
+          className={
+            lead
+              ? 'text-sm font-extrabold text-fg-2'
+              : 'text-xs font-extrabold text-fg-3'
+          }
+        >
+          · {jobs} jobs
+        </span>
+      </p>
+      <p className={`mt-1 text-xs ${lead ? 'text-fg-2' : 'text-fg-3'}`}>
+        {blurb}{' '}
+        <span
+          className={`font-headline text-[10px] font-extrabold uppercase tracking-ribbon ${
+            lead ? 'text-orange' : 'text-fg-2'
+          }`}
+        >
+          {isOpen ? 'Hide the list ▴' : 'Show the list ▾'}
+        </span>
+      </p>
+    </Link>
   );
 }
 
@@ -972,12 +1003,13 @@ function MonthNav({ nav }: { nav: Nav }) {
   return (
     <div className="inline-flex items-center gap-1 rounded-full bg-bark px-2 py-1.5 text-cream shadow-sh-1">
       <Link
+        // Only the open day is closed. The sort is left alone: if one of the
+        // side lists is open it isn't month-scoped, and resetting its column
+        // every time you stepped a month would be maddening.
         href={linkTo(nav, {
           year: prev.getUTCFullYear(),
           month: prev.getUTCMonth() + 1,
           day: null,
-          sort: null,
-          dir: null,
         })}
         aria-label="Previous month"
         className={arrow}
@@ -992,8 +1024,6 @@ function MonthNav({ nav }: { nav: Nav }) {
           year: next.getUTCFullYear(),
           month: next.getUTCMonth() + 1,
           day: null,
-          sort: null,
-          dir: null,
         })}
         aria-label="Next month"
         className={arrow}
@@ -1054,7 +1084,7 @@ function MonthOutlook({
         return (
           <li key={r.month}>
             <Link
-              href={linkTo(nav, { year: y, month: m, day: null, sort: null, dir: null })}
+              href={linkTo(nav, { year: y, month: m, day: null })}
               className={`flex items-center gap-3 rounded-2 border-2 px-3 py-2 transition-colors ${
                 isCurrent
                   ? 'border-orange bg-orange/[0.06]'

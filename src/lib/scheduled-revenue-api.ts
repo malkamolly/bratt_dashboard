@@ -22,6 +22,7 @@ import {
   UNIT_ORDER,
   UNIT_LABELS,
   STATUS_LABELS,
+  PARKED_FROM,
   horizonSplit,
   pastDated,
   addDays,
@@ -213,9 +214,24 @@ export type SummaryBody = {
    *  never closed out. Not a forecast; a to-do list. */
   pastDated: { revenue: number; jobs: number };
 
-  /** Held work, kept out of every figure above by design. */
+  /**
+   * Work waiting on a customer's approval — ServiceTitan status Hold. Kept out
+   * of every figure above by design.
+   *
+   * `onHold` is the same object under the name ServiceTitan uses. Prefer
+   * `waitingApproval`: it's what the dashboard says, and a post that disagrees
+   * with the screen sends people looking for a number that isn't there.
+   */
+  waitingApproval: { revenue: number; jobs: number };
+  /** @deprecated Use `waitingApproval`. Same numbers. */
   onHold: { revenue: number; jobs: number };
-  /** Sold work parked on the far-future placeholder date. */
+  /**
+   * Sold work with no real date, parked on ServiceTitan's far-future
+   * placeholder. `parked` is the same object under ServiceTitan's name; prefer
+   * `unscheduled`, which is what the dashboard says.
+   */
+  unscheduled: { revenue: number; jobs: number; parkedFrom: string };
+  /** @deprecated Use `unscheduled`. Same numbers. */
   parked: { revenue: number; jobs: number; parkedFrom: string };
 
   byUnit: UnitRow[];
@@ -294,6 +310,16 @@ export function buildSummaryBody(
 
   const s = data.sinceLast;
 
+  const waiting = {
+    revenue: data.totals.holdRevenue,
+    jobs: data.totals.holdJobs,
+  };
+  const unscheduled = {
+    revenue: data.totals.parkedRevenue,
+    jobs: data.totals.parkedJobs,
+    parkedFrom: PARKED_FROM,
+  };
+
   return {
     ok: true,
     sourceDate: data.meta.sourceDate ?? null,
@@ -316,12 +342,13 @@ export function buildSummaryBody(
     next90: horizonSplit(data, asOf, 90),
     pastDated: pastDated(data, asOf),
 
-    onHold: { revenue: data.totals.holdRevenue, jobs: data.totals.holdJobs },
-    parked: {
-      revenue: data.totals.parkedRevenue,
-      jobs: data.totals.parkedJobs,
-      parkedFrom: '2030-01-01',
-    },
+    // Emitted twice under both vocabularies. Two extra keys cost nothing and
+    // remove a whole class of downstream mistake — same reasoning as the
+    // balance/total pair on the collections summary.
+    waitingApproval: waiting,
+    onHold: waiting,
+    unscheduled,
+    parked: unscheduled,
 
     byUnit,
     byMonth: data.months.map((m) => ({

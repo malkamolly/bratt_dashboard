@@ -12,25 +12,30 @@
 // of booked production revenue we can look forward into.
 //
 // THREE PILES, AND WHY THEY ARE SEPARATE
-//   FIRM    — everything that isn't on hold. This is the number on the
-//             calendar. Scheduled and In Progress both mean the truck is
-//             going.
-//   HOLD    — jobs sitting at status "Hold". Deliberately NOT in any daily
-//             revenue figure: a held job is on the board but not committed, and
-//             folding it into a forecast quietly inflates every day it touches.
-//             It is surfaced as its own list so it can be worked, not hidden.
-//   PARKED  — jobs dated on the far-future placeholder date (see PARKED_FROM).
-//             Sold work with no real date on it. Left off the calendar because
-//             one square holding six figures is noise, not information.
+//   FIRM     — everything not at status Hold. This is the number on the
+//              calendar. Scheduled and In Progress both mean the truck is going.
+//   WAITING  — jobs at ServiceTitan status "Hold", which is mostly work sitting
+//   ON        on a customer's go-ahead. Deliberately NOT in any daily revenue
+//   APPROVAL  figure: it's on the board but not committed, and folding it into a
+//              forecast quietly inflates every day it touches. Surfaced as its
+//              own list so it can be worked, not hidden.
+//   UNSCHED- — jobs dated on the far-future placeholder date (see PARKED_FROM).
+//   ULED       Sold work with no real date on it. Left off the calendar because
+//              one square holding six figures is noise, not information.
 // Nothing is dropped. Every dollar in the export lands in exactly one pile, and
 // the three sum to the export's grand total.
+//
+// The field names below stay `hold` and `parked`, because that is what
+// ServiceTitan's own data says and renaming them here would hide where the
+// words came from. Every string a person reads says "waiting on approval" and
+// "unscheduled" — the translation happens once, in the page.
 // ============================================================================
 
 /** 'YYYY-MM-DD'. */
 export type IsoDay = string;
 
 /**
- * Jobs scheduled on or after this date are treated as PARKED rather than
+ * Jobs scheduled on or after this date are treated as UNSCHEDULED rather than
  * calendar work.
  *
  * ServiceTitan has no "someday" state, so work with no real date gets an

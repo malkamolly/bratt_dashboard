@@ -44,7 +44,7 @@ board arrives in two pieces, and **both must be sent on every run**:
 | | Report | Covers |
 |---|---|---|
 | 1 | Scheduled Revenue (365 day) | Everything in the next twelve months. |
-| 2 | Scheduled Revenue (parked) | Everything sitting on `01/01/2030`, ServiceTitan's placeholder for sold work with no real date. |
+| 2 | Scheduled Revenue (unscheduled) | Everything sitting on `01/01/2030`, ServiceTitan's placeholder for sold work with no real date. |
 
 Both use the same filters — `Filter by: Jobs with Appt Date`,
 `Business Unit: All`, `Include Adjustment Invoices: false` — and differ only in
@@ -61,9 +61,24 @@ Each export ends with its own **grand-total row** — no status, no business uni
 no date, the row count in `Job #`, and the summed subtotal. Don't send it as a
 job. Send each report's two numbers as **that report's own checksum**.
 
-**If only the parked report arrives, the import is refused** (422). Every
+**If only the unscheduled report arrives, the import is refused** (422). Every
 checksum would still have passed, and a silently emptied calendar is the worst
 possible failure here, so it's caught explicitly.
+
+### What to call these piles in a post
+
+The dashboard doesn't use ServiceTitan's words, so a post shouldn't either — a
+figure that disagrees with the screen sends people hunting for a number that
+isn't there.
+
+| ServiceTitan / JSON key | Say this |
+|---|---|
+| status `Hold` / `onHold` | **Waiting on approval** |
+| `parked` / `01/01/2030` | **Unscheduled** |
+
+The response carries both spellings: prefer `waitingApproval` and `unscheduled`;
+`onHold` and `parked` are the same objects, kept for anything already reading
+them.
 
 ---
 
@@ -104,7 +119,7 @@ Send both reports as `parts`, **each with its own checksum**:
       ]
     },
     {
-      "label": "parked",
+      "label": "unscheduled",
       "checksum": { "rowCount": 99, "subtotalSum": 157757.20 },
       "jobs": [ "…same shape…" ]
     }
@@ -116,7 +131,7 @@ Send both reports as `parts`, **each with its own checksum**:
 reports something you'd recognise there.
 
 A job appearing in both reports lands once — the **later part wins**, so put the
-parked report second.
+unscheduled report second.
 
 **One report only?** The flat shape still works and is equivalent to a single
 part:
@@ -133,7 +148,7 @@ Sending both `parts` and `jobs` is rejected.
 |---|---|
 | `sourceDate` | **Required.** `YYYY-MM-DD`, the day the report is *for*. Decides which snapshot this replaces and what tomorrow compares against. Use today in **Central**, not UTC — a UTC "today" is already tomorrow by the time the 7:30pm run fires. |
 | `jobs` | Required, non-empty, on every part. **Every row** from that report except its grand-total row, including $0 jobs — the checksum is validated before anything is filtered. |
-| `label` | Optional name for the part, e.g. `"scheduled-365"` / `"parked"`. Shows on the dashboard. |
+| `label` | Optional name for the part, e.g. `"scheduled-365"` / `"unscheduled"`. Shows on the dashboard. |
 | `jobNumber` | Send as a **string**. A JSON number would silently drop a leading zero. |
 | `status` | Required, verbatim (`"Scheduled"`, `"Hold"`, `"In Progress"`). Don't map it — the dashboard does that. |
 | `businessUnit` | Required, verbatim (`"Tree Work - Residential"`, `"Plant Health Care"`, …). |
@@ -156,7 +171,7 @@ anything is persisted.
 
 Any mismatch → **422**, nothing persisted, and the message names the failing
 part and check with both expected and computed values —
-`parts[1] (parked) checksum.rowCount says 99 but 98 rows were sent.`
+`parts[1] (unscheduled) checksum.rowCount says 99 but 98 rows were sent.`
 
 **Take each part's numbers from that report's own grand-total row.** Per-part
 checksums matter more here, not less: one combined total would still pass if a
@@ -207,8 +222,10 @@ board:
   "next90":     { "revenue": 975320.88,  "jobs": 678, "tree": 862947.11,  "phc": 112373.77 },
   "pastDated":  { "revenue": 48109.10,   "jobs": 17 },
 
-  "onHold": { "revenue": 33287.92, "jobs": 28 },
-  "parked": { "revenue": 157757.20, "jobs": 99, "parkedFrom": "2030-01-01" },
+  "waitingApproval": { "revenue": 33287.92, "jobs": 28 },
+  "unscheduled":     { "revenue": 157757.20, "jobs": 99, "parkedFrom": "2030-01-01" },
+  "onHold": "…same as waitingApproval…",
+  "parked": "…same as unscheduled…",
 
   "byUnit": [
     { "unit": "residential", "label": "Residential",       "revenue": 1019505.08, "jobs": 564 },
@@ -229,7 +246,7 @@ board:
 
   "sources": [
     { "label": "scheduled-365", "rowCount": 777, "subtotal": 1366070.23 },
-    { "label": "parked",        "rowCount": 99,  "subtotal": 157757.20 }
+    { "label": "unscheduled",   "rowCount": 99,  "subtotal": 157757.20 }
   ],
 
   "sinceLast": {
@@ -251,9 +268,9 @@ one of them, and the three sum to the export's grand total:
 
 | Pile | What it is | Where it shows up |
 |---|---|---|
-| **Firm** | Everything not on hold — `Scheduled`, `In Progress`, and any status ServiceTitan adds later. | `onTheBoard`, all horizons, `byUnit`, `byMonth`, `nextWeeks`, and the calendar. |
-| **Hold** | Status `Hold`. On the board, not committed. | `onHold` only. **Never** in a revenue figure. |
-| **Parked** | Dated `2030-01-01` or later — ServiceTitan's placeholder for sold work with no real date. | `parked` only. |
+| **Scheduled** | Everything not at status Hold — `Scheduled`, `In Progress`, and any status ServiceTitan adds later. | `onTheBoard`, all horizons, `byUnit`, `byMonth`, `nextWeeks`, and the calendar. |
+| **Waiting on approval** | Status `Hold`. On the board, not committed. | `waitingApproval` only. **Never** in a revenue figure. |
+| **Unscheduled** | Dated `2030-01-01` or later — ServiceTitan's placeholder for sold work with no real date. | `unscheduled` only. |
 
 `counts: "firm-only"` and `firmStatuses` state this in every response, so the
 figure carries its own definition into whatever channel it gets posted in.
@@ -279,7 +296,7 @@ different days to whoever is staffing them.
 Weeks start Monday because the crews do.
 
 **`sources` tells you whether the whole board arrived.** Two entries is normal —
-the 365-day report and the parked one. **One entry where you expected two means
+the 365-day report and the unscheduled one. **One entry where you expected two means
 half the board is missing**, and every checksum would still have passed. Worth
 checking before posting a number anywhere.
 
@@ -292,7 +309,7 @@ dashboard are shortened at import time. If you ever surface a technician, use
 what the dashboard shows, not what you sent.
 
 **Everything reconciles.** `sum(byUnit.revenue)` equals `onTheBoard.revenue`;
-`onTheBoard + onHold + parked` equals the export's grand total.
+`onTheBoard + waitingApproval + unscheduled` equals the export's grand total.
 
 ---
 
@@ -312,8 +329,8 @@ at the most recent snapshot for a **different** day. So:
   doesn't break the following morning's baseline.
 
 Send the same `sourceDate` (today in Central) on both runs, and **both reports
-on every run** — a run that sends only the 365-day half wipes the parked pile
-until the next good run.
+on every run** — a run that sends only the 365-day half wipes the unscheduled
+pile until the next good run.
 
 ## Errors
 
@@ -323,7 +340,7 @@ until the next good run.
 | 404 | `GET /summary` only — nothing has been imported yet. Not an error, a state. |
 | 413 | Body over the cap (2 MB JSON, 4 MB per file). Both reports together are ~325 KB as JSON. |
 | 415 | Content-type is neither `application/json` nor `multipart/form-data`. |
-| 422 | Schema violation, bad date, checksum mismatch, an export with no jobs in it, or **only the parked report** (the 365-day half is missing). The message names the failing part and check. |
+| 422 | Schema violation, bad date, checksum mismatch, an export with no jobs in it, or **only the unscheduled report** (the 365-day half is missing). The message names the failing part and check. |
 | 429 | Rate limited. Includes `Retry-After`. |
 | 500 | Generic. The detail is in the server-side log, not the response. |
 | 503 | `endpoint_not_configured` — neither token env var is live. Not your bug; tell Molly to redeploy. |

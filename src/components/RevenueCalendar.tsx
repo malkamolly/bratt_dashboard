@@ -16,8 +16,8 @@
 // The PHC line is drawn even when it's empty, so the three lines land in the
 // same place on every square and the grid can be scanned down a column.
 //
-// Held work is a footnote on the square, never part of any of the three. See
-// the pile notes in lib/scheduled-revenue.ts for why.
+// Work waiting on a customer's approval is a footnote on the square, never part
+// of any of the three. See the pile notes in lib/scheduled-revenue.ts for why.
 //
 // The shading is a heat map against the busiest day IN THIS MONTH, not against
 // the year. A quiet February would otherwise render as a uniformly blank grid
@@ -199,7 +199,7 @@ export function RevenueCalendar({
           )}
           {hold > 0 && (
             <span className="block text-[10px] leading-tight text-fg-3">
-              +{compactUsd(hold)} hold
+              +{compactUsd(hold)} waiting
             </span>
           )}
         </span>
