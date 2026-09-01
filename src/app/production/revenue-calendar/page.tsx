@@ -21,10 +21,10 @@
 //            Real money, no real date, so it gets a view rather than a square.
 // See lib/scheduled-revenue.ts for the full reasoning.
 //
-// No client JavaScript. The view, month, unit filter, open day and text filter
-// all live in the URL, so any of it can be pasted into Slack and land someone
-// on exactly what you were looking at — and the filter boxes are plain GET
-// forms rather than a search-as-you-type field that needs a bundle.
+// No client JavaScript. The view, month, unit filter, open day and the sort all
+// live in the URL, so any of it can be pasted into Slack and land someone on
+// exactly what you were looking at — the sortable column headers are plain
+// <Link>s, not a grid component that needs a bundle.
 // ============================================================================
 
 import Link from 'next/link';
@@ -36,7 +36,9 @@ import {
   UNIT_SHORT,
   PARKED_FROM,
   isBusinessUnit,
-  jobMatches,
+  isSortKey,
+  sortJobs,
+  DEFAULT_DIR,
   treeTotal,
   phcTotal,
   horizon,
@@ -44,6 +46,8 @@ import {
   type BusinessUnit,
   type ScheduledJob,
   type ScheduledRevenueData,
+  type SortKey,
+  type SortDir,
 } from '@/lib/scheduled-revenue';
 import { RevenueCalendar, UnitSplitBar, compactUsd } from '@/components/RevenueCalendar';
 import { fmtUsd, fmtUsdCents, fmtDateTime, monthLabel } from '@/lib/format';
@@ -60,7 +64,8 @@ type Search = Promise<{
   month?: string;
   unit?: string;
   day?: string;
-  q?: string;
+  sort?: string;
+  dir?: string;
   saved?: string;
   error?: string;
 }>;
@@ -72,7 +77,9 @@ type Nav = {
   month: number;
   unit: BusinessUnit | null;
   day: string | null;
-  q: string;
+  /** null means "whatever this list sorts by out of the box". */
+  sort: SortKey | null;
+  dir: SortDir | null;
 };
 
 /**
@@ -87,7 +94,10 @@ function linkTo(nav: Nav, over: Partial<Nav>): string {
   q.set('month', String(n.month));
   if (n.unit) q.set('unit', n.unit);
   if (n.day) q.set('day', n.day);
-  if (n.q) q.set('q', n.q);
+  if (n.sort) {
+    q.set('sort', n.sort);
+    if (n.dir) q.set('dir', n.dir);
+  }
   return `/production/revenue-calendar?${q.toString()}`;
 }
 
@@ -128,86 +138,55 @@ function Tile({
 }
 
 /**
- * The filter box. One text input over everything someone might type — a job
- * number, a job type, a salesperson, a crew member, a city, a zip.
+ * Every column sorts. Clicking a header you're already sorted by flips the
+ * direction; clicking a new one opens it the way people mean that column —
+ * biggest money first, oldest date first, text A-Z (see DEFAULT_DIR).
  *
- * A plain GET form, so it needs no JavaScript. The hidden inputs carry the rest
- * of the page state through the submit; without them, filtering would bounce
- * you back to this month's calendar every time.
+ * The headers are plain <Link>s. That keeps the whole thing server-rendered
+ * with no bundle, and it means a sorted view has its own URL you can paste to
+ * someone: "here, sorted by what's oldest".
  */
-function FilterBox({
+function JobTable({
+  jobs,
   nav,
-  placeholder,
-  showing,
-  total,
+  sort,
+  dir,
+  showDate,
 }: {
+  jobs: ScheduledJob[];
   nav: Nav;
-  placeholder: string;
-  showing: number;
-  total: number;
+  sort: SortKey;
+  dir: SortDir;
+  showDate?: boolean;
 }) {
-  return (
-    <div className="mt-4 flex flex-wrap items-center gap-3">
-      <form method="get" action="/production/revenue-calendar" className="flex gap-2">
-        {nav.view !== 'calendar' && <input type="hidden" name="view" value={nav.view} />}
-        <input type="hidden" name="year" value={nav.year} />
-        <input type="hidden" name="month" value={nav.month} />
-        {nav.unit && <input type="hidden" name="unit" value={nav.unit} />}
-        {nav.day && <input type="hidden" name="day" value={nav.day} />}
-        <input
-          type="search"
-          name="q"
-          defaultValue={nav.q}
-          placeholder={placeholder}
-          aria-label="Filter this list"
-          className="w-56 rounded-full border-2 border-paper-edge bg-white px-4 py-1.5 text-sm text-ink placeholder:text-fg-3 focus:border-orange focus:outline-none sm:w-72"
-        />
-        <button
-          type="submit"
-          className="rounded-full bg-bark px-4 py-1.5 font-headline text-[11px] font-extrabold uppercase tracking-ribbon text-cream transition-colors hover:bg-bark-deep"
-        >
-          Filter
-        </button>
-      </form>
-      {nav.q && (
-        <>
-          <span className="text-xs text-fg-2">
-            {showing} of {total} shown
-          </span>
-          <Link
-            href={linkTo(nav, { q: '' })}
-            className="font-headline text-[11px] font-extrabold uppercase tracking-ribbon text-orange hover:underline"
-          >
-            Clear
-          </Link>
-        </>
-      )}
-    </div>
-  );
-}
-
-function JobTable({ jobs, showDate }: { jobs: ScheduledJob[]; showDate?: boolean }) {
   if (jobs.length === 0) {
-    return <p className="mt-4 text-sm text-fg-2">Nothing matches.</p>;
+    return <p className="mt-4 text-sm text-fg-2">Nothing here.</p>;
   }
+
+  const head = (key: SortKey, label: string, right?: boolean) => (
+    <SortTh key={key} nav={nav} sort={sort} dir={dir} col={key} right={right}>
+      {label}
+    </SortTh>
+  );
+
   return (
     <div className="-mx-2 mt-4 overflow-x-auto px-2">
       <table className="w-full min-w-[46rem] text-left text-sm">
         <thead>
           <tr className="border-b-2 border-paper-edge">
-            {showDate && <Th>Sched.</Th>}
-            <Th>Job</Th>
-            <Th>Type</Th>
-            <Th>Unit</Th>
-            <Th>Sold by</Th>
-            <Th>Sold on</Th>
-            <Th>Crew</Th>
-            <Th>City</Th>
-            <Th right>Subtotal</Th>
+            {showDate && head('date', 'Sched.')}
+            {head('job', 'Job')}
+            {head('type', 'Type')}
+            {head('unit', 'Unit')}
+            {head('soldBy', 'Sold by')}
+            {head('soldOn', 'Sold on')}
+            {head('crew', 'Crew')}
+            {head('city', 'City')}
+            {head('subtotal', 'Subtotal', true)}
           </tr>
         </thead>
         <tbody>
-          {jobs.map((j) => (
+          {sortJobs(jobs, sort, dir).map((j) => (
             <tr key={j.jobNumber} className="border-b border-paper-edge/70">
               {showDate && (
                 <Td>
@@ -254,14 +233,47 @@ function JobTable({ jobs, showDate }: { jobs: ScheduledJob[]; showDate?: boolean
   );
 }
 
-function Th({ children, right }: { children: React.ReactNode; right?: boolean }) {
+/** One clickable column header, with the arrow on the active one. */
+function SortTh({
+  nav,
+  sort,
+  dir,
+  col,
+  right,
+  children,
+}: {
+  nav: Nav;
+  sort: SortKey;
+  dir: SortDir;
+  col: SortKey;
+  right?: boolean;
+  children: React.ReactNode;
+}) {
+  const isActive = sort === col;
+  const nextDir: SortDir = isActive
+    ? dir === 'asc'
+      ? 'desc'
+      : 'asc'
+    : DEFAULT_DIR[col];
+
   return (
     <th
-      className={`pb-2 font-headline text-[10px] font-extrabold uppercase tracking-ribbon text-fg-3 ${
-        right ? 'text-right' : ''
-      }`}
+      scope="col"
+      aria-sort={isActive ? (dir === 'asc' ? 'ascending' : 'descending') : 'none'}
+      className={`pb-2 ${right ? 'text-right' : ''}`}
     >
-      {children}
+      <Link
+        href={linkTo(nav, { sort: col, dir: nextDir })}
+        scroll={false}
+        className={`inline-flex items-center gap-1 font-headline text-[10px] font-extrabold uppercase tracking-ribbon transition-colors ${
+          isActive ? 'text-orange' : 'text-fg-3 hover:text-orange'
+        }`}
+      >
+        {children}
+        <span aria-hidden className={isActive ? '' : 'opacity-0'}>
+          {dir === 'asc' ? '↑' : '↓'}
+        </span>
+      </Link>
     </th>
   );
 }
@@ -323,8 +335,8 @@ export default async function RevenueCalendarPage({
     unit: isBusinessUnit(sp.unit) ? sp.unit : null,
     day:
       typeof sp.day === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(sp.day) ? sp.day : null,
-    // Capped so a pasted essay can't become the page's heading.
-    q: typeof sp.q === 'string' ? sp.q.slice(0, 80) : '',
+    sort: isSortKey(sp.sort) ? sp.sort : null,
+    dir: sp.dir === 'asc' || sp.dir === 'desc' ? sp.dir : null,
   };
 
   return (
@@ -486,7 +498,7 @@ function Report({
               : ''
           }`}
           showDate
-          placeholder="Job #, type, salesperson, city…"
+          defaultSort={{ key: 'date', dir: 'asc' }}
         />
       )}
 
@@ -496,7 +508,7 @@ function Report({
           jobs={parkedJobs}
           title="Parked"
           blurb={`Sold work parked on ${shortDate(PARKED_FROM)} because it has no real date yet. Biggest first — every one of these is a day on the calendar waiting to happen.`}
-          placeholder="Job #, type, salesperson, city…"
+          defaultSort={{ key: 'subtotal', dir: 'desc' }}
         />
       )}
 
@@ -519,10 +531,10 @@ function ViewTab({ nav, to, label }: { nav: Nav; to: View; label: string }) {
   const isActive = nav.view === to;
   return (
     <Link
-      // Switching views drops the text filter and the open day: they belong to
-      // the list you were looking at, and carrying them across would land you on
-      // an empty screen with no obvious reason why.
-      href={linkTo(nav, { view: to, q: '', day: null })}
+      // Switching views resets the sort and closes the open day: both belong to
+      // the list you were looking at. Carrying a "sort by Sched. date" onto the
+      // Parked list, where every row has the same date, would look broken.
+      href={linkTo(nav, { view: to, sort: null, dir: null, day: null })}
       className={`font-headline text-[10px] font-extrabold uppercase tracking-wider transition-colors sm:text-xs sm:tracking-ribbon ${
         isActive ? 'text-orange' : 'text-fg-2 hover:text-orange-press'
       }`}
@@ -533,37 +545,36 @@ function ViewTab({ nav, to, label }: { nav: Nav; to: View; label: string }) {
   );
 }
 
-/** The hold and parked views: one heading, one filter, one table. */
+/** The hold and parked views: one heading, one sortable table. */
 function ListView({
   nav,
   jobs,
   title,
   blurb,
   showDate,
-  placeholder,
+  defaultSort,
 }: {
   nav: Nav;
   jobs: ScheduledJob[];
   title: string;
   blurb: string;
   showDate?: boolean;
-  placeholder: string;
+  /** How this list opens before anyone touches a header. */
+  defaultSort: { key: SortKey; dir: SortDir };
 }) {
-  const shown = jobs.filter((j) => jobMatches(j, nav.q));
+  const sort = nav.sort ?? defaultSort.key;
+  const dir = nav.dir ?? (nav.sort ? DEFAULT_DIR[sort] : defaultSort.dir);
   return (
     <section className="rounded-card border-[3px] border-paper-edge bg-white p-4 sm:p-6">
       <h2 className="font-headline text-xl font-black uppercase text-bark-deep">
-        {title} &mdash; {shown.length} {shown.length === 1 ? 'job' : 'jobs'},{' '}
-        {fmtUsd(sumOf(shown))}
+        {title} &mdash; {jobs.length} {jobs.length === 1 ? 'job' : 'jobs'},{' '}
+        {fmtUsd(sumOf(jobs))}
       </h2>
       <p className="mt-2 max-w-2xl text-sm text-fg-2">{blurb}</p>
-      <FilterBox
-        nav={nav}
-        placeholder={placeholder}
-        showing={shown.length}
-        total={jobs.length}
-      />
-      <JobTable jobs={shown} showDate={showDate} />
+      <p className="mt-2 text-xs text-fg-3">
+        Click any column heading to reorder the list; click it again to flip it.
+      </p>
+      <JobTable jobs={jobs} nav={nav} sort={sort} dir={dir} showDate={showDate} />
     </section>
   );
 }
@@ -601,12 +612,12 @@ function CalendarView({
     data.jobs.some((j) => j.unit === u && !j.parked && j.status !== 'hold'),
   );
 
-  const allDayJobs = selectedDay
-    ? data.jobs
-        .filter((j) => j.date === selectedDay && !j.parked)
-        .sort((a, b) => b.subtotal - a.subtotal)
+  const dayJobs = selectedDay
+    ? data.jobs.filter((j) => j.date === selectedDay && !j.parked)
     : [];
-  const dayJobs = allDayJobs.filter((j) => jobMatches(j, nav.q));
+  // A day opens biggest-job-first; the headers take it from there.
+  const daySort = nav.sort ?? 'subtotal';
+  const dayDir = nav.dir ?? (nav.sort ? DEFAULT_DIR[daySort] : 'desc');
   const dayTotals = selectedDay ? dayMap.get(selectedDay) : undefined;
 
   const s = data.sinceLast;
@@ -662,7 +673,7 @@ function CalendarView({
             Sitting on ServiceTitan&apos;s {shortDate(PARKED_FROM)} placeholder.
             Real money, nowhere to put it on a calendar yet.{' '}
             <Link
-              href={linkTo(nav, { view: 'parked', q: '', day: null })}
+              href={linkTo(nav, { view: 'parked', sort: null, dir: null, day: null })}
               className="font-headline text-[10px] font-extrabold uppercase tracking-ribbon text-orange hover:underline"
             >
               See the list &rarr;
@@ -683,7 +694,7 @@ function CalendarView({
             Mostly waiting on a customer&apos;s approval. Kept out of every figure
             on this page on purpose.{' '}
             <Link
-              href={linkTo(nav, { view: 'hold', q: '', day: null })}
+              href={linkTo(nav, { view: 'hold', sort: null, dir: null, day: null })}
               className="font-headline text-[10px] font-extrabold uppercase tracking-ribbon text-fg-2 hover:text-orange hover:underline"
             >
               See the list &rarr;
@@ -776,7 +787,7 @@ function CalendarView({
             unit={unit}
             today={today}
             selectedDay={selectedDay}
-            hrefForDay={(d) => linkTo(nav, { day: d, q: '' })}
+            hrefForDay={(d) => linkTo(nav, { day: d, sort: null, dir: null })}
           />
         </div>
 
@@ -795,7 +806,7 @@ function CalendarView({
               {longDate(selectedDay)}
             </h2>
             <Link
-              href={linkTo(nav, { day: null, q: '' })}
+              href={linkTo(nav, { day: null, sort: null, dir: null })}
               className="font-headline text-[10px] font-extrabold uppercase tracking-ribbon text-fg-3 hover:text-orange"
             >
               Close ✕
@@ -817,13 +828,11 @@ function CalendarView({
               </span>
             )}
           </p>
-          <FilterBox
-            nav={nav}
-            placeholder="Job #, type, salesperson, crew…"
-            showing={dayJobs.length}
-            total={allDayJobs.length}
-          />
-          <JobTable jobs={dayJobs} />
+          <p className="mt-3 text-xs text-fg-3">
+            Click any column heading to reorder the list; click it again to flip
+            it.
+          </p>
+          <JobTable jobs={dayJobs} nav={nav} sort={daySort} dir={dayDir} />
         </section>
       )}
 
@@ -967,7 +976,8 @@ function MonthNav({ nav }: { nav: Nav }) {
           year: prev.getUTCFullYear(),
           month: prev.getUTCMonth() + 1,
           day: null,
-          q: '',
+          sort: null,
+          dir: null,
         })}
         aria-label="Previous month"
         className={arrow}
@@ -982,7 +992,8 @@ function MonthNav({ nav }: { nav: Nav }) {
           year: next.getUTCFullYear(),
           month: next.getUTCMonth() + 1,
           day: null,
-          q: '',
+          sort: null,
+          dir: null,
         })}
         aria-label="Next month"
         className={arrow}
@@ -1043,7 +1054,7 @@ function MonthOutlook({
         return (
           <li key={r.month}>
             <Link
-              href={linkTo(nav, { year: y, month: m, day: null, q: '' })}
+              href={linkTo(nav, { year: y, month: m, day: null, sort: null, dir: null })}
               className={`flex items-center gap-3 rounded-2 border-2 px-3 py-2 transition-colors ${
                 isCurrent
                   ? 'border-orange bg-orange/[0.06]'

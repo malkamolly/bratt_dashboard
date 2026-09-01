@@ -733,38 +733,110 @@ export function phcTotal(byUnit: UnitTotals | undefined): number {
 }
 
 // ---------------------------------------------------------------------------
-// Filtering a list
+// Sorting a list
 // ---------------------------------------------------------------------------
+// The job lists are worked by eye: "what's the biggest thing on hold", "what
+// has Brent got parked", "what's been sitting since March". All of those are
+// answered by reordering the list, not by narrowing it — so the column headers
+// sort, and there is no filter box.
+//
+// BLANKS ALWAYS SINK. A job with no salesperson sorts to the bottom whichever
+// direction you pick. Flipping direction to "find the empty ones" is a trick
+// nobody performs on purpose, and having them jump to the top of a descending
+// sort just buries the row you were actually looking for.
+
+export type SortKey =
+  | 'date'
+  | 'job'
+  | 'type'
+  | 'unit'
+  | 'soldBy'
+  | 'soldOn'
+  | 'crew'
+  | 'city'
+  | 'subtotal';
+
+export type SortDir = 'asc' | 'desc';
+
+export function isSortKey(v: unknown): v is SortKey {
+  return (
+    typeof v === 'string' &&
+    ['date', 'job', 'type', 'unit', 'soldBy', 'soldOn', 'crew', 'city', 'subtotal'].includes(v)
+  );
+}
 
 /**
- * Does this job match a free-text filter?
+ * The direction a column should take when you first click it.
  *
- * One box across everything someone would plausibly type: a job number, a job
- * type, a salesperson, a crew member, a city, a zip, a status. Deliberately not
- * a set of dropdowns — the lists are worked by people looking for one thing
- * they can already name, and a dropdown per field is five clicks to do what
- * typing "stump" does.
- *
- * Multiple words must ALL match (somewhere), so "stump edina" narrows rather
- * than widens.
+ * Money and dates open on the end people mean: the biggest jobs, the oldest
+ * dates. Text opens A-Z. Getting this right is the difference between one click
+ * and two on every single sort.
  */
-export function jobMatches(j: ScheduledJob, query: string): boolean {
-  const terms = query.trim().toLowerCase().split(/\s+/).filter(Boolean);
-  if (terms.length === 0) return true;
-  const hay = [
-    j.jobNumber,
-    j.jobType,
-    j.campaign,
-    j.statusRaw,
-    j.soldBy,
-    j.city,
-    j.zip,
-    UNIT_LABELS[j.unit],
-    ...j.crew,
-  ]
-    .join(' ')
-    .toLowerCase();
-  return terms.every((t) => hay.includes(t));
+export const DEFAULT_DIR: Record<SortKey, SortDir> = {
+  date: 'asc',
+  job: 'asc',
+  type: 'asc',
+  unit: 'asc',
+  soldBy: 'asc',
+  soldOn: 'asc',
+  crew: 'asc',
+  city: 'asc',
+  subtotal: 'desc',
+};
+
+/** What each column sorts on. Blank/absent reads as null, which sinks. */
+function sortValue(j: ScheduledJob, key: SortKey): string | number | null {
+  switch (key) {
+    case 'date':
+      return j.date;
+    case 'job':
+      return j.jobNumber || null;
+    case 'type':
+      return j.jobType || null;
+    case 'unit':
+      return UNIT_LABELS[j.unit];
+    case 'soldBy':
+      return j.soldBy || null;
+    case 'soldOn':
+      return j.soldOn;
+    case 'crew':
+      // An unassigned job has no crew to alphabetise, so it sinks with the
+      // other blanks rather than filing under "U".
+      return j.crew.length ? j.crew.join(', ') : null;
+    case 'city':
+      return j.city || null;
+    case 'subtotal':
+      // A $0 job is a real answer, not a blank — sign posting and clam pick-ups
+      // genuinely cost nothing — so it sorts as zero rather than sinking.
+      return j.subtotal;
+  }
+}
+
+/**
+ * A sorted copy. Never sorts in place: the caller's array is the stored payload
+ * shared by everything else on the page.
+ *
+ * Ties break on job number so the order is stable — without it, two $750 jobs
+ * can swap places between renders and the list flickers as you page around.
+ */
+export function sortJobs(
+  jobs: ScheduledJob[],
+  key: SortKey,
+  dir: SortDir,
+): ScheduledJob[] {
+  const sign = dir === 'asc' ? 1 : -1;
+  return [...jobs].sort((a, b) => {
+    const av = sortValue(a, key);
+    const bv = sortValue(b, key);
+    if (av === null && bv === null) return a.jobNumber.localeCompare(b.jobNumber);
+    if (av === null) return 1; // blanks sink, both directions
+    if (bv === null) return -1;
+    const cmp =
+      typeof av === 'number' && typeof bv === 'number'
+        ? av - bv
+        : String(av).localeCompare(String(bv), 'en', { numeric: true });
+    return cmp !== 0 ? cmp * sign : a.jobNumber.localeCompare(b.jobNumber);
+  });
 }
 
 // ---------------------------------------------------------------------------
