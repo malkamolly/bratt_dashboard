@@ -55,6 +55,10 @@ function isPublic(pathname: string) {
   // middleware must not redirect these to /login — the bearer-token check in
   // the route handlers is the entire gate. See lib/receivables-api.ts.
   if (pathname.startsWith('/api/receivables/')) return true;
+  // Same deal for the twice-daily scheduled-revenue import/summary: bearer
+  // token only, no session, so middleware must not redirect it to /login.
+  // See lib/scheduled-revenue-api.ts.
+  if (pathname.startsWith('/api/scheduled-revenue/')) return true;
   return PUBLIC_PATHS.some((p) => pathname === p || pathname.startsWith(p + '/'));
 }
 
