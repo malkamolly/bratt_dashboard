@@ -32,7 +32,12 @@
 // ============================================================================
 
 import Link from 'next/link';
-import { requireHubAccess, canUploadScheduledRevenue } from '@/lib/auth';
+import {
+  requireHubAccess,
+  canUploadScheduledRevenue,
+  canSeePastDated,
+} from '@/lib/auth';
+import { CopyButton } from '@/components/CopyButton';
 import { loadActiveScheduledRevenue } from '@/lib/scheduled-revenue-data';
 import {
   UNIT_ORDER,
@@ -68,11 +73,14 @@ export const dynamic = 'force-dynamic';
  * from everything else on the page, and you lost your month and your place
  * getting back.
  *
- * The names here are the SERVICETITAN ones ('hold', 'parked') because that's
- * what the data says; the page calls them "Waiting on approval" and
+ * Two of the names here are the SERVICETITAN ones ('hold', 'parked') because
+ * that's what the data says; the page calls them "Waiting on approval" and
  * "Unscheduled", which is what people here call them.
+ *
+ * 'pastdated' is ours, and is only reachable by the people in PAST_DATED_EMAILS
+ * — see the note on that list in lib/auth.ts.
  */
-type OpenList = 'hold' | 'parked';
+type OpenList = 'hold' | 'parked' | 'pastdated';
 
 type Search = Promise<{
   list?: string;
@@ -337,6 +345,7 @@ export default async function RevenueCalendarPage({
   // Production / office audience: admin, office, sales manager.
   const user = await requireHubAccess('pace');
   const canUpload = canUploadScheduledRevenue(user.role);
+  const showPastDated = canSeePastDated(user.email);
   const sp = await searchParams;
   const active = await loadActiveScheduledRevenue();
 
@@ -344,7 +353,7 @@ export default async function RevenueCalendarPage({
   const [todayYear, todayMonth] = today.split('-').map(Number);
 
   const nav: Nav = {
-    list: sp.list === 'hold' ? 'hold' : sp.list === 'parked' ? 'parked' : null,
+    list: isOpenList(sp.list) ? sp.list : null,
     year: clampInt(sp.year, todayYear, 2020, 2099),
     month: clampInt(sp.month, todayMonth, 1, 12),
     unit: isBusinessUnit(sp.unit) ? sp.unit : null,
@@ -394,10 +403,15 @@ export default async function RevenueCalendarPage({
           today={today}
           nav={nav}
           canUpload={canUpload}
+          showPastDated={showPastDated}
         />
       )}
     </main>
   );
+}
+
+function isOpenList(v: unknown): v is OpenList {
+  return v === 'hold' || v === 'parked' || v === 'pastdated';
 }
 
 function clampInt(
@@ -480,6 +494,7 @@ function ListPanel({
   blurb,
   showDate,
   defaultSort,
+  copyText,
 }: {
   nav: Nav;
   jobs: ScheduledJob[];
@@ -488,6 +503,9 @@ function ListPanel({
   showDate?: boolean;
   /** How this list opens before anyone touches a header. */
   defaultSort: { key: SortKey; dir: SortDir };
+  /** When set, a Copy button putting this on the clipboard. Plain text, for
+   *  pasting the list into a message. */
+  copyText?: string;
 }) {
   const sort = nav.sort ?? defaultSort.key;
   const dir = nav.dir ?? (nav.sort ? DEFAULT_DIR[sort] : defaultSort.dir);
@@ -498,13 +516,16 @@ function ListPanel({
           {title} &mdash; {jobs.length} {jobs.length === 1 ? 'job' : 'jobs'},{' '}
           {fmtUsd(sumOf(jobs))}
         </h2>
-        <Link
-          href={linkTo(nav, { list: null, sort: null, dir: null })}
-          scroll={false}
-          className="font-headline text-[10px] font-extrabold uppercase tracking-ribbon text-fg-3 hover:text-orange"
-        >
-          Close ✕
-        </Link>
+        <div className="flex items-center gap-3">
+          {copyText && <CopyButton text={copyText} label={`Copy ${jobs.length} jobs`} />}
+          <Link
+            href={linkTo(nav, { list: null, sort: null, dir: null })}
+            scroll={false}
+            className="font-headline text-[10px] font-extrabold uppercase tracking-ribbon text-fg-3 hover:text-orange"
+          >
+            Close ✕
+          </Link>
+        </div>
       </div>
       <p className="mt-2 max-w-2xl text-sm text-fg-2">{blurb}</p>
       <p className="mt-2 text-xs text-fg-3">
@@ -521,12 +542,16 @@ function Report({
   today,
   nav,
   canUpload,
+  showPastDated,
 }: {
   data: ScheduledRevenueData;
   uploadedAt: string;
   today: string;
   nav: Nav;
   canUpload: boolean;
+  /** The past-dated list is gated to specific people; everyone else doesn't
+   *  see the tile at all. See PAST_DATED_EMAILS in lib/auth.ts. */
+  showPastDated: boolean;
 }) {
   const { year, month, unit, day: selectedDay } = nav;
 
@@ -540,6 +565,11 @@ function Report({
     (j) => j.status === 'hold' && j.parked,
   ).length;
   const unscheduledJobs = data.jobs.filter((j) => j.parked);
+  // Firm work still sitting on a day that has gone by. Same definition
+  // pastDated() sums, so the list and the tile can't disagree.
+  const pastDatedJobs = data.jobs.filter(
+    (j) => j.date && j.date < today && !j.parked && j.status !== 'hold',
+  );
   const dayMap = new Map(data.days.map((d) => [d.date, d]));
   const monthKey = `${year}-${String(month).padStart(2, '0')}`;
   const thisMonth = data.months.find((m) => m.month === monthKey);
@@ -558,9 +588,11 @@ function Report({
   const dayJobs = selectedDay
     ? data.jobs.filter((j) => j.date === selectedDay && !j.parked)
     : [];
-  // A day opens biggest-job-first; the headers take it from there.
-  const daySort = nav.sort ?? 'subtotal';
-  const dayDir = nav.dir ?? (nav.sort ? DEFAULT_DIR[daySort] : 'desc');
+  // A day opens grouped by crew, because that's how a day is actually read:
+  // who is where, and what are they worth. The headers take it from there —
+  // click Subtotal for the biggest jobs.
+  const daySort = nav.sort ?? 'crew';
+  const dayDir = nav.dir ?? (nav.sort ? DEFAULT_DIR[daySort] : 'asc');
   const dayTotals = selectedDay ? dayMap.get(selectedDay) : undefined;
 
   const s = data.sinceLast;
@@ -568,7 +600,11 @@ function Report({
   return (
     <>
       {/* ---- headline figures ------------------------------------------- */}
-      <section className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+      <section
+        className={`grid grid-cols-2 gap-3 ${
+          showPastDated ? 'lg:grid-cols-4' : 'lg:grid-cols-3'
+        }`}
+      >
         <Tile
           label={unit ? `On the board · ${UNIT_SHORT[unit]}` : 'On the board'}
           value={fmtUsd(board.revenue)}
@@ -584,16 +620,14 @@ function Report({
           value={fmtUsd(next90.revenue)}
           note={`${next90.jobs} jobs`}
         />
-        <Tile
-          label="Past-dated"
-          value={fmtUsd(behind.revenue)}
-          note={
-            behind.jobs > 0
-              ? `${behind.jobs} jobs still sitting on days that have gone by${unit ? ' (all units)' : ''}`
-              : 'Nothing stale on the board'
-          }
-          tone={behind.revenue > 0 ? 'alarm' : 'muted'}
-        />
+        {showPastDated && (
+          <PastDatedTile
+            nav={nav}
+            revenue={behind.revenue}
+            jobs={behind.jobs}
+            unitFiltered={unit !== null}
+          />
+        )}
       </section>
 
       {/* ---- unscheduled, then waiting ----------------------------------
@@ -633,6 +667,18 @@ function Report({
           title="Unscheduled"
           blurb={`Sold work with no real date yet — ServiceTitan parks it on ${shortDate(PARKED_FROM)}. Biggest first: every one of these is a day on the calendar waiting to happen.`}
           defaultSort={{ key: 'subtotal', dir: 'desc' }}
+        />
+      )}
+
+      {showPastDated && nav.list === 'pastdated' && (
+        <ListPanel
+          nav={nav}
+          jobs={pastDatedJobs}
+          title="Past-dated"
+          blurb="Scheduled on a day that has already gone by, and never closed out. Either the work happened and the job wasn’t updated, or it slipped and nobody moved it. Oldest first."
+          showDate
+          defaultSort={{ key: 'date', dir: 'asc' }}
+          copyText={pastDatedMessage(pastDatedJobs, today)}
         />
       )}
 
@@ -866,6 +912,99 @@ function SourceList({ data }: { data: ScheduledRevenueData }) {
       )}
     </p>
   );
+}
+
+/**
+ * The past-dated tile, which is also a button.
+ *
+ * Same headline number as the other three tiles, but it opens its list — this
+ * is the one figure on the page that's a to-do rather than a report, and the
+ * only useful next move is seeing which jobs it's made of.
+ *
+ * The unit filter deliberately doesn't apply. Stale work is stale whichever
+ * crew it belongs to, and a filtered version of this number would quietly
+ * under-report what's outstanding.
+ */
+function PastDatedTile({
+  nav,
+  revenue,
+  jobs,
+  unitFiltered,
+}: {
+  nav: Nav;
+  revenue: number;
+  jobs: number;
+  unitFiltered: boolean;
+}) {
+  const isOpen = nav.list === 'pastdated';
+  const empty = jobs === 0;
+  return (
+    <Link
+      href={linkTo(nav, {
+        list: isOpen || empty ? null : 'pastdated',
+        day: null,
+        sort: null,
+        dir: null,
+      })}
+      scroll={false}
+      aria-expanded={isOpen}
+      className={`block rounded-card border-[3px] p-4 transition-colors ${
+        isOpen ? 'border-orange' : 'border-paper-edge hover:border-orange'
+      } bg-white`}
+    >
+      <p className="font-headline text-[10px] font-extrabold uppercase tracking-ribbon text-fg-3">
+        Past-dated
+      </p>
+      <p
+        className={`mt-1 font-headline text-3xl font-black ${
+          empty ? 'text-fg-2' : 'text-status-behind'
+        }`}
+      >
+        {fmtUsd(revenue)}
+      </p>
+      <p className="mt-1 text-xs text-fg-2">
+        {empty ? (
+          'Nothing stale on the board'
+        ) : (
+          <>
+            {jobs} jobs still sitting on days that have gone by
+            {unitFiltered && ' (all units)'}{' '}
+            <span className="font-headline text-[10px] font-extrabold uppercase tracking-ribbon text-orange">
+              {isOpen ? 'Hide ▴' : 'Show ▾'}
+            </span>
+          </>
+        )}
+      </p>
+    </Link>
+  );
+}
+
+/**
+ * The past-dated list as plain text, for pasting into a message.
+ *
+ * Written to be read by a person in Slack, not parsed: the header says what the
+ * list IS and when it was taken, because a bare list of job numbers arriving in
+ * someone's DMs is a puzzle rather than a request. Oldest first, which is the
+ * order they need working in.
+ */
+function pastDatedMessage(jobs: ScheduledJob[], today: string): string {
+  const ordered = sortJobs(jobs, 'date', 'asc');
+  const total = sumOf(ordered);
+  const lines = [
+    `Past-dated jobs on the board — ${ordered.length} ${ordered.length === 1 ? 'job' : 'jobs'}, ${fmtUsd(total)}`,
+    `As of ${longDate(today)}. These are scheduled on days that have already gone by and haven't been closed out — either the work happened and the job wasn't updated, or it slipped and nobody moved it.`,
+    '',
+  ];
+  for (const j of ordered) {
+    const money = j.subtotal > 0 ? fmtUsdCents(j.subtotal) : 'no $';
+    lines.push(
+      `• ${j.date ? shortDate(j.date) : '—'} · Job ${j.jobNumber} · ${j.jobType || 'Job'} (${UNIT_SHORT[j.unit]}) · ${money}`,
+    );
+    lines.push(
+      `  ${j.city || 'no city'} · Crew: ${j.crew.length ? j.crew.join(', ') : 'Unassigned'} · Sold by: ${j.soldBy || '—'}`,
+    );
+  }
+  return lines.join('\n');
 }
 
 /**

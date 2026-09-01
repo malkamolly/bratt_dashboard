@@ -184,6 +184,24 @@ export function canSeeReviewStats(email: string | null | undefined): boolean {
   return !!email && REVIEW_STATS_EMAILS.includes(email.toLowerCase());
 }
 
+// The "past-dated" list on the Revenue Calendar — jobs that were scheduled on a
+// day that has since gone by and never got closed out. Restricted to specific
+// PEOPLE, not a role, like Cost Analysis and Proposal Reviews above.
+//
+// Deliberately not open to the hub: the headline figure is fine, but the LIST
+// names jobs, crews and salespeople on work that didn't get finished, which
+// reads as a scoreboard whatever the intent. It's a triage list for one person
+// to work through and send on to whoever should look at a given job.
+export const PAST_DATED_EMAILS: readonly string[] = [
+  'molly@bratttree.com',
+];
+
+/** Can this person see the past-dated jobs list? Gated by email,
+ *  case-insensitive. */
+export function canSeePastDated(email: string | null | undefined): boolean {
+  return !!email && PAST_DATED_EMAILS.includes(email.toLowerCase());
+}
+
 // ---------------------------------------------------------------------------
 // Follow-Up Scorecard — embargoed release
 // ---------------------------------------------------------------------------
