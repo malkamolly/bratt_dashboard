@@ -6,10 +6,18 @@
 // the state — a month + filter + open day can be pasted into Slack and land
 // someone on exactly what you were looking at.
 //
-// WHAT A SQUARE SHOWS
-//   the day number, the day's FIRM revenue, and the job count.
-// Held work is a footnote on the square, never part of the figure. See the pile
-// notes in lib/scheduled-revenue.ts for why.
+// WHAT A SQUARE SHOWS — three lines, in this order:
+//   TREE WORK   biggest and boldest. It's the number the schedule is built
+//               around, and the one people are looking for.
+//   PHC         its own line, because Plant Health Care runs on its own techs
+//               and trucks — a $30k tree day and a $30k PHC day are completely
+//               different days to whoever is staffing them.
+//   TOTAL       the two added up, under a rule.
+// The PHC line is drawn even when it's empty, so the three lines land in the
+// same place on every square and the grid can be scanned down a column.
+//
+// Held work is a footnote on the square, never part of any of the three. See
+// the pile notes in lib/scheduled-revenue.ts for why.
 //
 // The shading is a heat map against the busiest day IN THIS MONTH, not against
 // the year. A quiet February would otherwise render as a uniformly blank grid
@@ -20,6 +28,9 @@ import Link from 'next/link';
 import {
   UNIT_COLORS,
   UNIT_ORDER,
+  UNIT_LABELS,
+  treeTotal,
+  phcTotal,
   type BusinessUnit,
   type DayTotals,
 } from '@/lib/scheduled-revenue';
@@ -78,6 +89,8 @@ export function RevenueCalendar({
 }) {
   const { dayCount, lead } = monthShape(year, month);
 
+  // Under a unit filter the square shows that one unit and nothing else — a
+  // tree/PHC split is meaningless when you've already picked one of them.
   const valueOf = (d: DayTotals | undefined): number => {
     if (!d) return 0;
     return unit ? d.byUnit[unit] : d.firmRevenue;
@@ -103,6 +116,8 @@ export function RevenueCalendar({
     const totals = days.get(key);
     const value = valueOf(totals);
     const jobs = jobsOf(totals);
+    const tree = treeTotal(totals?.byUnit);
+    const phc = phcTotal(totals?.byUnit);
     const hold = totals?.holdRevenue ?? 0;
     const isToday = key === today;
     const isPast = key < today;
@@ -122,7 +137,7 @@ export function RevenueCalendar({
         scroll={false}
         aria-current={isToday ? 'date' : undefined}
         className={[
-          'group relative flex min-h-[5.5rem] flex-col rounded-2 border-2 p-1.5 transition-colors',
+          'group relative flex min-h-[6.75rem] flex-col rounded-2 border-2 p-1.5 transition-colors',
           isSelected
             ? 'border-orange ring-2 ring-orange/30'
             : isToday
@@ -153,20 +168,37 @@ export function RevenueCalendar({
         </span>
 
         <span className="relative mt-auto block">
-          <span
-            className={`block font-headline text-sm font-black leading-tight ${
-              value > 0 ? 'text-ink' : 'text-fg-3/50'
-            }`}
-          >
-            {compactUsd(value)}
-          </span>
-          {jobs > 0 && (
-            <span className="block text-[10px] leading-tight text-fg-2">
-              {jobs} {jobs === 1 ? 'job' : 'jobs'}
+          {empty ? (
+            <span className="block font-headline text-sm font-black leading-tight text-fg-3/50">
+              —
             </span>
+          ) : unit ? (
+            <>
+              <span className="block font-headline text-sm font-black leading-tight text-ink">
+                {compactUsd(value)}
+              </span>
+              <span className="block text-[10px] leading-tight text-fg-2">
+                {UNIT_LABELS[unit]} · {jobs} {jobs === 1 ? 'job' : 'jobs'}
+              </span>
+            </>
+          ) : (
+            <>
+              <span className="block font-headline text-[15px] font-black leading-tight text-ink">
+                {compactUsd(tree)}
+              </span>
+              <span className="block text-[10px] leading-tight text-teal-navy">
+                PHC {compactUsd(phc)}
+              </span>
+              <span className="mt-0.5 block border-t border-ink/20 pt-0.5 font-headline text-[11px] font-extrabold leading-tight text-fg-2">
+                {compactUsd(value)}
+                {jobs > 0 && (
+                  <span className="font-normal text-fg-3"> · {jobs}</span>
+                )}
+              </span>
+            </>
           )}
           {hold > 0 && (
-            <span className="block text-[10px] leading-tight text-status-warn">
+            <span className="block text-[10px] leading-tight text-fg-3">
               +{compactUsd(hold)} hold
             </span>
           )}
@@ -227,7 +259,7 @@ export function UnitSplitBar({
               style={{ backgroundColor: UNIT_COLORS[r.unit] }}
             />
             <span className="font-headline font-extrabold uppercase tracking-ribbon text-fg-2">
-              {UNIT_LABEL[r.unit]}
+              {UNIT_SHORT_LABEL[r.unit]}
             </span>{' '}
             <strong className="font-headline font-black text-ink">
               {fmtUsd(r.value)}
@@ -242,7 +274,9 @@ export function UnitSplitBar({
   );
 }
 
-const UNIT_LABEL: Record<BusinessUnit, string> = {
+/** Legend labels. PHC is spelled short here because the bar is tight; the tiles
+ *  and filters use the full UNIT_LABELS. */
+const UNIT_SHORT_LABEL: Record<BusinessUnit, string> = {
   residential: 'Residential',
   commercial: 'Commercial',
   municipal: 'Municipal',

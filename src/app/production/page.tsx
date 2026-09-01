@@ -762,6 +762,12 @@ function Header({
             </Link>
           </>
         )}
+        <Link
+          href="/production/revenue-calendar"
+          className="inline-flex items-center rounded-full border-2 border-bark bg-white px-4 py-2 font-headline text-xs font-extrabold uppercase tracking-ribbon text-bark transition-colors hover:bg-bark hover:text-cream"
+        >
+          Revenue Calendar
+        </Link>
         <MonthPicker year={year} month={month} />
       </div>
     </section>

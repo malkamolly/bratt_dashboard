@@ -16,7 +16,12 @@
 //
 // TWO INTAKES, behind a content-type branch:
 //   application/json     -> already-extracted rows plus a checksum (preferred)
-//   multipart/form-data  -> the spreadsheet itself
+//   multipart/form-data  -> the spreadsheets themselves
+//
+// EITHER INTAKE TAKES MORE THAN ONE REPORT, and normally needs to. ServiceTitan
+// will only SCHEDULE a report that looks out 365 days, so the far-future parked
+// work comes from a second report. JSON sends them as `parts`; multipart sends
+// several files. Each is checked against its own grand-total row, then merged.
 // They meet at persistScheduledRevenueReport(), so the day/month maths has one
 // implementation and the two cannot report different numbers from the same
 // data. Anything else -> 415.
@@ -119,8 +124,15 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const file = form.get('file');
-  if (!(file instanceof File)) {
+  // Every File in the body, under any field name. Deliberately forgiving: a
+  // caller sending `file`, `file` again, or `file1`/`file2` all mean the same
+  // thing, and rejecting one spelling would be a puzzle to debug from a
+  // scheduled job's logs.
+  const files: File[] = [];
+  for (const [, v] of form.entries()) {
+    if (v instanceof File && v.size > 0) files.push(v);
+  }
+  if (files.length === 0) {
     await logCall(supabase, {
       endpoint: 'import',
       outcome: 'bad_request',
@@ -128,8 +140,12 @@ export async function POST(req: NextRequest) {
       clientIp: ip,
       reason: 'no file field',
     });
-    return NextResponse.json({ error: 'missing "file" field' }, { status: 400 });
+    return NextResponse.json(
+      { error: 'missing "file" field (send one file per report)' },
+      { status: 400 },
+    );
   }
+  const fileNames = files.map((f) => f.name || 'upload.xlsx').join(' + ');
 
   // Optional; defaults to today in Central, since a UTC "today" is already
   // tomorrow by the time the 7:30pm run fires.
@@ -151,8 +167,12 @@ export async function POST(req: NextRequest) {
 
   try {
     const result = await importScheduledRevenueReport({
-      bytes: Buffer.from(await file.arrayBuffer()),
-      filename: file.name || 'upload.xlsx',
+      files: await Promise.all(
+        files.map(async (f) => ({
+          bytes: Buffer.from(await f.arrayBuffer()),
+          filename: f.name || 'upload.xlsx',
+        })),
+      ),
       uploadedBy: 'api:scheduled-revenue-import',
       sourceDate,
       maxBytes: API_MAX_BYTES,
@@ -166,7 +186,7 @@ export async function POST(req: NextRequest) {
         statusCode: result.status,
         clientIp: ip,
         sourceDate,
-        sourceFilename: file.name,
+        sourceFilename: fileNames,
         reason: result.reason,
       });
       return NextResponse.json({ error: result.reason }, { status: result.status });
@@ -179,7 +199,7 @@ export async function POST(req: NextRequest) {
       statusCode: 200,
       clientIp: ip,
       sourceDate,
-      sourceFilename: file.name,
+      sourceFilename: fileNames,
       rowsRead: result.rowsRead,
       jobCount: result.data.totals.allJobs,
       firmRevenue: result.data.totals.firmRevenue,
@@ -197,7 +217,7 @@ export async function POST(req: NextRequest) {
       statusCode: 500,
       clientIp: ip,
       sourceDate,
-      sourceFilename: file.name,
+      sourceFilename: fileNames,
       reason: String(e),
     });
     console.error('[scheduled-revenue/import]', e);
@@ -270,7 +290,8 @@ async function handleJson(
       rows: parsed.rows,
       sourceDate: parsed.sourceDate,
       uploadedBy: 'api:scheduled-revenue-import-json',
-      sourceLabel: `json:${parsed.sourceDate}`,
+      sourceLabel: parsed.sources.map((p) => p.label).join(' + ') || 'json',
+      sources: parsed.sources,
       supabase,
     });
 

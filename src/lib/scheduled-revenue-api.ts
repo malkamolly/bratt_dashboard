@@ -22,12 +22,15 @@ import {
   UNIT_ORDER,
   UNIT_LABELS,
   STATUS_LABELS,
-  horizon,
+  horizonSplit,
   pastDated,
   addDays,
+  treeTotal,
+  phcTotal,
   round2,
   type BusinessUnit,
   type ScheduledRevenueData,
+  type SourcePart,
 } from '@/lib/scheduled-revenue';
 
 /** Requests per hour, per caller IP, across both endpoints. The scheduled job
@@ -168,11 +171,17 @@ export type UnitRow = {
   jobs: number;
 };
 
-export type WeekRow = {
-  /** Monday of the week, 'YYYY-MM-DD'. */
-  weekOf: string;
+export type Window = {
   revenue: number;
   jobs: number;
+  /** Everything that isn't Plant Health Care. */
+  tree: number;
+  phc: number;
+};
+
+export type WeekRow = Window & {
+  /** Monday of the week, 'YYYY-MM-DD'. */
+  weekOf: string;
 };
 
 export type SummaryBody = {
@@ -188,10 +197,17 @@ export type SummaryBody = {
   counts: 'firm-only';
   firmStatuses: string[];
 
-  onTheBoard: { revenue: number; jobs: number };
-  next7: { revenue: number; jobs: number };
-  next30: { revenue: number; jobs: number };
-  next90: { revenue: number; jobs: number };
+  /**
+   * Every horizon carries the tree-work / PHC split alongside its total.
+   *
+   * PHC runs on its own techs and its own trucks, so a $30k tree day and a $30k
+   * PHC day are completely different days to whoever is staffing them. `tree`
+   * is everything that isn't PHC, and `tree + phc === revenue`.
+   */
+  onTheBoard: Window;
+  next7: Window;
+  next30: Window;
+  next90: Window;
 
   /** Firm work still sitting on days that have already passed — scheduled and
    *  never closed out. Not a forecast; a to-do list. */
@@ -203,8 +219,25 @@ export type SummaryBody = {
   parked: { revenue: number; jobs: number; parkedFrom: string };
 
   byUnit: UnitRow[];
-  byMonth: { month: string; revenue: number; jobs: number; holdRevenue: number }[];
+  byMonth: {
+    month: string;
+    revenue: number;
+    jobs: number;
+    tree: number;
+    phc: number;
+    holdRevenue: number;
+  }[];
   nextWeeks: WeekRow[];
+
+  /**
+   * The reports this snapshot was built from.
+   *
+   * There is normally more than one: ServiceTitan won't SCHEDULE a report that
+   * looks out past 365 days, so the far-future parked work arrives separately.
+   * One entry here where you expected two means half the board is missing —
+   * every checksum would still have passed.
+   */
+  sources: SourcePart[];
 
   /** Movement against the previous DAY's snapshot. Null when there is no prior
    *  snapshot — never zeros, which would read as "nothing moved". */
@@ -256,8 +289,7 @@ export function buildSummaryBody(
   const nextWeeks: WeekRow[] = [];
   for (let w = 0; w < 8; w++) {
     const from = addDays(firstMonday, w * 7);
-    const h = horizon(data, from, 7);
-    nextWeeks.push({ weekOf: from, revenue: h.revenue, jobs: h.jobs });
+    nextWeeks.push({ weekOf: from, ...horizonSplit(data, from, 7) });
   }
 
   const s = data.sinceLast;
@@ -274,10 +306,14 @@ export function buildSummaryBody(
     onTheBoard: {
       revenue: data.totals.firmRevenue,
       jobs: data.totals.firmJobs,
+      tree: round2(
+        byUnit.reduce((n, r) => (r.unit === 'phc' ? n : n + r.revenue), 0),
+      ),
+      phc: round2(byUnit.find((r) => r.unit === 'phc')?.revenue ?? 0),
     },
-    next7: horizon(data, asOf, 7),
-    next30: horizon(data, asOf, 30),
-    next90: horizon(data, asOf, 90),
+    next7: horizonSplit(data, asOf, 7),
+    next30: horizonSplit(data, asOf, 30),
+    next90: horizonSplit(data, asOf, 90),
     pastDated: pastDated(data, asOf),
 
     onHold: { revenue: data.totals.holdRevenue, jobs: data.totals.holdJobs },
@@ -292,9 +328,12 @@ export function buildSummaryBody(
       month: m.month,
       revenue: m.firmRevenue,
       jobs: m.firmJobs,
+      tree: treeTotal(m.byUnit),
+      phc: phcTotal(m.byUnit),
       holdRevenue: m.holdRevenue,
     })),
     nextWeeks,
+    sources: data.meta.sources ?? [],
 
     sinceLast: s
       ? {

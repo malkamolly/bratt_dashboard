@@ -7,28 +7,38 @@
 // write is reachable until the body has passed.
 //
 // WHY JSON EXISTS AT ALL
-// The scheduled job that refreshes this twice a day reads the export out of a
+// The scheduled job that refreshes this twice a day reads the exports out of a
 // mail or drive connector, which exposes a spreadsheet's CONTENTS but not its
-// bytes. Rebuilding an .xlsx just to satisfy a file upload would be a lot of
-// machinery to produce a file nobody looks at. Sending the rows directly is
-// both simpler and safer — see the checksum note below.
+// bytes. Rebuilding an .xlsx to satisfy a file upload would be a lot of
+// machinery to produce a file nobody looks at.
+//
+// WHY THERE IS MORE THAN ONE REPORT
+// ServiceTitan will only SCHEDULE a report that looks out 365 days. The
+// far-future parked work (everything sitting on 01/01/2030) therefore cannot be
+// in the same scheduled report as the next twelve months — it needs a second
+// one. So a body may carry either a single report or several `parts`, each with
+// its OWN checksum taken from its OWN grand-total row.
 //
 // THE CHECKSUM IS THE POINT
-// A half-read spreadsheet has nothing to fail against: it just quietly imports
-// fewer jobs, and the calendar shows a lighter November than reality. A
-// half-read extraction fails the checksum and is refused. That is the entire
-// reason this path is preferred over uploading a file.
+// A half-read spreadsheet has nothing to fail against: it quietly imports fewer
+// jobs and the calendar shows a lighter November. A half-read extraction fails
+// its checksum and is refused. Per-part checksums matter more here, not less: a
+// single combined total would still pass if one whole report never arrived and
+// the sender totalled only what it had.
 // ============================================================================
 
-import { isIsoDay, type RawJob } from '@/lib/scheduled-revenue';
+import { isIsoDay, type RawJob, type SourcePart } from '@/lib/scheduled-revenue';
 
-/** Vercel's request-body ceiling is ~4.5 MB; a day's export is ~300 KB as
- *  JSON. This is a guardrail, not a limit anyone meets. */
+/** Vercel's request-body ceiling is ~4.5 MB; both reports together are well
+ *  under 400 KB as JSON. A guardrail, not a limit anyone meets. */
 export const JSON_MAX_BYTES = 2 * 1024 * 1024;
 
 /** More rows than the company could plausibly have on the board. Stops a
  *  runaway extraction before it becomes a 30 MB payload. */
 const MAX_ROWS = 20_000;
+
+/** More reports than anyone should be stitching together by hand. */
+const MAX_PARTS = 6;
 
 export type JsonOutcome =
   | {
@@ -36,6 +46,9 @@ export type JsonOutcome =
       rows: RawJob[];
       sourceDate: string;
       rowsRead: number;
+      sources: SourcePart[];
+      /** Jobs that appeared in more than one report. The later one wins. */
+      duplicatesDropped: number;
     }
   | { ok: false; status: 413 | 422; reason: string };
 
@@ -75,8 +88,18 @@ function day(v: unknown, where: string): string | null | { err: string } {
   return v;
 }
 
+/** An optional free-text field, trimmed. Absent reads as empty, not as an
+ *  error — none of these decide a number. */
+function str(v: unknown): string {
+  return typeof v === 'string' ? v.trim() : '';
+}
+
 /**
  * Parse and validate a JSON import body.
+ *
+ * Accepts either shape:
+ *   { sourceDate, checksum, jobs }            one report
+ *   { sourceDate, parts: [{ label?, checksum, jobs }, ...] }   several
  *
  * @param body     the already-parsed JSON
  * @param byteSize the raw body's size, measured before parsing so an oversized
@@ -97,28 +120,98 @@ export function rowsFromJsonBody(body: unknown, byteSize: number): JsonOutcome {
     return bad('sourceDate is required and must be "YYYY-MM-DD".');
   }
 
-  if (!Array.isArray(body.jobs)) {
-    return bad('jobs is required and must be an array.');
-  }
-  const raw = body.jobs;
-  if (raw.length === 0) return bad('jobs must not be empty.');
-  if (raw.length > MAX_ROWS) {
-    return bad(`jobs holds ${raw.length} rows; the limit is ${MAX_ROWS}.`);
+  // Normalise both shapes into a list of parts before validating anything, so
+  // there is exactly one validation path rather than two that can drift.
+  let rawParts: unknown[];
+  if (body.parts !== undefined) {
+    if (body.jobs !== undefined) {
+      return bad('Send either "parts" or a single "jobs" + "checksum" — not both.');
+    }
+    if (!Array.isArray(body.parts) || body.parts.length === 0) {
+      return bad('parts must be a non-empty array.');
+    }
+    if (body.parts.length > MAX_PARTS) {
+      return bad(`parts holds ${body.parts.length} reports; the limit is ${MAX_PARTS}.`);
+    }
+    rawParts = body.parts;
+  } else {
+    rawParts = [{ label: 'report', checksum: body.checksum, jobs: body.jobs }];
   }
 
-  const checksum = body.checksum;
+  const sources: SourcePart[] = [];
+  // Keyed by job number so a job appearing in two reports lands once. The later
+  // part wins, which is the useful direction: the parked report is normally
+  // sent second and is the more specific claim about a job with no real date.
+  const merged = new Map<string, RawJob>();
+  let rowsRead = 0;
+  let duplicatesDropped = 0;
+
+  for (let pi = 0; pi < rawParts.length; pi++) {
+    const part = rawParts[pi];
+    const single = rawParts.length === 1;
+    if (!isObj(part)) return bad(`parts[${pi}]: expected an object.`);
+
+    const label = str(part.label) || (single ? 'report' : `part ${pi + 1}`);
+    const where = single ? '' : `parts[${pi}] (${label}) `;
+
+    const parsed = onePart(part, label, where);
+    if (!parsed.ok) return parsed;
+
+    rowsRead += parsed.rows.length;
+    for (const r of parsed.rows) {
+      if (merged.has(r.jobNumber)) duplicatesDropped++;
+      merged.set(r.jobNumber, r);
+    }
+    sources.push(parsed.source);
+  }
+
+  const rows = [...merged.values()];
+  if (rows.length === 0) return bad('No jobs were sent.');
+  if (rows.length > MAX_ROWS) {
+    return bad(`${rows.length} jobs were sent; the limit is ${MAX_ROWS}.`);
+  }
+
+  return { ok: true, rows, sourceDate, rowsRead, sources, duplicatesDropped };
+}
+
+type PartOutcome =
+  | { ok: true; rows: RawJob[]; source: SourcePart }
+  | { ok: false; status: 422; reason: string };
+
+/** One report: its rows, checked against its own grand-total row. */
+function onePart(
+  part: Record<string, unknown>,
+  label: string,
+  where: string,
+): PartOutcome {
+  const fail = (reason: string): PartOutcome => ({
+    ok: false,
+    status: 422,
+    reason: `${where}${reason}`,
+  });
+
+  if (!Array.isArray(part.jobs)) {
+    return fail('jobs is required and must be an array.');
+  }
+  const raw = part.jobs;
+  if (raw.length === 0) return fail('jobs must not be empty.');
+  if (raw.length > MAX_ROWS) {
+    return fail(`jobs holds ${raw.length} rows; the limit is ${MAX_ROWS}.`);
+  }
+
+  const checksum = part.checksum;
   if (!isObj(checksum)) {
-    return bad(
-      'checksum is required: { rowCount, subtotalSum }, taken from the export’s own grand-total row.',
+    return fail(
+      'checksum is required: { rowCount, subtotalSum }, taken from that report’s own grand-total row.',
     );
   }
   const expectedCount = checksum.rowCount;
   const expectedSum = checksum.subtotalSum;
   if (typeof expectedCount !== 'number' || !Number.isInteger(expectedCount)) {
-    return bad('checksum.rowCount is required and must be a whole number.');
+    return fail('checksum.rowCount is required and must be a whole number.');
   }
   if (typeof expectedSum !== 'number' || !Number.isFinite(expectedSum)) {
-    return bad('checksum.subtotalSum is required and must be a number.');
+    return fail('checksum.subtotalSum is required and must be a number.');
   }
 
   const rows: RawJob[] = [];
@@ -126,37 +219,39 @@ export function rowsFromJsonBody(body: unknown, byteSize: number): JsonOutcome {
 
   for (let i = 0; i < raw.length; i++) {
     const r = raw[i];
-    const where = `jobs[${i}]`;
-    if (!isObj(r)) return bad(`${where}: expected an object.`);
+    const at = `jobs[${i}]`;
+    if (!isObj(r)) return fail(`${at}: expected an object.`);
 
     const jobNumber = r.jobNumber;
     // A string, not a number: JSON numbers silently drop a leading zero, and a
     // job number is an identifier, not a quantity.
     if (typeof jobNumber !== 'string' || !jobNumber.trim()) {
-      return bad(`${where}.jobNumber is required and must be a non-empty string.`);
+      return fail(`${at}.jobNumber is required and must be a non-empty string.`);
     }
 
     const status = r.status;
     if (typeof status !== 'string' || !status.trim()) {
-      return bad(`${where}.status is required (e.g. "Scheduled", "Hold").`);
+      return fail(`${at}.status is required (e.g. "Scheduled", "Hold").`);
     }
 
     const unit = r.businessUnit;
     if (typeof unit !== 'string') {
-      return bad(`${where}.businessUnit must be a string.`);
+      return fail(`${at}.businessUnit must be a string.`);
     }
 
-    const subtotal = money(r.subtotal, `${where}.subtotal`);
-    if (typeof subtotal !== 'number') return bad(subtotal.err);
+    const subtotal = money(r.subtotal, `${at}.subtotal`);
+    if (typeof subtotal !== 'number') return fail(subtotal.err);
 
-    const scheduledDate = day(r.scheduledDate, `${where}.scheduledDate`);
+    const scheduledDate = day(r.scheduledDate, `${at}.scheduledDate`);
     if (scheduledDate != null && typeof scheduledDate !== 'string') {
-      return bad(scheduledDate.err);
+      return fail(scheduledDate.err);
     }
-    const nextApptDate = day(r.nextApptDate, `${where}.nextApptDate`);
+    const nextApptDate = day(r.nextApptDate, `${at}.nextApptDate`);
     if (nextApptDate != null && typeof nextApptDate !== 'string') {
-      return bad(nextApptDate.err);
+      return fail(nextApptDate.err);
     }
+    const soldOn = day(r.soldOn, `${at}.soldOn`);
+    if (soldOn != null && typeof soldOn !== 'string') return fail(soldOn.err);
 
     sum += subtotal;
 
@@ -178,28 +273,31 @@ export function rowsFromJsonBody(body: unknown, byteSize: number): JsonOutcome {
       technicians: str(r.technicians),
       address: str(r.address),
       zip: str(r.zip),
+      soldBy: str(r.soldBy),
+      soldOn,
     });
   }
 
   // Compared in cents, with a cent of tolerance for float summation. The whole
-  // body is validated first so a mismatch names a real total rather than a
-  // partial one.
+  // part is validated first so a mismatch names a real total, not a partial one.
   if (rows.length !== expectedCount) {
-    return bad(
+    return fail(
       `checksum.rowCount says ${expectedCount} but ${rows.length} rows were sent.`,
     );
   }
   if (Math.abs(Math.round(sum * 100) - Math.round(expectedSum * 100)) > 1) {
-    return bad(
+    return fail(
       `checksum.subtotalSum says ${expectedSum.toFixed(2)} but the rows add up to ${sum.toFixed(2)}.`,
     );
   }
 
-  return { ok: true, rows, sourceDate, rowsRead: rows.length };
-}
-
-/** An optional free-text field, trimmed. Absent reads as empty, not as an
- *  error — none of these decide a number. */
-function str(v: unknown): string {
-  return typeof v === 'string' ? v.trim() : '';
+  return {
+    ok: true,
+    rows,
+    source: {
+      label,
+      rowCount: rows.length,
+      subtotal: Math.round(sum * 100) / 100,
+    },
+  };
 }

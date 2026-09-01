@@ -168,6 +168,10 @@ export type RawJob = {
   technicians: string;
   address: string;
   zip: string;
+  /** Verbatim from the export — a full name. Shortened at compute time. */
+  soldBy: string;
+  /** 'YYYY-MM-DD', or null when the export left it blank. */
+  soldOn: IsoDay | null;
 };
 
 /** One job as the page reads it. Names are already house-style. */
@@ -184,6 +188,11 @@ export type ScheduledJob = {
   appointments: number;
   /** First name + last initial, house rule. Never a full surname. */
   crew: string[];
+  /** The salesperson, first name + last initial. Never a full surname. */
+  soldBy: string;
+  /** The day it was sold. How long a job has been waiting is often the whole
+   *  story on a held or parked one. */
+  soldOn: IsoDay | null;
   city: string;
   zip: string;
   /** True when this job sits on the far-future placeholder date. */
@@ -270,6 +279,22 @@ export type ScheduledRevenueMeta = {
   windowEnd: IsoDay | null;
   /** Rows read before cancelled rows were dropped. */
   rowsRead: number;
+  /**
+   * The reports this snapshot was built from, in the order they arrived.
+   *
+   * There is normally more than one. ServiceTitan will only SCHEDULE a report
+   * that looks out 365 days, so the far-future parked work has to come from a
+   * second report — and a snapshot missing half its input should say so on the
+   * page rather than quietly showing a lighter board.
+   */
+  sources: SourcePart[];
+};
+
+/** One report that fed a snapshot. */
+export type SourcePart = {
+  label: string;
+  rowCount: number;
+  subtotal: number;
 };
 
 export type ScheduledRevenueData = {
@@ -468,6 +493,10 @@ export function parseJobGrid(grid: unknown[][]): {
       technicians: String(at(row, 'Assigned Technicians') ?? '').trim(),
       address: String(at(row, 'Location Address') ?? '').trim(),
       zip: String(at(row, 'Location Zip') ?? '').trim(),
+      // Optional columns: absent in exports taken before they were added, so a
+      // missing header reads as blank rather than failing the whole import.
+      soldBy: String(at(row, 'Sold By') ?? '').trim(),
+      soldOn: toIsoDay(at(row, 'Sold On')),
     });
   }
 
@@ -501,6 +530,7 @@ export function computeScheduledRevenue(
     sourceDate?: IsoDay | null;
     cancelledDropped?: number;
     rowsRead?: number;
+    sources?: SourcePart[];
   } = {},
 ): ScheduledRevenueData {
   const jobs: ScheduledJob[] = rows.map((r) => {
@@ -516,6 +546,8 @@ export function computeScheduledRevenue(
       date,
       appointments: r.appointments,
       crew: crewList(r.technicians),
+      soldBy: r.soldBy ? shortName(r.soldBy) : '',
+      soldOn: r.soldOn ?? null,
       city: cityOf(r.address),
       zip: r.zip,
       parked: date != null && date >= PARKED_FROM,
@@ -652,6 +684,7 @@ export function computeScheduledRevenue(
       windowStart,
       windowEnd,
       rowsRead: opts.rowsRead ?? rows.length,
+      sources: opts.sources ?? [],
     },
     jobs,
     days: [...dayMap.values()].sort((a, b) => a.date.localeCompare(b.date)),
@@ -670,6 +703,68 @@ export function crewList(raw: string): string[] {
     .map(shortName);
   // The export sometimes repeats a name across appointments on the same job.
   return [...new Set(names)];
+}
+
+// ---------------------------------------------------------------------------
+// Tree work vs. Plant Health Care
+// ---------------------------------------------------------------------------
+// The split that matters day to day: PHC runs on its own techs and its own
+// trucks, so a $30k day made of tree work and a $30k day made of PHC are two
+// completely different days for the people building the schedule. Everything
+// that isn't PHC is "tree work" — residential, commercial, municipal, and
+// whatever unit ServiceTitan invents next, which is the right default: a new
+// unit showing up under tree work is a mild mislabel, whereas one silently
+// vanishing from the day's total is a wrong number.
+
+/** Everything that isn't Plant Health Care. */
+export function treeTotal(byUnit: UnitTotals | undefined): number {
+  if (!byUnit) return 0;
+  let n = 0;
+  for (const u of UNIT_ORDER) {
+    if (u === 'phc') continue;
+    n += byUnit[u] ?? 0;
+  }
+  return round2(n);
+}
+
+/** The PHC half of the same split. */
+export function phcTotal(byUnit: UnitTotals | undefined): number {
+  return round2(byUnit?.phc ?? 0);
+}
+
+// ---------------------------------------------------------------------------
+// Filtering a list
+// ---------------------------------------------------------------------------
+
+/**
+ * Does this job match a free-text filter?
+ *
+ * One box across everything someone would plausibly type: a job number, a job
+ * type, a salesperson, a crew member, a city, a zip, a status. Deliberately not
+ * a set of dropdowns — the lists are worked by people looking for one thing
+ * they can already name, and a dropdown per field is five clicks to do what
+ * typing "stump" does.
+ *
+ * Multiple words must ALL match (somewhere), so "stump edina" narrows rather
+ * than widens.
+ */
+export function jobMatches(j: ScheduledJob, query: string): boolean {
+  const terms = query.trim().toLowerCase().split(/\s+/).filter(Boolean);
+  if (terms.length === 0) return true;
+  const hay = [
+    j.jobNumber,
+    j.jobType,
+    j.campaign,
+    j.statusRaw,
+    j.soldBy,
+    j.city,
+    j.zip,
+    UNIT_LABELS[j.unit],
+    ...j.crew,
+  ]
+    .join(' ')
+    .toLowerCase();
+  return terms.every((t) => hay.includes(t));
 }
 
 // ---------------------------------------------------------------------------
@@ -749,6 +844,38 @@ export function horizon(
   return { revenue: round2(revenue), jobs };
 }
 
+/**
+ * The same window as horizon(), split into tree work and PHC.
+ *
+ * Separate from horizon() rather than folded into it because most callers want
+ * one number, and a function that always returns four invites reading the wrong
+ * one. Unfiltered by unit on purpose: the split IS the filter.
+ */
+export function horizonSplit(
+  data: ScheduledRevenueData,
+  from: IsoDay,
+  days: number,
+): { revenue: number; jobs: number; tree: number; phc: number } {
+  const to = addDays(from, days);
+  let revenue = 0;
+  let jobs = 0;
+  let tree = 0;
+  let phc = 0;
+  for (const d of data.days) {
+    if (d.date < from || d.date >= to) continue;
+    revenue += d.firmRevenue;
+    jobs += d.firmJobs;
+    tree += treeTotal(d.byUnit);
+    phc += phcTotal(d.byUnit);
+  }
+  return {
+    revenue: round2(revenue),
+    jobs,
+    tree: round2(tree),
+    phc: round2(phc),
+  };
+}
+
 /** Calendar arithmetic on 'YYYY-MM-DD' strings, in UTC so DST can't shift it. */
 export function addDays(iso: IsoDay, n: number): IsoDay {
   const d = new Date(`${iso}T00:00:00Z`);
@@ -795,7 +922,7 @@ export function hydrateScheduledRevenue(
     })),
     totals: { ...blankTotals(), ...(raw.totals ?? {}) },
     sinceLast: raw.sinceLast ?? null,
-    meta: { ...raw.meta },
+    meta: { ...raw.meta, sources: raw.meta?.sources ?? [] },
   };
 }
 

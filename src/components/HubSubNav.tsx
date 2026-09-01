@@ -31,9 +31,6 @@ export async function HubSubNav({ active }: { active: string }) {
   }
   // Collections is open to the whole hub, like the roster it draws from.
   sections.push({ href: '/hub/receivables', label: 'Collections' });
-  // Scheduled revenue by day. Open to the whole hub — sales wants to see what
-  // the board is worth as much as production does.
-  sections.push({ href: '/hub/revenue-calendar', label: 'Revenue Calendar' });
   // The Off-Season report is viewable by the whole hub (view-only for sales
   // arborists; office edits it from the Office Hub).
   sections.push({ href: '/off-season', label: 'Off-Season' });

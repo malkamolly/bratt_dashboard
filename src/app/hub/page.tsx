@@ -66,20 +66,6 @@ export default async function HubHomePage() {
           </Link>
         )}
 
-        <Link href="/hub/revenue-calendar" className="bt-card group transition-colors hover:!border-orange">
-          <h2 className="font-headline text-3xl font-black uppercase text-bark-deep">
-            Revenue Calendar
-          </h2>
-          <p className="mt-3 text-sm text-fg-2">
-            What every scheduled day is worth, as far out as the board goes.
-            ServiceTitan shows what&apos;s scheduled &mdash; this shows the money
-            attached to it.
-          </p>
-          <p className="mt-6 font-headline text-xs font-extrabold uppercase tracking-ribbon text-orange">
-            Open calendar &rarr;
-          </p>
-        </Link>
-
         <Link href="/hub/meetings" className="bt-card group transition-colors hover:!border-orange">
           <h2 className="font-headline text-3xl font-black uppercase text-bark-deep">
             Weekly Meetings

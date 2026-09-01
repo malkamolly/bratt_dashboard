@@ -245,18 +245,19 @@ export function canUploadReceivables(role: Role): boolean {
 }
 
 /**
- * Can this role import a new Scheduled Revenue export (the revenue calendar)?
+ * Can this role import new Scheduled Revenue exports (the revenue calendar at
+ * /production/revenue-calendar)?
  *
- * Same reasoning as the two above: an import REPLACES the calendar for
- * everyone, so it stays with the people who run the schedule. Mirrors the RLS
- * write policy in migration 077_scheduled_revenue.sql.
+ * An import REPLACES the calendar for everyone, so it stays with the people who
+ * run the schedule — admin, office (dispatch), and the sales manager. Mirrors
+ * the RLS write policy in migration 078_scheduled_revenue_office_write.sql.
  *
  * Note this is only the manual upload. The twice-daily automated refresh goes
- * through POST /api/scheduled-revenue/import, which is bearer-token auth and
- * has no session at all.
+ * through POST /api/scheduled-revenue/import, which is bearer-token auth, has
+ * no session at all, and uses the service-role client.
  */
 export function canUploadScheduledRevenue(role: Role): boolean {
-  return role === 'admin' || role === 'sales_manager';
+  return role === 'admin' || role === 'user' || role === 'sales_manager';
 }
 
 /**

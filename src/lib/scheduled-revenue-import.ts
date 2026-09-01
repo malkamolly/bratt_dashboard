@@ -2,7 +2,7 @@
 // Scheduled Revenue — the one import path
 // ============================================================================
 // Both ways a report arrives go through here: the uploader on
-// /hub/revenue-calendar and POST /api/scheduled-revenue/import. That is the
+// /production/revenue-calendar and POST /api/scheduled-revenue/import. That is the
 // whole point of this file — two callers that "should behave the same" drift
 // the moment each holds its own copy of the logic.
 //
@@ -33,6 +33,7 @@ import {
   round2,
   type RawJob,
   type ScheduledRevenueData,
+  type SourcePart,
 } from '@/lib/scheduled-revenue';
 
 /**
@@ -52,7 +53,7 @@ const ALLOWED_EXTENSIONS = ['.xlsx', '.xlsm', '.csv'];
  *  forget one. Lives here because a 'use server' module may only export async
  *  functions. */
 export function revalidateScheduledRevenue(): void {
-  revalidatePath('/hub/revenue-calendar');
+  revalidatePath('/production/revenue-calendar');
 }
 
 export type ImportOutcome =
@@ -95,7 +96,12 @@ export function isIsoDate(s: string): boolean {
 }
 
 export type RowsOutcome =
-  | { ok: true; rows: RawJob[]; cancelledDropped: number }
+  | {
+      ok: true;
+      rows: RawJob[];
+      cancelledDropped: number;
+      source: SourcePart;
+    }
   | { ok: false; status: 415 | 413 | 422; reason: string };
 
 /**
@@ -197,7 +203,78 @@ export function rowsFromSpreadsheet(opts: {
     }
   }
 
-  return { ok: true, rows, cancelledDropped };
+  return {
+    ok: true,
+    rows,
+    cancelledDropped,
+    source: {
+      label: filename,
+      rowCount: rows.length,
+      subtotal: round2(rows.reduce((s, r) => s + r.subtotal, 0)),
+    },
+  };
+}
+
+/**
+ * Several spreadsheets, merged into one set of rows.
+ *
+ * There is normally more than one. ServiceTitan will only SCHEDULE a report
+ * that looks out 365 days, so the far-future parked work has to come from a
+ * second report. Each file is validated against its OWN grand-total row first,
+ * then merged — a job appearing in two files lands once, with the later file
+ * winning (the parked report is the more specific claim about a job that has no
+ * real date).
+ *
+ * Still no database access, so a rejection anywhere leaves the previous
+ * snapshot exactly where it was.
+ */
+export type MergedRowsOutcome =
+  | {
+      ok: true;
+      rows: RawJob[];
+      cancelledDropped: number;
+      sources: SourcePart[];
+      /** Jobs that appeared in more than one file. The later one wins. */
+      duplicatesDropped: number;
+    }
+  | { ok: false; status: 415 | 413 | 422; reason: string };
+
+export function rowsFromSpreadsheets(
+  files: { bytes: Buffer; filename: string }[],
+  maxBytes: number,
+): MergedRowsOutcome {
+  const merged = new Map<string, RawJob>();
+  const sources: SourcePart[] = [];
+  let cancelledDropped = 0;
+  let duplicatesDropped = 0;
+
+  for (const f of files) {
+    const parsed = rowsFromSpreadsheet({
+      bytes: f.bytes,
+      filename: f.filename,
+      maxBytes,
+    });
+    if (!parsed.ok) {
+      // Name the file, or a two-file import fails with no clue which half.
+      return files.length > 1
+        ? { ok: false, status: parsed.status, reason: `${f.filename}: ${parsed.reason}` }
+        : parsed;
+    }
+    cancelledDropped += parsed.cancelledDropped;
+    for (const r of parsed.rows) {
+      if (merged.has(r.jobNumber)) duplicatesDropped++;
+      merged.set(r.jobNumber, r);
+    }
+    sources.push(parsed.source);
+  }
+
+  return {
+    ok: true,
+    rows: [...merged.values()],
+    cancelledDropped,
+    sources,
+    duplicatesDropped,
+  };
 }
 
 /**
@@ -229,6 +306,9 @@ export async function persistScheduledRevenueReport(opts: {
   /** Filename for a file upload, or a label like 'json:cowork' for JSON. */
   sourceLabel: string;
   cancelledDropped?: number;
+  /** The reports this snapshot was built from. Recorded so the page can say so
+   *  when one of them is missing. */
+  sources?: SourcePart[];
   supabase: SupabaseClient;
 }): Promise<ImportOutcome> {
   const { rows, sourceDate, uploadedBy, sourceLabel, supabase } = opts;
@@ -239,6 +319,13 @@ export async function persistScheduledRevenueReport(opts: {
     sourceDate,
     cancelledDropped: opts.cancelledDropped ?? 0,
     rowsRead: rows.length,
+    sources: opts.sources ?? [
+      {
+        label: sourceLabel,
+        rowCount: rows.length,
+        subtotal: round2(rows.reduce((n, r) => n + r.subtotal, 0)),
+      },
+    ],
   });
 
   // A valid file with nothing on the board. Technically possible in February;
@@ -250,6 +337,19 @@ export async function persistScheduledRevenueReport(opts: {
       ok: false,
       status: 422,
       reason: `Read ${rows.length} rows but found no jobs to schedule. Is this the right export?`,
+    };
+  }
+
+  // Only the parked report arrived. Since ServiceTitan needs TWO reports to
+  // cover the whole board (its scheduler won't look past 365 days), the failure
+  // mode worth guarding is the 365-day half going missing: the checksums would
+  // all still pass, and the calendar would silently empty out while the parked
+  // pile stayed full. Nothing but the parked date is a clear enough signal.
+  if (data.totals.firmJobs === 0 && data.totals.parkedJobs > 0) {
+    return {
+      ok: false,
+      status: 422,
+      reason: `Every job in this import is parked on ${data.jobs[0]?.date ?? 'the placeholder date'} — the 365-day scheduled report is missing. Send both reports.`,
     };
   }
 
@@ -317,26 +417,27 @@ export async function persistScheduledRevenueReport(opts: {
  * path skipping it changes nothing.
  */
 export async function importScheduledRevenueReport(opts: {
-  bytes: Buffer;
-  filename: string;
+  /** One or more exports. Two is the normal case — see rowsFromSpreadsheets. */
+  files: { bytes: Buffer; filename: string }[];
   uploadedBy: string;
   sourceDate: string;
   maxBytes: number;
   supabase: SupabaseClient;
 }): Promise<ImportOutcome> {
-  const parsed = rowsFromSpreadsheet({
-    bytes: opts.bytes,
-    filename: opts.filename,
-    maxBytes: opts.maxBytes,
-  });
+  if (opts.files.length === 0) {
+    return { ok: false, status: 422, reason: 'No file was sent.' };
+  }
+
+  const parsed = rowsFromSpreadsheets(opts.files, opts.maxBytes);
   if (!parsed.ok) return parsed;
 
   return persistScheduledRevenueReport({
     rows: parsed.rows,
     sourceDate: opts.sourceDate,
     uploadedBy: opts.uploadedBy,
-    sourceLabel: opts.filename,
+    sourceLabel: opts.files.map((f) => f.filename).join(' + '),
     cancelledDropped: parsed.cancelledDropped,
+    sources: parsed.sources,
     supabase: opts.supabase,
   });
 }

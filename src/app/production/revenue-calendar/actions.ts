@@ -3,7 +3,7 @@
 // ============================================================================
 // Revenue Calendar — upload action (the UI path)
 // ============================================================================
-// The browser uploader on /hub/revenue-calendar. All it does is auth the
+// The browser uploader on /production/revenue-calendar. All it does is auth the
 // person, pull the file off the FormData, and hand it to
 // importScheduledRevenueReport() — the same function
 // POST /api/scheduled-revenue/import calls, so a manual upload and the
@@ -28,7 +28,7 @@ import {
 import { fmtUsd } from '@/lib/format';
 
 function fail(message: string): never {
-  redirect(`/hub/revenue-calendar?error=${encodeURIComponent(message)}`);
+  redirect(`/production/revenue-calendar?error=${encodeURIComponent(message)}`);
 }
 
 export async function uploadScheduledRevenue(formData: FormData): Promise<void> {
@@ -37,15 +37,20 @@ export async function uploadScheduledRevenue(formData: FormData): Promise<void> 
     throw new Error('Forbidden: sales manager or admin access required.');
   }
 
-  const file = formData.get('file');
-  if (!(file instanceof File) || file.size === 0) {
-    fail('Choose a spreadsheet file to upload.');
+  const picked = formData
+    .getAll('file')
+    .filter((f): f is File => f instanceof File && f.size > 0);
+  if (picked.length === 0) {
+    fail('Choose at least one spreadsheet to upload.');
   }
-  const f = file as File;
 
   const result = await importScheduledRevenueReport({
-    bytes: Buffer.from(await f.arrayBuffer()),
-    filename: f.name,
+    files: await Promise.all(
+      picked.map(async (f) => ({
+        bytes: Buffer.from(await f.arrayBuffer()),
+        filename: f.name,
+      })),
+    ),
     uploadedBy: user.email,
     // A person uploading in the browser means "this is today's board".
     sourceDate: centralToday(),
@@ -57,7 +62,7 @@ export async function uploadScheduledRevenue(formData: FormData): Promise<void> 
 
   revalidateScheduledRevenue();
   redirect(
-    `/hub/revenue-calendar?saved=${encodeURIComponent(
+    `/production/revenue-calendar?saved=${encodeURIComponent(
       `Calendar updated — ${result.data.totals.firmJobs} jobs on the board, ${fmtUsd(result.data.totals.firmRevenue)} scheduled.`,
     )}`,
   );

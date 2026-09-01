@@ -89,6 +89,24 @@ export default async function PaceHomePage() {
           </p>
         </Link>
 
+        <Link
+          href="/production/revenue-calendar"
+          className="bt-card group transition-colors hover:!border-orange"
+        >
+          <p className="bt-eyebrow">Production</p>
+          <h2 className="mt-2 font-headline text-3xl font-black uppercase text-bark-deep">
+            Revenue Calendar
+          </h2>
+          <p className="mt-3 text-sm text-fg-2">
+            What every scheduled day is worth, as far out as the board goes &mdash;
+            tree work and PHC kept apart. ServiceTitan shows what&rsquo;s scheduled;
+            this shows the money attached to it.
+          </p>
+          <p className="mt-6 font-headline text-xs font-extrabold uppercase tracking-ribbon text-orange">
+            Open calendar &rarr;
+          </p>
+        </Link>
+
         {canSeeSchedule && (
           <Link href="/schedule" className="bt-card group transition-colors hover:!border-orange">
             <p className="bt-eyebrow">Dashboard 3</p>
