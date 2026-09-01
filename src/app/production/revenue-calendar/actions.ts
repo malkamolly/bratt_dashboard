@@ -7,7 +7,7 @@
 // person, pull the file off the FormData, and hand it to
 // importScheduledRevenueReport() — the same function
 // POST /api/scheduled-revenue/import calls, so a manual upload and the
-// twice-daily job cannot produce different results.
+// scheduled job cannot produce different results.
 //
 // What stays here is what only the UI needs: role gating and turning the
 // outcome into a redirect with a message.

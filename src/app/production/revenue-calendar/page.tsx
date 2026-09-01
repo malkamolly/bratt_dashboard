@@ -9,7 +9,7 @@
 // office, sales manager), because it's a scheduling tool. Only the upload is
 // restricted further, since an import replaces the calendar for everyone. The
 // usual refresh isn't a person at all: a scheduled job posts to
-// /api/scheduled-revenue/import twice a day.
+// /api/scheduled-revenue/import four times a day.
 //
 // THE THREE PILES, because the whole page rests on them:
 //   SCHEDULED    — on the calendar, split into tree work and PHC.
@@ -875,7 +875,8 @@ function Report({
         </p>
         <SourceList data={data} />
         <p className="mt-2 text-xs text-fg-3">
-          Refreshes automatically twice a day, at 6:30am and 7:30pm Central.
+          Refreshes automatically four times a day &mdash; 6am, 11am, 3pm and
+          7pm Central.
         </p>
         {canUpload && <UploadForm />}
       </section>

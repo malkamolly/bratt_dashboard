@@ -7,7 +7,7 @@
 // write is reachable until the body has passed.
 //
 // WHY JSON EXISTS AT ALL
-// The scheduled job that refreshes this twice a day reads the exports out of a
+// The scheduled job that refreshes this through the day reads the exports out of a
 // mail or drive connector, which exposes a spreadsheet's CONTENTS but not its
 // bytes. Rebuilding an .xlsx to satisfy a file upload would be a lot of
 // machinery to produce a file nobody looks at.

@@ -78,7 +78,7 @@ export function looksLikeSpreadsheet(filename: string): boolean {
 }
 
 /** Today in America/Chicago as 'YYYY-MM-DD'. The business is in the Twin
- *  Cities, and a UTC "today" is already tomorrow for a 7:30pm run. */
+ *  Cities, and a UTC "today" is already tomorrow for an evening run. */
 export function centralToday(now: Date = new Date()): string {
   // en-CA formats as YYYY-MM-DD, which saves reassembling the parts.
   return new Intl.DateTimeFormat('en-CA', {
@@ -291,10 +291,11 @@ export function rowsFromSpreadsheets(
  *
  * The comparison is against the most recent snapshot for a DIFFERENT
  * sourceDate, and any existing snapshot for the same date is retired. That is
- * what makes twice-daily runs safe: the 7:30pm import replaces the 6:30am one
- * and both report movement against YESTERDAY. The trade-off is deliberate — you
- * do not get an intra-day delta, and a stable day-over-day figure is the more
- * useful of the two.
+ * what makes several runs a day safe: each import replaces the earlier one for
+ * that day, and every one of them reports movement against YESTERDAY. The
+ * trade-off is deliberate — you do not get an intra-day delta, and a stable
+ * day-over-day figure is the more useful of the two. It also means the number
+ * of runs a day can change without anything downstream needing to know.
  *
  * Retired rows are kept rather than deleted: a mistaken import stays
  * recoverable by flipping is_active back, and nothing reads them meanwhile.

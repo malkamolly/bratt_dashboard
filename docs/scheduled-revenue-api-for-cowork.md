@@ -1,7 +1,7 @@
 # Bratt Tree scheduled-revenue API — integration brief
 
-For the Cowork automation that refreshes the Revenue Calendar twice a day —
-**6:30am and 7:30pm Central**.
+For the Cowork automation that refreshes the Revenue Calendar four times a day —
+**6:00am, 11:00am, 3:00pm and 7:00pm Central**.
 
 The dashboard is the source of truth for every figure below. Post what it
 returns; don't recompute money from the spreadsheet.
@@ -146,7 +146,7 @@ Sending both `parts` and `jobs` is rejected.
 
 | Field | Rule |
 |---|---|
-| `sourceDate` | **Required.** `YYYY-MM-DD`, the day the report is *for*. Decides which snapshot this replaces and what tomorrow compares against. Use today in **Central**, not UTC — a UTC "today" is already tomorrow by the time the 7:30pm run fires. |
+| `sourceDate` | **Required.** `YYYY-MM-DD`, the day the report is *for*. Decides which snapshot this replaces and what tomorrow compares against. Use today in **Central**, not UTC — a UTC "today" is already tomorrow by the time the 7pm run fires. |
 | `jobs` | Required, non-empty, on every part. **Every row** from that report except its grand-total row, including $0 jobs — the checksum is validated before anything is filtered. |
 | `label` | Optional name for the part, e.g. `"scheduled-365"` / `"unscheduled"`. Shows on the dashboard. |
 | `jobNumber` | Send as a **string**. A JSON number would silently drop a leading zero. |
@@ -313,7 +313,7 @@ what the dashboard shows, not what you sent.
 
 ---
 
-## Running twice a day
+## Running four times a day
 
 Each import writes a whole new snapshot and retires the previous one. Jobs live
 inside one JSON payload, never as appended rows, so **re-importing the same data
@@ -322,15 +322,21 @@ cannot double-count anything.**
 Exactly one snapshot is active per `sourceDate`, and the comparison always looks
 at the most recent snapshot for a **different** day. So:
 
-- The **7:30pm** run replaces the **6:30am** run for that day.
-- **Both** report `sinceLast` against **yesterday**.
+- The **11am** run replaces the **6am** one, 3pm replaces 11am, 7pm replaces 3pm.
+- **All four** report `sinceLast` against **yesterday**.
 - You do **not** get an intra-day delta. That's deliberate — a stable
   day-over-day figure is the more useful of the two, and it's the one that
   doesn't break the following morning's baseline.
+- Adding or removing a run needs no change here. Nothing downstream counts them.
 
-Send the same `sourceDate` (today in Central) on both runs, and **both reports
+Send the same `sourceDate` (today in Central) on every run, and **both reports
 on every run** — a run that sends only the 365-day half wipes the unscheduled
 pile until the next good run.
+
+**A missed run is not an incident.** The calendar keeps showing the last good
+snapshot, and the page says when it was taken. Four runs a day means three
+chances to recover before anyone notices. Don't retry a rejected import by
+loosening the checksum — report it and let the next run try with fresh data.
 
 ## Errors
 
@@ -351,9 +357,11 @@ the previous snapshot intact.
 
 ## Rate limit
 
-**12 requests/hour per IP, across both endpoints.** The scheduled job needs two a
-day. Don't poll `/summary` on a tighter schedule than that, and don't retry in a
-loop — a `429` means back off for the period named in `Retry-After`.
+**12 requests/hour per IP, across both endpoints.** Four runs a day is four
+requests, or eight if each verifies with `/summary` — nowhere near the ceiling,
+because the limit is per HOUR and the runs are five hours apart. Don't poll
+`/summary` on a schedule of its own, and don't retry in a loop — a `429` means
+back off for the period named in `Retry-After`.
 
 ## If something looks wrong
 

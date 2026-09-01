@@ -1,8 +1,8 @@
 // ============================================================================
 // POST /api/scheduled-revenue/import — token-authed scheduled-revenue import
 // ============================================================================
-// The headless equivalent of the uploader on /hub/revenue-calendar, for the
-// twice-daily job (6:30am and 7:30pm Central). It calls the same
+// The headless equivalent of the uploader on /production/revenue-calendar, for
+// the scheduled job (6am, 11am, 3pm and 7pm Central). It calls the same
 // importScheduledRevenueReport() the UI action calls, so the two paths cannot
 // diverge.
 //
@@ -148,7 +148,7 @@ export async function POST(req: NextRequest) {
   const fileNames = files.map((f) => f.name || 'upload.xlsx').join(' + ');
 
   // Optional; defaults to today in Central, since a UTC "today" is already
-  // tomorrow by the time the 7:30pm run fires.
+  // tomorrow by the time the evening run fires.
   const rawDate = String(form.get('sourceDate') ?? '').trim();
   if (rawDate && !isIsoDate(rawDate)) {
     await logCall(supabase, {

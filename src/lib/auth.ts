@@ -270,7 +270,7 @@ export function canUploadReceivables(role: Role): boolean {
  * run the schedule — admin, office (dispatch), and the sales manager. Mirrors
  * the RLS write policy in migration 078_scheduled_revenue_office_write.sql.
  *
- * Note this is only the manual upload. The twice-daily automated refresh goes
+ * Note this is only the manual upload. The scheduled automated refresh goes
  * through POST /api/scheduled-revenue/import, which is bearer-token auth, has
  * no session at all, and uses the service-role client.
  */
