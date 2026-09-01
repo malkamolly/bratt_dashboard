@@ -175,13 +175,22 @@ function JobTable({
   nav,
   sort,
   dir,
-  showDate,
+  dates = 'both',
 }: {
   jobs: ScheduledJob[];
   nav: Nav;
   sort: SortKey;
   dir: SortDir;
-  showDate?: boolean;
+  /**
+   * Which date columns to draw.
+   *
+   * 'both'  — Sched. (the first appointment) and Next appt.
+   * 'first' — Sched. only, for the open-day panel. You already know the day
+   *           from the heading, so a Next appt column would repeat it on every
+   *           row; the first appointment is the one that tells you something —
+   *           a job that started in February is a continuation, not new work.
+   */
+  dates?: 'both' | 'first';
 }) {
   if (jobs.length === 0) {
     return <p className="mt-4 text-sm text-fg-2">Nothing here.</p>;
@@ -198,7 +207,8 @@ function JobTable({
       <table className="w-full min-w-[46rem] text-left text-sm">
         <thead>
           <tr className="border-b-2 border-paper-edge">
-            {showDate && head('date', 'Sched.')}
+            {head('date', 'Sched.')}
+            {dates === 'both' && head('nextAppt', 'Next appt')}
             {head('job', 'Job')}
             {head('type', 'Type')}
             {head('unit', 'Unit')}
@@ -212,10 +222,15 @@ function JobTable({
         <tbody>
           {sortJobs(jobs, sort, dir).map((j) => (
             <tr key={j.jobNumber} className="border-b border-paper-edge/70">
-              {showDate && (
+              <Td>
+                <span className="whitespace-nowrap font-headline text-xs font-extrabold text-fg-2">
+                  {j.scheduledDate ? shortDate(j.scheduledDate) : '—'}
+                </span>
+              </Td>
+              {dates === 'both' && (
                 <Td>
                   <span className="whitespace-nowrap font-headline text-xs font-extrabold text-fg-2">
-                    {j.date ? shortDate(j.date) : '—'}
+                    {j.nextApptDate ? shortDate(j.nextApptDate) : '—'}
                   </span>
                 </Td>
               )}
@@ -492,7 +507,7 @@ function ListPanel({
   jobs,
   title,
   blurb,
-  showDate,
+  dates,
   defaultSort,
   copyText,
 }: {
@@ -500,7 +515,7 @@ function ListPanel({
   jobs: ScheduledJob[];
   title: string;
   blurb: string;
-  showDate?: boolean;
+  dates?: 'both' | 'first';
   /** How this list opens before anyone touches a header. */
   defaultSort: { key: SortKey; dir: SortDir };
   /** When set, a Copy button putting this on the clipboard. Plain text, for
@@ -531,7 +546,7 @@ function ListPanel({
       <p className="mt-2 text-xs text-fg-3">
         Click any column heading to reorder the list; click it again to flip it.
       </p>
-      <JobTable jobs={jobs} nav={nav} sort={sort} dir={dir} showDate={showDate} />
+      <JobTable jobs={jobs} nav={nav} sort={sort} dir={dir} dates={dates} />
     </section>
   );
 }
@@ -675,9 +690,8 @@ function Report({
           nav={nav}
           jobs={pastDatedJobs}
           title="Past-dated"
-          blurb="Scheduled on a day that has already gone by, and never closed out. Either the work happened and the job wasn’t updated, or it slipped and nobody moved it. Oldest first."
-          showDate
-          defaultSort={{ key: 'date', dir: 'asc' }}
+          blurb="Jobs whose next appointment has already gone by — nothing further is booked and nobody closed them out. A job part-way through a multi-day run sits on its NEXT crew day instead, so anything in here is genuinely stranded. Normally empty."
+          defaultSort={{ key: 'nextAppt', dir: 'asc' }}
           copyText={pastDatedMessage(pastDatedJobs, today)}
         />
       )}
@@ -692,8 +706,7 @@ function Report({
               ? ` A further ${waitingAndUnscheduled} ${waitingAndUnscheduled === 1 ? 'job has' : 'jobs have'} no date at all — those are under Unscheduled.`
               : ''
           }`}
-          showDate
-          defaultSort={{ key: 'date', dir: 'asc' }}
+          defaultSort={{ key: 'nextAppt', dir: 'asc' }}
         />
       )}
 
@@ -829,7 +842,13 @@ function Report({
             Click any column heading to reorder the list; click it again to flip
             it.
           </p>
-          <JobTable jobs={dayJobs} nav={nav} sort={daySort} dir={dayDir} />
+          <JobTable
+            jobs={dayJobs}
+            nav={nav}
+            sort={daySort}
+            dir={dayDir}
+            dates="first"
+          />
         </section>
       )}
 

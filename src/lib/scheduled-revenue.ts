@@ -189,7 +189,15 @@ export type ScheduledJob = {
   campaign: string;
   unit: BusinessUnit;
   subtotal: number;
+  /**
+   * The day this job sits on in the calendar — its NEXT appointment where it
+   * has one, otherwise its scheduled date. See calendarDate().
+   */
   date: IsoDay | null;
+  /** The export's Scheduled Date: the job's FIRST appointment. */
+  scheduledDate: IsoDay | null;
+  /** The export's Next Appt Start Date: the next time a truck is going. */
+  nextApptDate: IsoDay | null;
   appointments: number;
   /** First name + last initial, house rule. Never a full surname. */
   crew: string[];
@@ -539,7 +547,7 @@ export function computeScheduledRevenue(
   } = {},
 ): ScheduledRevenueData {
   const jobs: ScheduledJob[] = rows.map((r) => {
-    const date = r.scheduledDate;
+    const date = calendarDate(r);
     return {
       jobNumber: r.jobNumber,
       status: toStatus(r.status),
@@ -549,6 +557,8 @@ export function computeScheduledRevenue(
       unit: toUnit(r.businessUnit),
       subtotal: round2(r.subtotal),
       date,
+      scheduledDate: r.scheduledDate,
+      nextApptDate: r.nextApptDate,
       appointments: r.appointments,
       crew: crewList(r.technicians),
       soldBy: r.soldBy ? shortName(r.soldBy) : '',
@@ -699,6 +709,35 @@ export function computeScheduledRevenue(
   };
 }
 
+/**
+ * Which day a job belongs on: its NEXT appointment, falling back to its
+ * scheduled date.
+ *
+ * WHY NOT JUST THE SCHEDULED DATE.
+ *
+ * ServiceTitan's "Scheduled Date" is the job's FIRST appointment. On a
+ * single-visit job the two columns are the same and this is a no-op — that's
+ * almost every row. On a multi-visit job that's already underway they are not:
+ * a removal that started in February and has its next crew day in November was
+ * landing on a February square, which is both the wrong day and a day that has
+ * already gone by.
+ *
+ * The calendar is a forward-looking view of when trucks are going, so the next
+ * appointment is the honest answer to "what is this day worth". A knock-on
+ * effect worth knowing: a job whose next appointment is the 01/01/2030
+ * placeholder now reads as Unscheduled, which is also right — its next real
+ * touch hasn't been booked.
+ *
+ * Left as its own function because two things depend on it — the square a job
+ * lands on, and whether it counts as unscheduled — and they must not drift.
+ */
+export function calendarDate(r: {
+  scheduledDate: IsoDay | null;
+  nextApptDate: IsoDay | null;
+}): IsoDay | null {
+  return r.nextApptDate ?? r.scheduledDate;
+}
+
 /** "Taylor Mueller, Shay Spritzer" → ["Taylor M", "Shay S"]. */
 export function crewList(raw: string): string[] {
   const names = (raw ?? '')
@@ -752,6 +791,7 @@ export function phcTotal(byUnit: UnitTotals | undefined): number {
 
 export type SortKey =
   | 'date'
+  | 'nextAppt'
   | 'job'
   | 'type'
   | 'unit'
@@ -766,7 +806,18 @@ export type SortDir = 'asc' | 'desc';
 export function isSortKey(v: unknown): v is SortKey {
   return (
     typeof v === 'string' &&
-    ['date', 'job', 'type', 'unit', 'soldBy', 'soldOn', 'crew', 'city', 'subtotal'].includes(v)
+    [
+      'date',
+      'nextAppt',
+      'job',
+      'type',
+      'unit',
+      'soldBy',
+      'soldOn',
+      'crew',
+      'city',
+      'subtotal',
+    ].includes(v)
   );
 }
 
@@ -779,6 +830,7 @@ export function isSortKey(v: unknown): v is SortKey {
  */
 export const DEFAULT_DIR: Record<SortKey, SortDir> = {
   date: 'asc',
+  nextAppt: 'asc',
   job: 'asc',
   type: 'asc',
   unit: 'asc',
@@ -793,7 +845,10 @@ export const DEFAULT_DIR: Record<SortKey, SortDir> = {
 function sortValue(j: ScheduledJob, key: SortKey): string | number | null {
   switch (key) {
     case 'date':
-      return j.date;
+      // The FIRST appointment, so this column sorts by what it displays.
+      return j.scheduledDate ?? j.date;
+    case 'nextAppt':
+      return j.nextApptDate;
     case 'job':
       return j.jobNumber || null;
     case 'type':
@@ -988,7 +1043,14 @@ export function hydrateScheduledRevenue(
 ): ScheduledRevenueData {
   return {
     ...raw,
-    jobs: raw.jobs ?? [],
+    // A snapshot written before the two appointment columns existed has neither
+    // field. They normalise to null rather than undefined so the sort's
+    // blanks-sink check (=== null) still catches them.
+    jobs: (raw.jobs ?? []).map((j) => ({
+      ...j,
+      scheduledDate: j.scheduledDate ?? j.date ?? null,
+      nextApptDate: j.nextApptDate ?? null,
+    })),
     days: (raw.days ?? []).map((d) => ({
       ...d,
       jobsByUnit: d.jobsByUnit ?? emptyUnitTotals(),

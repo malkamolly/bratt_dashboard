@@ -153,7 +153,8 @@ Sending both `parts` and `jobs` is rejected.
 | `status` | Required, verbatim (`"Scheduled"`, `"Hold"`, `"In Progress"`). Don't map it — the dashboard does that. |
 | `businessUnit` | Required, verbatim (`"Tree Work - Residential"`, `"Plant Health Care"`, …). |
 | `subtotal` | A number. `"1,600.00"` is rejected. |
-| `scheduledDate` / `nextApptDate` | Strict `YYYY-MM-DD`, or `null`/omitted if genuinely absent. Excel serials, `MM/DD/YYYY`, and `2026-09-03T00:00:00Z` are **all rejected** — see below. |
+| `scheduledDate` | Strict `YYYY-MM-DD`, or `null`/omitted if genuinely absent. Excel serials, `MM/DD/YYYY`, and `2026-09-03T00:00:00Z` are **all rejected** — see below. |
+| `nextApptDate` | Same format rules. **Send it whenever the column has a value** — it decides which day the job lands on. See below. |
 | `technicians` | Verbatim, comma-separated in one string. **Do not split them, and do not shorten the names** — the dashboard applies the First-Name-Last-Initial rule itself. |
 | `soldBy` | Verbatim, a full name. Same rule: don't shorten it, the dashboard does. Optional. |
 | `soldOn` | Strict `YYYY-MM-DD` or `null`. Same date rules as the others. Optional. |
@@ -176,6 +177,29 @@ part and check with both expected and computed values —
 **Take each part's numbers from that report's own grand-total row.** Per-part
 checksums matter more here, not less: one combined total would still pass if a
 whole report never arrived and you totalled only what you had.
+
+### `nextApptDate` decides the square
+
+A job sits on the calendar at its **next appointment**, falling back to its
+scheduled date when there isn't one:
+
+```
+calendar day = nextApptDate ?? scheduledDate
+```
+
+On a single-visit job the two columns are identical and this changes nothing —
+that's almost every row. On a multi-visit job already underway they are not:
+ServiceTitan's `Scheduled Date` is the job's **first** appointment, so a removal
+that started in February with its next crew day in November would otherwise land
+on a February square. Wrong day, and a day that has already passed.
+
+So `nextApptDate` is optional in the schema but not in practice: **drop it and
+those jobs go to the wrong day.** Send whatever the `Next Appt Start Date`
+column holds, including when it equals `Scheduled Date`.
+
+One knock-on worth knowing: a job whose next appointment is the `01/01/2030`
+placeholder counts as **unscheduled**, even if its first appointment had a real
+date. That's the honest reading — its next real touch hasn't been booked.
 
 ### Why dates are strict
 
@@ -268,7 +292,7 @@ one of them, and the three sum to the export's grand total:
 
 | Pile | What it is | Where it shows up |
 |---|---|---|
-| **Scheduled** | Everything not at status Hold — `Scheduled`, `In Progress`, and any status ServiceTitan adds later. | `onTheBoard`, all horizons, `byUnit`, `byMonth`, `nextWeeks`, and the calendar. |
+| **Scheduled** | Everything not at status Hold — `Scheduled`, `In Progress`, and any status ServiceTitan adds later. Placed on its next appointment (see above). | `onTheBoard`, all horizons, `byUnit`, `byMonth`, `nextWeeks`, and the calendar. |
 | **Waiting on approval** | Status `Hold`. On the board, not committed. | `waitingApproval` only. **Never** in a revenue figure. |
 | **Unscheduled** | Dated `2030-01-01` or later — ServiceTitan's placeholder for sold work with no real date. | `unscheduled` only. |
 
@@ -279,8 +303,10 @@ figure carries its own definition into whatever channel it gets posted in.
 the end of the export's window. For a "what's coming" post, `next30` is usually
 the number you want.
 
-**`pastDated` is a to-do list, not a forecast.** Firm work still sitting on days
-that have already gone by — scheduled and never closed out. Rising is bad.
+**`pastDated` is a to-do list, not a forecast.** Jobs whose **next** appointment
+has already gone by — nothing further booked, and nobody closed them out. A job
+part-way through a multi-day run sits on its next crew day instead, so anything
+counted here is genuinely stranded. It should normally be zero; rising is bad.
 
 **`asOf`** is today in Central, read at request time — *not* the snapshot's
 date. So a stale snapshot still reports honest horizons; it just reports fewer
