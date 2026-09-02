@@ -48,8 +48,10 @@ import {
   isSortKey,
   sortJobs,
   DEFAULT_DIR,
-  treeTotal,
-  phcTotal,
+  workTotal,
+  WORK_ORDER,
+  WORK_LABELS,
+  WORK_COLORS,
   horizon,
   pastDated,
   type BusinessUnit,
@@ -58,29 +60,19 @@ import {
   type SortKey,
   type SortDir,
 } from '@/lib/scheduled-revenue';
-import { RevenueCalendar, UnitSplitBar, compactUsd } from '@/components/RevenueCalendar';
+import { compactUsd } from '@/components/RevenueCalendar';
+import { MonthBrowser } from './MonthBrowser';
+import {
+  linkTo,
+  isOpenList,
+  type Nav,
+  type OpenList,
+} from './nav';
 import { fmtUsd, fmtUsdCents, fmtDateTime, monthLabel } from '@/lib/format';
 import { businessToday, toIsoDate } from '@/lib/dates';
 import { uploadScheduledRevenue } from './actions';
 
 export const dynamic = 'force-dynamic';
-
-/**
- * Which of the two side lists is expanded, if either.
- *
- * They open in place under their card, the same way tapping a day opens its job
- * list under the calendar — not as separate tabs. Tabs put these one level away
- * from everything else on the page, and you lost your month and your place
- * getting back.
- *
- * Two of the names here are the SERVICETITAN ones ('hold', 'parked') because
- * that's what the data says; the page calls them "Waiting on approval" and
- * "Unscheduled", which is what people here call them.
- *
- * 'pastdated' is ours, and is only reachable by the people in PAST_DATED_EMAILS
- * — see the note on that list in lib/auth.ts.
- */
-type OpenList = 'hold' | 'parked' | 'pastdated' | 'multiday';
 
 type Search = Promise<{
   list?: string;
@@ -93,37 +85,6 @@ type Search = Promise<{
   saved?: string;
   error?: string;
 }>;
-
-/** Everything the page needs to rebuild its own URL. */
-type Nav = {
-  list: OpenList | null;
-  year: number;
-  month: number;
-  unit: BusinessUnit | null;
-  day: string | null;
-  /** null means "whatever this list sorts by out of the box". */
-  sort: SortKey | null;
-  dir: SortDir | null;
-};
-
-/**
- * Every internal link rebuilds the WHOLE query, so changing month doesn't
- * quietly drop the unit filter and switching views doesn't drop the month.
- */
-function linkTo(nav: Nav, over: Partial<Nav>): string {
-  const n = { ...nav, ...over };
-  const q = new URLSearchParams();
-  if (n.list) q.set('list', n.list);
-  q.set('year', String(n.year));
-  q.set('month', String(n.month));
-  if (n.unit) q.set('unit', n.unit);
-  if (n.day) q.set('day', n.day);
-  if (n.sort) {
-    q.set('sort', n.sort);
-    if (n.dir) q.set('dir', n.dir);
-  }
-  return `/production/revenue-calendar?${q.toString()}`;
-}
 
 // ---------------------------------------------------------------------------
 // Small shared pieces
@@ -426,12 +387,6 @@ export default async function RevenueCalendarPage({
         />
       )}
     </main>
-  );
-}
-
-function isOpenList(v: unknown): v is OpenList {
-  return (
-    v === 'hold' || v === 'parked' || v === 'pastdated' || v === 'multiday'
   );
 }
 
@@ -785,107 +740,62 @@ function Report({
         </nav>
       )}
 
-      {/* ---- month ------------------------------------------------------- */}
-      <section className="mt-6 rounded-card border-[3px] border-paper-edge bg-white p-4 sm:p-6">
-        <div className="flex flex-wrap items-center justify-between gap-4">
-          <MonthNav nav={nav} />
-          <div className="text-right">
-            <p className="font-headline text-3xl font-black text-ink">
-              {fmtUsd(
-                unit ? (thisMonth?.byUnit[unit] ?? 0) : (thisMonth?.firmRevenue ?? 0),
-              )}
-            </p>
-            <p className="text-xs text-fg-2">
-              {thisMonth ? (
-                <>
-                  {unit ? (thisMonth.jobsByUnit?.[unit] ?? 0) : thisMonth.firmJobs} jobs
-                  across {thisMonth.workingDays} working days
-                  {!unit && (
-                    <>
-                      {' '}
-                      · {fmtUsd(treeTotal(thisMonth.byUnit))} tree ·{' '}
-                      {fmtUsd(phcTotal(thisMonth.byUnit))} PHC
-                    </>
-                  )}
-                </>
-              ) : (
-                'Nothing scheduled this month'
-              )}
-            </p>
-          </div>
-        </div>
-
-        {thisMonth && !unit && (
-          <UnitSplitBar byUnit={thisMonth.byUnit} className="mt-4" />
-        )}
-
-        <div className="mt-5">
-          <RevenueCalendar
-            year={year}
-            month={month}
-            days={dayMap}
-            unit={unit}
-            today={today}
-            selectedDay={selectedDay}
-            hrefForDay={(d) =>
-              linkTo(nav, { day: d, list: null, sort: null, dir: null })
-            }
-          />
-        </div>
-
-        <p className="mt-4 text-xs text-fg-3">
-          Each square: tree work on top, PHC underneath, both added up below the
-          rule. A multi-day job contributes one crew day, not its whole
-          subtotal &mdash; these are capacity figures, not invoices. Work
-          waiting on approval is a footnote, never part of them. Tap a day for
-          the job list.
-        </p>
-      </section>
-
-      {/* ---- the open day ------------------------------------------------ */}
-      {selectedDay && (
-        <section className="mt-4 rounded-card border-[3px] border-orange bg-white p-4 sm:p-6">
-          <div className="flex flex-wrap items-baseline justify-between gap-3">
-            <h2 className="font-headline text-xl font-black uppercase text-bark-deep">
-              {longDate(selectedDay)}
-            </h2>
-            <Link
-              href={linkTo(nav, { day: null, list: null, sort: null, dir: null })}
-              className="font-headline text-[10px] font-extrabold uppercase tracking-ribbon text-fg-3 hover:text-orange"
-            >
-              Close ✕
-            </Link>
-          </div>
-          <p className="mt-1 font-headline text-2xl font-black text-ink">
-            {fmtUsdCents(dayTotals?.firmRevenue ?? 0)}{' '}
-            <span className="text-sm font-extrabold text-fg-2">
-              · {dayTotals?.firmJobs ?? 0} jobs scheduled
-            </span>
-          </p>
-          <p className="mt-1 text-xs text-fg-2">
-            {fmtUsdCents(treeTotal(dayTotals?.byUnit))} tree work ·{' '}
-            {fmtUsdCents(phcTotal(dayTotals?.byUnit))} PHC
-            {dayTotals && dayTotals.holdRevenue > 0 && (
-              <span className="text-fg-3">
-                {' '}
-                · {fmtUsdCents(dayTotals.holdRevenue)} waiting on approval, not
-                counted
+      {/* ---- month + the day it opens ------------------------------------
+          MonthBrowser is the page's only client component. Stepping a month is
+          the one thing people do over and over here, and it used to be a server
+          round trip that also threw you back to the top of the page. The whole
+          snapshot is already in memory, so it doesn't need to be. */}
+      <MonthBrowser
+        nav={nav}
+        days={data.days}
+        months={data.months}
+        today={today}
+      >
+        {selectedDay && (
+          <section className="mt-4 rounded-card border-[3px] border-orange bg-white p-4 sm:p-6">
+            <div className="flex flex-wrap items-baseline justify-between gap-3">
+              <h2 className="font-headline text-xl font-black uppercase text-bark-deep">
+                {longDate(selectedDay)}
+              </h2>
+              <Link
+                href={linkTo(nav, { day: null, list: null, sort: null, dir: null })}
+                className="font-headline text-[10px] font-extrabold uppercase tracking-ribbon text-fg-3 hover:text-orange"
+              >
+                Close ✕
+              </Link>
+            </div>
+            <p className="mt-1 font-headline text-2xl font-black text-ink">
+              {fmtUsdCents(dayTotals?.firmRevenue ?? 0)}{' '}
+              <span className="text-sm font-extrabold text-fg-2">
+                · {dayTotals?.firmJobs ?? 0} jobs scheduled
               </span>
-            )}
-          </p>
-          <p className="mt-3 text-xs text-fg-3">
-            Click any column heading to reorder the list; click it again to flip
-            it.
-          </p>
-          <JobTable
-            jobs={dayJobs}
-            nav={nav}
-            sort={daySort}
-            dir={dayDir}
-            dates="first"
-          />
-        </section>
-      )}
+            </p>
+            <p className="mt-1 text-xs text-fg-2">
+              {fmtUsdCents(workTotal(dayTotals?.byWork, 'tree'))} tree work ·{' '}
+              {fmtUsdCents(workTotal(dayTotals?.byWork, 'phc'))} PHC ·{' '}
+              {fmtUsdCents(workTotal(dayTotals?.byWork, 'stump'))} stump
+              {dayTotals && dayTotals.holdRevenue > 0 && (
+                <span className="text-fg-3">
+                  {' '}
+                  · {fmtUsdCents(dayTotals.holdRevenue)} waiting on approval, not
+                  counted
+                </span>
+              )}
+            </p>
+            <p className="mt-3 text-xs text-fg-3">
+              Click any column heading to reorder the list; click it again to flip
+              it.
+            </p>
+            <JobTable
+              jobs={dayJobs}
+              nav={nav}
+              sort={daySort}
+              dir={dayDir}
+              dates="first"
+            />
+          </section>
+        )}
+      </MonthBrowser>
 
       {/* ---- the forward view -------------------------------------------- */}
       <section className="mt-4 rounded-card border-[3px] border-paper-edge bg-white p-4 sm:p-6">
@@ -897,6 +807,21 @@ function Report({
           relative to the biggest month &mdash; tap one to open its calendar.
           {unit && <> Filtered to {UNIT_LABELS[unit]}.</>}
         </p>
+        {!unit && (
+          <ul className="mt-3 flex flex-wrap gap-x-4 gap-y-1">
+            {WORK_ORDER.map((w) => (
+              <li key={w} className="text-xs">
+                <span
+                  className="mr-1.5 inline-block h-2.5 w-2.5 rounded-full align-middle"
+                  style={{ backgroundColor: WORK_COLORS[w] }}
+                />
+                <span className="font-headline font-extrabold uppercase tracking-ribbon text-fg-2">
+                  {WORK_LABELS[w]}
+                </span>
+              </li>
+            ))}
+          </ul>
+        )}
         <MonthOutlook
           months={data.months}
           unit={unit}
@@ -1199,51 +1124,6 @@ function Chip({
 }
 
 /**
- * Prev / label / next. Deliberately not the shared MonthPicker: that one builds
- * its own `?year=&month=` and would drop the view, unit filter and open day
- * every time you changed month.
- */
-function MonthNav({ nav }: { nav: Nav }) {
-  const prev = new Date(Date.UTC(nav.year, nav.month - 2, 1));
-  const next = new Date(Date.UTC(nav.year, nav.month, 1));
-  const arrow =
-    'inline-flex h-8 w-8 items-center justify-center rounded-full text-cream/70 transition-colors hover:bg-lime hover:text-ink';
-
-  return (
-    <div className="inline-flex items-center gap-1 rounded-full bg-bark px-2 py-1.5 text-cream shadow-sh-1">
-      <Link
-        // Only the open day is closed. The sort is left alone: if one of the
-        // side lists is open it isn't month-scoped, and resetting its column
-        // every time you stepped a month would be maddening.
-        href={linkTo(nav, {
-          year: prev.getUTCFullYear(),
-          month: prev.getUTCMonth() + 1,
-          day: null,
-        })}
-        aria-label="Previous month"
-        className={arrow}
-      >
-        ←
-      </Link>
-      <span className="min-w-[9rem] px-1 text-center font-headline text-xs font-extrabold uppercase tracking-ribbon">
-        {monthLabel(nav.year, nav.month)}
-      </span>
-      <Link
-        href={linkTo(nav, {
-          year: next.getUTCFullYear(),
-          month: next.getUTCMonth() + 1,
-          day: null,
-        })}
-        aria-label="Next month"
-        className={arrow}
-      >
-        →
-      </Link>
-    </div>
-  );
-}
-
-/**
  * Every month on the board, as bars.
  *
  * This is the "how far out are we booked" view — the calendar answers "what is
@@ -1270,8 +1150,7 @@ function MonthOutlook({
       month: m.month,
       revenue: unit ? (m.byUnit[unit] ?? 0) : m.firmRevenue,
       jobs: unit ? (m.jobsByUnit?.[unit] ?? 0) : m.firmJobs,
-      tree: treeTotal(m.byUnit),
-      phc: phcTotal(m.byUnit),
+      byWork: m.byWork,
     }))
     .filter((r) => r.revenue > 0);
 
@@ -1287,9 +1166,15 @@ function MonthOutlook({
         const [y, m] = r.month.split('-').map(Number);
         const isCurrent = r.month === currentMonth;
         const isPast = r.month < thisMonthKey;
-        // The tree/PHC split inside each bar, so the outlook carries the same
-        // separation the calendar squares do.
-        const treePct = r.revenue > 0 ? (r.tree / r.revenue) * 100 : 0;
+        // The same three-way split the calendar squares carry, so the outlook
+        // reads as the same picture zoomed out. Under a unit filter there's
+        // nothing to split — the bar is already one thing.
+        const segments = unit
+          ? [{ type: 'tree' as const, pct: 100 }]
+          : WORK_ORDER.map((w) => ({
+              type: w,
+              pct: r.revenue > 0 ? (workTotal(r.byWork, w) / r.revenue) * 100 : 0,
+            })).filter((seg) => seg.pct > 0);
         return (
           <li key={r.month}>
             <Link
@@ -1311,14 +1196,17 @@ function MonthOutlook({
                   className="flex h-full"
                   style={{ width: `${Math.max(2, (r.revenue / peak) * 100)}%` }}
                 >
-                  <span
-                    className={isPast ? 'bg-sand' : 'bg-green'}
-                    style={{ width: `${unit ? 100 : treePct}%` }}
-                  />
-                  <span
-                    className={isPast ? 'bg-sand/50' : 'bg-teal'}
-                    style={{ width: `${unit ? 0 : 100 - treePct}%` }}
-                  />
+                  {segments.map((seg) => (
+                    <span
+                      key={seg.type}
+                      style={{
+                        width: `${seg.pct}%`,
+                        // Past months drain to sand so the eye skips them, but
+                        // the segment boundaries stay readable.
+                        backgroundColor: isPast ? '#BE9A64' : WORK_COLORS[seg.type],
+                      }}
+                    />
+                  ))}
                 </span>
               </span>
               <span className="w-24 shrink-0 text-right font-headline text-sm font-black text-ink">

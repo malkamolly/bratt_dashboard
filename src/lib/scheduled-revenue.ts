@@ -170,6 +170,67 @@ export function isBusinessUnit(v: unknown): v is BusinessUnit {
 }
 
 // ---------------------------------------------------------------------------
+// Work type — tree / PHC / stump
+// ---------------------------------------------------------------------------
+// A SEPARATE AXIS FROM BUSINESS UNIT, and it has to be.
+//
+// ServiceTitan's business units are its org chart: Tree Work - Residential /
+// Commercial / Municipal, and Plant Health Care. Stump grinding isn't one of
+// them — it sits inside all three tree-work units (139 / 9 / 9 in the file we
+// built this on) and never inside PHC. So it can't be squeezed into
+// BusinessUnit without lying about what a business unit is.
+//
+// What the crews care about is which of three kinds of day it is: a tree crew
+// day, a PHC tech day, or a stump grinder day. Three different sets of people
+// and equipment, so a $30k tree day and a $30k stump day are nothing alike to
+// whoever is staffing them. That's the split on the calendar square; the unit
+// filter stays on the business units.
+
+export type WorkType = 'tree' | 'phc' | 'stump';
+
+export const WORK_ORDER: readonly WorkType[] = ['tree', 'phc', 'stump'] as const;
+
+export const WORK_LABELS: Record<WorkType, string> = {
+  tree: 'Tree work',
+  phc: 'PHC',
+  stump: 'Stump',
+};
+
+/** Brand palette, same source as UNIT_COLORS. */
+export const WORK_COLORS: Record<WorkType, string> = {
+  tree: '#72BB32', // green
+  phc: '#0096AA', // teal
+  stump: '#A35817', // wood warm
+};
+
+/**
+ * Job type first, business unit second.
+ *
+ * Job type is the more specific signal — "Stump Grinding" says what the day is
+ * regardless of which tree-work unit booked it. PHC is recognised from either
+ * side because the unit is the reliable marker there and the job type
+ * ("PHC Treatment") is a useful backstop.
+ *
+ * Anything unrecognised falls to `tree`, which is the safe direction: a new job
+ * type quietly vanishing from a day's total would be far worse than one landing
+ * under the wrong heading.
+ */
+export function toWorkType(jobType: string, unit: BusinessUnit): WorkType {
+  const t = (jobType ?? '').toLowerCase();
+  if (t.includes('stump')) return 'stump';
+  if (unit === 'phc' || t.includes('phc') || t.includes('plant health')) {
+    return 'phc';
+  }
+  return 'tree';
+}
+
+export type WorkTotals = Record<WorkType, number>;
+
+export function emptyWorkTotals(): WorkTotals {
+  return { tree: 0, phc: 0, stump: 0 };
+}
+
+// ---------------------------------------------------------------------------
 // Row + report shapes
 // ---------------------------------------------------------------------------
 
@@ -204,6 +265,8 @@ export type ScheduledJob = {
   jobType: string;
   campaign: string;
   unit: BusinessUnit;
+  /** Tree crew day, PHC tech day, or stump grinder day. See toWorkType. */
+  work: WorkType;
   /** What the whole job is worth, across all of its appointments. */
   subtotal: number;
   /**
@@ -251,6 +314,9 @@ export type DayTotals = {
   holdJobs: number;
   /** Firm revenue split by business unit. Sums to firmRevenue. */
   byUnit: UnitTotals;
+  /** The same money split by work type instead. Also sums to firmRevenue —
+   *  two different cuts of one number, not two numbers. */
+  byWork: WorkTotals;
   /** Job counts to match byUnit. Kept alongside the dollars rather than
    *  derived on the page, so a unit-filtered square can say "6 jobs" instead of
    *  the whole day's count — which is the wrong number under a filter. */
@@ -266,6 +332,7 @@ export type MonthTotals = {
   holdJobs: number;
   byUnit: UnitTotals;
   jobsByUnit: UnitTotals;
+  byWork: WorkTotals;
   /** Calendar days in the month with firm revenue on them. */
   workingDays: number;
 };
@@ -582,13 +649,15 @@ export function computeScheduledRevenue(
 ): ScheduledRevenueData {
   const jobs: ScheduledJob[] = rows.map((r) => {
     const date = calendarDate(r);
+    const unit = toUnit(r.businessUnit);
     return {
       jobNumber: r.jobNumber,
       status: toStatus(r.status),
       statusRaw: r.status,
       jobType: r.jobType,
       campaign: r.campaign,
-      unit: toUnit(r.businessUnit),
+      unit,
+      work: toWorkType(r.jobType, unit),
       subtotal: round2(r.subtotal),
       perDay: perAppointment(r.subtotal, r.appointments),
       date,
@@ -656,6 +725,7 @@ export function computeScheduledRevenue(
         holdJobs: 0,
         byUnit: emptyUnitTotals(),
         jobsByUnit: emptyUnitTotals(),
+        byWork: emptyWorkTotals(),
       };
     const monthKey = j.date.slice(0, 7);
     const month =
@@ -668,6 +738,7 @@ export function computeScheduledRevenue(
         holdJobs: 0,
         byUnit: emptyUnitTotals(),
         jobsByUnit: emptyUnitTotals(),
+        byWork: emptyWorkTotals(),
         workingDays: 0,
         dayset: new Set<IsoDay>(),
       };
@@ -681,10 +752,12 @@ export function computeScheduledRevenue(
       day.firmJobs++;
       day.byUnit[j.unit] += j.perDay;
       day.jobsByUnit[j.unit]++;
+      day.byWork[j.work] += j.perDay;
       month.firmRevenue += j.perDay;
       month.firmJobs++;
       month.byUnit[j.unit] += j.perDay;
       month.jobsByUnit[j.unit]++;
+      month.byWork[j.work] += j.perDay;
       totals.firmRevenue += j.perDay;
       totals.firmJobs++;
       if (j.perDay !== j.subtotal) {
@@ -711,6 +784,7 @@ export function computeScheduledRevenue(
     d.firmRevenue = round2(d.firmRevenue);
     d.holdRevenue = round2(d.holdRevenue);
     for (const u of UNIT_ORDER) d.byUnit[u] = round2(d.byUnit[u]);
+    for (const w of WORK_ORDER) d.byWork[w] = round2(d.byWork[w]);
   }
   const months: MonthTotals[] = [...monthMap.values()]
     .map(({ dayset, ...m }) => ({
@@ -721,6 +795,9 @@ export function computeScheduledRevenue(
         UNIT_ORDER.map((u) => [u, round2(m.byUnit[u])]),
       ) as UnitTotals,
       jobsByUnit: m.jobsByUnit,
+      byWork: Object.fromEntries(
+        WORK_ORDER.map((w) => [w, round2(m.byWork[w])]),
+      ) as WorkTotals,
       workingDays: dayset.size,
     }))
     .sort((a, b) => a.month.localeCompare(b.month));
@@ -809,30 +886,16 @@ export function crewList(raw: string): string[] {
 }
 
 // ---------------------------------------------------------------------------
-// Tree work vs. Plant Health Care
+// Reading the work split
 // ---------------------------------------------------------------------------
-// The split that matters day to day: PHC runs on its own techs and its own
-// trucks, so a $30k day made of tree work and a $30k day made of PHC are two
-// completely different days for the people building the schedule. Everything
-// that isn't PHC is "tree work" — residential, commercial, municipal, and
-// whatever unit ServiceTitan invents next, which is the right default: a new
-// unit showing up under tree work is a mild mislabel, whereas one silently
-// vanishing from the day's total is a wrong number.
 
-/** Everything that isn't Plant Health Care. */
-export function treeTotal(byUnit: UnitTotals | undefined): number {
-  if (!byUnit) return 0;
-  let n = 0;
-  for (const u of UNIT_ORDER) {
-    if (u === 'phc') continue;
-    n += byUnit[u] ?? 0;
-  }
-  return round2(n);
-}
-
-/** The PHC half of the same split. */
-export function phcTotal(byUnit: UnitTotals | undefined): number {
-  return round2(byUnit?.phc ?? 0);
+/** One work type's share of a day or month. Tolerates a payload written before
+ *  byWork existed, which reads as zero rather than throwing. */
+export function workTotal(
+  byWork: WorkTotals | undefined,
+  type: WorkType,
+): number {
+  return round2(byWork?.[type] ?? 0);
 }
 
 // ---------------------------------------------------------------------------
@@ -1046,24 +1109,27 @@ export function horizonSplit(
   data: ScheduledRevenueData,
   from: IsoDay,
   days: number,
-): { revenue: number; jobs: number; tree: number; phc: number } {
+): { revenue: number; jobs: number; tree: number; phc: number; stump: number } {
   const to = addDays(from, days);
   let revenue = 0;
   let jobs = 0;
   let tree = 0;
   let phc = 0;
+  let stump = 0;
   for (const d of data.days) {
     if (d.date < from || d.date >= to) continue;
     revenue += d.firmRevenue;
     jobs += d.firmJobs;
-    tree += treeTotal(d.byUnit);
-    phc += phcTotal(d.byUnit);
+    tree += workTotal(d.byWork, 'tree');
+    phc += workTotal(d.byWork, 'phc');
+    stump += workTotal(d.byWork, 'stump');
   }
   return {
     revenue: round2(revenue),
     jobs,
     tree: round2(tree),
     phc: round2(phc),
+    stump: round2(stump),
   };
 }
 
@@ -1113,14 +1179,17 @@ export function hydrateScheduledRevenue(
       // on one square. Reading it back as the whole subtotal is the honest
       // reproduction of what that snapshot said.
       perDay: j.perDay ?? j.subtotal ?? 0,
+      work: j.work ?? 'tree',
     })),
     days: (raw.days ?? []).map((d) => ({
       ...d,
       jobsByUnit: d.jobsByUnit ?? emptyUnitTotals(),
+      byWork: d.byWork ?? emptyWorkTotals(),
     })),
     months: (raw.months ?? []).map((m) => ({
       ...m,
       jobsByUnit: m.jobsByUnit ?? emptyUnitTotals(),
+      byWork: m.byWork ?? emptyWorkTotals(),
     })),
     totals: { ...blankTotals(), ...(raw.totals ?? {}) },
     sinceLast: raw.sinceLast ?? null,

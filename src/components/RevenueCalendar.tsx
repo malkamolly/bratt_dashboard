@@ -6,15 +6,16 @@
 // the state — a month + filter + open day can be pasted into Slack and land
 // someone on exactly what you were looking at.
 //
-// WHAT A SQUARE SHOWS — three lines, in this order:
+// WHAT A SQUARE SHOWS — four lines, in this order:
 //   TREE WORK   biggest and boldest. It's the number the schedule is built
 //               around, and the one people are looking for.
-//   PHC         its own line, because Plant Health Care runs on its own techs
-//               and trucks — a $30k tree day and a $30k PHC day are completely
-//               different days to whoever is staffing them.
-//   TOTAL       the two added up, under a rule.
-// The PHC line is drawn even when it's empty, so the three lines land in the
-// same place on every square and the grid can be scanned down a column.
+//   PHC         Plant Health Care runs on its own techs and trucks.
+//   STUMP       stump grinding runs on its own grinder and operator.
+//   TOTAL       the three added up, under a rule.
+// PHC and Stump are DEDUCTED from the tree line and added back in the total, so
+// the three parts always sum to the bottom figure. Each is drawn even when
+// empty, so the four lines land in the same place on every square and the grid
+// can be scanned down a column.
 //
 // Work waiting on a customer's approval is a footnote on the square, never part
 // of any of the three. See the pile notes in lib/scheduled-revenue.ts for why.
@@ -29,8 +30,7 @@ import {
   UNIT_COLORS,
   UNIT_ORDER,
   UNIT_LABELS,
-  treeTotal,
-  phcTotal,
+  workTotal,
   type BusinessUnit,
   type DayTotals,
 } from '@/lib/scheduled-revenue';
@@ -116,8 +116,9 @@ export function RevenueCalendar({
     const totals = days.get(key);
     const value = valueOf(totals);
     const jobs = jobsOf(totals);
-    const tree = treeTotal(totals?.byUnit);
-    const phc = phcTotal(totals?.byUnit);
+    const tree = workTotal(totals?.byWork, 'tree');
+    const phc = workTotal(totals?.byWork, 'phc');
+    const stump = workTotal(totals?.byWork, 'stump');
     const hold = totals?.holdRevenue ?? 0;
     const isToday = key === today;
     const isPast = key < today;
@@ -137,7 +138,7 @@ export function RevenueCalendar({
         scroll={false}
         aria-current={isToday ? 'date' : undefined}
         className={[
-          'group relative flex min-h-[6.75rem] flex-col rounded-2 border-2 p-1.5 transition-colors',
+          'group relative flex min-h-[7.75rem] flex-col rounded-2 border-2 p-1.5 transition-colors',
           isSelected
             ? 'border-orange ring-2 ring-orange/30'
             : isToday
@@ -186,8 +187,11 @@ export function RevenueCalendar({
               <span className="block font-headline text-[15px] font-black leading-tight text-ink">
                 {compactUsd(tree)}
               </span>
-              <span className="block text-[10px] leading-tight text-teal-navy">
+              <span className="block text-[10px] leading-tight text-teal">
                 PHC {compactUsd(phc)}
+              </span>
+              <span className="block text-[10px] leading-tight text-wood-warm">
+                Stump {compactUsd(stump)}
               </span>
               <span className="mt-0.5 block border-t border-ink/20 pt-0.5 font-headline text-[11px] font-extrabold leading-tight text-fg-2">
                 {compactUsd(value)}

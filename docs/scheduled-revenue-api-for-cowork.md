@@ -158,7 +158,8 @@ Sending both `parts` and `jobs` is rejected.
 | `technicians` | Verbatim, comma-separated in one string. **Do not split them, and do not shorten the names** — the dashboard applies the First-Name-Last-Initial rule itself. |
 | `soldBy` | Verbatim, a full name. Same rule: don't shorten it, the dashboard does. Optional. |
 | `soldOn` | Strict `YYYY-MM-DD` or `null`. Same date rules as the others. Optional. |
-| `jobType` / `campaign` / `address` / `zip` | Verbatim. Optional. |
+| `jobType` | Verbatim. **Send it** — it's what separates stump grinding from tree work in every figure. |
+| `campaign` / `address` / `zip` | Verbatim. Optional. |
 | `appointments` | A whole number from `Total Appointments`. **Send it** — it divides the job across crew days (see below). Missing reads as 1. |
 
 ### The checksum is mandatory, and it is PER REPORT
@@ -260,10 +261,10 @@ board:
   "counts": "firm-only",
   "firmStatuses": ["Scheduled", "In Progress"],
 
-  "onTheBoard": { "revenue": 1332782.31, "jobs": 749, "tree": 1247579.09, "phc": 85203.22 },
-  "next7":      { "revenue": 133594.62,  "jobs": 120, "tree": 103812.19,  "phc": 29782.43 },
-  "next30":     { "revenue": 377113.81,  "jobs": 309, "tree": 299608.59,  "phc": 77505.22 },
-  "next90":     { "revenue": 975320.88,  "jobs": 678, "tree": 862947.11,  "phc": 112373.77 },
+  "onTheBoard": { "revenue": 1224753.42, "jobs": 749, "tree": 1076378.92, "phc": 81977.22, "stump": 66397.28 },
+  "next7":      { "revenue": 126369.62,  "jobs": 120, "tree": 96587.19,   "phc": 24782.43, "stump": 5000.00 },
+  "next30":     { "revenue": 356113.81,  "jobs": 309, "tree": 278608.59,  "phc": 62505.22, "stump": 15000.00 },
+  "next90":     { "revenue": 920320.88,  "jobs": 678, "tree": 812947.11,  "phc": 72373.77, "stump": 35000.00 },
   "pastDated":  { "revenue": 48109.10,   "jobs": 17 },
 
   "waitingApproval": { "revenue": 33287.92, "jobs": 28 },
@@ -279,13 +280,13 @@ board:
   ],
 
   "byMonth": [
-    { "month": "2026-09", "revenue": 377113.81, "jobs": 309,
-      "tree": 299608.59, "phc": 77505.22, "holdRevenue": 7317 }
+    { "month": "2026-09", "revenue": 356113.81, "jobs": 309,
+      "tree": 278608.59, "phc": 62505.22, "stump": 15000.00, "holdRevenue": 7317 }
   ],
 
   "nextWeeks": [
-    { "weekOf": "2026-08-31", "revenue": 167349.35, "jobs": 123, "tree": 124174.45, "phc": 43174.90 },
-    { "weekOf": "2026-09-07", "revenue": 70974.57,  "jobs": 72,  "tree": 55120.11,  "phc": 15854.46 }
+    { "weekOf": "2026-08-31", "revenue": 160124.35, "jobs": 123, "tree": 112174.45, "phc": 38174.90, "stump": 9775.00 },
+    { "weekOf": "2026-09-07", "revenue": 66974.57,  "jobs": 72,  "tree": 49120.11,  "phc": 13854.46, "stump": 4000.00 }
   ],
 
   "sources": [
@@ -338,11 +339,19 @@ counted here is genuinely stranded. It should normally be zero; rising is bad.
 date. So a stale snapshot still reports honest horizons; it just reports fewer
 of them. If `sourceDate` and `asOf` differ, the import didn't run today.
 
-**Tree work and PHC are split on every window.** `tree` is everything that isn't
-Plant Health Care, and `tree + phc === revenue` on `onTheBoard`, every horizon,
-every `byMonth` row and every `nextWeeks` row. Worth using: PHC runs on its own
-techs and its own trucks, so a $30k tree day and a $30k PHC day are completely
-different days to whoever is staffing them.
+**Every window splits three ways: `tree`, `phc`, `stump`.** They sum to
+`revenue` on `onTheBoard`, every horizon, every `byMonth` row and every
+`nextWeeks` row. Worth using: tree crews, PHC techs and stump grinders are three
+different sets of people and equipment, so a $30k day of each is nothing alike
+to whoever is staffing them.
+
+> **`tree` no longer includes stump grinding.** It used to. Anything comparing
+> `tree` across time needs to add `stump` back to match older figures.
+
+The split comes from the **job type**, not the business unit — stump grinding
+sits inside all three tree-work business units and never inside Plant Health
+Care, so it can't be read off `businessUnit`. Send `Job Type` verbatim and the
+dashboard sorts it out.
 
 **`nextWeeks`** is eight weeks starting from the Monday of the current week.
 Weeks start Monday because the crews do.

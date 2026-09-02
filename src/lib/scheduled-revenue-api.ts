@@ -26,8 +26,8 @@ import {
   horizonSplit,
   pastDated,
   addDays,
-  treeTotal,
-  phcTotal,
+  workTotal,
+  WORK_ORDER,
   round2,
   type BusinessUnit,
   type ScheduledRevenueData,
@@ -175,9 +175,10 @@ export type UnitRow = {
 export type Window = {
   revenue: number;
   jobs: number;
-  /** Everything that isn't Plant Health Care. */
+  /** Tree crew work only — stump grinding is broken out separately. */
   tree: number;
   phc: number;
+  stump: number;
 };
 
 export type WeekRow = Window & {
@@ -201,9 +202,11 @@ export type SummaryBody = {
   /**
    * Every horizon carries the tree-work / PHC split alongside its total.
    *
-   * PHC runs on its own techs and its own trucks, so a $30k tree day and a $30k
-   * PHC day are completely different days to whoever is staffing them. `tree`
-   * is everything that isn't PHC, and `tree + phc === revenue`.
+   * Tree crews, PHC techs and stump grinders are three different sets of
+   * people and equipment, so a $30k day of each is nothing alike to whoever is
+   * staffing them. `tree + phc + stump === revenue` on every window.
+   *
+   * NOTE `tree` now EXCLUDES stump grinding, which used to be folded into it.
    */
   /**
    * Capacity placed on calendar days. A multi-day job contributes ONE crew day
@@ -252,6 +255,7 @@ export type SummaryBody = {
     jobs: number;
     tree: number;
     phc: number;
+    stump: number;
     holdRevenue: number;
   }[];
   nextWeeks: WeekRow[];
@@ -323,6 +327,14 @@ export function buildSummaryBody(
 
   const s = data.sinceLast;
 
+  // Summed from the months rather than the jobs, so it can't drift from what
+  // byMonth and the calendar say.
+  const boardWork = { tree: 0, phc: 0, stump: 0 };
+  for (const m of data.months) {
+    for (const w of WORK_ORDER) boardWork[w] += workTotal(m.byWork, w);
+  }
+  for (const w of WORK_ORDER) boardWork[w] = round2(boardWork[w]);
+
   const waiting = {
     revenue: data.totals.holdRevenue,
     jobs: data.totals.holdJobs,
@@ -345,10 +357,7 @@ export function buildSummaryBody(
     onTheBoard: {
       revenue: data.totals.firmRevenue,
       jobs: data.totals.firmJobs,
-      tree: round2(
-        byUnit.reduce((n, r) => (r.unit === 'phc' ? n : n + r.revenue), 0),
-      ),
-      phc: round2(byUnit.find((r) => r.unit === 'phc')?.revenue ?? 0),
+      ...boardWork,
     },
     next7: horizonSplit(data, asOf, 7),
     next30: horizonSplit(data, asOf, 30),
@@ -372,8 +381,9 @@ export function buildSummaryBody(
       month: m.month,
       revenue: m.firmRevenue,
       jobs: m.firmJobs,
-      tree: treeTotal(m.byUnit),
-      phc: phcTotal(m.byUnit),
+      tree: workTotal(m.byWork, 'tree'),
+      phc: workTotal(m.byWork, 'phc'),
+      stump: workTotal(m.byWork, 'stump'),
       holdRevenue: m.holdRevenue,
     })),
     nextWeeks,
