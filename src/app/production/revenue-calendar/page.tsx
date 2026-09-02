@@ -80,7 +80,7 @@ export const dynamic = 'force-dynamic';
  * 'pastdated' is ours, and is only reachable by the people in PAST_DATED_EMAILS
  * — see the note on that list in lib/auth.ts.
  */
-type OpenList = 'hold' | 'parked' | 'pastdated';
+type OpenList = 'hold' | 'parked' | 'pastdated' | 'multiday';
 
 type Search = Promise<{
   list?: string;
@@ -260,9 +260,17 @@ function JobTable({
                 <span className="text-xs text-fg-2">{j.city || '—'}</span>
               </Td>
               <Td right>
+                {/* On a multi-day job the per-day figure is the one that
+                    matters — it's what the calendar square carries — so it
+                    leads, with the job's whole value underneath. */}
                 <span className="font-headline font-black text-ink">
-                  {j.subtotal > 0 ? fmtUsdCents(j.subtotal) : '—'}
+                  {j.perDay > 0 ? fmtUsdCents(j.perDay) : '—'}
                 </span>
+                {j.perDay !== j.subtotal && (
+                  <span className="block whitespace-nowrap text-[11px] text-fg-3">
+                    {fmtUsd(j.subtotal)} ÷ {j.appointments} days
+                  </span>
+                )}
               </Td>
             </tr>
           ))}
@@ -346,10 +354,6 @@ function signed(n: number): string {
   return n === 0 ? s : n > 0 ? `+${s}` : `−${s}`;
 }
 
-function sumOf(jobs: ScheduledJob[]): number {
-  return Math.round(jobs.reduce((s, j) => s + j.subtotal, 0) * 100) / 100;
-}
-
 // ---------------------------------------------------------------------------
 
 export default async function RevenueCalendarPage({
@@ -426,7 +430,9 @@ export default async function RevenueCalendarPage({
 }
 
 function isOpenList(v: unknown): v is OpenList {
-  return v === 'hold' || v === 'parked' || v === 'pastdated';
+  return (
+    v === 'hold' || v === 'parked' || v === 'pastdated' || v === 'multiday'
+  );
 }
 
 function clampInt(
@@ -510,11 +516,20 @@ function ListPanel({
   dates,
   defaultSort,
   copyText,
+  total,
 }: {
   nav: Nav;
   jobs: ScheduledJob[];
   title: string;
   blurb: string;
+  /**
+   * The figure in the heading. Passed in rather than summed from the rows,
+   * because each list means a different total: the waiting and unscheduled
+   * piles hold whole job values, while past-dated and multi-day are about crew
+   * days. A heading that disagreed with the card you clicked would be worse
+   * than no heading at all.
+   */
+  total: number;
   dates?: 'both' | 'first';
   /** How this list opens before anyone touches a header. */
   defaultSort: { key: SortKey; dir: SortDir };
@@ -529,7 +544,7 @@ function ListPanel({
       <div className="flex flex-wrap items-baseline justify-between gap-3">
         <h2 className="font-headline text-xl font-black uppercase text-bark-deep">
           {title} &mdash; {jobs.length} {jobs.length === 1 ? 'job' : 'jobs'},{' '}
-          {fmtUsd(sumOf(jobs))}
+          {fmtUsd(total)}
         </h2>
         <div className="flex items-center gap-3">
           {copyText && <CopyButton text={copyText} label={`Copy ${jobs.length} jobs`} />}
@@ -580,6 +595,12 @@ function Report({
     (j) => j.status === 'hold' && j.parked,
   ).length;
   const unscheduledJobs = data.jobs.filter((j) => j.parked);
+  // Firm jobs running more than one day. They ARE on the calendar — one crew
+  // day of each — so this list explains where the deferred money went rather
+  // than being a pile of work nobody has looked at.
+  const multiDayJobs = data.jobs.filter(
+    (j) => !j.parked && j.status !== 'hold' && j.date && j.perDay !== j.subtotal,
+  );
   // Firm work still sitting on a day that has gone by. Same definition
   // pastDated() sums, so the list and the tile can't disagree.
   const pastDatedJobs = data.jobs.filter(
@@ -621,7 +642,7 @@ function Report({
         }`}
       >
         <Tile
-          label={unit ? `On the board · ${UNIT_SHORT[unit]}` : 'On the board'}
+          label={unit ? `On the calendar · ${UNIT_SHORT[unit]}` : 'On the calendar'}
           value={fmtUsd(board.revenue)}
           note={`${board.jobs} jobs · through ${data.meta.windowEnd ? shortDate(data.meta.windowEnd) : '—'}`}
         />
@@ -654,7 +675,16 @@ function Report({
 
           Both cards are the whole click target, and both open their list in
           place below rather than navigating anywhere. */}
-      <section className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
+      <section className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        <PileCard
+          nav={nav}
+          list="multiday"
+          label="Other crew days — not on a square"
+          amount={fmtUsd(data.totals.deferredRevenue)}
+          jobs={multiDayJobs.length}
+          blurb="Multi-day jobs put ONE crew day on the calendar, because that's the only date the export gives us. This is the rest of their value."
+          tone="lead"
+        />
         <PileCard
           nav={nav}
           list="parked"
@@ -675,12 +705,13 @@ function Report({
         />
       </section>
 
-      {nav.list === 'parked' && (
+      {nav.list === 'multiday' && (
         <ListPanel
           nav={nav}
-          jobs={unscheduledJobs}
-          title="Unscheduled"
-          blurb={`Sold work with no real date yet — ServiceTitan parks it on ${shortDate(PARKED_FROM)}. Biggest first: every one of these is a day on the calendar waiting to happen.`}
+          jobs={multiDayJobs}
+          title="Multi-day jobs — undated crew days"
+          total={data.totals.deferredRevenue}
+          blurb="Each of these runs more than one day, so the calendar carries one crew day of it — the whole subtotal on one square would say that day has capacity it doesn't. The export only dates one appointment, so the remaining days aren't placed anywhere. Subtotals below show the per-day figure with the job total under it."
           defaultSort={{ key: 'subtotal', dir: 'desc' }}
         />
       )}
@@ -690,9 +721,10 @@ function Report({
           nav={nav}
           jobs={pastDatedJobs}
           title="Past-dated"
+          total={behind.revenue}
           blurb="Jobs whose next appointment has already gone by — nothing further is booked and nobody closed them out. A job part-way through a multi-day run sits on its NEXT crew day instead, so anything in here is genuinely stranded. Normally empty."
           defaultSort={{ key: 'nextAppt', dir: 'asc' }}
-          copyText={pastDatedMessage(pastDatedJobs, today)}
+          copyText={pastDatedMessage(pastDatedJobs, today, behind.revenue)}
         />
       )}
 
@@ -701,6 +733,7 @@ function Report({
           nav={nav}
           jobs={waitingJobs}
           title="Waiting on approval"
+          total={data.totals.holdRevenue}
           blurb={`Jobs ServiceTitan has at Hold — mostly waiting on a customer's go-ahead. None of it is in any calendar figure. Opens by the day each one is currently sitting on.${
             waitingAndUnscheduled > 0
               ? ` A further ${waitingAndUnscheduled} ${waitingAndUnscheduled === 1 ? 'job has' : 'jobs have'} no date at all — those are under Unscheduled.`
@@ -802,8 +835,10 @@ function Report({
 
         <p className="mt-4 text-xs text-fg-3">
           Each square: tree work on top, PHC underneath, both added up below the
-          rule. Work waiting on approval is a footnote, never part of the
-          figure. Tap a day for the job list.
+          rule. A multi-day job contributes one crew day, not its whole
+          subtotal &mdash; these are capacity figures, not invoices. Work
+          waiting on approval is a footnote, never part of them. Tap a day for
+          the job list.
         </p>
       </section>
 
@@ -881,9 +916,11 @@ function Report({
           {data.meta.sourceDate && <> · report dated {shortDate(data.meta.sourceDate)}</>}
           {data.meta.uploadedBy && <> · by {data.meta.uploadedBy}</>}.{' '}
           {data.totals.allJobs} jobs read, worth {fmtUsd(data.totals.allRevenue)} in
-          total &mdash; {compactUsd(data.totals.firmRevenue)} scheduled,{' '}
-          {compactUsd(data.totals.holdRevenue)} waiting on approval,{' '}
-          {compactUsd(data.totals.parkedRevenue)} unscheduled.
+          total &mdash; {compactUsd(data.totals.firmRevenue)} placed on the
+          calendar, {compactUsd(data.totals.deferredRevenue)} on other crew
+          days, {compactUsd(data.totals.holdRevenue)} waiting on approval,{' '}
+          {compactUsd(data.totals.parkedRevenue)} unscheduled. Those four add
+          up to the total.
           {data.totals.zeroDollarJobs > 0 && (
             <>
               {' '}
@@ -1007,16 +1044,24 @@ function PastDatedTile({
  * someone's DMs is a puzzle rather than a request. Oldest first, which is the
  * order they need working in.
  */
-function pastDatedMessage(jobs: ScheduledJob[], today: string): string {
-  const ordered = sortJobs(jobs, 'date', 'asc');
-  const total = sumOf(ordered);
+function pastDatedMessage(
+  jobs: ScheduledJob[],
+  today: string,
+  total: number,
+): string {
+  const ordered = sortJobs(jobs, 'nextAppt', 'asc');
   const lines = [
     `Past-dated jobs on the board — ${ordered.length} ${ordered.length === 1 ? 'job' : 'jobs'}, ${fmtUsd(total)}`,
     `As of ${longDate(today)}. These are scheduled on days that have already gone by and haven't been closed out — either the work happened and the job wasn't updated, or it slipped and nobody moved it.`,
     '',
   ];
   for (const j of ordered) {
-    const money = j.subtotal > 0 ? fmtUsdCents(j.subtotal) : 'no $';
+    const money =
+      j.perDay <= 0
+        ? 'no $'
+        : j.perDay === j.subtotal
+          ? fmtUsdCents(j.subtotal)
+          : `${fmtUsdCents(j.perDay)} (${fmtUsd(j.subtotal)} over ${j.appointments} days)`;
     lines.push(
       `• ${j.date ? shortDate(j.date) : '—'} · Job ${j.jobNumber} · ${j.jobType || 'Job'} (${UNIT_SHORT[j.unit]}) · ${money}`,
     );
@@ -1107,7 +1152,12 @@ function PileCard({
   );
 }
 
-/** Firm revenue and job count across the whole board, optionally for one unit. */
+/**
+ * Capacity placed on the calendar, optionally for one unit.
+ *
+ * Sums perDay, not subtotal — this has to agree with what the squares add up
+ * to, and a multi-day job only puts one crew day on a square.
+ */
 function boardTotal(
   data: ScheduledRevenueData,
   unit: BusinessUnit | null,
@@ -1119,7 +1169,7 @@ function boardTotal(
   let jobs = 0;
   for (const j of data.jobs) {
     if (j.unit !== unit || j.parked || j.status === 'hold') continue;
-    revenue += j.subtotal;
+    revenue += j.perDay;
     jobs++;
   }
   return { revenue: Math.round(revenue * 100) / 100, jobs };

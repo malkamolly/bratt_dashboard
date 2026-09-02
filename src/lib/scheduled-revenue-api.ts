@@ -205,6 +205,11 @@ export type SummaryBody = {
    * PHC day are completely different days to whoever is staffing them. `tree`
    * is everything that isn't PHC, and `tree + phc === revenue`.
    */
+  /**
+   * Capacity placed on calendar days. A multi-day job contributes ONE crew day
+   * (subtotal ÷ appointments), so this is what the squares add up to — not the
+   * full value of the work. The rest is in `otherCrewDays`.
+   */
   onTheBoard: Window;
   next7: Window;
   next30: Window;
@@ -214,6 +219,12 @@ export type SummaryBody = {
    *  never closed out. Not a forecast; a to-do list. */
   pastDated: { revenue: number; jobs: number };
 
+  /**
+   * The crew days of multi-day jobs beyond the one date the export gives us.
+   * Real sold work that will consume a crew day on a day nobody has told us
+   * about. Roughly 8% of the board — worth naming rather than losing.
+   */
+  otherCrewDays: { revenue: number; jobs: number };
   /**
    * Work waiting on a customer's approval — ServiceTitan status Hold. Kept out
    * of every figure above by design.
@@ -293,7 +304,9 @@ export function buildSummaryBody(
     let jobs = 0;
     for (const j of data.jobs) {
       if (j.unit !== u || j.parked || j.status === 'hold') continue;
-      revenue += j.subtotal;
+      // perDay, not subtotal: this has to add up to onTheBoard, which is what
+      // the calendar squares add up to.
+      revenue += j.perDay;
       jobs++;
     }
     return { unit: u, label: UNIT_LABELS[u], revenue: round2(revenue), jobs };
@@ -345,6 +358,10 @@ export function buildSummaryBody(
     // Emitted twice under both vocabularies. Two extra keys cost nothing and
     // remove a whole class of downstream mistake — same reasoning as the
     // balance/total pair on the collections summary.
+    otherCrewDays: {
+      revenue: data.totals.deferredRevenue,
+      jobs: data.totals.deferredJobs,
+    },
     waitingApproval: waiting,
     onHold: waiting,
     unscheduled,

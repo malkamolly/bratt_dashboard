@@ -11,7 +11,20 @@
 // (one row per job: subtotal + scheduled date) into a per-day, per-month view
 // of booked production revenue we can look forward into.
 //
-// THREE PILES, AND WHY THEY ARE SEPARATE
+// A DAY IS A CREW DAY, NOT AN INVOICE
+// A job's subtotal is what the whole job is worth, however many days it takes.
+// Putting a $60k two-day removal entirely on its first square says that day has
+// $60k of capacity in it, which is off by a factor of two — and this calendar
+// exists to answer "can we take on more work that week". So a job contributes
+// subtotal ÷ appointments to the day it sits on. On a single-visit job, which
+// is most of them, that's the whole subtotal and nothing changes.
+//
+// ServiceTitan gives us ONE date per job (see calendarDate), so only one crew
+// day of a multi-day job can be placed. The rest is real money on days we
+// haven't been told about, and it gets its own pile rather than being quietly
+// dropped from the calendar or quietly doubled onto one square.
+//
+// FOUR PILES, AND WHY THEY ARE SEPARATE
 //   FIRM     — everything not at status Hold. This is the number on the
 //              calendar. Scheduled and In Progress both mean the truck is going.
 //   WAITING  — jobs at ServiceTitan status "Hold", which is mostly work sitting
@@ -22,8 +35,11 @@
 //   UNSCHED- — jobs dated on the far-future placeholder date (see PARKED_FROM).
 //   ULED       Sold work with no real date on it. Left off the calendar because
 //              one square holding six figures is noise, not information.
+//   OTHER    — the crew days of multi-day jobs beyond the one date the export
+//   CREW       gives us. Roughly 8% of the board in the file we sized this on,
+//   DAYS       so far too much to lose quietly.
 // Nothing is dropped. Every dollar in the export lands in exactly one pile, and
-// the three sum to the export's grand total.
+// the four sum to the export's grand total.
 //
 // The field names below stay `hold` and `parked`, because that is what
 // ServiceTitan's own data says and renaming them here would hide where the
@@ -188,7 +204,13 @@ export type ScheduledJob = {
   jobType: string;
   campaign: string;
   unit: BusinessUnit;
+  /** What the whole job is worth, across all of its appointments. */
   subtotal: number;
+  /**
+   * One crew day's worth: subtotal ÷ appointments, rounded to the cent. This is
+   * what lands on the calendar square, not `subtotal`.
+   */
+  perDay: number;
   /**
    * The day this job sits on in the calendar — its NEXT appointment where it
    * has one, otherwise its scheduled date. See calendarDate().
@@ -249,8 +271,20 @@ export type MonthTotals = {
 };
 
 export type ScheduledRevenueTotals = {
+  /**
+   * Capacity actually placed on days — the sum of every square on the calendar.
+   * NOT the full value of the jobs; the rest of a multi-day job is in
+   * deferredRevenue.
+   */
   firmRevenue: number;
   firmJobs: number;
+  /**
+   * The crew days of multi-day jobs that the export doesn't date. Real sold
+   * work that will consume a crew day on some day we haven't been told about.
+   */
+  deferredRevenue: number;
+  /** Firm jobs running more than one day. */
+  deferredJobs: number;
   holdRevenue: number;
   holdJobs: number;
   parkedRevenue: number;
@@ -556,6 +590,7 @@ export function computeScheduledRevenue(
       campaign: r.campaign,
       unit: toUnit(r.businessUnit),
       subtotal: round2(r.subtotal),
+      perDay: perAppointment(r.subtotal, r.appointments),
       date,
       scheduledDate: r.scheduledDate,
       nextApptDate: r.nextApptDate,
@@ -575,6 +610,8 @@ export function computeScheduledRevenue(
   const totals: ScheduledRevenueTotals = {
     firmRevenue: 0,
     firmJobs: 0,
+    deferredRevenue: 0,
+    deferredJobs: 0,
     holdRevenue: 0,
     holdJobs: 0,
     parkedRevenue: 0,
@@ -636,17 +673,25 @@ export function computeScheduledRevenue(
       };
 
     if (isFirm(j.status)) {
-      day.firmRevenue += j.subtotal;
+      // One crew day lands on the square; the rest of a multi-day job goes to
+      // the deferred pile. Computed as (subtotal - perDay) rather than
+      // perDay × (n-1) so a subtotal that doesn't divide evenly still
+      // reconciles to the cent.
+      day.firmRevenue += j.perDay;
       day.firmJobs++;
-      day.byUnit[j.unit] += j.subtotal;
+      day.byUnit[j.unit] += j.perDay;
       day.jobsByUnit[j.unit]++;
-      month.firmRevenue += j.subtotal;
+      month.firmRevenue += j.perDay;
       month.firmJobs++;
-      month.byUnit[j.unit] += j.subtotal;
+      month.byUnit[j.unit] += j.perDay;
       month.jobsByUnit[j.unit]++;
-      totals.firmRevenue += j.subtotal;
+      totals.firmRevenue += j.perDay;
       totals.firmJobs++;
-      if (j.subtotal > 0) month.dayset.add(j.date);
+      if (j.perDay !== j.subtotal) {
+        totals.deferredRevenue += j.subtotal - j.perDay;
+        totals.deferredJobs++;
+      }
+      if (j.perDay > 0) month.dayset.add(j.date);
     } else {
       day.holdRevenue += j.subtotal;
       day.holdJobs++;
@@ -682,6 +727,7 @@ export function computeScheduledRevenue(
 
   for (const k of [
     'firmRevenue',
+    'deferredRevenue',
     'holdRevenue',
     'parkedRevenue',
     'allRevenue',
@@ -707,6 +753,19 @@ export function computeScheduledRevenue(
     totals,
     sinceLast: null,
   };
+}
+
+/**
+ * One crew day's share of a job.
+ *
+ * `appointments` is already clamped to at least 1 on the way in, so this can't
+ * divide by zero. A job with no appointment count reads as a single day, which
+ * is the safe direction: it lands whole on its square rather than being
+ * silently thinned out.
+ */
+export function perAppointment(subtotal: number, appointments: number): number {
+  const n = Math.max(1, Math.round(appointments || 1));
+  return round2(subtotal / n);
 }
 
 /**
@@ -1050,6 +1109,10 @@ export function hydrateScheduledRevenue(
       ...j,
       scheduledDate: j.scheduledDate ?? j.date ?? null,
       nextApptDate: j.nextApptDate ?? null,
+      // Snapshots written before the per-day split carried the whole subtotal
+      // on one square. Reading it back as the whole subtotal is the honest
+      // reproduction of what that snapshot said.
+      perDay: j.perDay ?? j.subtotal ?? 0,
     })),
     days: (raw.days ?? []).map((d) => ({
       ...d,
@@ -1069,6 +1132,8 @@ function blankTotals(): ScheduledRevenueTotals {
   return {
     firmRevenue: 0,
     firmJobs: 0,
+    deferredRevenue: 0,
+    deferredJobs: 0,
     holdRevenue: 0,
     holdJobs: 0,
     parkedRevenue: 0,

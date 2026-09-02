@@ -159,7 +159,7 @@ Sending both `parts` and `jobs` is rejected.
 | `soldBy` | Verbatim, a full name. Same rule: don't shorten it, the dashboard does. Optional. |
 | `soldOn` | Strict `YYYY-MM-DD` or `null`. Same date rules as the others. Optional. |
 | `jobType` / `campaign` / `address` / `zip` | Verbatim. Optional. |
-| `appointments` | A whole number. Defaults to 1. |
+| `appointments` | A whole number from `Total Appointments`. **Send it** — it divides the job across crew days (see below). Missing reads as 1. |
 
 ### The checksum is mandatory, and it is PER REPORT
 
@@ -200,6 +200,26 @@ column holds, including when it equals `Scheduled Date`.
 One knock-on worth knowing: a job whose next appointment is the `01/01/2030`
 placeholder counts as **unscheduled**, even if its first appointment had a real
 date. That's the honest reading — its next real touch hasn't been booked.
+
+### `appointments` splits the money across crew days
+
+A job's `subtotal` is what the whole job is worth, however many days it takes.
+The calendar divides it:
+
+```
+what lands on the square = subtotal ÷ appointments
+```
+
+This calendar exists to answer *can we take on more work that week*, so a $60k
+two-day removal is $30k of any one day's capacity, not $60k. On a single-visit
+job — most of them — `appointments` is 1 and nothing changes.
+
+**Send `Total Appointments` whenever the column has a value.** Missing reads as
+1, which lands the whole job on one square.
+
+ServiceTitan gives us one date per job, so only one crew day of a multi-day job
+can be placed. The rest shows up in `otherCrewDays` — about 8% of the board in
+the file this was sized on, so it's named rather than dropped.
 
 ### Why dates are strict
 
@@ -287,17 +307,23 @@ board:
 
 ### Reading it
 
-**Three piles, and they never mix.** Every dollar in the export lands in exactly
-one of them, and the three sum to the export's grand total:
+**Four piles, and they never mix.** Every dollar in the export lands in exactly
+one of them, and the four sum to the export's grand total:
 
 | Pile | What it is | Where it shows up |
 |---|---|---|
-| **Scheduled** | Everything not at status Hold — `Scheduled`, `In Progress`, and any status ServiceTitan adds later. Placed on its next appointment (see above). | `onTheBoard`, all horizons, `byUnit`, `byMonth`, `nextWeeks`, and the calendar. |
+| **Scheduled** | Everything not at status Hold — `Scheduled`, `In Progress`, and any status ServiceTitan adds later. One crew day placed on its next appointment (see above). | `onTheBoard`, all horizons, `byUnit`, `byMonth`, `nextWeeks`, and the calendar. |
+| **Other crew days** | The remaining days of multi-day jobs. The export dates one appointment, so the rest can't be placed. | `otherCrewDays` only. |
 | **Waiting on approval** | Status `Hold`. On the board, not committed. | `waitingApproval` only. **Never** in a revenue figure. |
 | **Unscheduled** | Dated `2030-01-01` or later — ServiceTitan's placeholder for sold work with no real date. | `unscheduled` only. |
 
 `counts: "firm-only"` and `firmStatuses` state this in every response, so the
 figure carries its own definition into whatever channel it gets posted in.
+
+**Every revenue figure is CAPACITY, not billing.** `onTheBoard`, the horizons,
+`byMonth` and `nextWeeks` all count one crew day per multi-day job. They answer
+"how much work is on that week", not "how much will we invoice". For the
+billing number, add `otherCrewDays`.
 
 **`onTheBoard` is everything, forever.** It includes past-dated work and runs to
 the end of the export's window. For a "what's coming" post, `next30` is usually
@@ -335,7 +361,8 @@ dashboard are shortened at import time. If you ever surface a technician, use
 what the dashboard shows, not what you sent.
 
 **Everything reconciles.** `sum(byUnit.revenue)` equals `onTheBoard.revenue`;
-`onTheBoard + waitingApproval + unscheduled` equals the export's grand total.
+`onTheBoard + otherCrewDays + waitingApproval + unscheduled` equals the export's
+grand total.
 
 ---
 
