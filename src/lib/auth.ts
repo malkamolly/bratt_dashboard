@@ -169,6 +169,23 @@ export function isHeadArborist(email: string | null | undefined): boolean {
   return !!email && email.toLowerCase() === HEAD_ARBORIST_EMAIL;
 }
 
+/**
+ * The head arborist's own menu — Revenue Calendar, Cost Analysis, Video Notes.
+ *
+ * Gated by EMAIL, not by role, and deliberately so. Those three pages sit in
+ * three different areas of the app behind three different role checks, and
+ * whether Connor could open all three would otherwise depend on which role he
+ * happens to hold — a thing that changes for unrelated reasons. Same reasoning
+ * as COST_ANALYSIS_EMAILS above: an explicit gate can't be widened or narrowed
+ * by a role change.
+ *
+ * requireRevenueCalendar() and the middleware carry the matching exceptions, so
+ * the menu can't point at a page its only reader gets bounced from.
+ */
+export function canSeeHeadArboristMenu(email: string | null | undefined): boolean {
+  return isHeadArborist(email);
+}
+
 // Proposal Reviews (/review-stats) is restricted to specific PEOPLE, not a role
 // — like Cost Analysis and My Projects above. Deliberately NOT role-based: the
 // report compares two named supervisors' workloads against each other, and one
@@ -323,6 +340,23 @@ export async function requireHubAccess(hub: Hub): Promise<AllowedUser> {
   const u = await getAllowedUser();
   if (!u) redirect('/login');
   if (!canAccessHub(u.role, hub)) redirect('/access-denied');
+  return u;
+}
+
+/**
+ * Guards the Revenue Calendar.
+ *
+ * The production/office audience, plus the head arborist by email. Production
+ * capacity is his to read whatever role he holds, and his own menu points
+ * straight at it — a menu item that bounces its only reader would be worse than
+ * no menu item. Keep in sync with the exception in middleware.ts.
+ */
+export async function requireRevenueCalendar(): Promise<AllowedUser> {
+  const u = await getAllowedUser();
+  if (!u) redirect('/login');
+  if (!canAccessHub(u.role, 'pace') && !isHeadArborist(u.email)) {
+    redirect('/access-denied');
+  }
   return u;
 }
 

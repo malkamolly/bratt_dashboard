@@ -185,6 +185,28 @@ export async function middleware(req: NextRequest) {
     return res;
   }
 
+  // The head arborist's own three pages. They live in three different areas
+  // behind three different role checks, so whether he can open all three would
+  // otherwise depend on which role he happens to hold. Email-gated instead, the
+  // same way My Projects and Slack Tags are.
+  //
+  // This ADDS a path for one person; it doesn't open the areas around it. He
+  // still can't reach the rest of /admin or /production this way. Keep in sync
+  // with HEAD_ARBORIST_EMAIL and requireRevenueCalendar() in lib/auth.ts (the
+  // address is duplicated here for the same reason the hub matrix below is:
+  // middleware runs at the edge and must not import that module).
+  const HEAD_ARBORIST_PATHS = [
+    '/production/revenue-calendar',
+    '/cost-analysis',
+    '/admin/video-notes',
+  ];
+  if (
+    (user.email ?? '').toLowerCase() === 'connor@bratttree.com' &&
+    HEAD_ARBORIST_PATHS.some((p) => path === p || path.startsWith(`${p}/`))
+  ) {
+    return res;
+  }
+
   // Hub-level access. The landing page (/) is open to any signed-in
   // allowlist user — it shows only the hub cards they can access.
   const role = allowed.role as

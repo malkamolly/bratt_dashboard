@@ -2,9 +2,11 @@ import {
   getAllowedUser,
   canAccessHub,
   canSeeCostAnalysis,
+  canSeeHeadArboristMenu,
   canUsePhcScheduling,
   canUseSops,
   canUseOffSeason,
+  canUseVideoNotes,
   isOwner,
   type Role,
 } from '@/lib/auth';
@@ -34,8 +36,13 @@ export async function BrandHeader() {
     if (canSeeCostAnalysis(user.email)) salesItems.push({ label: 'Job Costing', href: '/cost-analysis/job-costing' });
 
     const productionItems: NavItem[] = [];
-    if (canAccessHub(r, 'pace'))
+    if (canAccessHub(r, 'pace')) {
       productionItems.push({ label: 'Production PACE', href: '/production' });
+      productionItems.push({
+        label: 'Revenue Calendar',
+        href: '/production/revenue-calendar',
+      });
+    }
     if (canSeeSchedule(r)) {
       productionItems.push({ label: "Tomorrow's Schedule", href: '/schedule' });
       productionItems.push({ label: 'Forecast vs Actual', href: '/schedule/accuracy' });
@@ -50,6 +57,28 @@ export async function BrandHeader() {
     if (canUsePhcScheduling(r)) officeItems.push({ label: 'PHC Scheduling', href: '/phc' });
     if (canUseSops(r)) officeItems.push({ label: 'SOP Library', href: '/sops' });
     if (isTagsUser(user.email)) officeItems.push({ label: 'Slack Tags', href: '/tags' });
+
+    // Connor's own menu, and only his — the three pages he actually works
+    // from, pulled out of the three different areas they live in so he doesn't
+    // have to go looking. Email-gated (canSeeHeadArboristMenu), so it can't
+    // appear for anyone else through a role change. It goes FIRST because for
+    // him it's the main menu, not a corner of someone else's.
+    //
+    // Cost Analysis also appears under Sales for the people who can see it.
+    // That's the same page twice for Connor, which is fine: a shortcut that
+    // isn't also somewhere sensible is a shortcut people stop trusting.
+    if (canSeeHeadArboristMenu(user.email)) {
+      const connorItems: NavItem[] = [
+        { label: 'Revenue Calendar', href: '/production/revenue-calendar' },
+      ];
+      if (canSeeCostAnalysis(user.email)) {
+        connorItems.push({ label: 'Cost Analysis', href: '/cost-analysis' });
+      }
+      if (canUseVideoNotes(user.email)) {
+        connorItems.push({ label: 'Video Notes', href: '/admin/video-notes' });
+      }
+      groups.push({ label: 'Connor', items: connorItems });
+    }
 
     if (salesItems.length > 0) groups.push({ label: 'Sales', items: salesItems });
     if (productionItems.length > 0)

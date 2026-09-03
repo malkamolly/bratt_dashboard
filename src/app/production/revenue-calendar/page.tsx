@@ -33,7 +33,7 @@
 
 import Link from 'next/link';
 import {
-  requireHubAccess,
+  requireRevenueCalendar,
   canUploadScheduledRevenue,
   canSeePastDated,
 } from '@/lib/auth';
@@ -322,8 +322,9 @@ export default async function RevenueCalendarPage({
 }: {
   searchParams: Search;
 }) {
-  // Production / office audience: admin, office, sales manager.
-  const user = await requireHubAccess('pace');
+  // Production / office audience — admin, office, sales manager — plus the head
+  // arborist by email, whose own menu points here.
+  const user = await requireRevenueCalendar();
   const canUpload = canUploadScheduledRevenue(user.role);
   const showPastDated = canSeePastDated(user.email);
   const sp = await searchParams;
